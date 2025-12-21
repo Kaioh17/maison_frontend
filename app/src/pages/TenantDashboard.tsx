@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, onboardDriver, assignDriverToVehicle, type TenantResponse, type DriverResponse, type VehicleResponse, type BookingResponse, type OnboardDriver } from '@api/tenant'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, type TenantResponse, type DriverResponse, type VehicleResponse, type BookingResponse, type OnboardDriver } from '@api/tenant'
 import { getVehicleRates, getVehicleCategories, createVehicleCategory, setVehicleRates } from '@api/vehicles'
 import { getTenantSettings, updateTenantSettings, updateTenantLogo, type TenantSettingsResponse, type UpdateTenantSetting } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTenantTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
-import { Car, Users, Calendar, Settings, TrendingUp, DollarSign, Clock, MapPin, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, AlertCircle, Palette, Save } from 'lucide-react'
+import { Car, Users, Calendar, Settings, TrendingUp, DollarSign, Clock, MapPin, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, AlertCircle, Palette, Save, Menu, ChevronDown, ChevronUp } from 'lucide-react'
 import { API_BASE } from '@config'
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
@@ -42,19 +42,27 @@ export default function TenantDashboard() {
   const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null)
   const [showVehicleEditModal, setShowVehicleEditModal] = useState(false)
 
+  // Hamburger menu state
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // Booking details modal state
+  const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null)
+  const [showBookingDetails, setShowBookingDetails] = useState(false)
+  const [loadingBookingDetails, setLoadingBookingDetails] = useState(false)
+
+  // Vehicle Settings dropdown state
+  const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
+  
+  // Business Configuration dropdown state
+  const [businessConfigurationOpen, setBusinessConfigurationOpen] = useState(false)
+
   // Sync theme with tenant settings
   useTenantTheme(tenantSettings?.theme)
-
-  // Debug authentication state
-  useEffect(() => {
-    console.log('Auth State:', { accessToken, role })
-  }, [accessToken, role])
 
   const load = async () => {
     setLoading(true)
     setError(null)
     try {
-      console.log('Starting to load dashboard data...')
       
       const tenantInfoPromise = getTenantInfo()
       const driversPromise = getTenantDrivers()
@@ -349,13 +357,12 @@ export default function TenantDashboard() {
           return
         } catch (logoError) {
           console.error('Logo update failed:', logoError)
-          console.log('Falling back to regular settings update...')
-          
-          // Fallback: try to update via regular settings endpoint
+          // Fallback: skip logo update, just update other settings
           try {
             const settingsToUpdate = {
               ...editedSettings,
-              logo_url: logoFile
+              // Don't include logo_url if it's a File - skip it
+              logo_url: typeof editedSettings.logo_url === 'string' ? editedSettings.logo_url : ''
             }
             
             const updatedSettings = await updateTenantSettings(settingsToUpdate)
@@ -373,14 +380,29 @@ export default function TenantDashboard() {
         }
       }
       
-      // Otherwise, update all settings
+      // If there's a logo file, upload it first to get the URL
+      let logoUrl = editedSettings.logo_url
+      if (logoFile) {
+        try {
+          await updateTenantLogo(logoFile)
+          // Refresh settings to get the new logo URL
+          const refreshedSettings = await getTenantSettings()
+          logoUrl = refreshedSettings.logo_url
+        } catch (logoError) {
+          console.error('Logo upload failed, continuing with other settings:', logoError)
+          // Continue with other settings even if logo upload fails
+        }
+      }
+      
+      // Update all settings with the logo URL (string, not File)
       const settingsToUpdate = {
         ...editedSettings,
-        logo_url: logoFile || editedSettings.logo_url
+        logo_url: logoUrl
       }
       
       const updatedSettings = await updateTenantSettings(settingsToUpdate)
       setTenantSettings(updatedSettings)
+      setEditedSettings(updatedSettings)
       setEditingSettings(false)
       setLogoFile(null)
       setLogoPreview(null)
@@ -415,6 +437,26 @@ export default function TenantDashboard() {
     setEditingSettings(false)
     setLogoFile(null)
     setLogoPreview(null)
+  }
+
+  const handleBookingClick = async (bookingId: number) => {
+    setLoadingBookingDetails(true)
+    setShowBookingDetails(true)
+    try {
+      const response = await getTenantBookingById(bookingId)
+      if (response.data && response.data.length > 0) {
+        setSelectedBooking(response.data[0])
+      } else {
+        setError('Booking not found')
+        setShowBookingDetails(false)
+      }
+    } catch (error: any) {
+      console.error('Failed to load booking details:', error)
+      setError('Failed to load booking details')
+      setShowBookingDetails(false)
+    } finally {
+      setLoadingBookingDetails(false)
+    }
   }
 
   const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -489,10 +531,10 @@ export default function TenantDashboard() {
         </div>
         
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ color: '#ef4444', marginBottom: '16px' }}>
+          <div style={{ color: 'var(--bw-error, #C5483D)', marginBottom: '16px' }}>
             <AlertCircle className="w-12 h-12 mx-auto" />
           </div>
-          <h3 style={{ margin: '0 0 16px 0', color: '#ef4444' }}>Error Loading Dashboard</h3>
+          <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-error, #C5483D)' }}>Error Loading Dashboard</h3>
           <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>{error}</p>
           <button 
             className="bw-btn" 
@@ -510,135 +552,660 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="bw bw-container" style={{ padding: '24px 0' }}>
-      {/* Header */}
-      <div className="bw-header" style={{ marginBottom: 32 }}>
-        <div className="bw-header-content">
-          <h1 style={{ fontSize: 32, margin: 0 }}>Dashboard</h1>
-          <div className="bw-header-actions">
-            <span className="bw-text-muted">Welcome back, {info?.first_name}</span>
-            <ThemeToggle />
-            <button 
-              className="bw-btn-outline" 
-              onClick={() => useAuthStore.getState().logout()}
-              style={{ marginLeft: 16 }}
-            >
-              Logout
-            </button>
+    <div className="bw" style={{ position: 'relative', minHeight: '100vh', display: 'flex' }}>
+      {/* Overlay when menu is open */}
+      {isMenuOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 998,
+            transition: 'opacity 0.3s ease'
+          }}
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Menu - Left Aligned */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: isMenuOpen ? '0' : '-20%',
+          width: '20%',
+          height: '100vh',
+          backgroundColor: 'var(--bw-bg)',
+          borderRight: '1px solid var(--bw-border)',
+          zIndex: 999,
+          transition: 'left 0.3s ease',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: isMenuOpen ? 'var(--bw-shadow)' : 'none'
+        }}
+      >
+        {/* Company Name in Sidebar */}
+        <div style={{
+          padding: 'clamp(16px, 2vw, 24px)',
+          borderBottom: '1px solid var(--bw-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}>
+          <h1 style={{ 
+            fontFamily: '"DM Sans", sans-serif',
+            fontSize: 'clamp(20px, 3vw, 32px)',
+            fontWeight: 200,
+            margin: 0,
+            color: 'var(--bw-text)',
+            letterSpacing: '0.5px',
+            lineHeight: '1.2',
+            flex: 1
+          }}>
+            {info?.profile?.company_name || 'Dashboard'}
+          </h1>
+          <button
+            className="bw-menu"
+            onClick={() => setIsMenuOpen(false)}
+            aria-label="Close menu"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px',
+              minWidth: '40px',
+              minHeight: '40px',
+              flexShrink: 0
+            }}
+          >
+            <XCircle className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>
+
+        {/* Navigation Tabs in Sidebar */}
+        <nav style={{
+          flex: 1,
+          padding: 'clamp(12px, 1.5vw, 20px) 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px'
+        }}>
+          {tabs.map((tab) => {
+            const IconComponent = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id as TabType)
+                  // Menu stays open - only closes on cancel button or outside click
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
+                  backgroundColor: activeTab === tab.id ? 'var(--bw-bg-hover)' : 'transparent',
+                  border: 'none',
+                  borderLeft: activeTab === tab.id ? '3px solid var(--bw-accent)' : '3px solid transparent',
+                  color: 'var(--bw-text)',
+                  cursor: 'pointer',
+                  fontSize: 'clamp(13px, 1.5vw, 15px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  textAlign: 'left',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                <IconComponent className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* Footer Section in Sidebar */}
+        <div style={{
+          padding: 'clamp(12px, 1.5vw, 20px)',
+          borderTop: '1px solid var(--bw-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{
+            fontSize: 'clamp(11px, 1.2vw, 13px)',
+            color: 'var(--bw-muted)',
+            fontFamily: '"Work Sans", sans-serif',
+            fontWeight: 300
+          }}>
+            Welcome back, {info?.first_name}
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ThemeToggle />
+          </div>
+          <button
+            onClick={() => {
+              useAuthStore.getState().logout()
+              setIsMenuOpen(false)
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--bw-border)',
+              color: 'var(--bw-text)',
+              cursor: 'pointer',
+              fontSize: 'clamp(13px, 1.5vw, 15px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300,
+              borderRadius: '4px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            Logout
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="bw-tabs" style={{ marginBottom: 32 }}>
-        {tabs.map((tab) => {
-          const IconComponent = tab.icon
-          return (
+      {/* Main Content Area */}
+      <div style={{
+        flex: 1,
+        width: '100%',
+        minHeight: '100vh'
+      }}>
+        <div className="bw-container" style={{ 
+          padding: 'clamp(12px, 2vw, 24px) clamp(16px, 3vw, 32px)', 
+          maxWidth: '100%' 
+        }}>
+          {/* Top Bar with Hamburger Menu */}
+          <div style={{ 
+            marginBottom: 'clamp(16px, 3vw, 32px)',
+            paddingBottom: 'clamp(12px, 2vw, 16px)',
+            borderBottom: '1px solid var(--bw-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            {/* Hamburger Menu Button - Left Aligned */}
             <button
-              key={tab.id}
-              className={`bw-tab ${activeTab === tab.id ? 'bw-tab-active' : ''}`}
-              onClick={() => setActiveTab(tab.id as TabType)}
+              className="bw-menu"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={isMenuOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px',
+                minWidth: '40px',
+                minHeight: '40px'
+              }}
             >
-              <IconComponent className="w-4 h-4" />
-              {tab.label}
+              <Menu className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
             </button>
-          )
-        })}
-      </div>
 
-      {/* Tab Content */}
-      <div className="bw-tab-content">
+            {/* Desktop: Show tabs inline (hidden on mobile) */}
+            <div style={{ 
+              display: 'none',
+              gap: '8px',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              flex: 1
+            }}
+            className="desktop-tabs"
+            >
+              {tabs.map((tab) => {
+                const IconComponent = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    className={`bw-tab ${activeTab === tab.id ? 'bw-tab-active' : ''}`}
+                    onClick={() => {
+                      setActiveTab(tab.id as TabType)
+                      setIsMenuOpen(false)
+                    }}
+                    style={{
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
+                      fontWeight: 300
+                    }}
+                  >
+                    <IconComponent className="w-4 h-4" style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Desktop Actions */}
+            <div style={{ 
+              display: 'none',
+              gap: '8px',
+              alignItems: 'center'
+            }}
+            className="desktop-actions"
+            >
+              <ThemeToggle />
+              <button 
+                className="bw-btn-outline" 
+                onClick={() => useAuthStore.getState().logout()}
+                style={{ 
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                  padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
+                  fontWeight: 300
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="bw-tab-content" style={{ fontFamily: '"Work Sans", sans-serif', fontWeight: 300 }}>
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="bw-grid" style={{ gap: 24 }}>
-            {/* Stats Cards */}
-            <div className="bw-card" style={{ gridColumn: 'span 3' }}>
-              <div className="bw-stat">
-                <div className="bw-stat-icon" style={{ background: 'var(--bw-accent)' }}>
-                  <Users className="w-6 h-6" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 24px)' }}>
+            {/* Today's KPIs - Big Cards */}
+            {(() => {
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const todayEnd = new Date(today)
+              todayEnd.setHours(23, 59, 59, 999)
+              
+              const todayBookings = bookings.filter(b => {
+                const pickupDate = new Date(b.pickup_time)
+                return pickupDate >= today && pickupDate <= todayEnd
+              })
+              
+              const activeRidesToday = todayBookings.filter(b => b.booking_status?.toLowerCase() === 'active').length
+              const pendingBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
+              const availableDrivers = drivers.filter(d => d.is_active).length
+              const availableVehicles = vehicles.filter(v => v.status === 'active').length
+              const todaysRevenue = todayBookings
+                .filter(b => b.booking_status?.toLowerCase() === 'completed')
+                .reduce((sum, b) => sum + (b.estimated_price || 0), 0)
+              
+              return (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(140px, 18vw, 200px), 1fr))',
+                  gap: 'clamp(12px, 2vw, 20px)',
+                  marginBottom: 'clamp(16px, 3vw, 24px)'
+                }}>
+                  {/* Active Rides Today */}
+                  <div className="bw-card" style={{
+                    padding: 'clamp(20px, 3vw, 32px)',
+                    textAlign: 'center',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 6vw, 56px)',
+                      fontWeight: 700,
+                      color: 'var(--bw-text)',
+                      lineHeight: 1.1,
+                      marginBottom: 'clamp(4px, 1vw, 8px)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {activeRidesToday}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Active Rides
+                    </div>
+                  </div>
+
+                  {/* Pending Bookings */}
+                  <div className="bw-card" style={{
+                    padding: 'clamp(20px, 3vw, 32px)',
+                    textAlign: 'center',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 6vw, 56px)',
+                      fontWeight: 700,
+                      color: 'var(--bw-text)',
+                      lineHeight: 1.1,
+                      marginBottom: 'clamp(4px, 1vw, 8px)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {pendingBookings}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Pending
+                    </div>
+                  </div>
+
+                  {/* Available Drivers */}
+                  <div className="bw-card" style={{
+                    padding: 'clamp(20px, 3vw, 32px)',
+                    textAlign: 'center',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 6vw, 56px)',
+                      fontWeight: 700,
+                      color: 'var(--bw-text)',
+                      lineHeight: 1.1,
+                      marginBottom: 'clamp(4px, 1vw, 8px)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {availableDrivers}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Available
+                    </div>
+                  </div>
+
+                  {/* Available Vehicles */}
+                  <div className="bw-card" style={{
+                    padding: 'clamp(20px, 3vw, 32px)',
+                    textAlign: 'center',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(32px, 6vw, 56px)',
+                      fontWeight: 700,
+                      color: 'var(--bw-text)',
+                      lineHeight: 1.1,
+                      marginBottom: 'clamp(4px, 1vw, 8px)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {availableVehicles}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Available
+                    </div>
+                  </div>
+
+                  {/* Today's Revenue */}
+                  <div className="bw-card" style={{
+                    padding: 'clamp(20px, 3vw, 32px)',
+                    textAlign: 'center',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(28px, 5vw, 48px)',
+                      fontWeight: 700,
+                      color: 'var(--bw-text)',
+                      lineHeight: 1.1,
+                      marginBottom: 'clamp(4px, 1vw, 8px)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      ${todaysRevenue.toFixed(0)}
+                    </div>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Today's Revenue
+                    </div>
+                  </div>
                 </div>
-                <div className="bw-stat-content">
-                  <div className="bw-stat-value">{drivers.length}</div>
-                  <div className="bw-stat-label">Total Drivers</div>
+              )
+            })()}
+
+            {/* Summary Stats Row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(120px, 15vw, 180px), 1fr))',
+              gap: 'clamp(12px, 2vw, 20px)',
+              marginBottom: 'clamp(16px, 3vw, 24px)'
+            }}>
+              <div className="bw-card" style={{
+                padding: 'clamp(16px, 2.5vw, 24px)',
+                textAlign: 'center',
+                border: '1px solid var(--bw-border)'
+              }}>
+                <div style={{
+                  fontSize: 'clamp(24px, 4vw, 36px)',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)',
+                  marginBottom: 'clamp(4px, 1vw, 6px)',
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  {drivers.length}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  color: 'var(--bw-muted)',
+                  fontWeight: 300,
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  Total Drivers
+                </div>
+              </div>
+
+              <div className="bw-card" style={{
+                padding: 'clamp(16px, 2.5vw, 24px)',
+                textAlign: 'center',
+                border: '1px solid var(--bw-border)'
+              }}>
+                <div style={{
+                  fontSize: 'clamp(24px, 4vw, 36px)',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)',
+                  marginBottom: 'clamp(4px, 1vw, 6px)',
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  {vehicles.length}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  color: 'var(--bw-muted)',
+                  fontWeight: 300,
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  Total Vehicles
+                </div>
+              </div>
+
+              <div className="bw-card" style={{
+                padding: 'clamp(16px, 2.5vw, 24px)',
+                textAlign: 'center',
+                border: '1px solid var(--bw-border)'
+              }}>
+                <div style={{
+                  fontSize: 'clamp(24px, 4vw, 36px)',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)',
+                  marginBottom: 'clamp(4px, 1vw, 6px)',
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  {bookings.length}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  color: 'var(--bw-muted)',
+                  fontWeight: 300,
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  Total Bookings
                 </div>
               </div>
             </div>
 
-            <div className="bw-card" style={{ gridColumn: 'span 3' }}>
-              <div className="bw-stat">
-                <div className="bw-stat-icon" style={{ background: 'var(--bw-accent)' }}>
-                  <Car className="w-6 h-6" />
-                </div>
-                <div className="bw-stat-content">
-                  <div className="bw-stat-value">{vehicles.length}</div>
-                  <div className="bw-stat-label">Total Vehicles</div>
+            {/* Company Info and Recent Bookings Row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(280px, 40vw, 500px), 1fr))',
+              gap: 'clamp(16px, 3vw, 24px)'
+            }}>
+              {/* Company Information */}
+              <div className="bw-card" style={{
+                padding: 'clamp(16px, 2.5vw, 24px)',
+                border: '1px solid var(--bw-border)'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 clamp(12px, 2vw, 16px) 0',
+                  fontSize: 'clamp(16px, 2.5vw, 20px)',
+                  fontWeight: 400,
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  Company Information
+                </h3>
+                <div className="bw-info-grid" style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'clamp(8px, 1.5vw, 12px)'
+                }}>
+                  <div className="bw-info-item" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingBottom: 'clamp(6px, 1vw, 8px)',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      color: 'var(--bw-muted)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>Company Name:</span>
+                    <span className="bw-info-value" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>{info?.profile?.company_name}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingBottom: 'clamp(6px, 1vw, 8px)',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      color: 'var(--bw-muted)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>City:</span>
+                    <span className="bw-info-value" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>{info?.profile?.city}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    paddingBottom: 'clamp(6px, 1vw, 8px)',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      color: 'var(--bw-muted)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>Status:</span>
+                    <span className={`bw-info-value ${info?.profile?.subscription_status === 'active' ? 'text-green-500' : 'text-yellow-500'}`} style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {info?.profile?.subscription_status === 'active' ? 'Active' : info?.profile?.subscription_status || 'Free'}
+                    </span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span className="bw-info-label" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      color: 'var(--bw-muted)',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>Member Since:</span>
+                    <span className="bw-info-value" style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      {new Date(info?.created_on).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bw-card" style={{ gridColumn: 'span 3' }}>
-              <div className="bw-stat">
-                <div className="bw-stat-icon" style={{ background: 'var(--bw-accent)' }}>
-                  <Calendar className="w-6 h-6" />
+              {/* Recent Bookings */}
+              <div className="bw-card" style={{
+                padding: 'clamp(16px, 2.5vw, 24px)',
+                border: '1px solid var(--bw-border)'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: 'clamp(12px, 2vw, 16px)' 
+                }}>
+                  <h3 style={{ 
+                    margin: 0,
+                    fontSize: 'clamp(16px, 2.5vw, 20px)',
+                    fontWeight: 400,
+                    fontFamily: '"Work Sans", sans-serif'
+                  }}>
+                    Recent Bookings
+                  </h3>
+                  <button 
+                    className="bw-btn-outline" 
+                    onClick={() => setActiveTab('bookings')}
+                    style={{ 
+                      fontSize: 'clamp(10px, 1.2vw, 12px)', 
+                      padding: 'clamp(4px, 0.8vw, 6px) clamp(8px, 1.5vw, 12px)',
+                      fontWeight: 300,
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}
+                  >
+                    View All
+                  </button>
                 </div>
-                <div className="bw-stat-content">
-                  <div className="bw-stat-value">{bookings.length}</div>
-                  <div className="bw-stat-label">Total Bookings</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bw-card" style={{ gridColumn: 'span 3' }}>
-              <div className="bw-stat">
-                <div className="bw-stat-icon" style={{ background: 'var(--bw-accent)' }}>
-                  <DollarSign className="w-6 h-6" />
-                </div>
-                <div className="bw-stat-content">
-                  <div className="bw-stat-value">{info?.subscription_plan || 'N/A'}</div>
-                  <div className="bw-stat-label">Subscription Plan</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Company Info */}
-            <div className="bw-card" style={{ gridColumn: 'span 6', height: 'fit-content' }}>
-              <h3 style={{ margin: '0 0 16px 0' }}>Company Information</h3>
-              <div className="bw-info-grid">
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Company Name:</span>
-                  <span className="bw-info-value">{info?.company_name}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">City:</span>
-                  <span className="bw-info-value">{info?.city}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Status:</span>
-                  <span className={`bw-info-value ${info?.is_verified ? 'text-green-500' : 'text-yellow-500'}`}>
-                    {info?.is_verified ? 'Verified' : 'Pending Verification'}
-                  </span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Member Since:</span>
-                  <span className="bw-info-value">
-                    {new Date(info?.created_on).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bw-card" style={{ gridColumn: 'span 6' }}>
-              <div className="bw-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0 }}>Recent Bookings</h3>
-                <button 
-                  className="bw-btn-outline" 
-                  onClick={() => setActiveTab('bookings')}
-                  style={{ fontSize: '12px', padding: '4px 8px' }}
-                >
-                  View All
-                </button>
-              </div>
               <div className="bw-recent-list">
                 {bookings.length === 0 ? (
                   <div className="bw-empty-state" style={{ padding: '24px', textAlign: 'center' }}>
@@ -650,35 +1217,50 @@ export default function TenantDashboard() {
                   <>
                     {/* Show first 3 pending trips */}
                     {bookings.slice(0, 3).map((booking) => (
-                      <div key={booking.id} className="bw-recent-item" style={{ 
-                        border: '1px solid #e5e7eb', 
-                        borderRadius: '8px', 
-                        padding: '12px', 
-                        marginBottom: '8px',
-                        backgroundColor: '#ffffff'
-                      }}>
+                      <div 
+                        key={booking.id} 
+                        className="bw-recent-item" 
+                        onClick={() => handleBookingClick(booking.id)}
+                        style={{ 
+                          border: '1px solid var(--bw-border)', 
+                          borderRadius: '8px', 
+                          padding: '12px', 
+                          marginBottom: '8px',
+                          backgroundColor: 'var(--bw-bg-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover-strong)'
+                          e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
+                          e.currentTarget.style.borderColor = 'var(--bw-border)'
+                        }}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div className="bw-recent-icon" style={{ 
-                              background: getStatusColor(booking.booking_status), 
+                            <div style={{ 
                               padding: '4px', 
                               borderRadius: '4px',
-                              color: 'white'
+                              color: 'var(--bw-text)',
+                              background: 'transparent'
                             }}>
-                              <MapPin className="w-3 h-3" />
+                              <MapPin className="w-3 h-3" style={{ color: 'var(--bw-text)' }} />
                             </div>
                             <div>
                               <div className="bw-recent-title" style={{ 
                                 fontWeight: '600', 
                                 fontSize: '14px', 
-                                color: '#111827',
+                                color: 'var(--bw-text)',
                                 marginBottom: '2px'
                               }}>
                                 {booking.pickup_location} → {booking.dropoff_location}
                               </div>
                               <div className="bw-recent-meta" style={{ 
                                 fontSize: '12px', 
-                                color: '#6b7280',
+                                color: 'var(--bw-muted)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px'
@@ -777,39 +1359,73 @@ export default function TenantDashboard() {
               {/* Quick Stats Summary */}
               {bookings.length > 0 && (
                 <div style={{ 
-                  marginTop: '16px', 
-                  padding: '12px', 
-                  backgroundColor: '#f8fafc', 
+                  marginTop: 'clamp(12px, 2vw, 16px)', 
+                  padding: 'clamp(10px, 1.5vw, 12px)', 
+                  backgroundColor: 'var(--bw-bg-secondary)', 
                   borderRadius: '6px',
-                  border: '1px solid #e2e8f0'
+                  border: '1px solid var(--bw-border)'
                 }}>
                   <div style={{ 
                     display: 'grid', 
                     gridTemplateColumns: 'repeat(3, 1fr)', 
-                    gap: '12px',
-                    fontSize: '12px'
+                    gap: 'clamp(8px, 1.5vw, 12px)',
+                    fontSize: 'clamp(11px, 1.3vw, 12px)'
                   }}>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontWeight: '600', color: '#111827' }}>
+                      <div style={{ 
+                        fontWeight: 400, 
+                        color: 'var(--bw-text)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        marginBottom: '4px'
+                      }}>
                         {bookings.filter(b => b.booking_status === 'completed').length}
                       </div>
-                      <div style={{ color: '#6b7280' }}>Completed</div>
+                      <div style={{ 
+                        color: 'var(--bw-muted)',
+                        fontWeight: 300,
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>
+                        Completed
+                      </div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontWeight: '600', color: '#111827' }}>
+                      <div style={{ 
+                        fontWeight: 400, 
+                        color: 'var(--bw-text)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        marginBottom: '4px'
+                      }}>
                         {bookings.filter(b => b.booking_status === 'active').length}
                       </div>
-                      <div style={{ color: '#6b7280' }}>Active</div>
+                      <div style={{ 
+                        color: 'var(--bw-muted)',
+                        fontWeight: 300,
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>
+                        Active
+                      </div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontWeight: '600', color: '#111827' }}>
+                      <div style={{ 
+                        fontWeight: 400, 
+                        color: 'var(--bw-text)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        marginBottom: '4px'
+                      }}>
                         {bookings.filter(b => b.booking_status === 'pending').length}
                       </div>
-                      <div style={{ color: '#6b7280' }}>Pending</div>
+                      <div style={{ 
+                        color: 'var(--bw-muted)',
+                        fontWeight: 300,
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>
+                        Pending
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
         )}
@@ -936,7 +1552,18 @@ export default function TenantDashboard() {
                   </div>
                 ) : (
                   bookings.map((booking) => (
-                    <div key={booking.id} className="bw-table-row">
+                    <div 
+                      key={booking.id} 
+                      className="bw-table-row"
+                      onClick={() => handleBookingClick(booking.id)}
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }}
+                    >
                       <div className="bw-table-cell">
                         <div style={{ fontWeight: '600', color: '#374151' }}>
                           #{booking.id}
@@ -1081,11 +1708,6 @@ export default function TenantDashboard() {
                   </div>
                 ) : (
                   vehicles.map((vehicle) => {
-                    // Debug logging to see vehicle structure
-                    console.log('Vehicle data:', vehicle)
-                    console.log('Vehicle config:', vehicle.vehicle_config)
-                    console.log('Vehicle rate:', vehicle.vehicle_config?.vehicle_flat_rate)
-                    
                     return (
                       <div key={vehicle.id} className="bw-table-row">
                         <div className="bw-table-cell">
@@ -1180,11 +1802,11 @@ export default function TenantDashboard() {
                 </div>
                 <div className="bw-info-item">
                   <span className="bw-info-label">Address:</span>
-                  <span className="bw-info-value">{info?.address || 'Not provided'}</span>
+                  <span className="bw-info-value">{info?.profile?.address || 'Not provided'}</span>
                 </div>
                 <div className="bw-info-item">
                   <span className="bw-info-label">Stripe Customer ID:</span>
-                  <span className="bw-info-value">{info?.stripe_customer_id || 'Not connected'}</span>
+                  <span className="bw-info-value">{info?.profile?.stripe_customer_id || 'Not connected'}</span>
                 </div>
               </div>
             </div>
@@ -1217,7 +1839,22 @@ export default function TenantDashboard() {
             </div>
 
             <div className="bw-card">
-              <h4 style={{ margin: '0 0 16px 0' }}>Vehicle Settings</h4>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  marginBottom: vehicleSettingsOpen ? 16 : 0
+                }}
+                onClick={() => setVehicleSettingsOpen(!vehicleSettingsOpen)}
+              >
+                <h4 style={{ margin: 0 }}>Vehicle Settings</h4>
+                {vehicleSettingsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </div>
+              {vehicleSettingsOpen && (
+              <>
               <div style={{ marginBottom: 16 }}>
                 <p className="small-muted" style={{ margin: 0 }}>
                   Configure default rates and settings for different vehicle categories
@@ -1393,9 +2030,9 @@ export default function TenantDashboard() {
                 </div>
               </div>
               
-              <div style={{ marginTop: 16, padding: '16px', backgroundColor: '#f3f4f6', borderRadius: '4px' }}>
-                <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#374151' }}>How it works:</h5>
-                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ marginTop: 16, padding: '16px', backgroundColor: 'var(--bw-bg-secondary)', border: '1px solid var(--bw-border)', borderRadius: '4px' }}>
+                <h5 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--bw-text)' }}>How it works:</h5>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: 'var(--bw-muted)' }}>
                   <li>These are default rates for new vehicles of each category</li>
                   <li>Individual vehicles can override these defaults</li>
                   <li>Changes apply to new vehicles, not existing ones</li>
@@ -1403,51 +2040,67 @@ export default function TenantDashboard() {
                   <li>Add custom categories specific to your business needs</li>
                 </ul>
               </div>
+              </>
+              )}
             </div>
 
             {/* Tenant Settings Section */}
             {tenantSettings && (
-              <div className="bw-card" style={{ marginTop: 24 }}>
-                <div className="bw-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="bw-card">
+                <div 
+                  className="bw-card-header" 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                  onClick={() => setBusinessConfigurationOpen(!businessConfigurationOpen)}
+                >
                   <h4 style={{ margin: 0 }}>Business Configuration</h4>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {editingSettings ? (
-                      <>
-                        <button 
-                          className="bw-btn-outline" 
-                          onClick={handleCancelEdit}
-                          disabled={savingSettings}
-                        >
-                          Cancel
-                        </button>
-                        <button 
-                          className="bw-btn" 
-                          onClick={handleSaveSettings}
-                          disabled={savingSettings}
-                        >
-                          {savingSettings ? 'Saving...' : (
-                            <>
-                              <Save className="w-4 h-4" />
-                              Save Changes
-                            </>
-                          )}
-                        </button>
-                      </>
-                    ) : (
-                      <button 
-                        className="bw-btn-outline" 
-                        onClick={() => {
-                          setEditedSettings(tenantSettings)
-                          setEditingSettings(true)
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edit Settings
-                      </button>
-                    )}
-                  </div>
+                  {businessConfigurationOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </div>
 
+                {businessConfigurationOpen && (
+                <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                  {editingSettings ? (
+                    <>
+                      <button 
+                        className="bw-btn-outline" 
+                        onClick={handleCancelEdit}
+                        disabled={savingSettings}
+                        style={{ marginRight: 8 }}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        className="bw-btn" 
+                        onClick={handleSaveSettings}
+                        disabled={savingSettings}
+                      >
+                        {savingSettings ? 'Saving...' : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <button 
+                      className="bw-btn-outline" 
+                      onClick={() => {
+                        setEditedSettings(tenantSettings)
+                        setEditingSettings(true)
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit Settings
+                    </button>
+                  )}
+                </div>
                 {/* Branding & Theme Settings */}
                 <div style={{ marginBottom: 32 }}>
                   <h5 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1681,23 +2334,25 @@ export default function TenantDashboard() {
                 {/* Last Updated Info */}
                 <div style={{ 
                   padding: '16px', 
-                  backgroundColor: '#f8fafc', 
+                  backgroundColor: 'var(--bw-bg-secondary)', 
                   borderRadius: '4px', 
-                  border: '1px solid #e2e8f0',
                   marginTop: '16px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6b7280', fontSize: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--bw-muted)', fontSize: '14px' }}>
                     <Clock className="w-4 h-4" />
                     Last updated: {tenantSettings.updated_on ? new Date(tenantSettings.updated_on).toLocaleString() : 'Never'}
                   </div>
                 </div>
+                </>
+                )}
               </div>
             )}
           </div>
         )}
-      </div>
+        </div>
+        </div>
 
-      {/* Add Driver Modal */}
+        {/* Add Driver Modal */}
       {showAddDriver && (
         <div className="bw-modal-overlay" onClick={() => setShowAddDriver(false)}>
           <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
@@ -1836,8 +2491,388 @@ export default function TenantDashboard() {
             // Refresh vehicles list after update
             load()
           }}
-        />
+          />
+        )}
+
+      {/* Booking Details Modal */}
+      {showBookingDetails && (
+        <div className="bw-modal-overlay" onClick={() => {
+          setShowBookingDetails(false)
+          setSelectedBooking(null)
+        }}>
+          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
+            maxWidth: '600px',
+            width: '90vw',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div className="bw-modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderBottom: '1px solid var(--bw-border)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif'
+              }}>
+                Booking Details
+              </h3>
+              <button 
+                className="bw-btn-icon" 
+                onClick={() => {
+                  setShowBookingDetails(false)
+                  setSelectedBooking(null)
+                }}
+                style={{
+                  padding: '8px',
+                  minWidth: '32px',
+                  minHeight: '32px'
+                }}
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bw-modal-body" style={{
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              {loadingBookingDetails ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <div style={{ color: 'var(--bw-muted)' }}>Loading booking details...</div>
+                </div>
+              ) : selectedBooking ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 2.5vw, 24px)' }}>
+                  {/* Booking ID and Status */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBottom: 'clamp(12px, 2vw, 16px)',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <div>
+                      <div style={{
+                        fontSize: 'clamp(12px, 1.5vw, 14px)',
+                        color: 'var(--bw-muted)',
+                        marginBottom: '4px'
+                      }}>
+                        Booking ID
+                      </div>
+                      <div style={{
+                        fontSize: 'clamp(18px, 2.5vw, 24px)',
+                        fontWeight: 400,
+                        color: 'var(--bw-text)'
+                      }}>
+                        #{selectedBooking.id}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {getStatusIcon(selectedBooking.booking_status)}
+                      <span className={getStatusColor(selectedBooking.booking_status)} style={{
+                        fontSize: 'clamp(13px, 1.5vw, 15px)',
+                        fontWeight: 300,
+                        textTransform: 'capitalize'
+                      }}>
+                        {selectedBooking.booking_status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Customer Information */}
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                      fontSize: 'clamp(14px, 2vw, 18px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Customer Information
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: 'clamp(8px, 1.5vw, 12px)'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Customer Name
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.customer_name || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Route Information */}
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                      fontSize: 'clamp(14px, 2vw, 18px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Route Information
+                    </h4>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'clamp(8px, 1.5vw, 12px)'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}>
+                          <MapPin className="w-3 h-3" style={{ color: 'var(--bw-muted)' }} />
+                          Pickup Location
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.pickup_location}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginTop: '4px'
+                        }}>
+                          {new Date(selectedBooking.pickup_time).toLocaleString()}
+                        </div>
+                      </div>
+                      {selectedBooking.dropoff_location && (
+                        <div>
+                          <div style={{
+                            fontSize: 'clamp(11px, 1.3vw, 13px)',
+                            color: 'var(--bw-muted)',
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <MapPin className="w-3 h-3" style={{ color: 'var(--bw-muted)' }} />
+                            Dropoff Location
+                          </div>
+                          <div style={{
+                            fontSize: 'clamp(13px, 1.5vw, 15px)',
+                            color: 'var(--bw-text)'
+                          }}>
+                            {selectedBooking.dropoff_location}
+                          </div>
+                          {selectedBooking.dropoff_time && (
+                            <div style={{
+                              fontSize: 'clamp(11px, 1.3vw, 13px)',
+                              color: 'var(--bw-muted)',
+                              marginTop: '4px'
+                            }}>
+                              {new Date(selectedBooking.dropoff_time).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Service Details */}
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                      fontSize: 'clamp(14px, 2vw, 18px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Service Details
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: 'clamp(8px, 1.5vw, 12px)'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Service Type
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)',
+                          textTransform: 'capitalize'
+                        }}>
+                          {selectedBooking.service_type || 'Standard'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Payment Method
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)',
+                          textTransform: 'capitalize'
+                        }}>
+                          {selectedBooking.payment_method || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          City
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.city || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Driver & Vehicle */}
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                      fontSize: 'clamp(14px, 2vw, 18px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Assignment
+                    </h4>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: 'clamp(8px, 1.5vw, 12px)'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Driver
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.driver_fullname || 'Unassigned'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Vehicle
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.vehicle || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing */}
+                  <div>
+                    <h4 style={{
+                      margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                      fontSize: 'clamp(14px, 2vw, 18px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Pricing
+                    </h4>
+                    <div style={{
+                      fontSize: 'clamp(20px, 3vw, 28px)',
+                      fontWeight: 400,
+                      color: 'var(--bw-text)'
+                    }}>
+                      ${selectedBooking.estimated_price?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {selectedBooking.notes && (
+                    <div>
+                      <h4 style={{
+                        margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
+                        fontSize: 'clamp(14px, 2vw, 18px)',
+                        fontWeight: 400,
+                        color: 'var(--bw-text)'
+                      }}>
+                        Notes
+                      </h4>
+                      <div style={{
+                        fontSize: 'clamp(13px, 1.5vw, 15px)',
+                        color: 'var(--bw-text)',
+                        padding: 'clamp(12px, 2vw, 16px)',
+                        backgroundColor: 'var(--bw-bg-secondary)',
+                        borderRadius: '6px',
+                        border: '1px solid var(--bw-border)'
+                      }}>
+                        {selectedBooking.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timestamps */}
+                  <div style={{
+                    paddingTop: 'clamp(12px, 2vw, 16px)',
+                    borderTop: '1px solid var(--bw-border)',
+                    fontSize: 'clamp(11px, 1.3vw, 13px)',
+                    color: 'var(--bw-muted)'
+                  }}>
+                    <div style={{ marginBottom: '4px' }}>
+                      Created: {selectedBooking.created_on ? new Date(selectedBooking.created_on).toLocaleString() : 'N/A'}
+                    </div>
+                    {selectedBooking.updated_on && (
+                      <div>
+                        Updated: {new Date(selectedBooking.updated_on).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <div style={{ color: 'var(--bw-muted)' }}>No booking details available</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
+      </div>
     </div>
   )
-} 
+}

@@ -1,13 +1,34 @@
 import { http } from './http'
-import type { BookingResponse } from './tenant'
+import type { StandardResponse } from './tenant'
+
+export type BookingResponse = {
+  vehicle_id: number
+  city: string
+  service_type: 'airport' | 'hourly' | 'dropoff'
+  pickup_location: string
+  pickup_time: string
+  dropoff_location: string
+  dropoff_time: string
+  payment_method: 'cash' | 'card' | 'zelle'
+  notes: string
+  id: number
+  tenant_id: number
+  estimated_price: number
+  booking_status: string
+  customer_name: string
+  vehicle: string
+  driver_fullname: string
+  created_on: string
+  updated_on: string
+}
 
 export async function createBooking(payload: CreateBooking) {
-  const { data } = await http.post<BookingResponse>('/v1/bookings/set', payload)
+  const { data } = await http.post<StandardResponse<BookingResponse>>('/v1/bookings/set', payload)
   return data
 }
 
 export async function getBookings() {
-  const { data } = await http.get<BookingResponse[]>('/v1/bookings/')
+  const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/bookings/')
   return data
 }
 

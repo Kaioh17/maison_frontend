@@ -302,7 +302,7 @@ export default function VehicleEditModal({
                         position: 'absolute',
                         top: '-8px',
                         right: '-8px',
-                        background: '#ef4444',
+                        background: 'var(--bw-error, #C5483D)',
                         color: 'white',
                         border: 'none',
                         borderRadius: '50%',
