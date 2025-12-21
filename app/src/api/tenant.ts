@@ -12,6 +12,21 @@ export async function getTenantInfo() {
   return data
 }
 
+export async function getTenantBySlug(slug: string) {
+  const { data } = await http.get<StandardResponse<TenantProfile>>(`/v1/slug/${slug}`)
+  return data
+}
+
+export type SlugVerificationResponse = {
+  slug: string
+  tenant_id: number
+}
+
+export async function verifySlug(slug: string) {
+  const { data } = await http.get<StandardResponse<SlugVerificationResponse>>(`/v1/slug/${slug}`)
+  return data
+}
+
 export async function createTenant(payload: TenantCreate) {
   const formData = new FormData()
   
@@ -61,6 +76,11 @@ export async function getTenantBookings(params?: { booking_status?: string }) {
   return data
 }
 
+export async function getTenantBookingById(bookingId: number) {
+  const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/tenant/bookings', { params: { booking_id: bookingId } })
+  return data
+}
+
 export async function onboardDriver(payload: OnboardDriver) {
   const { data } = await http.post<StandardResponse<OnboardDriverResponse>>('/v1/tenant/onboard', payload)
   return data
@@ -90,30 +110,45 @@ export type TenantCreate = {
   city: string
   drivers_count?: number
 }
-export type TenantResponse = {
-  id: number
-  email: string
-  first_name: string
-  last_name: string
-  phone_no: string
+export type TenantProfile = {
+  tenant_id: number
   company_name: string
   logo_url?: string | null
   slug: string
   address?: string | null
   city: string
   role: string
-  drivers_count: number
-  is_verified: boolean
-  is_active: boolean
   stripe_customer_id?: string | null
   stripe_account_id?: string | null
   subscription_status?: string | null
   subscription_plan?: string | null
-  total_ride_count?: number | null
-  daily_ride_count?: number | null
-  last_ride_count_reset?: string | null
   created_on: string
   updated_on?: string | null
+  company: string
+}
+
+export type TenantStats = {
+  tenant_id: number
+  drivers_count: number
+  daily_ride_count: number
+  last_ride_count_reset?: string | null
+  total_ride_count: number
+  created_on: string
+  updated_on?: string | null
+}
+
+export type TenantResponse = {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  password?: string
+  phone_no: string
+  created_on: string
+  updated_on?: string | null
+  full_name: string
+  profile: TenantProfile
+  stats: TenantStats
 }
 
 export type DriverResponse = {
@@ -150,20 +185,24 @@ export type VehicleResponse = {
 }
 
 export type BookingResponse = {
-  id: number
-  tenant_id?: number
+  vehicle_id: number
   city: string
   service_type: 'airport' | 'hourly' | 'dropoff'
   pickup_location: string
   pickup_time: string
-  dropoff_location?: string | null
-  dropoff_time?: string | null
+  dropoff_location: string
+  dropoff_time: string
   payment_method: 'cash' | 'card' | 'zelle'
-  notes?: string | null
-  estimated_price?: number
+  notes: string
+  id: number
+  tenant_id: number
+  estimated_price: number
   booking_status: string
-  created_on?: string
-  updated_on?: string
+  customer_name: string
+  vehicle: string
+  driver_fullname: string
+  created_on: string
+  updated_on: string
 }
 
 export type OnboardDriver = {

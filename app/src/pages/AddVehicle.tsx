@@ -183,10 +183,10 @@ export default function AddVehicle() {
     return (
       <div className="bw bw-container" style={{ padding: '24px 0' }}>
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ color: '#10b981', marginBottom: '16px' }}>
+          <div style={{ color: 'var(--bw-success, #1E7F4A)', marginBottom: '16px' }}>
             <Car className="w-12 h-12 mx-auto" />
           </div>
-          <h3 style={{ margin: '0 0 16px 0', color: '#10b981' }}>Vehicle Created Successfully!</h3>
+          <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-success, #1E7F4A)' }}>Vehicle Created Successfully!</h3>
           <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>
             Your new vehicle has been added to your fleet. Now let's add an image...
           </p>

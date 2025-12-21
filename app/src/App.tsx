@@ -5,10 +5,14 @@ import Signup from '@pages/Signup'
 import TenantDashboard from '@pages/TenantDashboard'
 import DriverDashboard from '@pages/DriverDashboard'
 import RiderDashboard from '@pages/RiderDashboard'
+import RiderRegistration from '@pages/RiderRegistration'
+import RiderProfile from '@pages/RiderProfile'
+import RiderLogin from '@pages/RiderLogin'
 import VehicleRates from '@pages/VehicleRates'
 import TenantSettings from '@pages/TenantSettings'
 import AddVehicle from '@pages/AddVehicle'
 import ProtectedRoute from '@components/ProtectedRoute'
+import SlugVerification from '@components/SlugVerification'
 
 export default function App() {
   return (
@@ -72,6 +76,62 @@ export default function App() {
         element={
           <ProtectedRoute allowRoles={["rider"]}>
             <RiderDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* White-label rider routes with slug */}
+      <Route
+        path="/:slug/riders"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/:slug/riders/login"
+        element={
+          <SlugVerification>
+            <RiderLogin />
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/:slug/riders/register"
+        element={
+          <SlugVerification>
+            <RiderRegistration />
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/:slug/riders/profile"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderProfile />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+
+      {/* Legacy routes without slug (for backward compatibility) */}
+      <Route
+        path="/riders/register"
+        element={<RiderRegistration />}
+      />
+
+      <Route
+        path="/riders/profile"
+        element={
+          <ProtectedRoute allowRoles={["rider"]}>
+            <RiderProfile />
           </ProtectedRoute>
         }
       />

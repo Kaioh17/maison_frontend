@@ -3,7 +3,7 @@ import { getTenantInfo } from '@api/tenant'
 import { getTenantSettings, updateTenantSettings, updateTenantLogo, testLogoEndpoint, type TenantSettingsResponse, type UpdateTenantSetting } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, User, Building, MapPin, Phone, Mail, Shield, CreditCard, DollarSign, Clock, Car, Palette, Save, Edit } from 'lucide-react'
+import { ArrowLeft, Settings, User, Building, MapPin, Phone, Mail, Shield, CreditCard, DollarSign, Clock, Car, Palette, Save, Edit, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function TenantSettings() {
   const [info, setInfo] = useState<any>(null)
@@ -14,7 +14,26 @@ export default function TenantSettings() {
   const [editedSettings, setEditedSettings] = useState<UpdateTenantSetting | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [savingLogo, setSavingLogo] = useState(false)
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
+    accountInfo: true,
+    companyInfo: true,
+    subscription: true,
+    statistics: true,
+    accountActions: true,
+    tenantSettings: true,
+    branding: true,
+    fare: true,
+    rider: true
+  })
   const navigate = useNavigate()
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -54,14 +73,29 @@ export default function TenantSettings() {
         setLogoPreview(e.target?.result as string)
       }
       reader.readAsDataURL(file)
-      
-      // Update the edited settings with the file
-      if (editedSettings) {
-        setEditedSettings({
-          ...editedSettings,
-          logo_url: file
-        })
-      }
+    }
+  }
+
+  const handleSaveLogo = async () => {
+    if (!logoFile) {
+      alert('Please select a logo file to upload')
+      return
+    }
+
+    try {
+      setSavingLogo(true)
+      await updateTenantLogo(logoFile)
+      // After successful logo update, refresh the settings to get the new logo URL
+      const refreshedSettings = await getTenantSettings()
+      setTenantSettings(refreshedSettings)
+      setLogoFile(null)
+      setLogoPreview(null)
+      alert('Logo updated successfully!')
+    } catch (error) {
+      console.error('Failed to update logo:', error)
+      alert('Failed to update logo. Please try again.')
+    } finally {
+      setSavingLogo(false)
     }
   }
 
@@ -70,57 +104,10 @@ export default function TenantSettings() {
     
     try {
       setSaving(true)
-      
-      // If only logo changed, use the dedicated logo endpoint
-      if (logoFile && !hasOtherChanges()) {
-        try {
-          await updateTenantLogo(logoFile)
-          // After successful logo update, refresh the settings to get the new logo URL
-          const refreshedSettings = await getTenantSettings()
-          setTenantSettings(refreshedSettings)
-          setEditedSettings(refreshedSettings)
-          setEditingSettings(false)
-          setLogoFile(null)
-          setLogoPreview(null)
-          alert('Logo updated successfully!')
-          return
-        } catch (logoError) {
-          console.error('Logo update failed:', logoError)
-          console.log('Falling back to regular settings update...')
-          
-          // Fallback: try to update via regular settings endpoint
-          try {
-            const settingsToUpdate = {
-              ...editedSettings,
-              logo_url: logoFile
-            }
-            
-            const updatedSettings = await updateTenantSettings(settingsToUpdate)
-            setTenantSettings(updatedSettings)
-            setEditingSettings(false)
-            setLogoFile(null)
-            setLogoPreview(null)
-            alert('Logo updated successfully via fallback method!')
-            return
-          } catch (fallbackError) {
-            console.error('Fallback update also failed:', fallbackError)
-            alert('Failed to update logo. Please try again.')
-            return
-          }
-        }
-      }
-      
-      // Otherwise, update all settings
-      const settingsToUpdate = {
-        ...editedSettings,
-        logo_url: logoFile || editedSettings.logo_url
-      }
-      
-      const updatedSettings = await updateTenantSettings(settingsToUpdate)
+      const updatedSettings = await updateTenantSettings(editedSettings)
       setTenantSettings(updatedSettings)
+      setEditedSettings(updatedSettings)
       setEditingSettings(false)
-      setLogoFile(null)
-      setLogoPreview(null)
       alert('Settings updated successfully!')
     } catch (error) {
       console.error('Failed to update settings:', error)
@@ -130,35 +117,20 @@ export default function TenantSettings() {
     }
   }
 
-  const hasOtherChanges = () => {
-    if (!tenantSettings || !editedSettings) return false
-    
-    return (
-      editedSettings.theme !== tenantSettings.theme ||
-      editedSettings.slug !== tenantSettings.slug ||
-      editedSettings.enable_branding !== tenantSettings.enable_branding ||
-      editedSettings.base_fare !== tenantSettings.base_fare ||
-      editedSettings.per_minute_rate !== tenantSettings.per_minute_rate ||
-      editedSettings.per_mile_rate !== tenantSettings.per_mile_rate ||
-      editedSettings.per_hour_rate !== tenantSettings.per_hour_rate ||
-      editedSettings.rider_tiers_enabled !== tenantSettings.rider_tiers_enabled ||
-      editedSettings.cancellation_fee !== tenantSettings.cancellation_fee ||
-      editedSettings.discounts !== tenantSettings.discounts
-    )
-  }
 
   const handleCancelEdit = () => {
     setEditedSettings(tenantSettings)
     setEditingSettings(false)
+  }
+
+  const handleCancelLogo = () => {
     setLogoFile(null)
     setLogoPreview(null)
   }
 
   const handleTestLogoEndpoint = async () => {
     try {
-      console.log('Testing logo endpoint...')
       const result = await testLogoEndpoint()
-      console.log('Logo endpoint test result:', result)
       alert('Logo endpoint test successful! Check console for details.')
     } catch (error) {
       console.error('Logo endpoint test failed:', error)
@@ -207,12 +179,20 @@ export default function TenantSettings() {
       <div className="bw-grid" style={{ gap: 24 }}>
         {/* Account Information */}
         <div className="bw-card" style={{ gridColumn: 'span 6' }}>
-          <div className="bw-card-header">
-            <div className="bw-card-icon">
-              <User className="w-5 h-5" />
+          <div 
+            className="bw-card-header" 
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleSection('accountInfo')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+              <div className="bw-card-icon">
+                <User className="w-5 h-5" />
+              </div>
+              <h3 style={{ margin: 0 }}>Account Information</h3>
             </div>
-            <h3>Account Information</h3>
+            {openSections.accountInfo ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
+          {openSections.accountInfo && (
           <div className="bw-info-grid">
             <div className="bw-info-item">
               <span className="bw-info-label">First Name:</span>
@@ -232,7 +212,7 @@ export default function TenantSettings() {
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Role:</span>
-              <span className="bw-info-value">{info?.role}</span>
+              <span className="bw-info-value">{info?.profile?.role}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Member Since:</span>
@@ -241,110 +221,152 @@ export default function TenantSettings() {
               </span>
             </div>
           </div>
+          )}
         </div>
 
         {/* Company Information */}
         <div className="bw-card" style={{ gridColumn: 'span 6' }}>
-          <div className="bw-card-header">
-            <div className="bw-card-icon">
-              <Building className="w-5 h-5" />
+          <div 
+            className="bw-card-header" 
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleSection('companyInfo')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+              <div className="bw-card-icon">
+                <Building className="w-5 h-5" />
+              </div>
+              <h3 style={{ margin: 0 }}>Company Information</h3>
             </div>
-            <h3>Company Information</h3>
+            {openSections.companyInfo ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
+          {openSections.companyInfo && (
           <div className="bw-info-grid">
             <div className="bw-info-item">
               <span className="bw-info-label">Company Name:</span>
-              <span className="bw-info-value">{info?.company_name}</span>
+              <span className="bw-info-value">{info?.profile?.company_name}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Slug:</span>
-              <span className="bw-info-value">{info?.slug}</span>
+              <span className="bw-info-value">{info?.profile?.slug}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">City:</span>
-              <span className="bw-info-value">{info?.city}</span>
+              <span className="bw-info-value">{info?.profile?.city}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Address:</span>
-              <span className="bw-info-value">{info?.address || 'Not provided'}</span>
+              <span className="bw-info-value">{info?.profile?.address || 'Not provided'}</span>
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Verification Status:</span>
-              <span className={`bw-info-value ${info?.is_verified ? 'text-green-500' : 'text-yellow-500'}`}>
-                {info?.is_verified ? 'Verified' : 'Pending Verification'}
+              <span className="bw-info-label">Subscription Status:</span>
+              <span className={`bw-info-value ${info?.profile?.subscription_status === 'active' ? 'text-green-500' : 'text-yellow-500'}`}>
+                {info?.profile?.subscription_status || 'Free'}
               </span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Account Status:</span>
-              <span className={`bw-info-value ${info?.is_active ? 'text-green-500' : 'text-red-500'}`}>
-                {info?.is_active ? 'Active' : 'Inactive'}
+              <span className={`bw-info-value ${info?.profile?.subscription_status === 'active' ? 'text-green-500' : 'text-gray-500'}`}>
+                {info?.profile?.subscription_status === 'active' ? 'Active' : info?.profile?.subscription_status || 'Free'}
               </span>
             </div>
           </div>
+          )}
         </div>
 
         {/* Subscription & Billing */}
         <div className="bw-card" style={{ gridColumn: 'span 6' }}>
-          <div className="bw-card-header">
-            <div className="bw-card-icon">
-              <CreditCard className="w-5 h-5" />
+          <div 
+            className="bw-card-header" 
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleSection('subscription')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+              <div className="bw-card-icon">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <h3 style={{ margin: 0 }}>Subscription & Billing</h3>
             </div>
-            <h3>Subscription & Billing</h3>
+            {openSections.subscription ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
+          {openSections.subscription && (
           <div className="bw-info-grid">
             <div className="bw-info-item">
               <span className="bw-info-label">Subscription Plan:</span>
-              <span className="bw-info-value">{info?.subscription_plan || 'No plan'}</span>
+              <span className="bw-info-value">{info?.profile?.subscription_plan || 'No plan'}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Subscription Status:</span>
-              <span className="bw-info-value">{info?.subscription_status || 'N/A'}</span>
+              <span className="bw-info-value">{info?.profile?.subscription_status || 'N/A'}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Stripe Customer ID:</span>
-              <span className="bw-info-value">{info?.stripe_customer_id || 'Not connected'}</span>
+              <span className="bw-info-value">{info?.profile?.stripe_customer_id || 'Not connected'}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Stripe Account ID:</span>
-              <span className="bw-info-value">{info?.stripe_account_id || 'Not connected'}</span>
+              <span className="bw-info-value">{info?.profile?.stripe_account_id || 'Not connected'}</span>
             </div>
           </div>
+          )}
         </div>
 
         {/* Statistics */}
         <div className="bw-card" style={{ gridColumn: 'span 6' }}>
-          <div className="bw-card-header">
-            <div className="bw-card-icon">
-              <Settings className="w-5 h-5" />
+          <div 
+            className="bw-card-header" 
+            style={{ cursor: 'pointer', userSelect: 'none' }}
+            onClick={() => toggleSection('statistics')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+              <div className="bw-card-icon">
+                <Settings className="w-5 h-5" />
+              </div>
+              <h3 style={{ margin: 0 }}>Statistics</h3>
             </div>
-            <h3>Statistics</h3>
+            {openSections.statistics ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </div>
+          {openSections.statistics && (
           <div className="bw-info-grid">
             <div className="bw-info-item">
               <span className="bw-info-label">Total Drivers:</span>
-              <span className="bw-info-value">{info?.drivers_count || 0}</span>
+              <span className="bw-info-value">{info?.stats?.drivers_count || 0}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Total Rides:</span>
-              <span className="bw-info-value">{info?.total_ride_count || 0}</span>
+              <span className="bw-info-value">{info?.stats?.total_ride_count || 0}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Daily Rides:</span>
-              <span className="bw-info-value">{info?.daily_ride_count || 0}</span>
+              <span className="bw-info-value">{info?.stats?.daily_ride_count || 0}</span>
             </div>
             <div className="bw-info-item">
               <span className="bw-info-label">Last Reset:</span>
               <span className="bw-info-value">
-                {info?.last_ride_count_reset ? new Date(info.last_ride_count_reset).toLocaleDateString() : 'N/A'}
+                {info?.stats?.last_ride_count_reset ? new Date(info.stats.last_ride_count_reset).toLocaleDateString() : 'N/A'}
               </span>
             </div>
           </div>
+          )}
         </div>
       </div>
 
       {/* Actions Section */}
       <div className="bw-card" style={{ marginTop: 24 }}>
-        <h3 style={{ margin: '0 0 16px 0' }}>Account Actions</h3>
+        <div 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none',
+            marginBottom: openSections.accountActions ? 16 : 0
+          }}
+          onClick={() => toggleSection('accountActions')}
+        >
+          <h3 style={{ margin: 0 }}>Account Actions</h3>
+          {openSections.accountActions ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </div>
+        {openSections.accountActions && (
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <button className="bw-btn-outline">
             <Shield className="w-4 h-4" />
@@ -370,26 +392,37 @@ export default function TenantSettings() {
             🐛 Test Logo Endpoint
           </button>
         </div>
+        )}
       </div>
 
       {/* Tenant Settings Section */}
       {tenantSettings && (
         <div className="bw-card" style={{ marginTop: 24 }}>
-          <div className="bw-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div 
+            className="bw-card-header" 
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+            onClick={() => toggleSection('tenantSettings')}
+          >
             <h3 style={{ margin: 0 }}>Tenant Settings</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingSettings ? (
                 <>
                   <button 
                     className="bw-btn-outline" 
-                    onClick={handleCancelEdit}
+                    onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
                     disabled={saving}
                   >
                     Cancel
                   </button>
                   <button 
                     className="bw-btn" 
-                    onClick={handleSaveSettings}
+                    onClick={(e) => { e.stopPropagation(); handleSaveSettings(); }}
                     disabled={saving}
                   >
                     {saving ? 'Saving...' : (
@@ -403,21 +436,37 @@ export default function TenantSettings() {
               ) : (
                 <button 
                   className="bw-btn-outline" 
-                  onClick={() => setEditingSettings(true)}
+                  onClick={(e) => { e.stopPropagation(); setEditingSettings(true); }}
                 >
                   <Edit className="w-4 h-4" />
                   Edit Settings
                 </button>
               )}
+              {openSections.tenantSettings ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </div>
           </div>
-
+          {openSections.tenantSettings && (
+          <>
           {/* Branding & Theme Settings */}
           <div style={{ marginBottom: 32 }}>
-            <h4 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Palette className="w-4 h-4" />
-              Branding & Theme
-            </h4>
+            <div 
+              style={{ 
+                margin: '0 0 16px 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => toggleSection('branding')}
+            >
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Palette className="w-4 h-4" />
+                Branding & Theme
+              </h4>
+              {openSections.branding ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+            {openSections.branding && (
             <div className="bw-form-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: '1fr 1fr' }}>
               <div className="bw-form-group">
                 <label className="bw-form-label">Theme</label>
@@ -435,9 +484,9 @@ export default function TenantSettings() {
                   <span className="bw-info-value">{tenantSettings.theme || 'Not set'}</span>
                 )}
               </div>
-              <div className="bw-form-group">
-                <label className="bw-form-label">Logo URL</label>
-                {editingSettings ? (
+              <div className="bw-form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="bw-form-label">Logo</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <input 
                       className="bw-input" 
@@ -447,13 +496,9 @@ export default function TenantSettings() {
                       style={{ flex: 1 }}
                     />
                     {logoPreview && (
-                      <img src={logoPreview} alt="Logo Preview" style={{ width: 50, height: 50, borderRadius: '4px' }} />
+                      <img src={logoPreview} alt="Logo Preview" style={{ width: 50, height: 50, borderRadius: '4px', objectFit: 'contain' }} />
                     )}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span className="bw-info-value">{tenantSettings.logo_url || 'Not set'}</span>
-                    {tenantSettings.logo_url && (
+                    {!logoPreview && tenantSettings.logo_url && (
                       <img 
                         src={tenantSettings.logo_url} 
                         alt="Current logo" 
@@ -462,12 +507,42 @@ export default function TenantSettings() {
                           height: 50, 
                           borderRadius: '4px',
                           objectFit: 'contain',
-                          border: '1px solid #ddd'
+                          border: '1px solid var(--bw-border)'
                         }} 
                       />
                     )}
                   </div>
-                )}
+                  {logoFile && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        className="bw-btn-outline" 
+                        onClick={handleCancelLogo}
+                        disabled={savingLogo}
+                        style={{ padding: '6px 12px', fontSize: '14px' }}
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        className="bw-btn" 
+                        onClick={handleSaveLogo}
+                        disabled={savingLogo}
+                        style={{ padding: '6px 12px', fontSize: '14px' }}
+                      >
+                        {savingLogo ? 'Saving...' : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Save Logo
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  {!logoFile && tenantSettings.logo_url && (
+                    <span className="bw-info-value" style={{ fontSize: '12px', color: 'var(--bw-muted)' }}>
+                      Current logo: {tenantSettings.logo_url}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="bw-form-group">
                 <label className="bw-form-label">Slug</label>
@@ -499,14 +574,29 @@ export default function TenantSettings() {
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Fare Settings */}
           <div style={{ marginBottom: 32 }}>
-            <h4 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <DollarSign className="w-4 h-4" />
-              Fare Configuration
-            </h4>
+            <div 
+              style={{ 
+                margin: '0 0 16px 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => toggleSection('fare')}
+            >
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <DollarSign className="w-4 h-4" />
+                Fare Configuration
+              </h4>
+              {openSections.fare ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+            {openSections.fare && (
             <div className="bw-form-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: '1fr 1fr' }}>
               <div className="bw-form-group">
                 <label className="bw-form-label">Base Fare ($)</label>
@@ -573,14 +663,29 @@ export default function TenantSettings() {
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Rider Settings */}
           <div style={{ marginBottom: 32 }}>
-            <h4 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <User className="w-4 h-4" />
-              Rider Configuration
-            </h4>
+            <div 
+              style={{ 
+                margin: '0 0 16px 0', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+              onClick={() => toggleSection('rider')}
+            >
+              <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <User className="w-4 h-4" />
+                Rider Configuration
+              </h4>
+              {openSections.rider ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+            {openSections.rider && (
             <div className="bw-form-grid" style={{ display: 'grid', gap: '16px', gridTemplateColumns: '1fr 1fr' }}>
               <div className="bw-form-group">
                 <label className="bw-form-label">Rider Tiers Enabled</label>
@@ -629,21 +734,23 @@ export default function TenantSettings() {
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Last Updated Info */}
           <div style={{ 
             padding: '16px', 
-            backgroundColor: '#f8fafc', 
+            backgroundColor: 'var(--bw-bg-secondary)', 
             borderRadius: '4px', 
-            border: '1px solid #e2e8f0',
             marginTop: '16px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6b7280', fontSize: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--bw-muted)', fontSize: '14px' }}>
               <Clock className="w-4 h-4" />
               Last updated: {tenantSettings.updated_on ? new Date(tenantSettings.updated_on).toLocaleString() : 'Never'}
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
     </div>

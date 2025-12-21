@@ -6,9 +6,10 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 export default defineConfig({
 	plugins: [react(), tsconfigPaths()],
 	server: {
+		host: '0.0.0.0', // Allow external connections
 		port: 3000,
 		proxy: {
-			'/api': 'http://localhost:8000',
+			'/api': process.env.VITE_API_PROXY || 'http://localhost:8000',
 		},
 	},
 })

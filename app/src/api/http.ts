@@ -7,7 +7,7 @@ function resolveApiBase(): string {
 		if (API_BASE.startsWith('http://') || API_BASE.startsWith('https://')) {
 			const url = new URL(API_BASE, typeof window !== 'undefined' ? window.location.href : undefined)
 			if ((url.hostname === '127.0.0.1' || url.hostname === 'localhost') && !url.port) {
-				url.port = '8000'
+				url.port = process.env.VITE_API_PORT || '8000'
 			}
 			return url.origin + url.pathname.replace(/\/$/, '')
 		}
