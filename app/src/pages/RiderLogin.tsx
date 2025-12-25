@@ -80,7 +80,7 @@ export default function RiderLogin() {
   // Redirect authenticated riders
   useEffect(() => {
     if (isAuthenticated && role === 'rider') {
-      navigate(slug ? `/${slug}/riders` : '/rider', { replace: true })
+      navigate(slug ? `/${slug}/rider/dashboard` : '/rider', { replace: true })
     }
   }, [isAuthenticated, role, navigate, slug])
 
@@ -96,7 +96,7 @@ export default function RiderLogin() {
       useAuthStore.getState().login({ token: data.access_token })
       
       // Navigate to rider dashboard with slug if available
-      navigate(slug ? `/${slug}/riders` : '/rider', { replace: true })
+      navigate(slug ? `/${slug}/rider/dashboard` : '/rider', { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
@@ -138,6 +138,7 @@ export default function RiderLogin() {
         {/* Left side - Image (60%) */}
         <div 
           ref={imageContainerRef}
+          className="rider-login-image-container"
           style={{ 
             width: '60%', 
             height: '100%', 
@@ -190,6 +191,7 @@ export default function RiderLogin() {
         <div 
           role="form" 
           aria-labelledby="login-title"
+          className="rider-login-form-container"
           style={{ 
             width: '40%', 
             height: '100%', 
@@ -204,6 +206,37 @@ export default function RiderLogin() {
           }}
         >
           <div style={{ width: '100%', maxWidth: '100%' }}>
+            {/* Company Logo/Name */}
+            {tenantInfo && (
+              <div style={{ 
+                marginBottom: '24px', 
+                display: 'flex', 
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {tenantInfo.logo_url ? (
+                  <img 
+                    src={tenantInfo.logo_url} 
+                    alt={companyName}
+                    style={{
+                      maxHeight: '60px',
+                      maxWidth: '200px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <h1 style={{
+                    margin: 0,
+                    fontSize: '32px',
+                    fontWeight: 600,
+                    color: 'var(--bw-text)',
+                    fontFamily: 'DM Sans, sans-serif'
+                  }}>
+                    {companyName}
+                  </h1>
+                )}
+              </div>
+            )}
             <h2 id="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Sign in</h2>
             <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
               {tenantInfo ? `Sign in to ${companyName}` : 'Sign in to your account'}
@@ -298,6 +331,16 @@ export default function RiderLogin() {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .rider-login-image-container {
+            display: none !important;
+          }
+          .rider-login-form-container {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </main>
   )
 }

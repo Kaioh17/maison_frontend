@@ -13,13 +13,28 @@ export async function getTenantInfo() {
 }
 
 export async function getTenantBySlug(slug: string) {
-  const { data } = await http.get<StandardResponse<TenantProfile>>(`/v1/slug/${slug}`)
+  const { data } = await http.get<StandardResponse<SlugVerificationResponse>>(`/v1/slug/${slug}`)
   return data
 }
 
-export type SlugVerificationResponse = {
+export type TenantSettings = {
   slug: string
-  tenant_id: number
+  enable_branding: boolean
+  logo_url?: string | null
+  rider_tiers_enabled: boolean
+  per_minute_rate: number
+  per_mile_rate: number
+  per_hour_rate: number
+  cancellation_fee: number
+}
+
+export type TenantProfileBasic = {
+  company_name: string
+}
+
+export type SlugVerificationResponse = {
+  settings: TenantSettings
+  profile: TenantProfileBasic
 }
 
 export async function verifySlug(slug: string) {
@@ -61,8 +76,9 @@ export async function createTenant(payload: TenantCreate) {
   return data
 }
 
-export async function getTenantDrivers() {
-  const { data } = await http.get<StandardResponse<DriverResponse[]>>('/v1/tenant/drivers')
+export async function getTenantDrivers(driverId?: number) {
+  const params = driverId ? { driver_id: driverId } : undefined
+  const { data } = await http.get<StandardResponse<DriverResponse[] | DriverDetailResponse[]>>('/v1/tenant/drivers', { params })
   return data
 }
 
@@ -93,6 +109,11 @@ export async function assignDriverToRide(riderId: number, payload: AssignDriver)
 
 export async function assignDriverToVehicle(vehicleId: number, payload: AssignDriver) {
   const { data } = await http.patch(`/v1/tenant/vehicles/${vehicleId}/assign-driver`, payload)
+  return data
+}
+
+export async function assignDriverToBooking(bookingId: number, payload: { driver_id: number; override: boolean }) {
+  const { data } = await http.patch(`/v1/tenant/bookings/${bookingId}/assign-driver`, payload)
   return data
 }
 
@@ -161,9 +182,44 @@ export type DriverResponse = {
   driver_type: string
   completed_rides: number
   is_active: boolean
+  is_registered: string
   status?: string | null
   created_on: string
   updated_on?: string | null
+}
+
+export type DriverDetailResponse = {
+  id: number
+  email: string
+  phone_no: string
+  first_name: string
+  last_name: string
+  state?: string | null
+  postal_code?: string | null
+  license_number?: string | null
+  role: string
+  driver_type: string
+  completed_rides: number
+  is_active: boolean
+  is_registered: string
+  status?: string | null
+  created_on: string
+  updated_on?: string | null
+  vehicle?: {
+    id: number
+    tenant_id: number
+    make: string
+    model: string
+    year?: number | null
+    license_plate?: string | null
+    color?: string | null
+    status?: string | null
+    seating_capacity?: number | null
+    vehicle_category_id?: number | null
+    vehicle_images?: Record<string, unknown> | null
+    created_on: string
+    updated_on?: string | null
+  } | null
 }
 
 export type VehicleResponse = {
@@ -200,7 +256,7 @@ export type BookingResponse = {
   booking_status: string
   customer_name: string
   vehicle: string
-  driver_fullname: string
+  driver_name: string
   created_on: string
   updated_on: string
 }

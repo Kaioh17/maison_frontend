@@ -6,8 +6,12 @@ export default function VehicleRates() {
   const [form, setForm] = useState({ vehicle_category: '', vehicle_flat_rate: '' })
 
   const load = async () => {
-    const data = await getVehicleRates()
-    setRates(data)
+    const response = await getVehicleRates()
+    if (response.success && response.data) {
+      setRates(response.data)
+    } else {
+      setRates([])
+    }
   }
 
   useEffect(() => {

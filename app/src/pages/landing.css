@@ -1,132 +1,248 @@
-/* Landing Page Specific Styles - Fixed White Theme */
+/* Landing Page Specific Styles - Dark Theme */
 .landing-page {
-  /* Override theme variables for landing page */
-  --landing-bg: #ffffff;
-  --landing-fg: #1f2937;
-  --landing-text: #1f2937;
-  --landing-muted: #6b7280;
-  --landing-border: rgba(0,0,0,0.12);
-  --landing-border-strong: rgba(0,0,0,0.2);
-  --landing-focus: #3b82f6;
-  --landing-shadow: 0 6px 24px rgba(0,0,0,0.1);
-  --landing-bg-hover: rgba(0,0,0,0.02);
-  --landing-bg-hover-strong: rgba(0,0,0,0.05);
-  --landing-bg-secondary: #f9fafb;
-  --landing-accent: #3b82f6;
-  --landing-accent-hover: #1d4ed8;
-}
-
-/* Force white theme for landing page */
-.landing-page {
-  background: var(--landing-bg) !important;
-  color: var(--landing-fg) !important;
+  /* Use dark theme variables from themes_doc.md */
+  background: var(--bw-bg) !important;
+  color: var(--bw-fg) !important;
 }
 
 .landing-page .bw-card {
-  background: var(--landing-bg) !important;
-  border-color: var(--landing-border) !important;
-  color: var(--landing-fg) !important;
+  background: var(--bw-bg-secondary) !important;
+  border-color: var(--bw-border) !important;
+  color: var(--bw-fg) !important;
 }
 
 .landing-page .bw-card:hover {
-  box-shadow: var(--landing-shadow) !important;
+  box-shadow: var(--bw-shadow) !important;
+  background: var(--bw-bg-secondary) !important;
 }
 
+/* Primary button - filled with accent color, sharp edges */
 .landing-page .bw-btn {
-  background: var(--landing-fg) !important;
-  color: var(--landing-bg) !important;
-  border-color: var(--landing-fg) !important;
-}
-
-.landing-page .bw-btn-outline {
-  background: transparent !important;
-  color: var(--landing-fg) !important;
-  border-color: var(--landing-border-strong) !important;
-}
-
-.landing-page .bw-topnav {
-  background: var(--landing-bg) !important;
-  border-color: var(--landing-border) !important;
-}
-
-.landing-page .bw-footer {
-  border-color: var(--landing-border) !important;
-}
-
-.landing-page .bw-input {
-  color: var(--landing-fg) !important;
-  border-color: var(--landing-border-strong) !important;
-}
-
-.landing-page .bw-input:focus {
-  border-color: var(--landing-fg) !important;
-}
-
-.landing-page .bw-input::placeholder {
-  color: var(--landing-muted) !important;
-}
-
-.landing-page .small-muted {
-  color: var(--landing-muted) !important;
-}
-
-.landing-page .section {
-  border-color: var(--landing-border) !important;
-}
-
-.landing-page .bw-hero-art {
-  border-color: var(--landing-border) !important;
-  color: var(--landing-muted) !important;
-}
-
-/* Ensure all text elements use landing colors */
-.landing-page h1, .landing-page h2, .landing-page h3, .landing-page h4, .landing-page h5, .landing-page h6 {
-  color: var(--landing-fg) !important;
-}
-
-.landing-page p {
-  color: var(--landing-fg) !important;
-}
-
-.landing-page a {
-  color: var(--landing-fg) !important;
-}
-
-/* Override any theme-aware variables that might be used */
-.landing-page [style*="var(--bw-"] {
-  /* Force landing colors for any inline styles using theme variables */
-}
-
-/* Ensure SVG icons in landing page are black */
-.landing-page svg {
-  color: #000000 !important;
-}
-
-/* Override any hover states */
-.landing-page .bw-card:hover {
-  background: var(--landing-bg-hover-strong) !important;
+  background: var(--bw-accent) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--bw-accent) !important;
+  border-radius: 0 !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  transition: background-color 0.2s ease !important;
 }
 
 .landing-page .bw-btn:hover {
-  background: var(--landing-bg-hover-strong) !important;
+  background: var(--bw-accent-hover) !important;
+  border-color: var(--bw-accent-hover) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Secondary button - ghost style (outline), sharp edges */
+.landing-page .bw-btn-outline {
+  background: transparent !important;
+  color: var(--bw-fg) !important;
+  border: 1px solid var(--bw-border-strong) !important;
+  border-radius: 0 !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
 }
 
 .landing-page .bw-btn-outline:hover {
-  background: var(--landing-bg-hover) !important;
-}
-
-/* Remove hover effects for landing page buttons */
-.landing-page .bw-btn:hover,
-.landing-page .bw-btn-outline:hover {
+  background: var(--bw-bg-hover) !important;
+  border-color: var(--bw-accent) !important;
+  color: var(--bw-fg) !important;
   transform: none !important;
   box-shadow: none !important;
-  background: inherit !important;
-  border-color: inherit !important;
-  color: inherit !important;
 }
 
-/* Remove card hover effects */
-.landing-page .bw-card:hover {
-  transform: none !important;
-  box-shadow: none !important;
+.landing-page .bw-topnav {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.landing-page .bw-topnav.bw-topnav-scrolled {
+  background: var(--bw-bg) !important;
+  border-color: var(--bw-border) !important;
+}
+
+/* Move Maison logo to very left of screen on all sizes */
+.landing-page .bw-topnav .bw-container {
+  padding-left: clamp(8px, 1.5vw, 16px) !important;
+  padding-right: clamp(16px, 3vw, 24px) !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  max-width: 100% !important;
+}
+
+.landing-page .bw-topnav .bw-brand {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+.landing-page .bw-footer {
+  border-color: var(--bw-border) !important;
+}
+
+.landing-page .bw-input {
+  color: var(--bw-fg) !important;
+  border-color: var(--bw-border-strong) !important;
+  border-radius: 0 !important;
+}
+
+.landing-page .bw-input:focus {
+  border-color: var(--bw-fg) !important;
+}
+
+.landing-page .bw-input::placeholder {
+  color: var(--bw-muted) !important;
+}
+
+.landing-page .small-muted {
+  color: var(--bw-muted) !important;
+}
+
+.landing-page .section {
+  border-color: var(--bw-border) !important;
+}
+
+.landing-page .bw-hero-art {
+  border-color: var(--bw-border) !important;
+  color: var(--bw-muted) !important;
+}
+
+/* Typography - Headers use DM Sans, body uses Work Sans */
+.landing-page h1, .landing-page h2, .landing-page h3, .landing-page h4, .landing-page h5, .landing-page h6 {
+  color: var(--bw-text) !important;
+  font-family: 'DM Sans', sans-serif !important;
+}
+
+.landing-page p, .landing-page .bw-sub {
+  color: var(--bw-fg) !important;
+  font-family: 'Work Sans', sans-serif !important;
+}
+
+.landing-page a {
+  color: var(--bw-fg) !important;
+  font-family: 'Work Sans', sans-serif !important;
+}
+
+/* SVG icons use theme colors */
+.landing-page svg {
+  color: var(--bw-fg) !important;
+}
+
+/* Full-screen hero image section */
+.landing-hero-fullscreen {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .landing-page .driver-features-grid,
+  .landing-page .booking-features-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  .landing-page .driver-features-grid > div:first-child {
+    order: 2;
+  }
+  
+  .landing-page .driver-features-grid > div:last-child {
+    order: 1;
+  }
+}
+
+/* Responsive grid adjustments */
+@media (min-width: 768px) {
+  .landing-page .bw-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Pricing plans responsive layout */
+@media (min-width: 768px) {
+  .pricing-plans-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Ensure buttons fit within pricing cards */
+.pricing-plans-grid .bw-card .bw-btn,
+.pricing-plans-grid .bw-card .bw-btn-outline {
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  min-width: 0;
+}
+
+.landing-hero-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.landing-hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.9));
+  z-index: 2;
+}
+
+.landing-hero-content {
+  position: relative;
+  z-index: 3;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 48px);
+  text-align: center;
+  color: var(--bw-text);
+}
+
+.landing-hero-content h1 {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: clamp(28px, 5vw, 56px) !important;
+  font-weight: 200 !important;
+  line-height: 1.2 !important;
+  margin: 0 0 clamp(16px, 3vw, 24px) 0 !important;
+  color: var(--bw-text) !important;
+}
+
+.landing-hero-content p {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: clamp(16px, 2.5vw, 20px) !important;
+  font-weight: 300 !important;
+  line-height: 1.6 !important;
+  margin: 0 0 clamp(24px, 4vw, 32px) 0 !important;
+  color: var(--bw-muted) !important;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.landing-hero-buttons {
+  display: flex;
+  gap: clamp(12px, 2vw, 16px);
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+}
+
+.landing-hero-buttons .bw-btn,
+.landing-hero-buttons .bw-btn-outline {
+  flex: 0 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  white-space: nowrap;
 } 

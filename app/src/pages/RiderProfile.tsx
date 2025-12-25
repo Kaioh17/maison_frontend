@@ -19,11 +19,17 @@ export default function RiderProfile() {
 
   useEffect(() => {
     if (!isAuthenticated || role !== 'rider') {
-      navigate('/login', { replace: true })
+      // Riders must use slug-based login
+      if (slug) {
+        navigate(`/${slug}/riders/login`, { replace: true })
+      } else {
+        // No slug available, redirect to home
+        navigate('/', { replace: true })
+      }
       return
     }
     loadUserInfo()
-  }, [isAuthenticated, role, navigate])
+  }, [isAuthenticated, role, navigate, slug])
 
   const loadUserInfo = async () => {
     try {
@@ -73,7 +79,7 @@ export default function RiderProfile() {
 
   const handleLogout = () => {
     logout()
-    navigate('/login', { replace: true })
+    navigate(slug ? `/${slug}/riders/login` : '/', { replace: true })
   }
 
   if (isLoading) {
@@ -88,7 +94,7 @@ export default function RiderProfile() {
         <div style={{ 
           color: 'var(--bw-text)',
           fontFamily: 'Work Sans, sans-serif',
-          fontSize: '16px'
+          fontSize: 'clamp(14px, 2vw, 16px)'
         }}>
           Loading profile...
         </div>
@@ -105,13 +111,13 @@ export default function RiderProfile() {
         alignItems: 'center', 
         height: '100vh',
         backgroundColor: 'var(--bw-bg)',
-        padding: '24px'
+        padding: 'clamp(16px, 3vw, 24px)'
       }}>
         <div style={{ 
           color: 'var(--bw-error)',
           fontFamily: 'Work Sans, sans-serif',
-          fontSize: '16px',
-          marginBottom: '16px'
+          fontSize: 'clamp(14px, 2vw, 16px)',
+          marginBottom: 'clamp(12px, 2vw, 16px)'
         }}>
           {error || 'Failed to load profile'}
         </div>
@@ -120,9 +126,10 @@ export default function RiderProfile() {
           onClick={loadUserInfo}
           style={{ 
             borderRadius: 0, 
-            padding: '14px 24px', 
+            padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
             fontFamily: 'Work Sans, sans-serif', 
-            fontWeight: 500 
+            fontWeight: 500,
+            fontSize: 'clamp(14px, 2.5vw, 16px)'
           }}
         >
           Retry
@@ -134,19 +141,52 @@ export default function RiderProfile() {
   const displayData = isEditing ? editedData : userInfo
 
   return (
-    <main className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)', padding: '24px' }}>
+    <main className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)', padding: 'clamp(16px, 3vw, 24px)' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Company Logo/Name */}
+        {tenantInfo && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            marginBottom: 'clamp(12px, 2vw, 16px)'
+          }}>
+            {tenantInfo.logo_url ? (
+              <img 
+                src={tenantInfo.logo_url} 
+                alt={tenantInfo.company_name || 'Company Logo'}
+                style={{
+                  maxHeight: 'clamp(40px, 5vw, 50px)',
+                  maxWidth: 'clamp(120px, 20vw, 180px)',
+                  objectFit: 'contain'
+                }}
+              />
+            ) : (
+              <h1 style={{
+                margin: 0,
+                fontSize: 'clamp(20px, 3vw, 28px)',
+                fontWeight: 600,
+                color: 'var(--bw-text)',
+                fontFamily: 'DM Sans, sans-serif'
+              }}>
+                {tenantInfo.company_name}
+              </h1>
+            )}
+          </div>
+        )}
         {/* Header */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          marginBottom: '32px'
+          marginBottom: 'clamp(24px, 4vw, 32px)',
+          flexWrap: 'wrap',
+          gap: 'clamp(12px, 2vw, 16px)'
         }}>
           <div>
             <h1 style={{ 
               margin: 0, 
-              fontSize: 40, 
+              fontSize: 'clamp(28px, 5vw, 40px)', 
               fontFamily: 'DM Sans, sans-serif', 
               fontWeight: 200,
               color: 'var(--bw-text)'
@@ -154,30 +194,33 @@ export default function RiderProfile() {
               Profile
             </h1>
             <p className="small-muted" style={{ 
-              marginTop: 6, 
-              fontSize: 16, 
+              marginTop: 'clamp(4px, 1vw, 6px)', 
+              fontSize: 'clamp(14px, 2vw, 16px)', 
               fontFamily: 'Work Sans, sans-serif', 
-              fontWeight: 300 
+              fontWeight: 300,
+              color: 'var(--bw-text)',
+              opacity: 0.8
             }}>
               {tenantInfo ? `${tenantInfo.company_name} - Manage your account information` : 'Manage your account information'}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
             {!isEditing ? (
               <button 
                 className="bw-btn" 
                 onClick={() => setIsEditing(true)}
                 style={{ 
                   borderRadius: 0, 
-                  padding: '14px 24px', 
+                  padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
                   fontFamily: 'Work Sans, sans-serif', 
                   fontWeight: 500,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: 'clamp(6px, 1vw, 8px)',
+                  fontSize: 'clamp(14px, 2.5vw, 16px)'
                 }}
               >
-                <Edit2 size={16} />
+                <Edit2 size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
                 Edit Profile
               </button>
             ) : (
@@ -188,18 +231,19 @@ export default function RiderProfile() {
                   disabled={isSaving}
                   style={{ 
                     borderRadius: 0, 
-                    padding: '14px 24px', 
+                    padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
                     fontFamily: 'Work Sans, sans-serif', 
-                    fontWeight: 500,
+                    fontWeight: 600,
                     background: 'var(--bw-bg)',
                     color: 'var(--bw-fg)',
                     border: '1px solid var(--bw-fg)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: 'clamp(6px, 1vw, 8px)',
+                    fontSize: 'clamp(14px, 2.5vw, 16px)'
                   }}
                 >
-                  <X size={16} />
+                  <X size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
                   Cancel
                 </button>
                 <button 
@@ -208,15 +252,16 @@ export default function RiderProfile() {
                   disabled={isSaving}
                   style={{ 
                     borderRadius: 0, 
-                    padding: '14px 24px', 
+                    padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
                     fontFamily: 'Work Sans, sans-serif', 
-                    fontWeight: 500,
+                    fontWeight: 600,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: 'clamp(6px, 1vw, 8px)',
+                    fontSize: 'clamp(14px, 2.5vw, 16px)'
                   }}
                 >
-                  <Save size={16} />
+                  <Save size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </>
@@ -226,7 +271,7 @@ export default function RiderProfile() {
               onClick={handleLogout}
               style={{ 
                 borderRadius: 0, 
-                padding: '14px 24px', 
+                padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
                 fontFamily: 'Work Sans, sans-serif', 
                 fontWeight: 500,
                 background: 'var(--bw-bg)',
@@ -234,10 +279,11 @@ export default function RiderProfile() {
                 border: '1px solid var(--bw-fg)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: 'clamp(6px, 1vw, 8px)',
+                fontSize: 'clamp(14px, 2.5vw, 16px)'
               }}
             >
-              <LogOut size={16} />
+              <LogOut size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
               Logout
             </button>
           </div>
@@ -245,13 +291,13 @@ export default function RiderProfile() {
 
         {error && (
           <div style={{ 
-            marginBottom: 24, 
-            padding: '12px', 
+            marginBottom: 'clamp(16px, 3vw, 24px)', 
+            padding: 'clamp(10px, 2vw, 12px)', 
             backgroundColor: 'rgba(197, 72, 61, 0.1)', 
             border: '1px solid var(--bw-error)', 
             borderRadius: '4px',
             color: 'var(--bw-error)',
-            fontSize: '14px',
+            fontSize: 'clamp(13px, 2vw, 14px)',
             fontFamily: 'Work Sans, sans-serif'
           }}>
             {error}
@@ -259,18 +305,18 @@ export default function RiderProfile() {
         )}
 
         {/* Profile Card */}
-        <div className="bw-card" style={{ marginBottom: '24px' }}>
+        <div className="bw-card" style={{ marginBottom: 'clamp(16px, 3vw, 24px)' }}>
           <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <User className="w-5 h-5" />
+                <User className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
               </div>
-              <h3 style={{ margin: 0 }}>Personal Information</h3>
+              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Personal Information</h3>
             </div>
           </div>
-          <div className="bw-info-grid">
+          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
             <div className="bw-info-item">
-              <span className="bw-info-label">First Name:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>First Name:</span>
               {isEditing ? (
                 <input
                   name="first_name"
@@ -278,14 +324,14 @@ export default function RiderProfile() {
                   value={displayData.first_name || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.first_name}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.first_name}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Last Name:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Last Name:</span>
               {isEditing ? (
                 <input
                   name="last_name"
@@ -293,14 +339,14 @@ export default function RiderProfile() {
                   value={displayData.last_name || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.last_name}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.last_name}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Email:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Email:</span>
               {isEditing ? (
                 <input
                   name="email"
@@ -308,14 +354,14 @@ export default function RiderProfile() {
                   value={displayData.email || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.email}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.email}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Phone:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Phone:</span>
               {isEditing ? (
                 <input
                   name="phone_no"
@@ -323,28 +369,28 @@ export default function RiderProfile() {
                   value={displayData.phone_no || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.phone_no}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.phone_no}</span>
               )}
             </div>
           </div>
         </div>
 
         {/* Address Card */}
-        <div className="bw-card" style={{ marginBottom: '24px' }}>
+        <div className="bw-card" style={{ marginBottom: 'clamp(16px, 3vw, 24px)' }}>
           <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <MapPin className="w-5 h-5" />
+                <MapPin className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
               </div>
-              <h3 style={{ margin: 0 }}>Address Information</h3>
+              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Address Information</h3>
             </div>
           </div>
-          <div className="bw-info-grid">
+          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
             <div className="bw-info-item" style={{ gridColumn: 'span 2' }}>
-              <span className="bw-info-label">Address:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Address:</span>
               {isEditing ? (
                 <input
                   name="address"
@@ -352,14 +398,14 @@ export default function RiderProfile() {
                   value={displayData.address || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.address}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.address}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">City:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>City:</span>
               {isEditing ? (
                 <input
                   name="city"
@@ -367,14 +413,14 @@ export default function RiderProfile() {
                   value={displayData.city || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.city}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.city}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">State:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>State:</span>
               {isEditing ? (
                 <input
                   name="state"
@@ -382,14 +428,14 @@ export default function RiderProfile() {
                   value={displayData.state || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.state}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.state}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Country:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Country:</span>
               {isEditing ? (
                 <input
                   name="country"
@@ -397,14 +443,14 @@ export default function RiderProfile() {
                   value={displayData.country || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.country}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.country}</span>
               )}
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Postal Code:</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Postal Code:</span>
               {isEditing ? (
                 <input
                   name="postal_code"
@@ -412,10 +458,10 @@ export default function RiderProfile() {
                   value={displayData.postal_code || ''}
                   onChange={handleInputChange}
                   className="bw-input"
-                  style={{ padding: '12px 16px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value">{userInfo.postal_code}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.postal_code}</span>
               )}
             </div>
           </div>
@@ -424,25 +470,25 @@ export default function RiderProfile() {
         {/* Account Details Card */}
         <div className="bw-card">
           <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <Shield className="w-5 h-5" />
+                <Shield className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
               </div>
-              <h3 style={{ margin: 0 }}>Account Details</h3>
+              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Account Details</h3>
             </div>
           </div>
-          <div className="bw-info-grid">
+          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
             <div className="bw-info-item">
-              <span className="bw-info-label">Role:</span>
-              <span className="bw-info-value">{userInfo.role}</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Role:</span>
+              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300,fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.role}</span>
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Tier:</span>
-              <span className="bw-info-value">{userInfo.tier || 'N/A'}</span>
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Tier:</span>
+              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.tier || 'N/A'}</span>
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Member Since:</span>
-              <span className="bw-info-value">
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Member Since:</span>
+              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>
                 {new Date(userInfo.created_on).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 
@@ -451,8 +497,8 @@ export default function RiderProfile() {
               </span>
             </div>
             <div className="bw-info-item">
-              <span className="bw-info-label">Last Updated:</span>
-              <span className="bw-info-value">
+              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Last Updated:</span>
+              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>
                 {new Date(userInfo.updated_on).toLocaleDateString('en-US', { 
                   year: 'numeric', 
                   month: 'long', 
@@ -464,18 +510,19 @@ export default function RiderProfile() {
         </div>
 
         {/* Navigation Links */}
-        <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
-          <Link to={slug ? `/${slug}/riders` : '/rider'} style={{ textDecoration: 'none' }}>
+        <div style={{ marginTop: 'clamp(24px, 4vw, 32px)', display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+          <Link to={slug ? `/${slug}/rider/dashboard` : '/rider'} style={{ textDecoration: 'none' }}>
             <button 
               className="bw-btn" 
               style={{ 
                 borderRadius: 0, 
-                padding: '14px 24px', 
+                padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
                 fontFamily: 'Work Sans, sans-serif', 
                 fontWeight: 500,
                 background: 'var(--bw-bg)',
                 color: 'var(--bw-fg)',
-                border: '1px solid var(--bw-fg)'
+                border: '1px solid var(--bw-fg)',
+                fontSize: 'clamp(14px, 2.5vw, 16px)'
               }}
             >
               Back to Dashboard

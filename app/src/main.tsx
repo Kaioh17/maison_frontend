@@ -1,7 +1,7 @@
 import './utils/logging' // Must be first to capture all console output
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import AuthInitializer from '@components/AuthInitializer'
 import { ThemeProvider } from '@contexts/ThemeContext'
@@ -12,10 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <BrowserRouter>
         <AuthInitializer />
-        <Routes>
-          <Route path="/*" element={<App />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <App />
       </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>,

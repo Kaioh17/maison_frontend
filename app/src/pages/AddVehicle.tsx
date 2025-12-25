@@ -39,19 +39,24 @@ export default function AddVehicle() {
     const loadVehicleCategories = async () => {
       try {
         setLoadingCategories(true)
-        const categories = await getVehicleCategories()
-        setVehicleCategories(categories || [])
-        
-        // Set default category if available
-        if (categories && categories.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            vehicle_category: categories[0].vehicle_category,
-            vehicle_flat_rate: categories[0].vehicle_flat_rate.toString()
-          }))
+        const response = await getVehicleCategories()
+        if (response.success && response.data) {
+          setVehicleCategories(response.data)
+          
+          // Set default category if available
+          if (response.data.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              vehicle_category: response.data[0].vehicle_category,
+              vehicle_flat_rate: response.data[0].vehicle_flat_rate.toString()
+            }))
+          }
+        } else {
+          setVehicleCategories([])
         }
       } catch (error) {
         console.error('Failed to load vehicle categories:', error)
+        setVehicleCategories([])
       } finally {
         setLoadingCategories(false)
       }
@@ -117,9 +122,13 @@ export default function AddVehicle() {
         seating_capacity: parseInt(formData.seating_capacity.toString()) || 4
       }
 
-      const newVehicle = await addVehicle(vehiclePayload)
-      setCreatedVehicle(newVehicle)
-      setSuccess(true)
+      const response = await addVehicle(vehiclePayload)
+      if (response.success && response.data) {
+        setCreatedVehicle(response.data)
+        setSuccess(true)
+      } else {
+        throw new Error(response.message || 'Failed to create vehicle')
+      }
       
       // Move to image upload panel after a short delay
       setTimeout(() => {
@@ -140,13 +149,13 @@ export default function AddVehicle() {
       setCurrentPanel('vehicle-info')
       setCreatedVehicle(null)
     } else {
-      navigate('/tenant')
+      navigate('/tenant/overview')
     }
   }
 
   const handleImageUploaded = () => {
     // Redirect to dashboard after image is uploaded
-    navigate('/tenant')
+    navigate('/tenant/overview')
   }
 
   // Show image upload panel

@@ -11,6 +11,9 @@ import RiderLogin from '@pages/RiderLogin'
 import VehicleRates from '@pages/VehicleRates'
 import TenantSettings from '@pages/TenantSettings'
 import AddVehicle from '@pages/AddVehicle'
+import NotFound from '@pages/NotFound'
+import SubscriptionSelection from '@pages/SubscriptionSelection'
+import Success from '@pages/Success'
 import ProtectedRoute from '@components/ProtectedRoute'
 import SlugVerification from '@components/SlugVerification'
 
@@ -18,11 +21,44 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
       <Route
+        path="/tenant/login"
+        element={<Login />}
+      />
+      <Route
+        path="/subscription"
+        element={
+          <ProtectedRoute allowRoles={["tenant"]}>
+            <SubscriptionSelection />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/success" element={<Success />} />
+      {/* Redirect /tenant to /tenant/overview */}
+      <Route
         path="/tenant"
+        element={<Navigate to="/tenant/overview" replace />}
+      />
+      <Route
+        path="/tenant/overview"
+        element={
+          <ProtectedRoute allowRoles={["tenant"]}>
+            <TenantDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tenant/drivers"
+        element={
+          <ProtectedRoute allowRoles={["tenant"]}>
+            <TenantDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tenant/bookings"
         element={
           <ProtectedRoute allowRoles={["tenant"]}>
             <TenantDashboard />
@@ -71,18 +107,49 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/rider"
-        element={
-          <ProtectedRoute allowRoles={["rider"]}>
-            <RiderDashboard />
-          </ProtectedRoute>
-        }
-      />
-
       {/* White-label rider routes with slug */}
       <Route
-        path="/:slug/riders"
+        path="/:slug/rider/dashboard"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/:slug/rider/book"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/:slug/rider/see-bookings"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/:slug/rider/drivers"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["rider"]}>
+              <RiderDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/:slug/rider/vehicles"
         element={
           <SlugVerification>
             <ProtectedRoute allowRoles={["rider"]}>
@@ -121,22 +188,8 @@ export default function App() {
         }
       />
 
-      {/* Legacy routes without slug (for backward compatibility) */}
-      <Route
-        path="/riders/register"
-        element={<RiderRegistration />}
-      />
-
-      <Route
-        path="/riders/profile"
-        element={
-          <ProtectedRoute allowRoles={["rider"]}>
-            <RiderProfile />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="*" element={<Navigate to="/" />} />
+      {/* 404 - Catch all unmatched routes */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 } 
