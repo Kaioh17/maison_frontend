@@ -12,7 +12,7 @@ export default function TopNav() {
         <a href="#contact">Contact</a>
       </nav>
       <div className="cta">
-        <Link to="/login" className="btn ghost">Login</Link>
+        <Link to="/tenant/login" className="btn ghost">Login</Link>
         <Link to="/signup" className="btn">Sign up</Link>
       </div>
     </header>

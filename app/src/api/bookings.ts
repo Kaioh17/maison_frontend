@@ -17,7 +17,7 @@ export type BookingResponse = {
   booking_status: string
   customer_name: string
   vehicle: string
-  driver_fullname: string
+  driver_name: string
   created_on: string
   updated_on: string
 }

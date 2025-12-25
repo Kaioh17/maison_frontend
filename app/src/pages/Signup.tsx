@@ -21,7 +21,8 @@ export default function Signup() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showSlugTooltip, setShowSlugTooltip] = useState(false)
+  const [showSlugInfo, setShowSlugInfo] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
   const [currentLogo, setCurrentLogo] = useState<string>(whiteLogo)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
@@ -86,6 +87,39 @@ export default function Signup() {
     setPhone(formatted)
   }
 
+  const validateSlug = (value: string): string | null => {
+    if (!value) return null // Allow empty, required validation will handle it
+    
+    // Check for invalid characters (only lowercase letters, numbers, and hyphens allowed)
+    if (!/^[a-z0-9-]+$/.test(value)) {
+      return 'Slug can only contain lowercase letters, numbers, and hyphens'
+    }
+    
+    // Must start with a letter or number
+    if (!/^[a-z0-9]/.test(value)) {
+      return 'Slug must start with a letter or number'
+    }
+    
+    // Must end with a letter or number
+    if (!/[a-z0-9]$/.test(value)) {
+      return 'Slug must end with a letter or number'
+    }
+    
+    // No consecutive hyphens
+    if (value.includes('--')) {
+      return 'Slug cannot contain consecutive hyphens'
+    }
+    
+    return null
+  }
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toLowerCase() // Convert to lowercase automatically
+    setSlug(value)
+    const validationError = validateSlug(value)
+    setSlugError(validationError)
+  }
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -138,6 +172,15 @@ export default function Signup() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMessage(null); setError(null)
+    
+    // Validate slug before submission
+    const slugValidationError = validateSlug(slug)
+    if (slugValidationError) {
+      setSlugError(slugValidationError)
+      setError('Please fix the slug format before submitting')
+      return
+    }
+    
     try {
       // Strip formatting from phone number (remove all non-digits)
       const phoneDigits = phone.replace(/\D/g, '')
@@ -153,10 +196,10 @@ export default function Signup() {
         city,
         logo_url: logoFile,
       })
-      // Auto-login then go to dashboard
+      // Auto-login then go to subscription selection
       const data = await loginTenant(email, password)
       useAuthStore.getState().login({ token: data.access_token })
-      navigate('/tenant')
+      navigate('/subscription')
     } catch (err: any) {
       setError(err?.response?.data?.detail || err.message || 'Failed to create account')
     }
@@ -171,15 +214,94 @@ export default function Signup() {
           }
           .signup-form-container {
             width: 100% !important;
-            padding: 16px !important;
+            padding: 16px 24px !important;
             height: auto !important;
             min-height: 100vh !important;
           }
           .signup-form-grid {
             grid-template-columns: 1fr !important;
           }
+          .signup-form {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
           .signup-main-container {
             flex-direction: column !important;
+          }
+          .signup-logo {
+            height: 60px !important;
+            top: 16px !important;
+            left: 16px !important;
+          }
+          .signup-title {
+            font-size: 28px !important;
+          }
+          .signup-subtitle {
+            font-size: 14px !important;
+            margin-top: 4px !important;
+          }
+          .signup-label {
+            font-size: 12px !important;
+          }
+          .signup-input {
+            padding: 12px 14px 12px 14px !important;
+            font-size: 14px !important;
+          }
+          .signup-input-password {
+            padding: 12px 14px 12px 14px !important;
+            padding-right: 38px !important;
+            font-size: 14px !important;
+          }
+          .signup-toggle-btn {
+            right: 10px !important;
+          }
+          .signup-toggle-icon {
+            width: 14px !important;
+            height: 14px !important;
+          }
+          .signup-button {
+            padding: 12px 20px !important;
+            font-size: 14px !important;
+          }
+          .signup-link-text {
+            font-size: 13px !important;
+          }
+          .signup-error {
+            font-size: 12px !important;
+          }
+          .signup-message {
+            font-size: 12px !important;
+          }
+          .signup-logo-label {
+            font-size: 12px !important;
+          }
+          .signup-logo-link {
+            font-size: 13px !important;
+          }
+          .signup-logo-cancel {
+            font-size: 11px !important;
+          }
+          .signup-slug-info {
+            font-size: 11px !important;
+            width: 280px !important;
+          }
+          .signup-slug-error {
+            font-size: 11px !important;
+          }
+          .signup-modal {
+            padding: 20px !important;
+          }
+          .signup-modal-title {
+            font-size: 20px !important;
+          }
+          .signup-modal-content {
+            font-size: 13px !important;
+          }
+          .signup-modal-heading {
+            font-size: 14px !important;
+          }
+          .signup-modal-code {
+            font-size: 12px !important;
           }
         }
       `}</style>
@@ -252,6 +374,7 @@ export default function Signup() {
           <img 
             src={currentLogo} 
             alt="Maison Logo" 
+            className="signup-logo"
             style={{ 
               position: 'absolute',
               top: '24px',
@@ -262,23 +385,23 @@ export default function Signup() {
               zIndex: 10
             }} 
           />
-          <h1 id="signup-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Create account</h1>
-          <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Set up your company profile in minutes.</p>
+          <h1 id="signup-title" className="signup-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Create account</h1>
+          <p className="small-muted signup-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Set up your company profile in minutes.</p>
 
-          <form onSubmit={submit} className="vstack signup-form-grid" style={{ display: 'grid', gap: 12, marginTop: 16, width: '100%' }}>
+          <form onSubmit={submit} className="vstack signup-form-grid signup-form" style={{ display: 'grid', gap: 12, marginTop: 16, width: '100%' }}>
             <div className="signup-form-grid" style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>First name
-                <input className="bw-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
               </label>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>Last name
-                <input className="bw-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
               </label>
             </div>
 
             <div className="signup-form-grid" style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email
                 <div style={{ position: 'relative', marginTop: 6 }}>
-                  <input className="bw-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                  <input className="bw-input signup-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
                 </div>
               </label>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password
@@ -307,17 +430,17 @@ export default function Signup() {
               <label className="small-muted" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontFamily: 'Work Sans, sans-serif' }}>
                 Phone
                 <input 
-                  className="bw-input" 
+                  className="bw-input signup-input" 
                   type="tel"
                   placeholder="(555) 555-5555" 
                   value={phone} 
                   onChange={handlePhoneChange}
                   maxLength={14}
-                  style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                  style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
                 />
               </label>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>Company
-                <input className="bw-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
               </label>
             </div>
 
@@ -327,56 +450,94 @@ export default function Signup() {
                   Slug
                   <div 
                     style={{ position: 'relative', display: 'inline-block' }}
-                    onMouseEnter={() => setShowSlugTooltip(true)}
-                    onMouseLeave={() => setShowSlugTooltip(false)}
+                    onMouseEnter={(e) => {
+                      if (!showSlugInfo) {
+                        e.currentTarget.setAttribute('data-hover', 'true')
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.removeAttribute('data-hover')
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowSlugInfo(true)
+                    }}
                   >
                     <Info 
                       size={14} 
                       style={{ 
-                        cursor: 'help', 
+                        cursor: 'pointer', 
                         color: 'var(--bw-muted)',
                         opacity: 0.7
                       }} 
                     />
-                    {showSlugTooltip && (
-                      <div style={{
+                    <div 
+                      className="slug-info-preview"
+                      style={{
                         position: 'absolute',
                         bottom: '100%',
-                        left: '50%',
-                        transform: 'translateX(-30%)',
+                        left: '0',
                         marginBottom: '8px',
-                        padding: '8px 12px',
+                        padding: '10px 14px',
                         backgroundColor: 'var(--bw-bg-secondary)',
                         border: '1px solid var(--bw-border)',
-                        borderRadius: '0',
+                        borderRadius: '6px',
                         color: 'var(--bw-text)',
                         fontSize: '12px',
                         zIndex: 1000,
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                        maxWidth: '250px',
-                        whiteSpace: 'normal',
-                        textAlign: 'left'
-                      }}>
-                        A URL-friendly identifier for your company (e.g., "my-company" becomes "my-company.maison.com")
-                        <div style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          width: 0,
-                          height: 0,
-                          borderLeft: '6px solid transparent',
-                          borderRight: '6px solid transparent',
-                          borderTop: '6px solid var(--bw-border)'
-                        }}></div>
-                      </div>
-                    )}
+                        width: '320px',
+                        textAlign: 'left',
+                        pointerEvents: 'none',
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease',
+                        lineHeight: '1.5',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      Your slug creates unique branded URLs for your riders. Click to learn more about format requirements and how slugs work in the white-labeling system.
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '20px',
+                        width: 0,
+                        height: 0,
+                        borderLeft: '6px solid transparent',
+                        borderRight: '6px solid transparent',
+                        borderTop: '6px solid var(--bw-border)'
+                      }}></div>
+                    </div>
                   </div>
                 </span>
-                <input className="bw-input" placeholder="my-company" value={slug} onChange={(e) => setSlug(e.target.value)} style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                <input 
+                  className="bw-input signup-input" 
+                  placeholder="my-company" 
+                  value={slug} 
+                  onChange={handleSlugChange}
+                  style={{ 
+                    padding: '16px 18px 16px 18px', 
+                    borderRadius: 0, 
+                    fontFamily: 'Work Sans, sans-serif',
+                    borderColor: slugError ? '#ef4444' : undefined
+                  }} 
+                />
+                {slugError && (
+                  <div style={{
+                    marginTop: '4px',
+                    fontSize: '12px',
+                    color: '#ef4444',
+                    fontFamily: 'Work Sans, sans-serif'
+                  }}>
+                    {slugError}
+                  </div>
+                )}
               </label>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>City
-                <input className="bw-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
               </label>
             </div>
 
@@ -470,15 +631,16 @@ export default function Signup() {
               )}
             </div>
 
-            {error && <div className="small-muted" style={{ color: '#ffb3b3', fontFamily: 'Work Sans, sans-serif' }}>{error}</div>}
-            {message && <div className="small-muted" style={{ color: '#b3ffcb', fontFamily: 'Work Sans, sans-serif' }}>{message}</div>}
+            {error && <div className="small-muted signup-error" style={{ color: '#ffb3b3', fontFamily: 'Work Sans, sans-serif' }}>{error}</div>}
+            {message && <div className="small-muted signup-message" style={{ color: '#b3ffcb', fontFamily: 'Work Sans, sans-serif' }}>{message}</div>}
 
-            <button className="bw-btn" type="submit" style={{ color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}>Create account</button>
+            <button className="bw-btn signup-button" type="submit" style={{ color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}>Create account</button>
 
             <div style={{ marginTop: 12, textAlign: 'center' }}>
-              <span className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>Already have an account? </span>
+              <span className="small-muted signup-link-text" style={{ fontFamily: 'Work Sans, sans-serif' }}>Already have an account? </span>
               <Link 
-                to="/login"
+                to="/tenant/login"
+                className="signup-link-text"
                 style={{ 
                   marginLeft: 6,
                   color: 'var(--bw-accent)',
@@ -493,6 +655,176 @@ export default function Signup() {
           </form>
         </div>
       </div>
+
+      {/* Slug Info Modal */}
+      {showSlugInfo && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
+          }}
+          onClick={() => setShowSlugInfo(false)}
+        >
+          <div 
+            className="signup-modal"
+            style={{
+              backgroundColor: 'var(--bw-bg)',
+              border: '1px solid var(--bw-border)',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowSlugInfo(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'transparent',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: 'var(--bw-text)',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                lineHeight: 1
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+            <h2 className="signup-modal-title" style={{
+              margin: '0 0 20px 0',
+              fontSize: '24px',
+              fontWeight: 600,
+              fontFamily: 'DM Sans, sans-serif',
+              color: 'var(--bw-text)'
+            }}>
+              About Slugs
+            </h2>
+
+            <div className="signup-modal-content" style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              fontFamily: 'Work Sans, sans-serif',
+              color: 'var(--bw-text)'
+            }}>
+              <div>
+                <h3 className="signup-modal-heading" style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)'
+                }}>
+                  What is a Slug?
+                </h3>
+                <p className="signup-modal-content" style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: 'var(--bw-text)',
+                  opacity: 0.9
+                }}>
+                  A slug is a URL-friendly identifier that creates a unique path for your company's white-labeled pages. 
+                  It's used to create tenant-specific URLs for your riders.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="signup-modal-heading" style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)'
+                }}>
+                  How It Works
+                </h3>
+                <p className="signup-modal-content" style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: 'var(--bw-text)',
+                  opacity: 0.9
+                }}>
+                  Once you set your slug, your riders will access your branded pages through URLs like:
+                </p>
+                <div className="signup-modal-code" style={{
+                  padding: '12px',
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  border: '1px solid var(--bw-border)',
+                  borderRadius: '6px',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  color: 'var(--bw-accent)'
+                }}>
+                  <div style={{ marginBottom: '4px' }}>• <strong>Login:</strong> /{slug || 'your-slug'}/riders/login</div>
+                  <div style={{ marginBottom: '4px' }}>• <strong>Registration:</strong> /{slug || 'your-slug'}/riders/register</div>
+                  <div>• <strong>Dashboard:</strong> /{slug || 'your-slug'}/rider/dashboard</div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="signup-modal-heading" style={{
+                  margin: '0 0 8px 0',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: 'var(--bw-text)'
+                }}>
+                  Format Requirements
+                </h3>
+                <ul className="signup-modal-content" style={{
+                  margin: 0,
+                  paddingLeft: '20px',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  color: 'var(--bw-text)',
+                  opacity: 0.9
+                }}>
+                  <li>Use only lowercase letters, numbers, and hyphens</li>
+                  <li>No spaces or special characters</li>
+                  <li>Must start and end with a letter or number</li>
+                  <li>Examples: <code style={{ backgroundColor: 'var(--bw-bg-secondary)', padding: '2px 6px', borderRadius: '3px' }}>my-company</code>, <code style={{ backgroundColor: 'var(--bw-bg-secondary)', padding: '2px 6px', borderRadius: '3px' }}>ridez123</code>, <code style={{ backgroundColor: 'var(--bw-bg-secondary)', padding: '2px 6px', borderRadius: '3px' }}>premium-transport</code></li>
+                </ul>
+              </div>
+
+              <div className="signup-modal-content" style={{
+                padding: '12px',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '6px',
+                fontSize: '13px',
+                color: 'var(--bw-text)'
+              }}>
+                <strong>Note:</strong> Your slug must be unique. If the slug you choose is already taken, you'll need to select a different one.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        [data-hover="true"] .slug-info-preview {
+          opacity: 1 !important;
+        }
+      `}</style>
     </main>
   )
 } 

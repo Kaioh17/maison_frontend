@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react'
-import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react'
+import { getVehicleImageTypes } from '@api/vehicles'
 
 interface ImageUploadPanelProps {
   vehicleId: number
@@ -9,6 +10,12 @@ interface ImageUploadPanelProps {
   onBack: () => void
 }
 
+type ImageUploadState = {
+  file: File
+  preview: string
+  type: string
+}
+
 export default function ImageUploadPanel({ 
   vehicleId, 
   vehicleMake, 
@@ -16,18 +23,49 @@ export default function ImageUploadPanel({
   onImageUploaded, 
   onBack 
 }: ImageUploadPanelProps) {
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadedImages, setUploadedImages] = useState<Map<string, ImageUploadState>>(new Map())
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [allowedImageTypes, setAllowedImageTypes] = useState<string[]>([])
+  const [isLoadingTypes, setIsLoadingTypes] = useState(true)
+  const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const loadAllowedTypes = async () => {
+      try {
+        const response = await getVehicleImageTypes()
+        if (response.success && response.data?.allowed_image_types) {
+          setAllowedImageTypes(response.data.allowed_image_types)
+        }
+      } catch (err) {
+        console.error('Failed to load allowed image types:', err)
+      } finally {
+        setIsLoadingTypes(false)
+      }
+    }
+    
+    loadAllowedTypes()
+  }, [])
+
+  const isAllowedFileType = (file: File): boolean => {
+    // Validate that it's an image file (any image format is allowed)
+    return file.type.startsWith('image/')
+  }
+  
+  const formatImageTypeLabel = (type: string): string => {
+    // Convert "front_exterior" to "Front Exterior"
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  const handleImageSelect = (imageType: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!isAllowedFileType(file)) {
         setError('Please select a valid image file')
         return
       }
@@ -38,30 +76,44 @@ export default function ImageUploadPanel({
         return
       }
 
-      setSelectedImage(file)
       setError(null)
       
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
+        const preview = e.target?.result as string
+        setUploadedImages(prev => {
+          const newMap = new Map(prev)
+          newMap.set(imageType, { file, preview, type: imageType })
+          return newMap
+        })
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleRemoveImage = () => {
-    setSelectedImage(null)
-    setImagePreview(null)
-    setError(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+  const handleRemoveImage = (imageType: string) => {
+    setUploadedImages(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(imageType)
+      return newMap
+    })
+    const input = fileInputRefs.current.get(imageType)
+    if (input) {
+      input.value = ''
+    }
+  }
+
+  const handleImageTypeClick = (imageType: string) => {
+    const input = fileInputRefs.current.get(imageType)
+    if (input) {
+      input.click()
     }
   }
 
   const handleUpload = async () => {
-    if (!selectedImage) {
-      setError('Please select an image to upload')
+    if (uploadedImages.size === 0) {
+      setError('Please select at least one image to upload')
       return
     }
 
@@ -70,15 +122,27 @@ export default function ImageUploadPanel({
 
     try {
       const { updateVehicleImage } = await import('@api/vehicles')
-      await updateVehicleImage(vehicleId, selectedImage)
+      const imageFiles: File[] = []
+      const imageTypes: string[] = []
       
-      setSuccess(true)
-      setTimeout(() => {
-        onImageUploaded()
-      }, 2000)
+      uploadedImages.forEach((imageState, type) => {
+        imageFiles.push(imageState.file)
+        imageTypes.push(type)
+      })
+      
+      const response = await updateVehicleImage(vehicleId, imageFiles, imageTypes)
+      
+      if (response.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          onImageUploaded()
+        }, 2000)
+      } else {
+        throw new Error(response.message || 'Failed to upload images')
+      }
     } catch (err: any) {
       console.error('Failed to upload image:', err)
-      setError(err.response?.data?.detail || 'Failed to upload image. Please try again.')
+      setError(err.response?.data?.detail || err.message || 'Failed to upload image. Please try again.')
     } finally {
       setIsUploading(false)
     }
@@ -146,93 +210,133 @@ export default function ImageUploadPanel({
 
         {/* Image Upload Area */}
         <div style={{ marginBottom: 32 }}>
-          <h4 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Vehicle Image</h4>
+          <h4 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Vehicle Images</h4>
           
-          {!imagePreview ? (
-            <div 
-              style={{
-                border: '2px dashed var(--bw-border-strong)',
-                borderRadius: '8px',
-                padding: '48px 24px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s'
-              }}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => {
-                e.preventDefault()
-                e.currentTarget.style.borderColor = 'var(--bw-primary)'
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-                e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
-                const file = e.dataTransfer.files[0]
-                if (file && file.type.startsWith('image/')) {
-                  setSelectedImage(file)
-                  const reader = new FileReader()
-                  reader.onload = (e) => {
-                    setImagePreview(e.target?.result as string)
-                  }
-                  reader.readAsDataURL(file)
-                }
-              }}
-            >
-              <Upload size={48} style={{ color: '#6b7280', marginBottom: '16px' }} />
-              <p style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 500 }}>
-                Click to upload or drag and drop
-              </p>
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                PNG, JPG, JPEG up to 5MB
-              </p>
+          {isLoadingTypes ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+              Loading image types...
+            </div>
+          ) : allowedImageTypes.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#6b7280' }}>
+              No image types available for this vehicle category.
             </div>
           ) : (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <img 
-                  src={imagePreview} 
-                  alt="Vehicle preview" 
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '300px',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {allowedImageTypes.map((imageType) => {
+                const uploadedImage = uploadedImages.get(imageType)
+                return (
+                  <div key={imageType} style={{
+                    border: '1px solid var(--bw-border)',
                     borderRadius: '8px',
-                    border: '1px solid var(--bw-border)'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
-                    background: 'var(--bw-error, #C5483D)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
+                    padding: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ImageIcon size={20} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--bw-text)' }}>
+                          {formatImageTypeLabel(imageType)}
+                        </span>
+                      </div>
+                      {uploadedImage && (
+                        <span style={{ 
+                          fontSize: '12px', 
+                          color: 'var(--bw-success, #1E7F4A)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <CheckCircle size={14} />
+                          Selected
+                        </span>
+                      )}
+                    </div>
+                    
+                    {uploadedImage ? (
+                      <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                        <img 
+                          src={uploadedImage.preview} 
+                          alt={`${imageType} preview`} 
+                          style={{
+                            width: '100%',
+                            maxHeight: '200px',
+                            objectFit: 'contain',
+                            borderRadius: '8px',
+                            border: '1px solid var(--bw-border)'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(imageType)}
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            background: 'var(--bw-error, #C5483D)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '28px',
+                            height: '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleImageTypeClick(imageType)}
+                        style={{
+                          width: '100%',
+                          padding: '16px',
+                          border: '2px dashed var(--bw-border-strong)',
+                          borderRadius: '8px',
+                          backgroundColor: 'transparent',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'border-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--bw-fg)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
+                        }}
+                      >
+                        <Upload size={24} style={{ color: '#6b7280' }} />
+                        <span style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
+                          Click to upload {formatImageTypeLabel(imageType)} image
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                          Max 5MB
+                        </span>
+                      </button>
+                    )}
+                    
+                    <input
+                      ref={(el) => {
+                        if (el) {
+                          fileInputRefs.current.set(imageType, el)
+                        }
+                      }}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect(imageType)}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            style={{ display: 'none' }}
-          />
         </div>
 
         {/* Form Actions */}
@@ -265,7 +369,7 @@ export default function ImageUploadPanel({
               type="button" 
               className="bw-btn bw-btn-action" 
               onClick={handleUpload}
-              disabled={!selectedImage || isUploading}
+              disabled={uploadedImages.size === 0 || isUploading}
             >
               {isUploading ? (
                 <>
@@ -275,7 +379,7 @@ export default function ImageUploadPanel({
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  Upload Image
+                  Upload {uploadedImages.size > 0 ? `${uploadedImages.size} ` : ''}Image{uploadedImages.size !== 1 ? 's' : ''}
                 </>
               )}
             </button>

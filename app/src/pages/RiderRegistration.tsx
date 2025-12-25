@@ -99,13 +99,22 @@ export default function RiderRegistration() {
   }, [isAuthenticated, role, navigate])
 
   const formatPhoneNumber = (value: string): string => {
+    // Remove all non-digit characters
     const phoneNumber = value.replace(/\D/g, '')
-    const phoneNumberDigits = phoneNumber.slice(0, 15) // Allow international format
     
+    // Limit to 10 digits for US format, or 15 for international
+    const phoneNumberDigits = phoneNumber.slice(0, 10)
+    
+    // Format based on length
     if (phoneNumberDigits.length === 0) {
       return ''
+    } else if (phoneNumberDigits.length <= 3) {
+      return `(${phoneNumberDigits}`
+    } else if (phoneNumberDigits.length <= 6) {
+      return `(${phoneNumberDigits.slice(0, 3)}) ${phoneNumberDigits.slice(3)}`
+    } else {
+      return `(${phoneNumberDigits.slice(0, 3)}) ${phoneNumberDigits.slice(3, 6)}-${phoneNumberDigits.slice(6)}`
     }
-    return phoneNumberDigits
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,12 +137,15 @@ export default function RiderRegistration() {
       setIsLoading(true)
       setError('')
       
+      // Strip formatting from phone number (remove all non-digits) before sending
+      const phoneDigits = formData.phone_no.replace(/\D/g, '')
+      
       // Create user
       await createUser(tenantId, {
         email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        phone_no: formData.phone_no,
+        phone_no: phoneDigits,
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -222,11 +234,12 @@ export default function RiderRegistration() {
   const companyName = tenantInfo?.company_name || 'Our Service'
 
   return (
-    <main className="bw" aria-label="Rider Registration" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
+    <main className="bw" aria-label="Rider Registration" style={{ margin: 0, padding: 0, minHeight: '100vh', overflow: 'auto' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
         {/* Left side - Image (60%) */}
         <div 
           ref={imageContainerRef}
+          className="rider-registration-image-container"
           style={{ 
             width: '60%', 
             height: '100%', 
@@ -279,20 +292,53 @@ export default function RiderRegistration() {
         <div 
           role="form" 
           aria-labelledby="registration-title"
+          className="rider-registration-form-container"
           style={{ 
             width: '40%', 
-            height: '100%', 
+            minHeight: '100vh',
             position: 'relative',
             display: 'flex', 
             flexDirection: 'column',
             alignItems: 'center', 
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
             padding: '24px',
+            paddingTop: 'clamp(24px, 5vw, 48px)',
             backgroundColor: 'var(--bw-bg)',
             overflowY: 'auto'
           }}
         >
           <div style={{ width: '100%', maxWidth: '100%' }}>
+            {/* Company Logo/Name */}
+            {tenantInfo && (
+              <div style={{ 
+                marginBottom: '24px', 
+                display: 'flex', 
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {tenantInfo.logo_url ? (
+                  <img 
+                    src={tenantInfo.logo_url} 
+                    alt={companyName}
+                    style={{
+                      maxHeight: '60px',
+                      maxWidth: '200px',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <h1 style={{
+                    margin: 0,
+                    fontSize: '32px',
+                    fontWeight: 600,
+                    color: 'var(--bw-text)',
+                    fontFamily: 'DM Sans, sans-serif'
+                  }}>
+                    {companyName}
+                  </h1>
+                )}
+              </div>
+            )}
             <h2 id="registration-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Create account</h2>
           <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
             {tenantInfo ? `Sign up for ${companyName}` : 'Sign up to get started'}
@@ -376,9 +422,10 @@ export default function RiderRegistration() {
                 required 
                 className="bw-input" 
                 style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="+1234567890" 
+                placeholder="(555) 555-5555" 
                 value={formData.phone_no}
-                onChange={handleInputChange} 
+                onChange={handleInputChange}
+                maxLength={14}
               />
             </div>
 
@@ -503,7 +550,7 @@ export default function RiderRegistration() {
               </div>
               <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
                 Already have an account?{' '}
-                <Link to={slug ? `/${slug}/riders/login` : '/login'} style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
+                <Link to={slug ? `/${slug}/riders/login` : '/'} style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
                   signin
                 </Link>
               </p>
@@ -512,6 +559,16 @@ export default function RiderRegistration() {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 768px) {
+          .rider-registration-image-container {
+            display: none !important;
+          }
+          .rider-registration-form-container {
+            width: 100% !important;
+          }
+        }
+      `}</style>
     </main>
   )
 }

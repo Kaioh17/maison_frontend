@@ -25,6 +25,36 @@ export async function respondToRide(bookingId: number, action: 'confirm' | 'canc
   return data
 }
 
+export async function getRiderDrivers(driverId?: number) {
+  const params = driverId ? { driver_id: driverId } : undefined
+  const { data } = await http.get<StandardResponse<RiderDriverResponse[]>>('/v1/driver/rider/info', { params })
+  return data
+}
+
+export type RiderDriverResponse = {
+  id: number
+  full_name: string
+  driver_type: string
+  completed_rides: number
+  is_active: boolean
+  status: string | null
+  phone_no: string
+  vehicle: {
+    make: string
+    model: string
+    year: number
+    license_plate: string
+    color: string
+    status: string
+    seating_capacity: number
+    tenant_id: number
+    id: number
+    created_on: string
+    updated_on: string
+    vehicle_category_id: number
+  } | null
+}
+
 export type DriverCreate = {
   email: string
   phone_no: string

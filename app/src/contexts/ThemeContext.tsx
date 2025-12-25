@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 
-export type Theme = 'dark' | 'light' | 'auto'
+export type Theme = 'dark' | 'light'
 
 interface ThemeContextType {
   theme: Theme
@@ -28,16 +28,11 @@ function getInitialTheme(): Theme {
     // Check localStorage first
     const savedTheme = localStorage.getItem('theme') as Theme
     
-    if (savedTheme && ['dark', 'light', 'auto'].includes(savedTheme)) {
+    if (savedTheme && ['dark', 'light'].includes(savedTheme)) {
       return savedTheme
     }
     
-    // If no saved theme, check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-    
-    // Default to dark if no system preference detected
+    // Default to dark if no saved theme
     return 'dark'
   } catch (error) {
     console.warn('Theme: Error getting initial theme:', error)
@@ -127,32 +122,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         root.removeAttribute('data-theme')
         body.removeAttribute('data-theme')
         
-        // Apply new theme
-        if (theme === 'auto') {
-          // Auto theme - check system preference
-          const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-          const isSystemDark = mediaQuery.matches
-          
-          root.setAttribute('data-theme', 'auto')
-          body.setAttribute('data-theme', 'auto')
-          setIsDark(isSystemDark)
-          setIsLight(!isSystemDark)
-          
-          // Listen for system theme changes
-          const handleChange = (e: MediaQueryListEvent) => {
-            setIsDark(e.matches)
-            setIsLight(!e.matches)
-          }
-          
-          mediaQuery.addEventListener('change', handleChange)
-          return () => mediaQuery.removeEventListener('change', handleChange)
-        } else {
-          // Manual theme
-          root.setAttribute('data-theme', theme)
-          body.setAttribute('data-theme', theme)
-          setIsDark(theme === 'dark')
-          setIsLight(theme === 'light')
-        }
+        // Apply theme
+        root.setAttribute('data-theme', theme)
+        body.setAttribute('data-theme', theme)
+        setIsDark(theme === 'dark')
+        setIsLight(theme === 'light')
       }
       
       setIsInitialized(true)
@@ -224,18 +198,17 @@ export function useTenantTheme(tenantTheme?: string) {
   
   useEffect(() => {
     // Only override user's theme if they haven't explicitly set one
-    // or if they're using auto mode and tenant has a specific theme
-    if (tenantTheme && ['dark', 'light', 'auto'].includes(tenantTheme)) {
+    if (tenantTheme && ['dark', 'light'].includes(tenantTheme)) {
       try {
         const savedTheme = localStorage.getItem('theme') as Theme
         
-        // If user has explicitly set a theme (not auto), don't override it
-        if (savedTheme && savedTheme !== 'auto') {
+        // If user has explicitly set a theme, don't override it
+        if (savedTheme) {
           return
         }
         
-        // Only set tenant theme if user is using auto mode or no preference
-        if (theme === 'auto' || !savedTheme) {
+        // Only set tenant theme if no user preference
+        if (!savedTheme) {
           setTheme(tenantTheme as Theme)
         }
       } catch (error) {

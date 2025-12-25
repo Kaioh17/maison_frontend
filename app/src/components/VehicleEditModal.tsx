@@ -1,35 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Edit, Upload, CheckCircle, AlertCircle, Car } from 'lucide-react'
-import { getVehicleById, updateVehicleImage } from '@api/vehicles'
-import type { VehicleResponse } from '@api/vehicles'
+import { X, Edit, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getVehicleById, updateVehicleImage, getVehicleCategories, getVehicleImageTypes } from '@api/vehicles'
+import type { VehicleResponse, VehicleCategoryResponse } from '@api/vehicles'
 
 interface VehicleEditModalProps {
   vehicleId: number
   isOpen: boolean
   onClose: () => void
   onVehicleUpdated: () => void
+  onDelete?: (vehicleId: number) => void
+}
+
+type ImageUploadState = {
+  file: File
+  preview: string
+  type: string
 }
 
 export default function VehicleEditModal({ 
   vehicleId, 
   isOpen, 
   onClose, 
-  onVehicleUpdated 
+  onVehicleUpdated,
+  onDelete
 }: VehicleEditModalProps) {
   const [vehicle, setVehicle] = useState<VehicleResponse | null>(null)
+  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategoryResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploadedImages, setUploadedImages] = useState<Map<string, ImageUploadState>>(new Map())
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  
+  // Mobile breakpoint state
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 844)
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 844)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Load vehicle data when modal opens
   useEffect(() => {
     if (isOpen && vehicleId) {
       loadVehicleData()
+      setCarouselIndex(0)
+      setUploadedImages(new Map())
     }
   }, [isOpen, vehicleId])
 
@@ -37,8 +60,20 @@ export default function VehicleEditModal({
     try {
       setIsLoading(true)
       setError(null)
-      const vehicleData = await getVehicleById(vehicleId)
-      setVehicle(vehicleData)
+      const [vehicleResponse, categoriesResponse] = await Promise.all([
+        getVehicleById(vehicleId).catch(() => ({ success: false, data: null })),
+        getVehicleCategories().catch(() => ({ success: false, data: [] }))
+      ])
+      
+      if (vehicleResponse.success && vehicleResponse.data) {
+        setVehicle(vehicleResponse.data)
+      } else {
+        setError('Failed to load vehicle data. Please try again.')
+      }
+      
+      if (categoriesResponse.success && categoriesResponse.data) {
+        setVehicleCategories(categoriesResponse.data)
+      }
     } catch (err: any) {
       console.error('Failed to load vehicle:', err)
       setError('Failed to load vehicle data. Please try again.')
@@ -46,12 +81,43 @@ export default function VehicleEditModal({
       setIsLoading(false)
     }
   }
+  
+  useEffect(() => {
+    const loadImageTypes = async () => {
+      try {
+        const response = await getVehicleImageTypes()
+        if (response.success && response.data?.allowed_image_types) {
+          setAllowedImageTypes(response.data.allowed_image_types)
+        }
+      } catch (err) {
+        console.error('Failed to load image types:', err)
+      }
+    }
+    if (isOpen) {
+      loadImageTypes()
+    }
+  }, [isOpen])
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const [allowedImageTypes, setAllowedImageTypes] = useState<string[]>([])
+
+  const isAllowedFileType = (file: File): boolean => {
+    // Validate that it's an image file (any image format is allowed)
+    return file.type.startsWith('image/')
+  }
+  
+  const formatImageTypeLabel = (type: string): string => {
+    // Convert "front_exterior" to "Front Exterior"
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  const handleImageSelect = (imageType: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!isAllowedFileType(file)) {
         setError('Please select a valid image file')
         return
       }
@@ -62,48 +128,77 @@ export default function VehicleEditModal({
         return
       }
 
-      setSelectedImage(file)
       setError(null)
       
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
-        setImagePreview(e.target?.result as string)
+        const preview = e.target?.result as string
+        setUploadedImages(prev => {
+          const newMap = new Map(prev)
+          newMap.set(imageType, { file, preview, type: imageType })
+          return newMap
+        })
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleRemoveImage = () => {
-    setSelectedImage(null)
-    setImagePreview(null)
-    setError(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+  const handleRemoveImage = (imageType: string) => {
+    setUploadedImages(prev => {
+      const newMap = new Map(prev)
+      newMap.delete(imageType)
+      return newMap
+    })
+    const input = fileInputRefs.current.get(imageType)
+    if (input) {
+      input.value = ''
+    }
+  }
+
+  const handleImageTypeClick = (imageType: string) => {
+    const input = fileInputRefs.current.get(imageType)
+    if (input) {
+      input.click()
     }
   }
 
   const handleUploadImage = async () => {
-    if (!selectedImage || !vehicle) return
+    if (uploadedImages.size === 0 || !vehicle) {
+      setError('Please select at least one image to upload')
+      return
+    }
 
     setIsUploadingImage(true)
     setError(null)
 
     try {
-      await updateVehicleImage(vehicleId, selectedImage)
-      setSuccess(true)
-      setSelectedImage(null)
-      setImagePreview(null)
+      const imageFiles: File[] = []
+      const imageTypes: string[] = []
       
-      // Refresh vehicle data to show new image
-      await loadVehicleData()
+      uploadedImages.forEach((imageState, type) => {
+        imageFiles.push(imageState.file)
+        imageTypes.push(type)
+      })
       
-      setTimeout(() => {
-        setSuccess(false)
-      }, 3000)
+      const response = await updateVehicleImage(vehicleId, imageFiles, imageTypes)
+      
+      if (response.success) {
+        setSuccess(true)
+        setUploadedImages(new Map())
+        
+        // Refresh vehicle data to show new image
+        await loadVehicleData()
+        
+        setTimeout(() => {
+          setSuccess(false)
+        }, 3000)
+      } else {
+        throw new Error(response.message || 'Failed to upload images')
+      }
     } catch (err: any) {
       console.error('Failed to upload image:', err)
-      setError(err.response?.data?.detail || 'Failed to upload image. Please try again.')
+      setError(err.response?.data?.detail || err.message || 'Failed to upload image. Please try again.')
     } finally {
       setIsUploadingImage(false)
     }
@@ -128,236 +223,485 @@ export default function VehicleEditModal({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      padding: '20px'
+      padding: isMobile ? 'clamp(12px, 2vw, 16px)' : '20px'
     }}>
       <div className="bw-card" style={{
-        maxWidth: '800px',
+        maxWidth: isMobile ? '100%' : '900px',
         width: '100%',
-        maxHeight: '90vh',
+        maxHeight: isMobile ? '95vh' : '90vh',
         overflow: 'auto',
-        position: 'relative'
+        position: 'relative',
+        borderRadius: 'clamp(8px, 1.5vw, 12px)'
       }}>
-        {/* Header */}
+        {/* Edit Vehicle Header at Top */}
         <div className="bw-card-header" style={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'space-between',
           borderBottom: '1px solid var(--bw-border)',
-          paddingBottom: '16px',
-          marginBottom: '24px'
+          padding: isMobile ? 'clamp(16px, 3vw, 24px)' : '16px 24px',
+          gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 2vw, 16px)', flex: 1, width: '100%' }}>
             <div style={{ 
-              width: 40, 
-              height: 40, 
+              width: isMobile ? 'clamp(36px, 5vw, 40px)' : 40, 
+              height: isMobile ? 'clamp(36px, 5vw, 40px)' : 40, 
               border: '1px solid var(--bw-border-strong)', 
               display: 'grid', 
               placeItems: 'center', 
-              borderRadius: 2 
+              borderRadius: 2,
+              flexShrink: 0
             }}>
-              <Edit size={20} />
+              <Edit size={20} style={{ 
+                width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                fontWeight: 300 
+              }} />
             </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: 20 }}>Edit Vehicle</h3>
-              <p className="small-muted" style={{ margin: '4px 0 0 0' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 style={{ 
+                margin: 0, 
+                fontSize: isMobile ? 'clamp(24px, 4vw, 32px)' : '40px',
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: 200,
+                lineHeight: 1.2
+              }}>Edit Vehicle</h3>
+              <p className="small-muted" style={{ 
+                margin: 'clamp(4px, 1vw, 8px) 0 0 0',
+                fontFamily: 'Work Sans, sans-serif',
+                fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px',
+                fontWeight: 300
+              }}>
                 Update vehicle information and image
               </p>
             </div>
           </div>
-          <button
-            onClick={handleClose}
-            className="bw-btn-icon"
-            disabled={isLoading || isSaving || isUploadingImage}
-            style={{ border: 'none', background: 'transparent' }}
-          >
-            <X size={20} />
-          </button>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 'clamp(8px, 1.5vw, 12px)',
+            width: isMobile ? '100%' : 'auto'
+          }}>
+            {onDelete && vehicle && (
+              <button 
+                type="button" 
+                onClick={() => {
+                  onDelete(vehicle.id)
+                  handleClose()
+                }}
+                disabled={isSaving || isUploadingImage}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'clamp(6px, 1.5vw, 8px)',
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) clamp(14px, 3vw, 16px)' : '8px 16px',
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '14px',
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  color: '#dc2626',
+                  border: '1px solid #dc2626',
+                  borderRadius: 'clamp(4px, 1vw, 6px)',
+                  cursor: isSaving || isUploadingImage ? 'not-allowed' : 'pointer',
+                  opacity: isSaving || isUploadingImage ? 0.5 : 1,
+                  transition: 'opacity 0.2s',
+                  flex: isMobile ? 1 : 'none'
+                }}
+              >
+                <Trash size={18} style={{ 
+                  width: isMobile ? 'clamp(16px, 2.5vw, 18px)' : 18,
+                  height: isMobile ? 'clamp(16px, 2.5vw, 18px)' : 18,
+                  fontWeight: 300 
+                }} />
+                <span>Delete</span>
+              </button>
+            )}
+            <button
+              onClick={handleClose}
+              className="bw-btn-icon"
+              disabled={isLoading || isSaving || isUploadingImage}
+              style={{ 
+                border: 'none', 
+                background: 'transparent',
+                width: isMobile ? 'clamp(36px, 5vw, 40px)' : 'auto',
+                height: isMobile ? 'clamp(36px, 5vw, 40px)' : 'auto',
+                minWidth: isMobile ? 'clamp(36px, 5vw, 40px)' : 'auto'
+              }}
+            >
+              <X size={20} style={{ 
+                width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                fontWeight: 300 
+              }} />
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <div className="bw-loading-spinner" style={{ width: '32px', height: '32px', margin: '0 auto 16px' }}></div>
-            <p>Loading vehicle data...</p>
+            <div style={{ textAlign: 'center', padding: isMobile ? 'clamp(32px, 5vw, 48px) clamp(16px, 3vw, 24px)' : '48px 24px' }}>
+            <div className="bw-loading-spinner" style={{ 
+              width: isMobile ? 'clamp(24px, 4vw, 32px)' : '32px', 
+              height: isMobile ? 'clamp(24px, 4vw, 32px)' : '32px', 
+              margin: '0 auto clamp(12px, 2vw, 16px)' 
+            }}></div>
+            <p style={{ 
+              fontFamily: 'Work Sans, sans-serif',
+              fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px'
+            }}>Loading vehicle data...</p>
           </div>
         ) : error ? (
           <div style={{ 
-            padding: '24px', 
+            padding: isMobile ? 'clamp(20px, 3vw, 24px)' : '24px', 
             textAlign: 'center',
-            color: '#dc2626'
+            color: '#dc2626',
+            fontFamily: 'Work Sans, sans-serif'
           }}>
-            <AlertCircle size={48} style={{ marginBottom: '16px' }} />
-            <p>{error}</p>
+            <AlertCircle size={48} style={{ 
+              width: isMobile ? 'clamp(32px, 5vw, 48px)' : 48,
+              height: isMobile ? 'clamp(32px, 5vw, 48px)' : 48,
+              marginBottom: 'clamp(12px, 2vw, 16px)', 
+              fontWeight: 300 
+            }} />
+            <p style={{ fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px' }}>{error}</p>
             <button 
               className="bw-btn-outline" 
               onClick={loadVehicleData}
-              style={{ marginTop: '16px' }}
+              style={{ 
+                marginTop: 'clamp(12px, 2vw, 16px)', 
+                fontFamily: 'Work Sans, sans-serif',
+                padding: isMobile ? 'clamp(10px, 2vw, 12px) clamp(16px, 3vw, 20px)' : '8px 16px',
+                fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+              }}
             >
               Try Again
             </button>
           </div>
         ) : vehicle ? (
-          <div style={{ padding: '0 24px 24px' }}>
+          <div style={{ padding: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px' }}>
             {success && (
               <div style={{ 
-                marginBottom: 24, 
-                padding: '12px', 
+                marginBottom: isMobile ? 'clamp(16px, 3vw, 24px)' : 24, 
+                padding: 'clamp(10px, 2vw, 12px)', 
                 backgroundColor: '#dcfce7', 
                 border: '1px solid #bbf7d0', 
-                borderRadius: '4px',
+                borderRadius: 'clamp(4px, 1vw, 6px)',
                 color: '#166534',
-                fontSize: '14px',
+                fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '14px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: 'clamp(6px, 1.5vw, 8px)',
+                fontFamily: 'Work Sans, sans-serif'
               }}>
-                <CheckCircle size={16} />
+                <CheckCircle size={16} style={{ 
+                  width: isMobile ? 'clamp(14px, 2vw, 16px)' : 16,
+                  height: isMobile ? 'clamp(14px, 2vw, 16px)' : 16,
+                  fontWeight: 300 
+                }} />
                 Image updated successfully!
               </div>
             )}
 
-            {/* Vehicle Information Display */}
-            <div style={{ marginBottom: 32 }}>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Vehicle Information</h4>
-              <div className="bw-info-grid" style={{
-                display: 'grid',
-                gap: '16px',
-                gridTemplateColumns: '1fr 1fr'
-              }}>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Make:</span>
-                  <span className="bw-info-value">{vehicle.make}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Model:</span>
-                  <span className="bw-info-value">{vehicle.model}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Year:</span>
-                  <span className="bw-info-value">{vehicle.year || 'Not specified'}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Color:</span>
-                  <span className="bw-info-value">{vehicle.color || 'Not specified'}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">License Plate:</span>
-                  <span className="bw-info-value">{vehicle.license_plate || 'Not specified'}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Status:</span>
-                  <span className="bw-info-value">{vehicle.status || 'Unknown'}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Category:</span>
-                  <span className="bw-info-value">{vehicle.vehicle_config?.vehicle_category || 'Not set'}</span>
-                </div>
-                <div className="bw-info-item">
-                  <span className="bw-info-label">Seating Capacity:</span>
-                  <span className="bw-info-value">{vehicle.vehicle_config?.seating_capacity || 'Not set'} seats</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Image Management */}
-            <div style={{ marginBottom: 32 }}>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600 }}>Vehicle Image</h4>
+            {/* Image Carousel */}
+            <div style={{ marginBottom: isMobile ? 'clamp(24px, 4vw, 32px)' : 32 }}>
+              <h4 style={{ 
+                margin: '0 0 clamp(12px, 2vw, 16px) 0', 
+                fontSize: isMobile ? 'clamp(16px, 2.5vw, 20px)' : '16px',
+                fontFamily: 'Work Sans, sans-serif',
+                fontWeight: 300
+              }}>Vehicle Images</h4>
               
-              {!imagePreview && !selectedImage ? (
-                <div 
-                  style={{
-                    border: '2px dashed var(--bw-border-strong)',
-                    borderRadius: '8px',
-                    padding: '48px 24px',
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={48} style={{ color: '#6b7280', marginBottom: '16px' }} />
-                  <p style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 500 }}>
-                    Click to upload new image
-                  </p>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-                    PNG, JPG, JPEG up to 5MB
-                  </p>
+              {allowedImageTypes.length === 0 ? (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: isMobile ? 'clamp(20px, 3vw, 24px)' : '24px', 
+                  color: '#6b7280',
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px'
+                }}>
+                  Loading image types...
                 </div>
               ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img 
-                      src={imagePreview || ''} 
-                      alt="Vehicle preview" 
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '300px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--bw-border)'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        right: '-8px',
-                        background: 'var(--bw-error, #C5483D)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '24px',
-                        height: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
+                <div style={{ position: 'relative' }}>
+                  {/* Carousel Container */}
+                  <div 
+                    ref={carouselRef}
+                    style={{
+                      display: 'flex',
+                      gap: isMobile ? 'clamp(8px, 1.5vw, 12px)' : '6px',
+                      overflowX: 'auto',
+                      overflowY: 'hidden',
+                      scrollBehavior: 'smooth',
+                      padding: isMobile ? 'clamp(8px, 1.5vw, 12px) 0' : '8px 0',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'var(--bw-border) var(--bw-bg)'
+                    }}
+                    onScroll={(e) => {
+                      const container = e.currentTarget
+                      const scrollLeft = container.scrollLeft
+                      const itemWidth = isMobile ? (Math.min(Math.max(150, window.innerWidth * 0.25), 225) + 12) : (225 + 6)
+                      const newIndex = Math.round(scrollLeft / itemWidth)
+                      setCarouselIndex(newIndex)
+                    }}
+                  >
+                    {allowedImageTypes.map((imageType) => {
+                      const uploadedImage = uploadedImages.get(imageType)
+                      const existingImageUrl = vehicle.vehicle_images?.[imageType] as string | undefined
+                      const hasImage = !!(uploadedImage || existingImageUrl)
+                      const imageSize = isMobile ? 'clamp(150px, 25vw, 225px)' : '225px'
+                      
+                      return (
+                        <div
+                          key={imageType}
+                          style={{
+                            minWidth: imageSize,
+                            width: imageSize,
+                            height: imageSize,
+                            position: 'relative',
+                            flexShrink: 0,
+                            border: '2px solid var(--bw-border)',
+                            borderRadius: isMobile ? 'clamp(6px, 1.5vw, 8px)' : '8px',
+                            overflow: 'hidden',
+                            backgroundColor: 'var(--bw-bg-secondary)',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--bw-accent)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = 'var(--bw-border)'
+                          }}
+                          onClick={() => handleImageTypeClick(imageType)}
+                        >
+                          {hasImage ? (
+                            <>
+                              <img
+                                src={uploadedImage?.preview || existingImageUrl}
+                                alt={formatImageTypeLabel(imageType)}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
+                              />
+                              {uploadedImage && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: isMobile ? 'clamp(4px, 1vw, 6px)' : '4px',
+                                  right: isMobile ? 'clamp(4px, 1vw, 6px)' : '4px',
+                                  background: 'var(--bw-success, #1E7F4A)',
+                                  borderRadius: '50%',
+                                  width: isMobile ? 'clamp(18px, 3vw, 20px)' : '20px',
+                                  height: isMobile ? 'clamp(18px, 3vw, 20px)' : '20px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}>
+                                  <CheckCircle size={12} style={{
+                                    width: isMobile ? 'clamp(10px, 2vw, 12px)' : 12,
+                                    height: isMobile ? 'clamp(10px, 2vw, 12px)' : 12,
+                                    color: 'white'
+                                  }} />
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: isMobile ? 'clamp(6px, 1.5vw, 8px)' : '8px',
+                              padding: isMobile ? 'clamp(10px, 2vw, 12px)' : '12px',
+                              textAlign: 'center'
+                            }}>
+                              <Upload size={24} style={{ 
+                                width: isMobile ? 'clamp(20px, 3vw, 24px)' : 24,
+                                height: isMobile ? 'clamp(20px, 3vw, 24px)' : 24,
+                                color: 'var(--bw-muted)', 
+                                fontWeight: 300 
+                              }} />
+                              <span style={{
+                                fontSize: isMobile ? 'clamp(10px, 1.5vw, 11px)' : '11px',
+                                color: 'var(--bw-muted)',
+                                lineHeight: '1.2',
+                                fontFamily: 'Work Sans, sans-serif'
+                              }}>
+                                {formatImageTypeLabel(imageType)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Image Type Label Overlay */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+                            padding: isMobile ? 'clamp(6px, 1.5vw, 8px)' : '8px',
+                            color: 'white',
+                            fontSize: isMobile ? 'clamp(9px, 1.3vw, 10px)' : '10px',
+                            fontWeight: 300,
+                            textAlign: 'center',
+                            fontFamily: 'Work Sans, sans-serif'
+                          }}>
+                            {formatImageTypeLabel(imageType)}
+                          </div>
+                          
+                          <input
+                            ref={(el) => {
+                              if (el) {
+                                fileInputRefs.current.set(imageType, el)
+                              }
+                            }}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageSelect(imageType)}
+                            style={{ display: 'none' }}
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
+                  
+                  {/* Carousel Navigation */}
+                  {allowedImageTypes.length > (isMobile ? 2 : 4) && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (carouselRef.current) {
+                            const itemWidth = isMobile ? (Math.min(Math.max(150, window.innerWidth * 0.25), 225) + 12) : 231
+                            const newScroll = Math.max(0, carouselRef.current.scrollLeft - itemWidth * (isMobile ? 2 : 3))
+                            carouselRef.current.scrollLeft = newScroll
+                          }
+                        }}
+                        disabled={carouselIndex === 0}
+                        style={{
+                          position: 'absolute',
+                          left: isMobile ? 'clamp(-12px, -2vw, -8px)' : '-20px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'var(--bw-bg-secondary)',
+                          border: '1px solid var(--bw-border)',
+                          borderRadius: '50%',
+                          width: isMobile ? 'clamp(32px, 5vw, 36px)' : '36px',
+                          height: isMobile ? 'clamp(32px, 5vw, 36px)' : '36px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: carouselIndex === 0 ? 'not-allowed' : 'pointer',
+                          zIndex: 10,
+                          color: 'var(--bw-text)',
+                          opacity: carouselIndex === 0 ? 0.5 : 1
+                        }}
+                      >
+                        <ChevronLeft size={20} style={{ 
+                          width: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
+                          height: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
+                          fontWeight: 300 
+                        }} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (carouselRef.current) {
+                            const itemWidth = isMobile ? (Math.min(Math.max(150, window.innerWidth * 0.25), 225) + 12) : 231
+                            const maxScroll = carouselRef.current.scrollWidth - carouselRef.current.clientWidth
+                            const newScroll = Math.min(maxScroll, carouselRef.current.scrollLeft + itemWidth * (isMobile ? 2 : 3))
+                            carouselRef.current.scrollLeft = newScroll
+                          }
+                        }}
+                        disabled={carouselIndex >= allowedImageTypes.length - (isMobile ? 2 : 4)}
+                        style={{
+                          position: 'absolute',
+                          right: isMobile ? 'clamp(-12px, -2vw, -8px)' : '-20px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'var(--bw-bg-secondary)',
+                          border: '1px solid var(--bw-border)',
+                          borderRadius: '50%',
+                          width: isMobile ? 'clamp(32px, 5vw, 36px)' : '36px',
+                          height: isMobile ? 'clamp(32px, 5vw, 36px)' : '36px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: carouselIndex >= allowedImageTypes.length - (isMobile ? 2 : 4) ? 'not-allowed' : 'pointer',
+                          zIndex: 10,
+                          color: 'var(--bw-text)',
+                          opacity: carouselIndex >= allowedImageTypes.length - (isMobile ? 2 : 4) ? 0.5 : 1
+                        }}
+                      >
+                        <ChevronRight size={20} style={{ 
+                          width: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
+                          height: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
+                          fontWeight: 300 
+                        }} />
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                style={{ display: 'none' }}
-              />
-
-              {selectedImage && (
+              {uploadedImages.size > 0 && (
                 <div style={{ 
                   display: 'flex', 
-                  gap: '16px', 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '16px', 
                   justifyContent: 'center', 
-                  marginTop: '16px' 
+                  marginTop: 'clamp(12px, 2vw, 16px)',
+                  width: '100%'
                 }}>
                   <button 
                     type="button" 
                     className="bw-btn-outline" 
-                    onClick={handleRemoveImage}
+                    onClick={() => setUploadedImages(new Map())}
                     disabled={isUploadingImage}
+                    style={{ 
+                      fontFamily: 'Work Sans, sans-serif',
+                      padding: isMobile ? 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)' : '8px 16px',
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      width: isMobile ? '100%' : 'auto'
+                    }}
                   >
-                    Cancel
+                    Clear All
                   </button>
                   <button 
                     type="button" 
                     className="bw-btn bw-btn-action" 
                     onClick={handleUploadImage}
                     disabled={isUploadingImage}
+                    style={{ 
+                      fontFamily: 'Work Sans, sans-serif',
+                      padding: isMobile ? 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)' : '8px 16px',
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      width: isMobile ? '100%' : 'auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 'clamp(6px, 1.5vw, 8px)'
+                    }}
                   >
                     {isUploadingImage ? (
                       <>
-                        <div className="bw-loading-spinner" style={{ width: '16px', height: '16px' }}></div>
+                        <div className="bw-loading-spinner" style={{ 
+                          width: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px', 
+                          height: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px' 
+                        }}></div>
                         Uploading...
                       </>
                     ) : (
                       <>
-                        <Upload className="w-4 h-4" />
-                        Upload New Image
+                        <Upload className="w-4 h-4" style={{ 
+                          width: isMobile ? 'clamp(16px, 2.5vw, 18px)' : 18,
+                          height: isMobile ? 'clamp(16px, 2.5vw, 18px)' : 18,
+                          fontWeight: 300 
+                        }} />
+                        Upload {uploadedImages.size} Image{uploadedImages.size !== 1 ? 's' : ''}
                       </>
                     )}
                   </button>
@@ -365,19 +709,160 @@ export default function VehicleEditModal({
               )}
             </div>
 
+            {/* Vehicle Information Display - At Bottom */}
+            <div style={{ 
+              borderTop: '1px solid var(--bw-border)', 
+              paddingTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px',
+              marginTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px'
+            }}>
+              <h4 style={{ 
+                margin: '0 0 clamp(12px, 2vw, 16px) 0', 
+                fontSize: isMobile ? 'clamp(16px, 2.5vw, 20px)' : '16px',
+                fontFamily: 'Work Sans, sans-serif',
+                fontWeight: 300
+              }}>Vehicle Information</h4>
+              <div className="bw-info-grid" style={{
+                display: 'grid',
+                gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '16px',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr'
+              }}>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Make:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.make}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Model:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.model}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Year:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.year || 'Not specified'}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Color:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.color || 'Not specified'}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>License Plate:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.license_plate || 'Not specified'}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Status:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.status || 'Unknown'}</span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: '1px solid var(--bw-border)'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Category:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>
+                    {vehicleCategories.find(cat => cat.id === vehicle.vehicle_category_id)?.vehicle_category || 'Not set'}
+                  </span>
+                </div>
+                <div className="bw-info-item" style={{
+                  padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                  borderBottom: 'none'
+                }}>
+                  <span className="bw-info-label" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                  }}>Seating Capacity:</span>
+                  <span className="bw-info-value" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontWeight: 400,
+                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                  }}>{vehicle.seating_capacity || 'Not set'} seats</span>
+                </div>
+              </div>
+            </div>
+
             {/* Actions */}
             <div style={{ 
               display: 'flex', 
-              gap: '16px', 
+              gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '16px', 
               justifyContent: 'flex-end', 
               borderTop: '1px solid var(--bw-border)', 
-              paddingTop: '24px' 
+              paddingTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px',
+              marginTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px'
             }}>
               <button 
                 type="button" 
                 className="bw-btn-outline" 
                 onClick={handleClose}
                 disabled={isSaving || isUploadingImage}
+                style={{ 
+                  fontFamily: 'Work Sans, sans-serif',
+                  padding: isMobile ? 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)' : '8px 16px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  width: isMobile ? '100%' : 'auto'
+                }}
               >
                 Close
               </button>

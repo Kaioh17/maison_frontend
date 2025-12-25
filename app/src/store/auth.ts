@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import { UserRole } from '@config'
 import { jwtDecode } from 'jwt-decode'
 
-type TokenPayload = { id: string; role: UserRole; tenant_id?: string }
+type TokenPayload = { id: string; role: UserRole; tenant_id?: string; exp?: number }
 
 type AuthState = {
   accessToken: string | null

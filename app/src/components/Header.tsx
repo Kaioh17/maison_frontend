@@ -9,7 +9,7 @@ export default function Header() {
       <nav className="hstack">
         {!accessToken ? (
           <>
-            <Link to="/login" className="btn secondary">Login</Link>
+            <Link to="/tenant/login" className="btn secondary">Login</Link>
             <Link to="/signup" className="btn">Create Account</Link>
           </>
         ) : (
