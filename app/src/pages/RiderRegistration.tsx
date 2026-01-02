@@ -3,10 +3,13 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight } from 'lucide
 import { createUser } from '@api/user'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, useSearchParams, Link, useParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { useFavicon } from '@hooks/useFavicon'
+import CountryAutocomplete from '@components/CountryAutocomplete'
 
 export default function RiderRegistration() {
+  useFavicon()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -26,7 +29,6 @@ export default function RiderRegistration() {
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const [searchParams] = useSearchParams()
-  const { slug } = useParams<{ slug?: string }>()
   const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
   const tenantId = searchParams.get('tenant_id') || tenantInfo?.tenant_id?.toString() || ''
   
@@ -157,9 +159,8 @@ export default function RiderRegistration() {
       // Auto-login after registration
       const data = await loginRider(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
-      // Navigate to profile with slug if available
-      const slug = tenantInfo?.slug
-      navigate(slug ? `/${slug}/riders/profile` : '/riders/profile', { replace: true })
+      // Navigate to profile
+      navigate('/riders/profile', { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Registration failed. Please try again.')
     } finally {
@@ -470,7 +471,8 @@ export default function RiderRegistration() {
                 style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
                 placeholder="NY" 
                 value={formData.state}
-                onChange={handleInputChange} 
+                onChange={handleInputChange}
+                maxLength={2}
               />
             </div>
 
@@ -479,16 +481,13 @@ export default function RiderRegistration() {
               <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code</label>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <input 
-                id="country" 
-                name="country" 
-                type="text" 
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="USA" 
+              <CountryAutocomplete
                 value={formData.country}
-                onChange={handleInputChange} 
+                onChange={(value) => setFormData({ ...formData, country: value })}
+                placeholder="USA"
+                className="bw-input"
+                style={{ padding: '16px 18px', borderRadius: 0 }}
+                required
               />
               <input 
                 id="postal_code" 
@@ -499,7 +498,8 @@ export default function RiderRegistration() {
                 style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
                 placeholder="10001" 
                 value={formData.postal_code}
-                onChange={handleInputChange} 
+                onChange={handleInputChange}
+                maxLength={10}
               />
             </div>
 
@@ -550,7 +550,7 @@ export default function RiderRegistration() {
               </div>
               <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
                 Already have an account?{' '}
-                <Link to={slug ? `/${slug}/riders/login` : '/'} style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
+                <Link to="/riders/login" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
                   signin
                 </Link>
               </p>

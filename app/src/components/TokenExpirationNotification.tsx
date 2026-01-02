@@ -91,8 +91,8 @@ export default function TokenExpirationNotification() {
   const handleRefreshToken = async () => {
     try {
       const response = await refreshTenantToken()
-      if (response.new_access_token) {
-        setAccessToken(response.new_access_token)
+      if (response.access_token) {
+        setAccessToken(response.access_token)
         setShowNotification(false)
         setIsExpired(false)
         setTimeRemaining(null)

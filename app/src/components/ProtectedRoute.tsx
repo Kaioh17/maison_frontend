@@ -1,23 +1,26 @@
 import { ReactNode } from 'react'
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
 import { UserRole } from '@config'
+import { useTenantSlug } from '@hooks/useTenantSlug'
 
 export default function ProtectedRoute({ allowRoles, children }: { allowRoles: UserRole[]; children: ReactNode }) {
   const { accessToken, role, isAuthenticated } = useAuthStore()
   const location = useLocation()
-  const { slug } = useParams<{ slug?: string }>()
+  const slug = useTenantSlug()
 
   // Determine redirect path based on role and slug
   const getLoginPath = () => {
-    if (role === 'rider' && slug) {
-      return `/${slug}/riders/login`
+    if (role === 'rider') {
+      // Riders must have a valid subdomain
+      return '/riders/login'
     }
     if (role === 'tenant') {
       return '/tenant/login'
     }
     if (role === 'driver') {
-      return '/driver' // Drivers might have their own login, adjust if needed
+      // Drivers must have a valid subdomain
+      return '/driver/login'
     }
     return '/tenant/login' // Default to tenant login
   }

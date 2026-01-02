@@ -1,36 +1,47 @@
 import { useEffect, useState } from 'react'
 import { createBooking, getBookings, type BookingResponse } from '@api/bookings'
-import { getVehicles, getVehicleCategories, type VehicleResponse, type VehicleCategoryResponse } from '@api/vehicles'
-import { getRiderDrivers, type RiderDriverResponse } from '@api/driver'
+import { getVehicles, type VehicleResponse } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
-import { MapPin, Calendar, CreditCard, Car, User, LogOut, UserCircle, Menu, X, LayoutDashboard, BookOpen, List, Users, Truck, Phone, CheckCircle, XCircle } from 'lucide-react'
+import { useFavicon } from '@hooks/useFavicon'
+import { MapPin, Calendar, CreditCard, Car, User, LogOut, UserCircle, Menu, X, LayoutDashboard, BookOpen, List, Truck } from 'lucide-react'
+import LocationAutocomplete from '@components/LocationAutocomplete'
+import CountryAutocomplete from '@components/CountryAutocomplete'
 
-type MenuSection = 'dashboard' | 'book-ride' | 'all-bookings' | 'drivers' | 'vehicles'
+type MenuSection = 'dashboard' | 'book-ride' | 'all-bookings' | 'vehicles'
 
 export default function RiderDashboard() {
+  useFavicon()
   const [form, setForm] = useState({
     vehicle_id: 0,
-    city: '',
+    country: '',
     service_type: 'dropoff' as 'airport' | 'hourly' | 'dropoff',
+    airport_service: '' as 'to_airport' | 'from_airport' | '',
     pickup_location: '',
     dropoff_location: '',
+    airport_location: '',
     pickup_time_local: '',
-    dropoff_time_local: '',
-    payment_method: 'cash' as 'cash' | 'card' | 'zelle',
-    notes: ''
+    hours: 0,
+    notes: '',
+    pickup_coordinates: null as { lat: number; lng: number } | null,
+    dropoff_coordinates: null as { lat: number; lng: number } | null,
+    airport_coordinates: null as { lat: number; lng: number } | null,
   })
   const [bookings, setBookings] = useState<BookingResponse[]>([])
   const [vehicles, setVehicles] = useState<VehicleResponse[]>([])
-  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategoryResponse[]>([])
-  const [drivers, setDrivers] = useState<RiderDriverResponse[]>([])
-  const [selectedDriver, setSelectedDriver] = useState<RiderDriverResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingDriver, setIsLoadingDriver] = useState(false)
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false)
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(false)
+  const [isLoading, setIsLoading] = useState(false) // Only for booking creation
   const [error, setError] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [totalBookings, setTotalBookings] = useState(0)
+  
   const { tenantInfo, slug } = useTenantInfo()
   const navigate = useNavigate()
   const location = useLocation()
@@ -46,126 +57,259 @@ export default function RiderDashboard() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const formatPhoneNumber = (phone: string): string => {
-    if (!phone) return 'N/A'
-    // Remove all non-digit characters
-    const phoneNumber = phone.replace(/\D/g, '')
-    
-    // Format based on length
-    if (phoneNumber.length === 0) {
-      return phone // Return original if no digits
-    } else if (phoneNumber.length <= 3) {
-      return `(${phoneNumber}`
-    } else if (phoneNumber.length <= 6) {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`
-    } else if (phoneNumber.length <= 10) {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6)}`
-    } else {
-      // For longer numbers, format first 10 digits
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)} ${phoneNumber.slice(10)}`
-    }
-  }
-
-  const load = async () => {
+  // Separate loading functions
+  const loadBookings = async (page: number = 1, limit?: number, section?: MenuSection) => {
     try {
-      setIsLoading(true)
-      const [bookingsResponse, vehiclesResponse, categoriesResponse, driversResponse] = await Promise.all([
-        getBookings(),
-        getVehicles().catch(() => ({ success: false, data: [] })), // Fallback if fails
-        getVehicleCategories().catch(() => ({ success: false, data: [] })), // Fallback if fails
-        getRiderDrivers().catch(() => ({ success: false, data: [] })) // Fallback if fails
-      ])
+      setIsLoadingBookings(true)
+      setError('')
+      
+      // For dashboard, load all bookings (no pagination) to get accurate stats
+      // For all-bookings, use pagination
+      const currentSection = section || activeSection
+      const params = currentSection === 'dashboard' 
+        ? undefined // Load all bookings for dashboard stats
+        : { page, limit: limit || pageSize }
+      
+      const bookingsResponse = await getBookings(params)
       
       if (bookingsResponse.success && bookingsResponse.data) {
         setBookings(bookingsResponse.data)
+        // For dashboard, total is the length of all loaded bookings
+        // For all-bookings, we'll use the length as an approximation (API might not return total count)
+        setTotalBookings(bookingsResponse.data.length)
       } else {
         setBookings([])
+        setTotalBookings(0)
       }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load bookings')
+      setBookings([])
+      setTotalBookings(0)
+    } finally {
+      setIsLoadingBookings(false)
+    }
+  }
+
+  const loadVehicles = async () => {
+    try {
+      setIsLoadingVehicles(true)
+      setError('')
+      
+      const vehiclesResponse = await getVehicles()
       
       if (vehiclesResponse.success && vehiclesResponse.data) {
         setVehicles(vehiclesResponse.data)
       } else {
         setVehicles([])
       }
-
-      if (categoriesResponse.success && categoriesResponse.data) {
-        setVehicleCategories(categoriesResponse.data)
-      } else {
-        setVehicleCategories([])
-      }
-
-      if (driversResponse.success && driversResponse.data) {
-        setDrivers(driversResponse.data)
-      } else {
-        setDrivers([])
-      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load data')
-      setBookings([])
+      setError(err.response?.data?.detail || 'Failed to load vehicles')
       setVehicles([])
-      setVehicleCategories([])
-      setDrivers([])
     } finally {
-      setIsLoading(false)
+      setIsLoadingVehicles(false)
     }
   }
 
-  const loadDriverDetails = async (driverId: number) => {
-    try {
-      setIsLoadingDriver(true)
-      const response = await getRiderDrivers(driverId)
-      if (response.success && response.data && response.data.length > 0) {
-        setSelectedDriver(response.data[0])
-      } else {
-        setError('Driver details not found')
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to load driver details')
-    } finally {
-      setIsLoadingDriver(false)
-    }
+  // Determine active section from URL
+  const getActiveSectionFromUrl = (): MenuSection => {
+    const path = location.pathname
+    if (path.includes('/rider/book')) return 'book-ride'
+    if (path.includes('/rider/see-bookings')) return 'all-bookings'
+    if (path.includes('/rider/vehicles')) return 'vehicles'
+    if (path.includes('/rider/dashboard')) return 'dashboard'
+    // Default to dashboard
+    return 'dashboard'
   }
 
+  const activeSection = getActiveSectionFromUrl()
+
+  // Track which section last loaded bookings to avoid unnecessary reloads
+  const [lastBookingsSection, setLastBookingsSection] = useState<MenuSection | null>(null)
+
+  // Section-based loading
   useEffect(() => {
-    load()
-  }, [])
+    // Load bookings for dashboard or all-bookings sections
+    if (activeSection === 'dashboard' || activeSection === 'all-bookings') {
+      // For dashboard: load all bookings if we haven't loaded for dashboard yet, or if we're switching from all-bookings
+      // For all-bookings: load with pagination if we haven't loaded for all-bookings yet, or if we're switching from dashboard
+      const needsReload = 
+        (activeSection === 'dashboard' && lastBookingsSection !== 'dashboard') ||
+        (activeSection === 'all-bookings' && (lastBookingsSection !== 'all-bookings' || bookings.length === 0))
+      
+      if (needsReload && !isLoadingBookings) {
+        loadBookings(activeSection === 'all-bookings' ? currentPage : 1, undefined, activeSection)
+        setLastBookingsSection(activeSection)
+      }
+    }
+    
+    // Load vehicles for book-ride or vehicles sections
+    if (activeSection === 'book-ride' || activeSection === 'vehicles') {
+      if (vehicles.length === 0 && !isLoadingVehicles) {
+        loadVehicles()
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, location.pathname])
+
+  // Reload bookings when page changes in all-bookings section
+  useEffect(() => {
+    if (activeSection === 'all-bookings' && currentPage > 1 && !isLoadingBookings) {
+      loadBookings(currentPage, undefined, 'all-bookings')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage])
 
   const book = async () => {
-    if (!form.pickup_location || !form.dropoff_location || !form.city || !form.pickup_time_local || !form.vehicle_id) {
-      setError('Please fill in all required fields including vehicle selection')
+    // Dynamic validation based on service type
+    let isValid = true
+    let errorMessage = 'Please fill in all required fields including vehicle selection'
+
+    if (!form.country || !form.pickup_time_local || !form.vehicle_id) {
+      isValid = false
+    }
+
+    if (form.service_type === 'airport') {
+      if (!form.airport_service) {
+        isValid = false
+        errorMessage = 'Please select airport service type (To Airport or From Airport)'
+      } else if (form.airport_service === 'to_airport') {
+        if (!form.pickup_location || !form.airport_location) {
+          isValid = false
+          errorMessage = 'Please fill in pickup location and airport location'
+        }
+      } else if (form.airport_service === 'from_airport') {
+        if (!form.airport_location || !form.dropoff_location) {
+          isValid = false
+          errorMessage = 'Please fill in airport location and dropoff location'
+        }
+      }
+    } else if (form.service_type === 'hourly') {
+      if (!form.pickup_location || form.hours <= 0) {
+        isValid = false
+        errorMessage = 'Please fill in pickup location and hours (must be greater than 0)'
+      }
+    } else {
+      // dropoff service
+      if (!form.pickup_location || !form.dropoff_location) {
+        isValid = false
+        errorMessage = 'Please fill in pickup and dropoff locations'
+      }
+    }
+
+    if (!isValid) {
+      setError(errorMessage)
       return
     }
 
     try {
       setIsLoading(true)
       setError('')
-      const response = await createBooking({
-        vehicle_id: form.vehicle_id,
-        city: form.city,
-        service_type: form.service_type,
-        pickup_location: form.pickup_location,
-        pickup_time: new Date(form.pickup_time_local).toISOString(),
-        dropoff_location: form.dropoff_location,
-        dropoff_time: form.dropoff_time_local ? new Date(form.dropoff_time_local).toISOString() : undefined,
-        payment_method: form.payment_method,
-        notes: form.notes || undefined,
+      
+      // Build coordinates object based on service type
+      let coordinates: { plat: number; plon: number; dlat: number; dlon: number } | undefined
+
+      if (form.service_type === 'airport') {
+        if (form.airport_service === 'to_airport') {
+          // Pickup location + Airport location
+          if (form.pickup_coordinates && form.airport_coordinates) {
+            coordinates = {
+              plat: form.pickup_coordinates.lat,
+              plon: form.pickup_coordinates.lng,
+              dlat: form.airport_coordinates.lat,
+              dlon: form.airport_coordinates.lng,
+            }
+          }
+        } else if (form.airport_service === 'from_airport') {
+          // Airport location + Dropoff location
+          if (form.airport_coordinates && form.dropoff_coordinates) {
+            coordinates = {
+              plat: form.airport_coordinates.lat,
+              plon: form.airport_coordinates.lng,
+              dlat: form.dropoff_coordinates.lat,
+              dlon: form.dropoff_coordinates.lng,
+            }
+          }
+        }
+      } else if (form.service_type === 'hourly') {
+        // Hourly service - dropoff is optional, so use 0 if not provided
+        if (form.pickup_coordinates) {
+          coordinates = {
+            plat: form.pickup_coordinates.lat,
+            plon: form.pickup_coordinates.lng,
+            dlat: form.dropoff_coordinates?.lat || 0,
+            dlon: form.dropoff_coordinates?.lng || 0,
+          }
+        }
+      } else {
+        // Regular dropoff service
+        if (form.pickup_coordinates && form.dropoff_coordinates) {
+          coordinates = {
+            plat: form.pickup_coordinates.lat,
+            plon: form.pickup_coordinates.lng,
+            dlat: form.dropoff_coordinates.lat,
+            dlon: form.dropoff_coordinates.lng,
+          }
+        }
+      }
+
+      // Log coordinates for debugging
+      console.log('Coordinates being sent:', coordinates)
+      console.log('Form coordinates state:', {
+        pickup: form.pickup_coordinates,
+        dropoff: form.dropoff_coordinates,
+        airport: form.airport_coordinates
       })
-      if (response.success) {
+
+      // Determine pickup and dropoff locations based on service type
+      let pickupLocation = form.pickup_location
+      let dropoffLocation = form.dropoff_location
+
+      if (form.service_type === 'airport') {
+        if (form.airport_service === 'to_airport') {
+          dropoffLocation = form.airport_location
+        } else if (form.airport_service === 'from_airport') {
+          pickupLocation = form.airport_location
+        }
+      }
+
+      const bookingPayload = {
+        vehicle_id: form.vehicle_id,
+        country: form.country,
+        service_type: form.service_type,
+        pickup_location: pickupLocation,
+        pickup_time: new Date(form.pickup_time_local).toISOString(),
+        dropoff_location: dropoffLocation,
+        notes: form.notes || undefined,
+        coordinates,
+        airport_service: form.service_type === 'airport' && form.airport_service ? (form.airport_service as 'to_airport' | 'from_airport') : undefined,
+        hours: form.service_type === 'hourly' ? form.hours : undefined,
+      }
+
+      // Log the booking request to console
+      console.log('Booking Request:', bookingPayload)
+
+      const response = await createBooking(bookingPayload)
+      if (response.success && response.data) {
         setForm({ 
           vehicle_id: 0, 
-          city: '', 
-          service_type: 'dropoff', 
+          country: '', 
+          service_type: 'dropoff',
+          airport_service: '',
           pickup_location: '', 
-          dropoff_location: '', 
-          pickup_time_local: '', 
-          dropoff_time_local: '',
-          payment_method: 'cash', 
-          notes: '' 
+          dropoff_location: '',
+          airport_location: '',
+          pickup_time_local: '',
+          hours: 0,
+          notes: '',
+          pickup_coordinates: null,
+          dropoff_coordinates: null,
+          airport_coordinates: null,
         })
         setError('')
-        await load()
-        handleMenuSelect('all-bookings')
-        setIsMenuOpen(false)
+        // Navigate to confirmation page with booking data
+        navigate('/rider/confirm-booking', {
+          state: { booking: response.data }
+        })
       } else {
         setError(response.message || 'Failed to create booking')
       }
@@ -214,7 +358,7 @@ export default function RiderDashboard() {
     .sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime())
     .slice(0, 5)
 
-  const totalBookings = bookings.length
+  const dashboardTotalBookings = bookings.length
   const completedBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'completed').length
   const pendingBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
 
@@ -222,36 +366,19 @@ export default function RiderDashboard() {
     { id: 'dashboard' as MenuSection, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'book-ride' as MenuSection, label: 'Book a Ride', icon: BookOpen },
     { id: 'all-bookings' as MenuSection, label: 'See All Bookings', icon: List },
-    { id: 'drivers' as MenuSection, label: 'See Drivers', icon: Users },
     { id: 'vehicles' as MenuSection, label: 'See Vehicles', icon: Truck },
   ]
-
-  // Determine active section from URL
-  const getActiveSectionFromUrl = (): MenuSection => {
-    const path = location.pathname
-    if (path.includes('/rider/book')) return 'book-ride'
-    if (path.includes('/rider/see-bookings')) return 'all-bookings'
-    if (path.includes('/rider/drivers')) return 'drivers'
-    if (path.includes('/rider/vehicles')) return 'vehicles'
-    if (path.includes('/rider/dashboard')) return 'dashboard'
-    // Default to dashboard
-    return 'dashboard'
-  }
-
-  const activeSection = getActiveSectionFromUrl()
 
   const handleMenuSelect = (section: MenuSection) => {
     // Navigate to the appropriate URL
     if (section === 'dashboard') {
-      navigate(slug ? `/${slug}/rider/dashboard` : '/rider/dashboard')
+      navigate('/rider/dashboard')
     } else if (section === 'book-ride') {
-      navigate(slug ? `/${slug}/rider/book` : '/rider/book')
+      navigate('/rider/book')
     } else if (section === 'all-bookings') {
-      navigate(slug ? `/${slug}/rider/see-bookings` : '/rider/see-bookings')
-    } else if (section === 'drivers') {
-      navigate(slug ? `/${slug}/rider/drivers` : '/rider/drivers')
+      navigate('/rider/see-bookings')
     } else if (section === 'vehicles') {
-      navigate(slug ? `/${slug}/rider/vehicles` : '/rider/vehicles')
+      navigate('/rider/vehicles')
     }
     setIsMenuOpen(false) // Close menu on mobile when selecting
   }
@@ -421,7 +548,7 @@ export default function RiderDashboard() {
           gap: '12px'
         }}>
           <Link 
-            to={slug ? `/${slug}/riders/profile` : '/riders/profile'} 
+            to="/riders/profile" 
             style={{ textDecoration: 'none' }}
           >
             <button 
@@ -448,7 +575,8 @@ export default function RiderDashboard() {
           <button
             onClick={() => {
               useAuthStore.getState().logout()
-              navigate(slug ? `/${slug}/riders/login` : '/', { replace: true })
+              // Login URL - subdomain handles tenant context
+              navigate('/riders/login', { replace: true })
             }}
             style={{
               width: '100%',
@@ -544,6 +672,18 @@ export default function RiderDashboard() {
         {/* Dashboard Section */}
         {activeSection === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 24px)' }}>
+            {isLoadingBookings && bookings.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: 'clamp(40px, 8vw, 60px)',
+                color: 'var(--bw-text)',
+                opacity: 0.6,
+                fontSize: 'clamp(14px, 2.5vw, 16px)'
+              }}>
+                Loading dashboard...
+              </div>
+            ) : (
+              <>
             {/* Stats Cards - 2x2 Grid on Mobile */}
             <div 
               className="rider-stats-grid"
@@ -567,7 +707,7 @@ export default function RiderDashboard() {
                   marginBottom: '8px',
                   fontFamily: 'Work Sans, sans-serif'
                 }}>
-                  {totalBookings}
+                  {dashboardTotalBookings}
                 </div>
                 <div style={{
                   fontSize: 'clamp(12px, 2vw, 14px)',
@@ -845,7 +985,7 @@ export default function RiderDashboard() {
               </div>
             )}
 
-            {recentBookings.length === 0 && upcomingBookings.length === 0 && (
+            {recentBookings.length === 0 && upcomingBookings.length === 0 && !isLoadingBookings && (
               <div style={{
                 textAlign: 'center',
                 padding: 'clamp(40px, 8vw, 60px)',
@@ -856,6 +996,8 @@ export default function RiderDashboard() {
                 No bookings yet. Book your first ride!
               </div>
             )}
+              </>
+            )}
           </div>
         )}
 
@@ -865,7 +1007,9 @@ export default function RiderDashboard() {
             backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
             border: '1px solid var(--bw-border)',
             borderRadius: '12px',
-            padding: 'clamp(16px, 3vw, 20px)'
+            padding: 'clamp(16px, 3vw, 20px)',
+            position: 'relative',
+            overflow: 'visible'
           }}>
             <h2 style={{
               margin: '0 0 clamp(16px, 3vw, 20px) 0',
@@ -880,7 +1024,9 @@ export default function RiderDashboard() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 'clamp(12px, 2.5vw, 16px)'
+              gap: 'clamp(12px, 2.5vw, 16px)',
+              position: 'relative',
+              overflow: 'visible'
             }}>
               {/* Service Type and Payment Method */}
               <div style={{
@@ -901,7 +1047,12 @@ export default function RiderDashboard() {
                   <select 
                     className="bw-input" 
                     value={form.service_type} 
-                    onChange={(e) => setForm({ ...form, service_type: e.target.value as any })}
+                    onChange={(e) => setForm({ 
+                      ...form, 
+                      service_type: e.target.value as any,
+                      airport_service: '', // Reset airport service when changing service type
+                      hours: 0, // Reset hours when changing service type
+                    })}
                     style={{
                       width: '100%',
                       padding: 'clamp(10px, 2vw, 12px)',
@@ -919,40 +1070,43 @@ export default function RiderDashboard() {
                   </select>
                 </div>
 
-                <div>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontSize: 'clamp(13px, 2vw, 14px)',
-                    fontWeight: 500,
-                    color: 'var(--bw-text)'
-                  }}>
-                    Payment Method
-                  </label>
-                  <select 
-                    className="bw-input" 
-                    value={form.payment_method} 
-                    onChange={(e) => setForm({ ...form, payment_method: e.target.value as any })}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(10px, 2vw, 12px)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--bw-border)',
-                      backgroundColor: 'var(--bw-bg)',
-                      color: 'var(--bw-text)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)'
-                    }}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="zelle">Zelle</option>
-                  </select>
-                </div>
+                {/* Airport Service Type - Only show when service_type is airport */}
+                {form.service_type === 'airport' && (
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: 'clamp(13px, 2vw, 14px)',
+                      fontWeight: 500,
+                      color: 'var(--bw-text)'
+                    }}>
+                      Airport Service *
+                    </label>
+                    <select 
+                      className="bw-input" 
+                      value={form.airport_service} 
+                      onChange={(e) => setForm({ ...form, airport_service: e.target.value as any })}
+                      style={{
+                        width: '100%',
+                        padding: 'clamp(10px, 2vw, 12px)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--bw-border)',
+                        backgroundColor: 'var(--bw-bg)',
+                        color: 'var(--bw-text)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontSize: 'clamp(13px, 2vw, 14px)'
+                      }}
+                    >
+                      <option value="">Select airport service</option>
+                      <option value="to_airport">To Airport</option>
+                      <option value="from_airport">From Airport</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Vehicle */}
-              <div>
+              <div style={{ position: 'relative', zIndex: 1 }}>
                 <label style={{
                   display: 'block',
                   marginBottom: '8px',
@@ -963,7 +1117,7 @@ export default function RiderDashboard() {
                   Vehicle *
                 </label>
                 <select 
-                  className="bw-input" 
+                  className="bw-input vehicle-select" 
                   value={form.vehicle_id || ''} 
                   onChange={(e) => setForm({ ...form, vehicle_id: parseInt(e.target.value) || 0 })}
                   required
@@ -975,48 +1129,136 @@ export default function RiderDashboard() {
                     backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     fontFamily: 'Work Sans, sans-serif',
-                    fontSize: 'clamp(13px, 2vw, 14px)'
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    position: 'relative',
+                    zIndex: 10,
+                    WebkitAppearance: 'menulist',
+                    appearance: 'menulist',
+                    cursor: 'pointer',
+                    minHeight: '44px'
                   }}
                 >
                   <option value="">Select a vehicle</option>
                   {vehicles.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.make} {vehicle.model} {vehicle.year ? `(${vehicle.year})` : ''} - {vehicleCategories.find(cat => cat.id === vehicle.vehicle_category_id)?.vehicle_category || 'N/A'}
+                      {vehicle.make} {vehicle.model} {vehicle.year ? `(${vehicle.year})` : ''} - {vehicle.vehicle_category?.vehicle_category || 'N/A'}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* City */}
+              {/* Country */}
               <div>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: 'clamp(13px, 2vw, 14px)',
-                  fontWeight: 500,
-                  color: 'var(--bw-text)'
-                }}>
-                  City *
-                </label>
-                <input 
-                  className="bw-input" 
-                  placeholder="Enter city" 
-                  value={form.city} 
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: 'clamp(10px, 2vw, 12px)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg)',
-                    color: 'var(--bw-text)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontSize: 'clamp(13px, 2vw, 14px)'
-                  }}
+                <CountryAutocomplete
+                  value={form.country}
+                  onChange={(value) => setForm({ ...form, country: value })}
+                  placeholder="Enter country"
+                  label="Country"
+                  required
+                  disabled={isLoading || isLoadingVehicles}
                 />
               </div>
 
-              {/* Pickup Location */}
+              {/* Pickup Location - Hidden when airport service is from_airport */}
+              {!(form.service_type === 'airport' && form.airport_service === 'from_airport') && (
+                <div>
+                  <LocationAutocomplete
+                    value={form.pickup_location}
+                    onChange={(value) => setForm({ ...form, pickup_location: value })}
+                    onLocationSelect={(address, coordinates) => {
+                      setForm({ 
+                        ...form, 
+                        pickup_location: address,
+                        pickup_coordinates: coordinates || null
+                      })
+                    }}
+                    placeholder="Enter pickup address"
+                    label="Pickup Location *"
+                    isAirportOnly={false}
+                    disabled={isLoading || isLoadingVehicles}
+                    country={form.country}
+                  />
+                </div>
+              )}
+
+              {/* Airport Location - Shown when airport service is selected */}
+              {form.service_type === 'airport' && form.airport_service && (
+                <div>
+                  <LocationAutocomplete
+                    value={form.airport_location}
+                    onChange={(value) => setForm({ ...form, airport_location: value })}
+                    onLocationSelect={(address, coordinates) => {
+                      setForm({ 
+                        ...form, 
+                        airport_location: address,
+                        airport_coordinates: coordinates || null
+                      })
+                    }}
+                    placeholder="Enter airport location"
+                    label="Airport Location *"
+                    isAirportOnly={true}
+                    disabled={isLoading || isLoadingVehicles}
+                    country={form.country}
+                  />
+                </div>
+              )}
+
+              {/* Dropoff Location - Hidden when airport service is to_airport, optional when hourly */}
+              {!(form.service_type === 'airport' && form.airport_service === 'to_airport') && (
+                <div>
+                  <LocationAutocomplete
+                    value={form.dropoff_location}
+                    onChange={(value) => setForm({ ...form, dropoff_location: value })}
+                    onLocationSelect={(address, coordinates) => {
+                      setForm({ 
+                        ...form, 
+                        dropoff_location: address,
+                        dropoff_coordinates: coordinates || null
+                      })
+                    }}
+                    placeholder="Enter dropoff address"
+                    label={form.service_type === 'hourly' ? 'Dropoff Location (Optional)' : 'Dropoff Location *'}
+                    isAirportOnly={false}
+                    disabled={isLoading || isLoadingVehicles}
+                    country={form.country}
+                  />
+                </div>
+              )}
+
+              {/* Hours - Only show when service_type is hourly */}
+              {form.service_type === 'hourly' && (
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: 500,
+                    color: 'var(--bw-text)'
+                  }}>
+                    Hours *
+                  </label>
+                  <input 
+                    className="bw-input" 
+                    type="number"
+                    min="1"
+                    placeholder="Enter number of hours" 
+                    value={form.hours || ''} 
+                    onChange={(e) => setForm({ ...form, hours: parseInt(e.target.value) || 0 })}
+                    style={{
+                      width: '100%',
+                      padding: 'clamp(10px, 2vw, 12px)',
+                      borderRadius: '8px',
+                      border: '1px solid var(--bw-border)',
+                      backgroundColor: 'var(--bw-bg)',
+                      color: 'var(--bw-text)',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontSize: 'clamp(13px, 2vw, 14px)'
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Pickup Time */}
               <div>
                 <label style={{
                   display: 'flex',
@@ -1027,14 +1269,27 @@ export default function RiderDashboard() {
                   fontWeight: 500,
                   color: 'var(--bw-text)'
                 }}>
-                  <MapPin size={16} />
-                  Pickup Location *
+                  <Calendar size={16} />
+                  Pickup Time *
                 </label>
                 <input 
-                  className="bw-input" 
-                  placeholder="Enter pickup address" 
-                  value={form.pickup_location} 
-                  onChange={(e) => setForm({ ...form, pickup_location: e.target.value })}
+                  className="bw-input datetime-input" 
+                  type="datetime-local" 
+                  value={form.pickup_time_local} 
+                  onChange={(e) => setForm({ ...form, pickup_time_local: e.target.value })}
+                  onClick={(e) => {
+                    const input = e.currentTarget
+                    input.focus()
+                    // Try to show picker if available (modern browsers)
+                    if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
+                      try {
+                        (input as any).showPicker()
+                      } catch (err) {
+                        // Fallback to focus if showPicker fails
+                        input.focus()
+                      }
+                    }
+                  }}
                   style={{
                     width: '100%',
                     padding: 'clamp(10px, 2vw, 12px)',
@@ -1043,144 +1298,13 @@ export default function RiderDashboard() {
                     backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     fontFamily: 'Work Sans, sans-serif',
-                    fontSize: 'clamp(13px, 2vw, 14px)'
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    minHeight: '44px',
+                    WebkitAppearance: 'none',
+                    appearance: 'none',
+                    cursor: 'pointer'
                   }}
                 />
-              </div>
-
-              {/* Dropoff Location */}
-              <div>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px',
-                  fontSize: 'clamp(13px, 2vw, 14px)',
-                  fontWeight: 500,
-                  color: 'var(--bw-text)'
-                }}>
-                  <MapPin size={16} />
-                  Dropoff Location *
-                </label>
-                <input 
-                  className="bw-input" 
-                  placeholder="Enter dropoff address" 
-                  value={form.dropoff_location} 
-                  onChange={(e) => setForm({ ...form, dropoff_location: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: 'clamp(10px, 2vw, 12px)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg)',
-                    color: 'var(--bw-text)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontSize: 'clamp(13px, 2vw, 14px)'
-                  }}
-                />
-              </div>
-
-              {/* Pickup and Dropoff Time */}
-              <div className="datetime-inputs-container" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(150px, 25vw, 200px), 1fr))',
-                gap: 'clamp(12px, 2.5vw, 16px)'
-              }}>
-                <div>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px',
-                    fontSize: 'clamp(13px, 2vw, 14px)',
-                    fontWeight: 500,
-                    color: 'var(--bw-text)'
-                  }}>
-                    <Calendar size={16} />
-                    Pickup Time *
-                  </label>
-                  <input 
-                    className="bw-input datetime-input" 
-                    type="datetime-local" 
-                    value={form.pickup_time_local} 
-                    onChange={(e) => setForm({ ...form, pickup_time_local: e.target.value })}
-                    onClick={(e) => {
-                      const input = e.currentTarget
-                      input.focus()
-                      // Try to show picker if available (modern browsers)
-                      if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
-                        try {
-                          (input as any).showPicker()
-                        } catch (err) {
-                          // Fallback to focus if showPicker fails
-                          input.focus()
-                        }
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(10px, 2vw, 12px)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--bw-border)',
-                      backgroundColor: 'var(--bw-bg)',
-                      color: 'var(--bw-text)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)',
-                      minHeight: '44px',
-                      WebkitAppearance: 'none',
-                      appearance: 'none',
-                      cursor: 'pointer'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px',
-                    fontSize: 'clamp(13px, 2vw, 14px)',
-                    fontWeight: 500,
-                    color: 'var(--bw-text)'
-                  }}>
-                    <Calendar size={16} />
-                    Dropoff Time (Optional)
-                  </label>
-                  <input 
-                    className="bw-input datetime-input" 
-                    type="datetime-local" 
-                    value={form.dropoff_time_local} 
-                    onChange={(e) => setForm({ ...form, dropoff_time_local: e.target.value })}
-                    onClick={(e) => {
-                      const input = e.currentTarget
-                      input.focus()
-                      // Try to show picker if available (modern browsers)
-                      if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
-                        try {
-                          (input as any).showPicker()
-                        } catch (err) {
-                          // Fallback to focus if showPicker fails
-                          input.focus()
-                        }
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(10px, 2vw, 12px)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--bw-border)',
-                      backgroundColor: 'var(--bw-bg)',
-                      color: 'var(--bw-text)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)',
-                      minHeight: '44px',
-                      WebkitAppearance: 'none',
-                      appearance: 'none',
-                      cursor: 'pointer'
-                    }}
-                  />
-                </div>
               </div>
 
               {/* Notes */}
@@ -1257,7 +1381,7 @@ export default function RiderDashboard() {
               My Bookings
             </h2>
 
-            {isLoading && bookings.length === 0 ? (
+            {isLoadingBookings && bookings.length === 0 ? (
               <div style={{
                 textAlign: 'center',
                 padding: 'clamp(40px, 8vw, 60px)',
@@ -1278,6 +1402,19 @@ export default function RiderDashboard() {
                 No bookings yet. Book your first ride!
               </div>
             ) : (
+              <>
+              {isLoadingBookings && bookings.length > 0 && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: 'clamp(20px, 4vw, 30px)',
+                  color: 'var(--bw-text)',
+                  opacity: 0.6,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  marginBottom: 'clamp(12px, 2.5vw, 16px)'
+                }}>
+                  Loading...
+                </div>
+              )}
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -1309,13 +1446,6 @@ export default function RiderDashboard() {
                           marginBottom: '4px'
                         }}>
                           Booking #{booking.id}
-                        </div>
-                        <div style={{
-                          fontSize: 'clamp(10px, 1.5vw, 11px)',
-                          color: '#9ca3af',
-                          fontWeight: 300
-                        }}>
-                          {formatDate(booking.created_on)}
                         </div>
                       </div>
                       <div style={{
@@ -1432,554 +1562,70 @@ export default function RiderDashboard() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Drivers Section */}
-        {activeSection === 'drivers' && (
-          <div style={{
-            backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-            border: '1px solid var(--bw-border)',
-            borderRadius: '12px',
-            padding: 'clamp(16px, 3vw, 20px)'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 'clamp(16px, 3vw, 20px)',
-              flexWrap: 'wrap',
-              gap: '12px'
-            }}>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 3vw, 22px)',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                Drivers
-              </h2>
-              {selectedDriver && (
-                <button
-                  onClick={() => setSelectedDriver(null)}
-                  style={{
-                    padding: 'clamp(8px, 1.5vw, 10px) clamp(12px, 2.5vw, 16px)',
-                    backgroundColor: 'transparent',
-                    border: '1px solid var(--bw-border)',
-                    borderRadius: '6px',
-                    color: 'var(--bw-text)',
-                    cursor: 'pointer',
+              
+              {/* Pagination Controls */}
+              {bookings.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: 'clamp(16px, 3vw, 24px)',
+                  paddingTop: 'clamp(16px, 3vw, 24px)',
+                  borderTop: '1px solid var(--bw-border)',
+                  flexWrap: 'wrap',
+                  gap: '12px'
+                }}>
+                  <div style={{
                     fontSize: 'clamp(13px, 2vw, 14px)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 300
-                  }}
-                >
-                  Back to List
-                </button>
+                    color: 'var(--bw-text)',
+                    opacity: 0.7
+                  }}>
+                    Page {currentPage} {totalBookings > 0 && `(${totalBookings} total)`}
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'center'
+                  }}>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1 || isLoadingBookings}
+                      style={{
+                        padding: 'clamp(8px, 1.5vw, 10px) clamp(16px, 3vw, 20px)',
+                        backgroundColor: currentPage === 1 || isLoadingBookings ? 'transparent' : 'var(--bw-fg)',
+                        color: currentPage === 1 || isLoadingBookings ? 'var(--bw-text)' : 'var(--bw-bg)',
+                        border: '1px solid var(--bw-border)',
+                        borderRadius: '6px',
+                        cursor: currentPage === 1 || isLoadingBookings ? 'not-allowed' : 'pointer',
+                        fontSize: 'clamp(13px, 2vw, 14px)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontWeight: 500,
+                        opacity: currentPage === 1 || isLoadingBookings ? 0.5 : 1
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => prev + 1)}
+                      disabled={bookings.length < pageSize || isLoadingBookings}
+                      style={{
+                        padding: 'clamp(8px, 1.5vw, 10px) clamp(16px, 3vw, 20px)',
+                        backgroundColor: (bookings.length < pageSize || isLoadingBookings) ? 'transparent' : 'var(--bw-fg)',
+                        color: (bookings.length < pageSize || isLoadingBookings) ? 'var(--bw-text)' : 'var(--bw-bg)',
+                        border: '1px solid var(--bw-border)',
+                        borderRadius: '6px',
+                        cursor: (bookings.length < pageSize || isLoadingBookings) ? 'not-allowed' : 'pointer',
+                        fontSize: 'clamp(13px, 2vw, 14px)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontWeight: 500,
+                        opacity: (bookings.length < pageSize || isLoadingBookings) ? 0.5 : 1
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               )}
-            </div>
-
-            {selectedDriver ? (
-              /* Driver Details View */
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'clamp(16px, 3vw, 20px)'
-              }}>
-                {isLoadingDriver ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 'clamp(40px, 8vw, 60px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.6,
-                    fontSize: 'clamp(14px, 2.5vw, 16px)'
-                  }}>
-                    Loading driver details...
-                  </div>
-                ) : (
-                  <>
-                    {/* Driver Info Card */}
-                    <div style={{
-                      border: '1px solid var(--bw-border)',
-                      borderRadius: '8px',
-                      padding: 'clamp(16px, 3vw, 20px)',
-                      backgroundColor: 'var(--bw-bg)'
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'clamp(12px, 2.5vw, 16px)',
-                        marginBottom: 'clamp(16px, 3vw, 20px)'
-                      }}>
-                        <div style={{
-                          width: 'clamp(50px, 8vw, 60px)',
-                          height: 'clamp(50px, 8vw, 60px)',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--bw-bg-hover, rgba(0, 0, 0, 0.05))',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <Users size={24} style={{ width: 'clamp(24px, 4vw, 28px)', height: 'clamp(24px, 4vw, 28px)' }} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{
-                            margin: '0 0 4px 0',
-                            fontSize: 'clamp(18px, 3vw, 22px)',
-                            fontWeight: 400,
-                            fontFamily: 'Work Sans, sans-serif',
-                            color: 'var(--bw-text)'
-                          }}>
-                            {selectedDriver.full_name}
-                          </h3>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            flexWrap: 'wrap'
-                          }}>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: 'clamp(12px, 2vw, 13px)',
-                              color: selectedDriver.is_active ? '#10b981' : '#6b7280'
-                            }}>
-                              {selectedDriver.is_active ? (
-                                <CheckCircle size={14} />
-                              ) : (
-                                <XCircle size={14} />
-                              )}
-                              {selectedDriver.is_active ? 'Active' : 'Inactive'}
-                            </div>
-                            {selectedDriver.status && (
-                              <div style={{
-                                padding: '2px 8px',
-                                borderRadius: '12px',
-                                backgroundColor: 'var(--bw-bg-hover, rgba(0, 0, 0, 0.05))',
-                                fontSize: 'clamp(11px, 1.8vw, 12px)',
-                                color: 'var(--bw-text)',
-                                opacity: 0.8
-                              }}>
-                                {selectedDriver.status}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(150px, 25vw, 200px), 1fr))',
-                        gap: 'clamp(12px, 2.5vw, 16px)',
-                        paddingTop: 'clamp(12px, 2.5vw, 16px)',
-                        borderTop: '1px solid var(--bw-border)'
-                      }}>
-                        <div>
-                          <div style={{
-                            fontSize: 'clamp(11px, 1.8vw, 12px)',
-                            color: 'var(--bw-text)',
-                            opacity: 0.7,
-                            marginBottom: '4px'
-                          }}>
-                            Driver Type
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(13px, 2vw, 14px)',
-                            color: 'var(--bw-text)',
-                            fontWeight: 300,
-                            fontFamily: 'Work Sans, sans-serif',
-                            textTransform: 'capitalize'
-                          }}>
-                            {selectedDriver.driver_type || 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{
-                            fontSize: 'clamp(11px, 1.8vw, 12px)',
-                            color: 'var(--bw-text)',
-                            opacity: 0.7,
-                            marginBottom: '4px'
-                          }}>
-                            Completed Rides
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(13px, 2vw, 14px)',
-                            color: 'var(--bw-text)',
-                            fontWeight: 300,
-                            fontFamily: 'Work Sans, sans-serif'
-                          }}>
-                            {selectedDriver.completed_rides || 0}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{
-                            fontSize: 'clamp(11px, 1.8vw, 12px)',
-                            color: 'var(--bw-text)',
-                            opacity: 0.7,
-                            marginBottom: '4px'
-                          }}>
-                            Phone Number
-                          </div>
-                          <div style={{
-                            fontSize: 'clamp(13px, 2vw, 14px)',
-                            color: 'var(--bw-text)',
-                            fontWeight: 300,
-                            fontFamily: 'Work Sans, sans-serif',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}>
-                            <Phone size={14} />
-                            {formatPhoneNumber(selectedDriver.phone_no)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Vehicle Info Card */}
-                    {selectedDriver.vehicle ? (
-                      <div style={{
-                        border: '1px solid var(--bw-border)',
-                        borderRadius: '8px',
-                        padding: 'clamp(16px, 3vw, 20px)',
-                        backgroundColor: 'var(--bw-bg)'
-                      }}>
-                        {/* Vehicle Images */}
-                        {(selectedDriver.vehicle as any)?.vehicle_images && Object.keys((selectedDriver.vehicle as any).vehicle_images).length > 0 && (
-                          <div style={{
-                            marginBottom: 'clamp(16px, 3vw, 20px)',
-                            overflowX: 'auto',
-                            overflowY: 'hidden',
-                            scrollBehavior: 'smooth',
-                            scrollbarWidth: 'thin',
-                            scrollbarColor: 'var(--bw-border) var(--bw-bg)',
-                            WebkitOverflowScrolling: 'touch'
-                          }}>
-                            <div style={{
-                              display: 'flex',
-                              gap: 'clamp(8px, 1.5vw, 12px)',
-                              paddingBottom: '4px'
-                            }}>
-                              {Object.entries((selectedDriver.vehicle as any).vehicle_images as Record<string, string>).map(([imageType, imageUrl]) => (
-                                <img
-                                  key={imageType}
-                                  src={imageUrl}
-                                  alt={`${selectedDriver.vehicle.make} ${selectedDriver.vehicle.model} - ${imageType.replace('_', ' ')}`}
-                                  style={{
-                                    minWidth: 'clamp(150px, 30vw, 220px)',
-                                    width: 'clamp(150px, 30vw, 220px)',
-                                    height: 'clamp(112px, 22vw, 165px)',
-                                    objectFit: 'cover',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--bw-border)',
-                                    flexShrink: 0
-                                  }}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none'
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'clamp(12px, 2.5vw, 16px)',
-                          marginBottom: 'clamp(16px, 3vw, 20px)'
-                        }}>
-                          <div style={{
-                            width: 'clamp(50px, 8vw, 60px)',
-                            height: 'clamp(50px, 8vw, 60px)',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--bw-bg-hover, rgba(0, 0, 0, 0.05))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Car size={24} style={{ width: 'clamp(24px, 4vw, 28px)', height: 'clamp(24px, 4vw, 28px)' }} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <h3 style={{
-                              margin: '0 0 4px 0',
-                              fontSize: 'clamp(18px, 3vw, 22px)',
-                              fontWeight: 400,
-                              fontFamily: 'Work Sans, sans-serif',
-                              color: 'var(--bw-text)'
-                            }}>
-                              {selectedDriver.vehicle.make} {selectedDriver.vehicle.model}
-                            </h3>
-                            {selectedDriver.vehicle.year && (
-                              <div style={{
-                                fontSize: 'clamp(12px, 2vw, 13px)',
-                                color: 'var(--bw-text)',
-                                opacity: 0.7
-                              }}>
-                                {selectedDriver.vehicle.year}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(120px, 20vw, 150px), 1fr))',
-                          gap: 'clamp(12px, 2.5vw, 16px)',
-                          paddingTop: 'clamp(12px, 2.5vw, 16px)',
-                          borderTop: '1px solid var(--bw-border)'
-                        }}>
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(11px, 1.8vw, 12px)',
-                              color: 'var(--bw-text)',
-                              opacity: 0.7,
-                              marginBottom: '4px'
-                            }}>
-                              License Plate
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(13px, 2vw, 14px)',
-                              color: 'var(--bw-text)',
-                              fontWeight: 300,
-                              fontFamily: 'Work Sans, sans-serif'
-                            }}>
-                              {selectedDriver.vehicle.license_plate || 'N/A'}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(11px, 1.8vw, 12px)',
-                              color: 'var(--bw-text)',
-                              opacity: 0.7,
-                              marginBottom: '4px'
-                            }}>
-                              Color
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(13px, 2vw, 14px)',
-                              color: 'var(--bw-text)',
-                              fontWeight: 300,
-                              fontFamily: 'Work Sans, sans-serif',
-                              textTransform: 'capitalize'
-                            }}>
-                              {selectedDriver.vehicle.color || 'N/A'}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(11px, 1.8vw, 12px)',
-                              color: 'var(--bw-text)',
-                              opacity: 0.7,
-                              marginBottom: '4px'
-                            }}>
-                              Seating Capacity
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(13px, 2vw, 14px)',
-                              color: 'var(--bw-text)',
-                              fontWeight: 300,
-                              fontFamily: 'Work Sans, sans-serif'
-                            }}>
-                              {selectedDriver.vehicle.seating_capacity || 'N/A'}
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(11px, 1.8vw, 12px)',
-                              color: 'var(--bw-text)',
-                              opacity: 0.7,
-                              marginBottom: '4px'
-                            }}>
-                              Status
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(13px, 2vw, 14px)',
-                              color: selectedDriver.vehicle.status === 'available' ? '#10b981' : '#6b7280',
-                              fontWeight: 300,
-                              fontFamily: 'Work Sans, sans-serif',
-                              textTransform: 'capitalize'
-                            }}>
-                              {selectedDriver.vehicle.status || 'N/A'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        border: '1px solid var(--bw-border)',
-                        borderRadius: '8px',
-                        padding: 'clamp(16px, 3vw, 20px)',
-                        backgroundColor: 'var(--bw-bg)',
-                        textAlign: 'center',
-                        color: 'var(--bw-text)',
-                        opacity: 0.6,
-                        fontSize: 'clamp(13px, 2vw, 14px)'
-                      }}>
-                        No vehicle assigned to this driver
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ) : (
-              /* Drivers List View */
-              <>
-                {isLoading && drivers.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 'clamp(40px, 8vw, 60px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.6,
-                    fontSize: 'clamp(14px, 2.5vw, 16px)'
-                  }}>
-                    Loading drivers...
-                  </div>
-                ) : drivers.length === 0 ? (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: 'clamp(40px, 8vw, 60px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.6,
-                    fontSize: 'clamp(14px, 2.5vw, 16px)'
-                  }}>
-                    No drivers available.
-                  </div>
-                ) : (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(250px, 35vw, 300px), 1fr))',
-                    gap: 'clamp(12px, 2.5vw, 16px)'
-                  }}>
-                    {drivers.map((driver) => (
-                      <div
-                        key={driver.id}
-                        onClick={() => loadDriverDetails(driver.id)}
-                        style={{
-                          border: '1px solid var(--bw-border)',
-                          borderRadius: '8px',
-                          padding: 'clamp(12px, 2.5vw, 16px)',
-                          backgroundColor: 'var(--bw-bg)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover, rgba(0, 0, 0, 0.05))'
-                          e.currentTarget.style.borderColor = 'var(--bw-fg)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg)'
-                          e.currentTarget.style.borderColor = 'var(--bw-border)'
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'clamp(12px, 2.5vw, 16px)',
-                          marginBottom: 'clamp(12px, 2.5vw, 16px)'
-                        }}>
-                          <div style={{
-                            width: 'clamp(40px, 6vw, 50px)',
-                            height: 'clamp(40px, 6vw, 50px)',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--bw-bg-hover, rgba(0, 0, 0, 0.05))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <Users size={20} style={{ width: 'clamp(20px, 3vw, 24px)', height: 'clamp(20px, 3vw, 24px)' }} />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: 'clamp(16px, 3vw, 18px)',
-                              fontWeight: 600,
-                              color: 'var(--bw-text)',
-                              marginBottom: '4px',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {driver.full_name}
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: 'clamp(11px, 1.8vw, 12px)',
-                              color: driver.is_active ? '#10b981' : '#6b7280'
-                            }}>
-                              {driver.is_active ? (
-                                <CheckCircle size={12} />
-                              ) : (
-                                <XCircle size={12} />
-                              )}
-                              {driver.is_active ? 'Active' : 'Inactive'}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 'clamp(8px, 1.5vw, 10px)',
-                          paddingTop: 'clamp(10px, 2vw, 12px)',
-                          borderTop: '1px solid var(--bw-border)'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: 'clamp(12px, 2vw, 13px)'
-                          }}>
-                            <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Type:</span>
-                            <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif', textTransform: 'capitalize' }}>
-                              {driver.driver_type || 'N/A'}
-                            </span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: 'clamp(12px, 2vw, 13px)'
-                          }}>
-                            <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Rides:</span>
-                            <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                              {driver.completed_rides || 0}
-                            </span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            fontSize: 'clamp(12px, 2vw, 13px)'
-                          }}>
-                            <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Phone:</span>
-                            <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Phone size={12} />
-                              {formatPhoneNumber(driver.phone_no)}
-                            </span>
-                          </div>
-                          {driver.vehicle && (
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              fontSize: 'clamp(12px, 2vw, 13px)'
-                            }}>
-                              <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Vehicle:</span>
-                              <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                                {driver.vehicle.make} {driver.vehicle.model}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -2003,7 +1649,7 @@ export default function RiderDashboard() {
               Vehicles
             </h2>
 
-            {isLoading && vehicles.length === 0 ? (
+            {isLoadingVehicles && vehicles.length === 0 ? (
               <div style={{
                 textAlign: 'center',
                 padding: 'clamp(40px, 8vw, 60px)',
@@ -2120,7 +1766,7 @@ export default function RiderDashboard() {
                       }}>
                         <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Category:</span>
                         <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                          {vehicleCategories.find(cat => cat.id === vehicle.vehicle_category_id)?.vehicle_category || 'N/A'}
+                          {vehicle.vehicle_category?.vehicle_category || 'N/A'}
                         </span>
                       </div>
                       <div style={{
@@ -2234,6 +1880,74 @@ export default function RiderDashboard() {
         
         input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
           opacity: 1;
+        }
+        
+        /* iOS-specific select dropdown fixes */
+        select.vehicle-select {
+          position: relative !important;
+          z-index: 10 !important;
+          -webkit-appearance: menulist !important;
+          appearance: menulist !important;
+        }
+        
+        /* Ensure select dropdown works on iOS */
+        @media (max-width: 768px) {
+          select.vehicle-select {
+            font-size: 16px !important; /* Prevents zoom on iOS */
+            min-height: 44px !important; /* Touch-friendly size */
+            padding: 12px 40px 12px 12px !important; /* Extra padding for dropdown arrow */
+            -webkit-appearance: menulist !important;
+            appearance: menulist !important;
+            background-image: none !important;
+            position: relative !important;
+            z-index: 10 !important;
+          }
+          
+          /* Ensure parent containers don't clip the dropdown */
+          select.vehicle-select:focus {
+            z-index: 1000 !important;
+            position: relative !important;
+          }
+        }
+        
+        /* Fix for iOS Safari select dropdown visibility */
+        @supports (-webkit-touch-callout: none) {
+          select.vehicle-select {
+            -webkit-appearance: menulist !important;
+            appearance: menulist !important;
+            position: relative !important;
+            z-index: 10 !important;
+          }
+          
+          select.vehicle-select:active,
+          select.vehicle-select:focus {
+            z-index: 1000 !important;
+            position: relative !important;
+          }
+          
+          /* Ensure parent containers don't create stacking contexts that clip dropdowns */
+          .rider-main-content {
+            overflow: visible !important;
+          }
+          
+          /* Allow select dropdown to escape container bounds on iOS */
+          select.vehicle-select {
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+          }
+        }
+        
+        /* Additional iOS fix: ensure select is clickable and dropdown appears */
+        @media (max-width: 768px) {
+          select.vehicle-select {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          /* Prevent parent from clipping dropdown */
+          .rider-main-content > div {
+            overflow: visible !important;
+          }
         }
       `}</style>
     </div>

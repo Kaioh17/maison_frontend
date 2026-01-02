@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Edit, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getVehicleById, updateVehicleImage, getVehicleCategories, getVehicleImageTypes } from '@api/vehicles'
-import type { VehicleResponse, VehicleCategoryResponse } from '@api/vehicles'
+import { X, Edit, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { getVehicleById, updateVehicleImage, getVehicleImageTypes } from '@api/vehicles'
+import type { VehicleResponse } from '@api/vehicles'
 
 interface VehicleEditModalProps {
   vehicleId: number
@@ -25,7 +25,6 @@ export default function VehicleEditModal({
   onDelete
 }: VehicleEditModalProps) {
   const [vehicle, setVehicle] = useState<VehicleResponse | null>(null)
-  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategoryResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,19 +59,12 @@ export default function VehicleEditModal({
     try {
       setIsLoading(true)
       setError(null)
-      const [vehicleResponse, categoriesResponse] = await Promise.all([
-        getVehicleById(vehicleId).catch(() => ({ success: false, data: null })),
-        getVehicleCategories().catch(() => ({ success: false, data: [] }))
-      ])
+      const vehicleResponse = await getVehicleById(vehicleId).catch(() => ({ success: false, data: null }))
       
       if (vehicleResponse.success && vehicleResponse.data) {
         setVehicle(vehicleResponse.data)
       } else {
         setError('Failed to load vehicle data. Please try again.')
-      }
-      
-      if (categoriesResponse.success && categoriesResponse.data) {
-        setVehicleCategories(categoriesResponse.data)
       }
     } catch (err: any) {
       console.error('Failed to load vehicle:', err)
@@ -823,12 +815,12 @@ export default function VehicleEditModal({
                     fontWeight: 400,
                     fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
                   }}>
-                    {vehicleCategories.find(cat => cat.id === vehicle.vehicle_category_id)?.vehicle_category || 'Not set'}
+                    {vehicle.vehicle_category?.vehicle_category || 'Not set'}
                   </span>
                 </div>
                 <div className="bw-info-item" style={{
                   padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
-                  borderBottom: 'none'
+                  borderBottom: vehicle.driver ? '1px solid var(--bw-border)' : 'none'
                 }}>
                   <span className="bw-info-label" style={{ 
                     fontFamily: 'Work Sans, sans-serif', 
@@ -842,6 +834,160 @@ export default function VehicleEditModal({
                 </div>
               </div>
             </div>
+
+            {/* Driver Information */}
+            {vehicle.driver && (
+              <div style={{ 
+                borderTop: '1px solid var(--bw-border)', 
+                paddingTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px',
+                marginTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'clamp(8px, 1.5vw, 12px)',
+                  marginBottom: isMobile ? 'clamp(12px, 2vw, 16px)' : '16px'
+                }}>
+                  <User size={20} style={{ 
+                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
+                    color: 'var(--bw-text)',
+                    opacity: 0.7
+                  }} />
+                  <h4 style={{ 
+                    margin: 0, 
+                    fontSize: isMobile ? 'clamp(16px, 2.5vw, 20px)' : '16px',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300
+                  }}>Assigned Driver</h4>
+                </div>
+                <div className="bw-info-grid" style={{
+                  display: 'grid',
+                  gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '16px',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr'
+                }}>
+                  <div className="bw-info-item" style={{
+                    padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                    }}>Driver Name:</span>
+                    <span className="bw-info-value" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontWeight: 400,
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                    }}>{vehicle.driver.full_name}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                    }}>Driver Type:</span>
+                    <span className="bw-info-value" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontWeight: 400,
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      textTransform: 'capitalize'
+                    }}>{vehicle.driver.driver_type === 'in_house' ? 'In-House' : 'Outsourced'}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                    }}>Status:</span>
+                    <span className="bw-info-value" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontWeight: 400,
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      color: vehicle.driver.is_active ? '#10b981' : '#6b7280',
+                      textTransform: 'capitalize'
+                    }}>{vehicle.driver.is_active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                    }}>Registration:</span>
+                    <span className="bw-info-value" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontWeight: 400,
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      textTransform: 'capitalize'
+                    }}>{vehicle.driver.is_registered === 'registered' ? 'Registered' : 'Pending'}</span>
+                  </div>
+                  <div className="bw-info-item" style={{
+                    padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                    borderBottom: '1px solid var(--bw-border)'
+                  }}>
+                    <span className="bw-info-label" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                    }}>Completed Rides:</span>
+                    <span className="bw-info-value" style={{ 
+                      fontFamily: 'Work Sans, sans-serif', 
+                      fontWeight: 400,
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px'
+                    }}>{vehicle.driver.completed_rides || 0}</span>
+                  </div>
+                  {vehicle.driver.status && (
+                    <div className="bw-info-item" style={{
+                      padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                      borderBottom: 'none'
+                    }}>
+                      <span className="bw-info-label" style={{ 
+                        fontFamily: 'Work Sans, sans-serif', 
+                        fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px' 
+                      }}>Driver Status:</span>
+                      <span className="bw-info-value" style={{ 
+                        fontFamily: 'Work Sans, sans-serif', 
+                        fontWeight: 400,
+                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                        textTransform: 'capitalize'
+                      }}>{vehicle.driver.status}</span>
+                    </div>
+                  )}
+                  {!vehicle.driver.status && (
+                    <div className="bw-info-item" style={{
+                      padding: isMobile ? 'clamp(10px, 2vw, 12px) 0' : '12px 0',
+                      borderBottom: 'none'
+                    }}>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!vehicle.driver && (
+              <div style={{ 
+                borderTop: '1px solid var(--bw-border)', 
+                paddingTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px',
+                marginTop: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px',
+                textAlign: 'center',
+                color: 'var(--bw-muted)',
+                fontFamily: 'Work Sans, sans-serif',
+                fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '16px'
+              }}>
+                <User size={24} style={{ 
+                  width: isMobile ? 'clamp(20px, 3vw, 24px)' : 24,
+                  height: isMobile ? 'clamp(20px, 3vw, 24px)' : 24,
+                  marginBottom: 'clamp(8px, 1.5vw, 12px)',
+                  opacity: 0.5,
+                  margin: '0 auto clamp(8px, 1.5vw, 12px)'
+                }} />
+                <p style={{ margin: 0 }}>No driver assigned to this vehicle</p>
+              </div>
+            )}
 
             {/* Actions */}
             <div style={{ 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
 import { verifySlug } from '@api/tenant'
+import { useTenantSlug } from '@hooks/useTenantSlug'
+import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 import NotFound404 from './NotFound404'
 
 interface SlugVerificationProps {
@@ -8,7 +9,7 @@ interface SlugVerificationProps {
 }
 
 export default function SlugVerification({ children }: SlugVerificationProps) {
-  const { slug } = useParams<{ slug: string }>()
+  const slug = useTenantSlug()
   const [isValid, setIsValid] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -20,21 +21,34 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
     }
 
     const checkSlug = async () => {
+      // Check cache first
+      const cached = getCachedSlugVerification(slug)
+      if (cached && !isCacheExpired(cached)) {
+        setIsValid(cached.isValid)
+        setIsLoading(false)
+        return // No API call needed
+      }
+
+      // Only make API call if cache miss or expired
       try {
         setIsLoading(true)
         const response = await verifySlug(slug)
-        if (response.success && response.data) {
-          setIsValid(true)
-        } else {
-          setIsValid(false)
-        }
+        const isValidResult = response.success && !!response.data
+        setIsValid(isValidResult)
+        
+        // Cache the result
+        setCachedSlugVerification(slug, response.data || null, isValidResult)
       } catch (error: any) {
         // Check if it's a 404 error
-        if (error.response?.status === 404) {
-          setIsValid(false)
-        } else {
-          // For other errors, we might want to still show the page or handle differently
-          setIsValid(false)
+        const isValidResult = false
+        setIsValid(isValidResult)
+        
+        // Cache the invalid result to avoid repeated failed calls
+        setCachedSlugVerification(slug, null, isValidResult)
+        
+        if (error.response?.status !== 404) {
+          // Log non-404 errors for debugging
+          console.error('Slug verification error:', error)
         }
       } finally {
         setIsLoading(false)
