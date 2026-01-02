@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver } from '@api/tenant'
-import { getVehicleRates, getVehicleCategories, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
-import { getTenantSettings, updateTenantSettings, updateTenantLogo, type TenantSettingsResponse, type UpdateTenantSetting } from '@api/tenantSettings'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver } from '@api/tenant'
+import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
+import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
-import { Car, Users, Calendar, Settings, TrendingUp, DollarSign, Clock, MapPin, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, AlertCircle, Palette, Save, Menu, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useBookingSearch } from '@hooks/useBookingSearch'
+import { Car, Users, Calendar, Settings, TrendingUp, DollarSign, Clock, MapPin, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, AlertCircle, Palette, Save, Menu, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Info, Search } from 'lucide-react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 
@@ -64,26 +65,43 @@ export default function TenantDashboard() {
   const [bookings, setBookings] = useState<BookingResponse[]>([])
   const [vehicleCategories, setVehicleCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Booking filters
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('')
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('')
+  const [vehicleIdFilter, setVehicleIdFilter] = useState<number | null>(null)
+  
+  // Booking search hook
+  const {
+    searchQuery,
+    handleSearchChange,
+    filteredBookings,
+    searchError,
+    clearSearch,
+    hasActiveSearch,
+  } = useBookingSearch(bookings)
   const [error, setError] = useState<string | null>(null)
   const [addingCategory, setAddingCategory] = useState(false)
   const [editingRates, setEditingRates] = useState<{ [key: string]: number }>({})
   const [savingRates, setSavingRates] = useState<{ [key: string]: boolean }>({})
   const [newDriver, setNewDriver] = useState<OnboardDriver>({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
-  const [assign, setAssign] = useState<{ vehicleId: string; driverId: string }>({ vehicleId: '', driverId: '' })
   const [showAddDriver, setShowAddDriver] = useState(false)
-  const [showAssignDriver, setShowAssignDriver] = useState(false)
-  // For tabs that don't have routes (like vehicles), we use state
-  const [internalTab, setInternalTab] = useState<TabType | null>(null)
-  const [tenantSettings, setTenantSettings] = useState<TenantSettingsResponse | null>(null)
+  const [addDriverError, setAddDriverError] = useState<string | null>(null)
+  const [isCreatingDriver, setIsCreatingDriver] = useState(false)
+  const [tenantConfig, setTenantConfig] = useState<TenantConfigResponse | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
-  const [editedSettings, setEditedSettings] = useState<UpdateTenantSetting | null>(null)
+  // Separate edited state for each section
+  const [editedSettings, setEditedSettings] = useState<TenantSettingsData | null>(null)
+  const [editedPricing, setEditedPricing] = useState<TenantPricingData | null>(null)
+  const [editedBranding, setEditedBranding] = useState<TenantBrandingData | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
   // Vehicle edit modal state
   const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null)
   const [showVehicleEditModal, setShowVehicleEditModal] = useState(false)
+  const [tooltipVehicleId, setTooltipVehicleId] = useState<number | null>(null)
 
   // Hamburger menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -112,8 +130,24 @@ export default function TenantDashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Unassign driver state
+  const [unassigningVehicleId, setUnassigningVehicleId] = useState<number | null>(null)
+  const [showUnassignConfirm, setShowUnassignConfirm] = useState(false)
+  const [isUnassigning, setIsUnassigning] = useState(false)
+  const [unassignError, setUnassignError] = useState<string | null>(null)
+
+  // Assign driver state (for specific vehicle)
+  const [assigningVehicleId, setAssigningVehicleId] = useState<number | null>(null)
+  const [showAssignConfirm, setShowAssignConfirm] = useState(false)
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('')
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [assignError, setAssignError] = useState<string | null>(null)
+
   // Vehicle Settings dropdown state
   const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
+  
+  // Settings submenu state
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   
   // KPI Carousel state (for mobile)
   const [currentKpiIndex, setCurrentKpiIndex] = useState(0)
@@ -127,7 +161,6 @@ export default function TenantDashboard() {
   // Switch to driver mode state
   const [showDriverModeConfirm, setShowDriverModeConfirm] = useState(false)
   const [isAddVehicleHovered, setIsAddVehicleHovered] = useState(false)
-  const [isAssignDriverHovered, setIsAssignDriverHovered] = useState(false)
   
   // Button hover states
   const [isRetryHovered, setIsRetryHovered] = useState(false)
@@ -139,22 +172,27 @@ export default function TenantDashboard() {
   const [isAddCategoryHovered, setIsAddCategoryHovered] = useState(false)
   const [isMoreSettingsHovered, setIsMoreSettingsHovered] = useState(false)
   const [isCreateDriverHovered, setIsCreateDriverHovered] = useState(false)
-  const [isAssignDriverModalHovered, setIsAssignDriverModalHovered] = useState(false)
   const [isAssignDriverToBookingHovered, setIsAssignDriverToBookingHovered] = useState(false)
   const [isOverrideConfirmHovered, setIsOverrideConfirmHovered] = useState(false)
   const [isDeleteVehicleHovered, setIsDeleteVehicleHovered] = useState(false)
   const [isAddVehicleFormHovered, setIsAddVehicleFormHovered] = useState(false)
   const [isCancelAddVehicleHovered, setIsCancelAddVehicleHovered] = useState(false)
   const [isCancelAddDriverHovered, setIsCancelAddDriverHovered] = useState(false)
-  const [isCancelAssignDriverHovered, setIsCancelAssignDriverHovered] = useState(false)
   const [isCancelAssignBookingHovered, setIsCancelAssignBookingHovered] = useState(false)
   const [isBackOverrideHovered, setIsBackOverrideHovered] = useState(false)
   const [isCancelDeleteHovered, setIsCancelDeleteHovered] = useState(false)
+  const [unassignHoveredVehicleId, setUnassignHoveredVehicleId] = useState<number | null>(null)
+  const [isConfirmUnassignHovered, setIsConfirmUnassignHovered] = useState(false)
+  const [isCancelUnassignHovered, setIsCancelUnassignHovered] = useState(false)
+  const [assignHoveredVehicleId, setAssignHoveredVehicleId] = useState<number | null>(null)
+  const [hoveredVehicleCardId, setHoveredVehicleCardId] = useState<number | null>(null)
+  const [isConfirmAssignHovered, setIsConfirmAssignHovered] = useState(false)
+  const [isCancelAssignHovered, setIsCancelAssignHovered] = useState(false)
   
   // Helper to detect light mode
   const isLightMode = () => {
     if (typeof window === 'undefined') return false
-    const theme = tenantSettings?.theme || document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
+    const theme = tenantConfig?.branding?.theme || document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
     if (theme === 'auto') {
       return !window.matchMedia('(prefers-color-scheme: dark)').matches
     }
@@ -177,7 +215,7 @@ export default function TenantDashboard() {
   const [addVehicleSuccess, setAddVehicleSuccess] = useState(false)
 
   // Sync theme with tenant settings
-  useTenantTheme(tenantSettings?.theme)
+  useTenantTheme(tenantConfig?.branding?.theme)
 
   const load = async () => {
     setLoading(true)
@@ -187,24 +225,48 @@ export default function TenantDashboard() {
       const tenantInfoPromise = getTenantInfo()
       const driversPromise = getTenantDrivers()
       const vehiclesPromise = getTenantVehicles()
-      const bookingsPromise = getTenantBookings()
-      const vehicleCategoriesPromise = getVehicleCategories()
-      const tenantSettingsPromise = getTenantSettings()
       
-      const [i, d, v, b, vc, ts] = await Promise.all([
+      // Build booking filter params
+      const bookingParams: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
+      if (bookingStatusFilter) bookingParams.booking_status = bookingStatusFilter
+      if (serviceTypeFilter) bookingParams.service_type = serviceTypeFilter
+      if (vehicleIdFilter) bookingParams.vehicle_id = vehicleIdFilter
+      
+      const bookingsPromise = getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
+      const tenantConfigPromise = getTenantConfig('all')
+      
+      const [i, d, v, b, tc] = await Promise.all([
         tenantInfoPromise,
         driversPromise,
         vehiclesPromise,
         bookingsPromise,
-        vehicleCategoriesPromise,
-        tenantSettingsPromise,
+        tenantConfigPromise,
       ])
       
       if (i.data) {
         setInfo(i.data)
+        
+        // Fetch vehicle categories using tenant_id after we have tenant info
+        try {
+          const tenantId = i.data.id
+          if (tenantId) {
+            const vc = await getVehicleCategoriesByTenant(tenantId)
+            if (vc.data !== undefined) {
+              setVehicleCategories(vc.data || [])
+            } else {
+              setVehicleCategories([])
+            }
+          } else {
+            setVehicleCategories([])
+          }
+        } catch (vcError) {
+          console.error('Failed to load vehicle categories:', vcError)
+          setVehicleCategories([])
+        }
       } else {
         console.error('No tenant data in response:', i)
         setError('Failed to load tenant information - no data in response')
+        setVehicleCategories([])
       }
       
       // Handle drivers - empty array is valid
@@ -231,23 +293,15 @@ export default function TenantDashboard() {
         setError('Failed to load bookings information - no data in response')
       }
       
-      // Handle vehicle categories
-      if (vc.data !== undefined) {
-        setVehicleCategories(vc.data || [])
-      } else if (vc && Array.isArray(vc)) {
-        // Handle case where response is directly an array
-        setVehicleCategories(vc)
+      // Handle tenant config
+      if (tc) {
+        setTenantConfig(tc)
+        if (tc.settings) setEditedSettings(tc.settings)
+        if (tc.pricing) setEditedPricing(tc.pricing)
+        if (tc.branding) setEditedBranding(tc.branding)
       } else {
-        setVehicleCategories([])
-      }
-      
-      // Handle tenant settings
-      if (ts) {
-        setTenantSettings(ts)
-        setEditedSettings(ts)
-      } else {
-        console.error('No tenant settings data in response:', ts)
-        setError('Failed to load tenant settings - no data in response')
+        console.error('No tenant config data in response:', tc)
+        setError('Failed to load tenant config - no data in response')
       }
       
     } catch (error: any) {
@@ -291,28 +345,132 @@ export default function TenantDashboard() {
   }, [])
 
   const createDriver = async () => {
-    if (!newDriver.email || !newDriver.first_name || !newDriver.last_name) return
+    if (!newDriver.email || !newDriver.first_name || !newDriver.last_name) {
+      setAddDriverError('Please fill in all required fields')
+      return
+    }
+    
+    setAddDriverError(null)
+    setIsCreatingDriver(true)
+    
     try {
       await onboardDriver({ ...newDriver, driver_type: newDriver.driver_type as OnboardDriver['driver_type'] })
       setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
+      setAddDriverError(null)
       setShowAddDriver(false)
       await load()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create driver:', error)
+      
+      // Handle different error status codes
+      if (error.response) {
+        const status = error.response.status
+        const errorData = error.response.data
+        
+        switch (status) {
+          case 409:
+            setAddDriverError('This email is already registered. Please use a different email address.')
+            break
+          case 400:
+            setAddDriverError(errorData?.detail || errorData?.message || 'Invalid input. Please check your information and try again.')
+            break
+          case 401:
+            setAddDriverError('Authentication failed. Please log in again.')
+            break
+          case 403:
+            setAddDriverError('You do not have permission to add drivers.')
+            break
+          case 422:
+            setAddDriverError(errorData?.detail || errorData?.message || 'Validation error. Please check all fields are correct.')
+            break
+          case 500:
+            setAddDriverError('Server error. Please try again later.')
+            break
+          default:
+            setAddDriverError(errorData?.detail || errorData?.message || `Failed to add driver. Error code: ${status}`)
+        }
+      } else if (error.request) {
+        setAddDriverError('No response from server. Please check your connection and try again.')
+      } else {
+        setAddDriverError(error.message || 'Failed to add driver. Please try again.')
+      }
+    } finally {
+      setIsCreatingDriver(false)
     }
   }
 
-  const assignVehicle = async () => {
-    const vehicleId = Number(assign.vehicleId)
-    const driverId = Number(assign.driverId)
-    if (!vehicleId || !driverId) return
+  const confirmUnassignDriver = async (override: boolean) => {
+    if (!unassigningVehicleId) return
+    
+    setIsUnassigning(true)
+    setUnassignError(null)
+    
     try {
-      await assignDriverToVehicle(vehicleId, { driver_id: driverId })
-      setAssign({ vehicleId: '', driverId: '' })
-      setShowAssignDriver(false)
+      await unassignDriverFromVehicle(unassigningVehicleId, override)
+      setShowUnassignConfirm(false)
+      setUnassigningVehicleId(null)
       await load()
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Failed to unassign driver:', error)
+      
+      // Extract HTTP error message
+      if (error?.response) {
+        const status = error.response.status
+        const errorData = error.response.data
+        
+        // Try to get error message from various possible locations
+        const errorMessage = errorData?.message || 
+                           errorData?.detail || 
+                           errorData?.error?.message ||
+                           errorData?.error ||
+                           `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
+        
+        setUnassignError(errorMessage)
+      } else if (error?.request) {
+        setUnassignError('No response from server. Please check your connection and try again.')
+      } else {
+        setUnassignError(error?.message || 'Failed to unassign driver. Please try again.')
+      }
+    } finally {
+      setIsUnassigning(false)
+    }
+  }
+
+  const confirmAssignDriver = async () => {
+    if (!assigningVehicleId || !selectedDriverId) return
+    
+    setIsAssigning(true)
+    setAssignError(null)
+    
+    try {
+      await assignDriverToVehicleNew(assigningVehicleId, Number(selectedDriverId))
+      setShowAssignConfirm(false)
+      setAssigningVehicleId(null)
+      setSelectedDriverId('')
+      await load()
+    } catch (error: any) {
       console.error('Failed to assign driver:', error)
+      
+      // Extract HTTP error message
+      if (error?.response) {
+        const status = error.response.status
+        const errorData = error.response.data
+        
+        // Try to get error message from various possible locations
+        const errorMessage = errorData?.message || 
+                           errorData?.detail || 
+                           errorData?.error?.message ||
+                           errorData?.error ||
+                           `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
+        
+        setAssignError(errorMessage)
+      } else if (error?.request) {
+        setAssignError('No response from server. Please check your connection and try again.')
+      } else {
+        setAssignError(error?.message || 'Failed to assign driver. Please try again.')
+      }
+    } finally {
+      setIsAssigning(false)
     }
   }
 
@@ -391,13 +549,28 @@ export default function TenantDashboard() {
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusColorHex = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'active': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'pending': return <AlertCircle className="w-4 h-4 text-yellow-500" />
-      case 'cancelled': return <XCircle className="w-4 h-4 text-red-500" />
-      default: return <AlertCircle className="w-4 h-4 text-gray-500" />
+      case 'completed':
+      case 'active':
+        return '#10b981'
+      case 'pending':
+        return '#f59e0b'
+      case 'cancelled':
+        return '#ef4444'
+      default:
+        return '#6b7280'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    const color = getStatusColorHex(status)
+    switch (status?.toLowerCase()) {
+      case 'completed': return <CheckCircle className="w-4 h-4" style={{ color }} />
+      case 'active': return <CheckCircle className="w-4 h-4" style={{ color }} />
+      case 'pending': return <AlertCircle className="w-4 h-4" style={{ color }} />
+      case 'cancelled': return <XCircle className="w-4 h-4" style={{ color }} />
+      default: return <AlertCircle className="w-4 h-4" style={{ color }} />
     }
   }
 
@@ -442,10 +615,28 @@ export default function TenantDashboard() {
     return defaultRates[category.toLowerCase()] || 0
   }
 
-  const handleSettingChange = (field: keyof UpdateTenantSetting, value: any) => {
+  const handleSettingChange = (field: keyof TenantSettingsData, value: any) => {
     if (editedSettings) {
       setEditedSettings({
         ...editedSettings,
+        [field]: value
+      })
+    }
+  }
+
+  const handlePricingChange = (field: keyof TenantPricingData, value: any) => {
+    if (editedPricing) {
+      setEditedPricing({
+        ...editedPricing,
+        [field]: value
+      })
+    }
+  }
+
+  const handleBrandingChange = (field: keyof TenantBrandingData, value: any) => {
+    if (editedBranding) {
+      setEditedBranding({
+        ...editedBranding,
         [field]: value
       })
     }
@@ -462,83 +653,124 @@ export default function TenantDashboard() {
       }
       reader.readAsDataURL(file)
       
-      // Update the edited settings with the file
-      if (editedSettings) {
-        setEditedSettings({
-          ...editedSettings,
+      // Update the edited branding with the file
+      if (editedBranding) {
+        setEditedBranding({
+          ...editedBranding,
           logo_url: file
-        })
+        } as any)
       }
     }
   }
 
   const handleSaveSettings = async () => {
-    if (!editedSettings) return
-    
     try {
       setSavingSettings(true)
+      const updatePromises: Promise<any>[] = []
       
-      // If only logo changed, use the dedicated logo endpoint
-      if (logoFile && !hasOtherChanges()) {
-        try {
-          await updateTenantLogo(logoFile)
-          // After successful logo update, refresh the settings to get the new logo URL
-          const refreshedSettings = await getTenantSettings()
-          setTenantSettings(refreshedSettings)
-          setEditedSettings(refreshedSettings)
-          setEditingSettings(false)
-          setLogoFile(null)
-          setLogoPreview(null)
-          alert('Logo updated successfully!')
-          return
-        } catch (logoError) {
-          console.error('Logo update failed:', logoError)
-          // Fallback: skip logo update, just update other settings
-          try {
-            const settingsToUpdate = {
-              ...editedSettings,
-              // Don't include logo_url if it's a File - skip it
-              logo_url: typeof editedSettings.logo_url === 'string' ? editedSettings.logo_url : ''
-            }
-            
-            const updatedSettings = await updateTenantSettings(settingsToUpdate)
-            setTenantSettings(updatedSettings)
-            setEditingSettings(false)
-            setLogoFile(null)
-            setLogoPreview(null)
-            alert('Logo updated successfully via fallback method!')
-            return
-          } catch (fallbackError) {
-            console.error('Fallback update also failed:', fallbackError)
-            alert('Failed to update logo. Please try again.')
-            return
-          }
-        }
-      }
-      
-      // If there's a logo file, upload it first to get the URL
-      let logoUrl = editedSettings.logo_url
+      // Handle logo upload separately if present
       if (logoFile) {
         try {
           await updateTenantLogo(logoFile)
-          // Refresh settings to get the new logo URL
-          const refreshedSettings = await getTenantSettings()
-          logoUrl = refreshedSettings.logo_url
+          // Refresh config to get the new logo URL
+          const refreshedConfig = await getTenantConfig('all')
+          if (refreshedConfig.branding) {
+            setEditedBranding(refreshedConfig.branding)
+          }
         } catch (logoError) {
-          console.error('Logo upload failed, continuing with other settings:', logoError)
-          // Continue with other settings even if logo upload fails
+          console.error('Logo upload failed:', logoError)
+          alert('Logo upload failed, but continuing with other settings')
         }
       }
       
-      // Update all settings with the logo URL (string, not File)
-      const settingsToUpdate = {
-        ...editedSettings,
-        logo_url: logoUrl
+      // Check if settings changed
+      if (editedSettings && tenantConfig?.settings) {
+        const settingsChanged = 
+          editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
+          JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
+        
+        if (settingsChanged) {
+          updatePromises.push(
+            updateTenantSettings({
+              rider_tiers_enabled: editedSettings.rider_tiers_enabled,
+              config: editedSettings.config
+            }).then(result => ({ type: 'settings', data: result }))
+          )
+        }
       }
       
-      const updatedSettings = await updateTenantSettings(settingsToUpdate)
-      setTenantSettings(updatedSettings)
-      setEditedSettings(updatedSettings)
+      // Check if pricing changed
+      if (editedPricing && tenantConfig?.pricing) {
+        const pricingChanged = 
+          editedPricing.base_fare !== tenantConfig.pricing.base_fare ||
+          editedPricing.per_mile_rate !== tenantConfig.pricing.per_mile_rate ||
+          editedPricing.per_minute_rate !== tenantConfig.pricing.per_minute_rate ||
+          editedPricing.per_hour_rate !== tenantConfig.pricing.per_hour_rate ||
+          editedPricing.cancellation_fee !== tenantConfig.pricing.cancellation_fee ||
+          editedPricing.discounts !== tenantConfig.pricing.discounts
+        
+        if (pricingChanged) {
+          updatePromises.push(
+            updateTenantPricing({
+              base_fare: editedPricing.base_fare,
+              per_mile_rate: editedPricing.per_mile_rate,
+              per_minute_rate: editedPricing.per_minute_rate,
+              per_hour_rate: editedPricing.per_hour_rate,
+              cancellation_fee: editedPricing.cancellation_fee,
+              discounts: editedPricing.discounts
+            }).then(result => ({ type: 'pricing', data: result }))
+          )
+        }
+      }
+      
+      // Check if branding changed (excluding logo_url which is handled separately)
+      if (editedBranding && tenantConfig?.branding) {
+        const brandingChanged = 
+          editedBranding.theme !== tenantConfig.branding.theme ||
+          editedBranding.primary_color !== tenantConfig.branding.primary_color ||
+          editedBranding.secondary_color !== tenantConfig.branding.secondary_color ||
+          editedBranding.accent_color !== tenantConfig.branding.accent_color ||
+          editedBranding.favicon_url !== tenantConfig.branding.favicon_url ||
+          editedBranding.slug !== tenantConfig.branding.slug ||
+          editedBranding.email_from_name !== tenantConfig.branding.email_from_name ||
+          editedBranding.email_from_address !== tenantConfig.branding.email_from_address ||
+          editedBranding.enable_branding !== tenantConfig.branding.enable_branding
+        
+        if (brandingChanged) {
+          updatePromises.push(
+            updateTenantBranding({
+              theme: editedBranding.theme,
+              primary_color: editedBranding.primary_color,
+              secondary_color: editedBranding.secondary_color,
+              accent_color: editedBranding.accent_color,
+              favicon_url: editedBranding.favicon_url,
+              slug: editedBranding.slug,
+              email_from_name: editedBranding.email_from_name,
+              email_from_address: editedBranding.email_from_address,
+              enable_branding: editedBranding.enable_branding
+            }).then(result => ({ type: 'branding', data: result }))
+          )
+        }
+      }
+      
+      if (updatePromises.length === 0 && !logoFile) {
+        alert('No changes to save')
+        setSavingSettings(false)
+        return
+      }
+      
+      // Execute all updates
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises)
+      }
+      
+      // Refresh config to get latest data
+      const refreshedConfig = await getTenantConfig('all')
+      setTenantConfig(refreshedConfig)
+      if (refreshedConfig.settings) setEditedSettings(refreshedConfig.settings)
+      if (refreshedConfig.pricing) setEditedPricing(refreshedConfig.pricing)
+      if (refreshedConfig.branding) setEditedBranding(refreshedConfig.branding)
+      
       setEditingSettings(false)
       setLogoFile(null)
       setLogoPreview(null)
@@ -552,24 +784,40 @@ export default function TenantDashboard() {
   }
 
   const hasOtherChanges = () => {
-    if (!tenantSettings || !editedSettings) return false
+    if (!tenantConfig) return false
     
-    return (
-      editedSettings.theme !== tenantSettings.theme ||
-      editedSettings.slug !== tenantSettings.slug ||
-      editedSettings.enable_branding !== tenantSettings.enable_branding ||
-      editedSettings.base_fare !== tenantSettings.base_fare ||
-      editedSettings.per_minute_rate !== tenantSettings.per_minute_rate ||
-      editedSettings.per_mile_rate !== tenantSettings.per_mile_rate ||
-      editedSettings.per_hour_rate !== tenantSettings.per_hour_rate ||
-      editedSettings.rider_tiers_enabled !== tenantSettings.rider_tiers_enabled ||
-      editedSettings.cancellation_fee !== tenantSettings.cancellation_fee ||
-      editedSettings.discounts !== tenantSettings.discounts
+    const settingsChanged = editedSettings && tenantConfig.settings && (
+      editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
+      JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
     )
+    
+    const pricingChanged = editedPricing && tenantConfig.pricing && (
+      editedPricing.base_fare !== tenantConfig.pricing.base_fare ||
+      editedPricing.per_mile_rate !== tenantConfig.pricing.per_mile_rate ||
+      editedPricing.per_minute_rate !== tenantConfig.pricing.per_minute_rate ||
+      editedPricing.per_hour_rate !== tenantConfig.pricing.per_hour_rate ||
+      editedPricing.cancellation_fee !== tenantConfig.pricing.cancellation_fee ||
+      editedPricing.discounts !== tenantConfig.pricing.discounts
+    )
+    
+    const brandingChanged = editedBranding && tenantConfig.branding && (
+      editedBranding.theme !== tenantConfig.branding.theme ||
+      editedBranding.slug !== tenantConfig.branding.slug ||
+      editedBranding.enable_branding !== tenantConfig.branding.enable_branding ||
+      editedBranding.primary_color !== tenantConfig.branding.primary_color ||
+      editedBranding.secondary_color !== tenantConfig.branding.secondary_color ||
+      editedBranding.accent_color !== tenantConfig.branding.accent_color
+    )
+    
+    return !!(settingsChanged || pricingChanged || brandingChanged)
   }
 
   const handleCancelEdit = () => {
-    setEditedSettings(tenantSettings)
+    if (tenantConfig) {
+      if (tenantConfig.settings) setEditedSettings(tenantConfig.settings)
+      if (tenantConfig.pricing) setEditedPricing(tenantConfig.pricing)
+      if (tenantConfig.branding) setEditedBranding(tenantConfig.branding)
+    }
     setEditingSettings(false)
     setLogoFile(null)
     setLogoPreview(null)
@@ -629,6 +877,8 @@ export default function TenantDashboard() {
       return
     }
 
+    if (!selectedBooking.id) return
+    
     setAssigningDriver(true)
     try {
       await assignDriverToBooking(selectedBooking.id, {
@@ -769,33 +1019,45 @@ export default function TenantDashboard() {
 
   // Determine active tab from URL or internal state
   const getActiveTab = (): TabType => {
-    // If we have an internal tab (for vehicles), use it
-    if (internalTab) return internalTab
-    
-    // Otherwise, determine from URL
+    // Determine from URL
     const path = location.pathname
     if (path === '/tenant/drivers') return 'drivers'
     if (path === '/tenant/bookings') return 'bookings'
+    if (path === '/tenant/vehicles') return 'vehicles'
     if (path === '/tenant/overview' || path === '/tenant') return 'overview'
+    if (path.startsWith('/tenant/settings')) return 'settings'
     // Default to overview if path doesn't match
     return 'overview'
   }
+
+  // Auto-open settings menu when on settings page
+  useEffect(() => {
+    if (location.pathname.startsWith('/tenant/settings') && !settingsMenuOpen) {
+      setSettingsMenuOpen(true)
+    }
+  }, [location.pathname, settingsMenuOpen])
 
   const activeTab = getActiveTab()
 
   // Handle tab navigation
   const handleTabClick = (tabId: TabType) => {
     if (tabId === 'settings') {
-      navigate('/tenant/settings')
-    } else if (tabId === 'vehicles') {
-      // Keep vehicles tab as internal state since there's no route for it
-      setInternalTab('vehicles')
+      // Toggle settings submenu instead of navigating
+      setSettingsMenuOpen(!settingsMenuOpen)
     } else {
-      // Clear internal tab when navigating to URL-based tabs
-      setInternalTab(null)
+      // Navigate to the tab's route
       navigate(`/tenant/${tabId}`)
+      // Close menu on mobile when section is clicked
+      if (isMobile) {
+        setIsMenuOpen(false)
+      }
     }
-    // Close menu on mobile when section is clicked
+  }
+
+  // Handle settings submenu item click
+  const handleSettingsSubmenuClick = (path: string) => {
+    navigate(path)
+    setSettingsMenuOpen(false)
     if (isMobile) {
       setIsMenuOpen(false)
     }
@@ -1039,41 +1301,116 @@ export default function TenantDashboard() {
         }}>
           {tabs.map((tab) => {
             const IconComponent = tab.icon
+            const isSettings = tab.id === 'settings'
+            const isActive = activeTab === tab.id || (isSettings && location.pathname.startsWith('/tenant/settings'))
+            
             return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id as TabType)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
-                  backgroundColor: activeTab === tab.id ? 'var(--bw-bg-hover)' : 'transparent',
-                  border: 'none',
-                  borderLeft: activeTab === tab.id ? '3px solid var(--bw-accent)' : '3px solid transparent',
-                  color: 'var(--bw-text)',
-                  cursor: 'pointer',
-                  fontSize: 'clamp(13px, 1.5vw, 15px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  textAlign: 'left',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                <IconComponent className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
-                <span>{tab.label}</span>
-              </button>
+              <div key={tab.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                <button
+                  onClick={() => handleTabClick(tab.id as TabType)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
+                    backgroundColor: isActive ? 'var(--bw-bg-hover)' : 'transparent',
+                    border: 'none',
+                    borderLeft: isActive ? '3px solid var(--bw-accent)' : '3px solid transparent',
+                    color: 'var(--bw-text)',
+                    cursor: 'pointer',
+                    fontSize: 'clamp(13px, 1.5vw, 15px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    textAlign: 'left',
+                    transition: 'all 0.2s ease',
+                    justifyContent: 'space-between'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <IconComponent className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                    <span>{tab.label}</span>
+                  </div>
+                  {isSettings && (
+                    <ChevronDown 
+                      className="w-4 h-4" 
+                      style={{ 
+                        width: '16px', 
+                        height: '16px', 
+                        flexShrink: 0,
+                        transform: settingsMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }} 
+                    />
+                  )}
+                </button>
+                {/* Settings Submenu */}
+                {isSettings && settingsMenuOpen && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    paddingLeft: 'clamp(20px, 2.5vw, 32px)',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderLeft: '2px solid var(--bw-border)',
+                    marginLeft: 'clamp(16px, 2vw, 24px)'
+                  }}>
+                    {[
+                      { path: '/tenant/settings/general', label: 'General View' },
+                      { path: '/tenant/settings/account', label: 'Account Information' },
+                      { path: '/tenant/settings/company', label: 'Company Information' },
+                      { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings' },
+                      { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration' },
+                      { path: '/tenant/settings/plans', label: 'Plans' },
+                      { path: '/tenant/settings/help', label: 'Help' }
+                    ].map((subItem) => {
+                      const isSubActive = location.pathname === subItem.path
+                      return (
+                        <button
+                          key={subItem.path}
+                          onClick={() => handleSettingsSubmenuClick(subItem.path)}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: 'clamp(10px, 1.2vw, 12px) clamp(12px, 1.5vw, 16px)',
+                            backgroundColor: isSubActive ? 'var(--bw-bg-hover)' : 'transparent',
+                            border: 'none',
+                            color: 'var(--bw-text)',
+                            cursor: 'pointer',
+                            fontSize: 'clamp(12px, 1.3vw, 14px)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 300,
+                            textAlign: 'left',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSubActive) {
+                              e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSubActive) {
+                              e.currentTarget.style.backgroundColor = 'transparent'
+                            }
+                          }}
+                        >
+                          <span>{subItem.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
@@ -1945,11 +2282,11 @@ export default function TenantDashboard() {
                 ) : (
                   <>
                     {/* Show bookings - first 3 if collapsed, all if expanded */}
-                    {(showMoreBookings ? bookings : bookings.slice(0, 3)).map((booking) => (
+                    {(showMoreBookings ? bookings : bookings.slice(0, 3)).map((booking, idx) => (
                       <div 
-                        key={booking.id} 
+                        key={booking.id || `booking-${idx}`} 
                         className="bw-recent-item" 
-                        onClick={() => handleBookingClick(booking.id)}
+                        onClick={() => booking.id && handleBookingClick(booking.id)}
                         style={{ 
                           border: '1px solid var(--bw-border)', 
                           borderRadius: '8px', 
@@ -2502,12 +2839,308 @@ export default function TenantDashboard() {
                   fontSize: 'clamp(12px, 1.5vw, 14px)',
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
-                  Total: {bookings.length} • 
-                  Completed: {bookings.filter(b => b.booking_status === 'completed').length} • 
-                  Active: {bookings.filter(b => b.booking_status === 'active').length} • 
-                  Pending: {bookings.filter(b => b.booking_status === 'pending').length}
+                  {hasActiveSearch ? (
+                    <>
+                      Showing: {filteredBookings.length} of {bookings.length} • 
+                      Completed: {filteredBookings.filter(b => b.booking_status === 'completed').length} • 
+                      Active: {filteredBookings.filter(b => b.booking_status === 'active').length} • 
+                      Pending: {filteredBookings.filter(b => b.booking_status === 'pending').length}
+                    </>
+                  ) : (
+                    <>
+                      Total: {bookings.length} • 
+                      Completed: {bookings.filter(b => b.booking_status === 'completed').length} • 
+                      Active: {bookings.filter(b => b.booking_status === 'active').length} • 
+                      Pending: {bookings.filter(b => b.booking_status === 'pending').length}
+                    </>
+                  )}
                 </span>
               </div>
+            </div>
+
+            {/* Filters and Search Bar */}
+            <div style={{
+              marginBottom: 'clamp(16px, 3vw, 24px)',
+              display: 'flex',
+              gap: 'clamp(12px, 2vw, 16px)',
+              alignItems: 'center',
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
+              justifyContent: 'space-between'
+            }}>
+              {/* Search Bar */}
+              <div style={{
+                flex: 1,
+                minWidth: isMobile ? '100%' : '200px',
+                maxWidth: '50%'
+              }}>
+                <div style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: '100%'
+                }}>
+                  <div style={{
+                    position: 'relative',
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%'
+                  }}>
+                    <Search 
+                      className="search-icon"
+                      style={{
+                        position: 'absolute',
+                        left: 'clamp(12px, 2vw, 16px)',
+                        width: 'clamp(16px, 2.5vw, 20px)',
+                        height: 'clamp(16px, 2.5vw, 20px)',
+                        color: 'var(--bw-muted)',
+                        pointerEvents: 'none',
+                        zIndex: 1
+                      }} 
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search by customer name or driver name..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="bw-input"
+                      style={{
+                        width: '100%',
+                        paddingLeft: 'clamp(40px, 6vw, 48px)',
+                        paddingRight: hasActiveSearch ? 'clamp(40px, 6vw, 48px)' : 'clamp(12px, 2vw, 16px)',
+                        fontSize: 'clamp(14px, 2vw, 16px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        border: '1px solid var(--bw-border)',
+                        borderRadius: '8px',
+                        backgroundColor: 'var(--bw-bg)',
+                        color: 'var(--bw-text)',
+                        minHeight: 'clamp(40px, 5vw, 48px)',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    {hasActiveSearch && (
+                      <button
+                        onClick={clearSearch}
+                        style={{
+                          position: 'absolute',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--bw-muted)',
+                          transition: 'color 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'var(--bw-text)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--bw-muted)'
+                        }}
+                        aria-label="Clear search"
+                      >
+                        <X style={{
+                          width: 'clamp(16px, 2.5vw, 20px)',
+                          height: 'clamp(16px, 2.5vw, 20px)'
+                        }} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Dropdowns */}
+              <div style={{
+                display: 'flex',
+                gap: 'clamp(8px, 1.5vw, 12px)',
+                alignItems: 'center',
+                flexWrap: 'nowrap',
+                marginLeft: 'auto'
+              }}>
+                {/* Booking Status Filter */}
+                <select
+                  value={bookingStatusFilter}
+                  onChange={(e) => {
+                    setBookingStatusFilter(e.target.value)
+                    // Reload bookings with new filter
+                    setTimeout(() => {
+                      const loadBookings = async () => {
+                        try {
+                          const bookingParams: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
+                          if (e.target.value) bookingParams.booking_status = e.target.value
+                          if (serviceTypeFilter) bookingParams.service_type = serviceTypeFilter
+                          if (vehicleIdFilter) bookingParams.vehicle_id = vehicleIdFilter
+                          
+                          const b = await getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
+                          if (b.data !== undefined) {
+                            setBookings(b.data || [])
+                          }
+                        } catch (error) {
+                          console.error('Failed to reload bookings:', error)
+                        }
+                      }
+                      loadBookings()
+                    }, 0)
+                  }}
+                  className="bw-input"
+                  style={{
+                    padding: 'clamp(8px, 1.5vw, 12px)',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--bw-bg)',
+                    color: 'var(--bw-text)',
+                    minHeight: 'clamp(40px, 5vw, 48px)',
+                    width: 'auto',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+
+                {/* Service Type Filter */}
+                <select
+                  value={serviceTypeFilter}
+                  onChange={(e) => {
+                    setServiceTypeFilter(e.target.value)
+                    // Reload bookings with new filter
+                    setTimeout(() => {
+                      const loadBookings = async () => {
+                        try {
+                          const bookingParams: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
+                          if (bookingStatusFilter) bookingParams.booking_status = bookingStatusFilter
+                          if (e.target.value) bookingParams.service_type = e.target.value
+                          if (vehicleIdFilter) bookingParams.vehicle_id = vehicleIdFilter
+                          
+                          const b = await getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
+                          if (b.data !== undefined) {
+                            setBookings(b.data || [])
+                          }
+                        } catch (error) {
+                          console.error('Failed to reload bookings:', error)
+                        }
+                      }
+                      loadBookings()
+                    }, 0)
+                  }}
+                  className="bw-input"
+                  style={{
+                    padding: 'clamp(8px, 1.5vw, 12px)',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--bw-bg)',
+                    color: 'var(--bw-text)',
+                    minHeight: 'clamp(40px, 5vw, 48px)',
+                    width: 'auto',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">All Services</option>
+                  <option value="dropoff">Dropoff</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="airport">Airport</option>
+                </select>
+
+                {/* Vehicle Filter */}
+                <select
+                  value={vehicleIdFilter || ''}
+                  onChange={(e) => {
+                    const vehicleId = e.target.value ? parseInt(e.target.value) : null
+                    setVehicleIdFilter(vehicleId)
+                    // Reload bookings with new filter
+                    setTimeout(() => {
+                      const loadBookings = async () => {
+                        try {
+                          const bookingParams: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
+                          if (bookingStatusFilter) bookingParams.booking_status = bookingStatusFilter
+                          if (serviceTypeFilter) bookingParams.service_type = serviceTypeFilter
+                          if (vehicleId) bookingParams.vehicle_id = vehicleId
+                          
+                          const b = await getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
+                          if (b.data !== undefined) {
+                            setBookings(b.data || [])
+                          }
+                        } catch (error) {
+                          console.error('Failed to reload bookings:', error)
+                        }
+                      }
+                      loadBookings()
+                    }, 0)
+                  }}
+                  className="bw-input"
+                  style={{
+                    padding: 'clamp(8px, 1.5vw, 12px)',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--bw-bg)',
+                    color: 'var(--bw-text)',
+                    minHeight: 'clamp(40px, 5vw, 48px)',
+                    width: 'auto',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="">All Vehicles</option>
+                  {vehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicle.make} {vehicle.model} {vehicle.year ? `(${vehicle.year})` : ''} {vehicle.license_plate ? `- ${vehicle.license_plate}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {/* Search Error Messages */}
+            <div style={{
+              marginTop: '-clamp(16px, 3vw, 24px)',
+              marginBottom: 'clamp(16px, 3vw, 24px)'
+            }}>
+              {searchError && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bw-warning-bg, #fef3c7)',
+                  border: '1px solid var(--bw-warning-border, #f59e0b)',
+                  borderRadius: '6px',
+                  color: 'var(--bw-warning-text, #92400e)',
+                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <AlertCircle style={{
+                    width: '16px',
+                    height: '16px',
+                    flexShrink: 0
+                  }} />
+                  <span>{searchError}</span>
+                </div>
+              )}
+              {hasActiveSearch && filteredBookings.length === 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '12px',
+                  textAlign: 'center',
+                  color: 'var(--bw-muted)',
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  No bookings found matching "{searchQuery}"
+                </div>
+              )}
             </div>
 
             <div className="bw-card" style={{
@@ -2518,7 +3151,7 @@ export default function TenantDashboard() {
               {isMobile ? (
                 /* Mobile Card Layout */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 16px)' }}>
-                  {bookings.length === 0 ? (
+                  {filteredBookings.length === 0 ? (
                     <div className="bw-empty-state" style={{
                       padding: 'clamp(24px, 4vw, 48px)',
                       textAlign: 'center'
@@ -2548,10 +3181,10 @@ export default function TenantDashboard() {
                       }}>Bookings will appear here once riders start using your service</div>
                     </div>
                   ) : (
-                    bookings.map((booking) => (
+                    filteredBookings.map((booking, idx) => (
                       <div 
-                        key={booking.id} 
-                        onClick={() => handleBookingClick(booking.id)}
+                        key={booking.id || `booking-${idx}`} 
+                        onClick={() => booking.id && handleBookingClick(booking.id)}
                         style={{ 
                           cursor: 'pointer',
                           border: '1px solid var(--bw-border)',
@@ -2586,15 +3219,18 @@ export default function TenantDashboard() {
                           }}>
                             #{booking.id}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 8px)' }}>
-                            {getStatusIcon(booking.booking_status)}
-                            <span className={getStatusColor(booking.booking_status)} style={{
-                              fontSize: 'clamp(12px, 1.5vw, 14px)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontWeight: 500
-                            }}>
-                              {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
-                            </span>
+                          <div style={{
+                            padding: '4px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
+                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
+                            color: getStatusColorHex(booking.booking_status),
+                            fontSize: 'clamp(11px, 1.8vw, 12px)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 500,
+                            display: 'inline-block'
+                          }}>
+                            {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
                           </div>
                         </div>
 
@@ -2789,7 +3425,7 @@ export default function TenantDashboard() {
                     <div className="bw-table-cell">Status</div>
                     <div className="bw-table-cell">Fare</div>
                   </div>
-                  {bookings.length === 0 ? (
+                  {filteredBookings.length === 0 ? (
                     <div className="bw-empty-state">
                       <div className="bw-empty-icon">
                         <Calendar className="w-8 h-8" />
@@ -2798,11 +3434,11 @@ export default function TenantDashboard() {
                       <div className="bw-empty-subtext">Bookings will appear here once riders start using your service</div>
                     </div>
                   ) : (
-                    bookings.map((booking) => (
+                    filteredBookings.map((booking, idx) => (
                       <div 
-                        key={booking.id} 
+                        key={booking.id || `booking-${idx}`} 
                         className="bw-table-row"
-                        onClick={() => handleBookingClick(booking.id)}
+                        onClick={() => booking.id && handleBookingClick(booking.id)}
                         style={{ cursor: 'pointer' }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
@@ -2873,11 +3509,18 @@ export default function TenantDashboard() {
                           </div>
                         </div>
                         <div className="bw-table-cell">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {getStatusIcon(booking.booking_status)}
-                            <span className={getStatusColor(booking.booking_status)} style={{ fontSize: '12px' }}>
-                              {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
-                            </span>
+                          <div style={{
+                            padding: '4px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
+                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
+                            color: getStatusColorHex(booking.booking_status),
+                            fontSize: '12px',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 500,
+                            display: 'inline-block'
+                          }}>
+                            {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
                           </div>
                         </div>
                         <div className="bw-table-cell">
@@ -2918,38 +3561,6 @@ export default function TenantDashboard() {
                 gap: 'clamp(8px, 1.5vw, 12px)',
                 width: isMobile ? '100%' : 'auto'
               }}>
-                <button 
-                  className={`bw-btn bw-btn-action ${isAssignDriverHovered ? 'custom-hover-border' : ''}`}
-                  onClick={() => setShowAssignDriver(true)}
-                  onMouseEnter={() => setIsAssignDriverHovered(true)}
-                  onMouseLeave={() => setIsAssignDriverHovered(false)}
-                  style={{
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                      width: isMobile ? '100%' : 'auto',
-                      justifyContent: 'center',
-                      borderRadius: 7,
-                      border: isAssignDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                      borderColor: isAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      color: isAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      transition: 'all 0.2s ease'
-                  } as React.CSSProperties}
-                >
-                  <Plus className="w-4 h-4" style={{ 
-                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                    color: isAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit',
-                    fill: isAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'currentColor' 
-                  }} />
-                  <span style={{ color: isAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                    Assign Driver
-                  </span>
-                </button>
                 <div 
                   style={{
                     position: 'relative',
@@ -3193,6 +3804,7 @@ export default function TenantDashboard() {
                                 onChange={(e) => handleNewVehicleChange('year', e.target.value)}
                                 min="1900"
                                 max={new Date().getFullYear() + 1}
+                                maxLength={4}
                                 style={{
                                   width: 'calc(10ch + 36px)',
                                   padding: '16px 18px 16px 18px',
@@ -3219,6 +3831,7 @@ export default function TenantDashboard() {
                                 type="text"
                                 value={newVehicle.license_plate}
                                 onChange={(e) => handleNewVehicleChange('license_plate', e.target.value)}
+                                maxLength={8}
                                 style={{
                                   width: 'calc(10ch + 36px)',
                                   padding: '16px 18px 16px 18px',
@@ -3506,8 +4119,7 @@ export default function TenantDashboard() {
                 className="bw-vehicle-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
-                  gap: isMobile ? 'clamp(16px, 3vw, 24px)' : '24px'
+                  gap: 'clamp(16px, 3vw, 24px)'
                 }}
               >
                 {vehicles.map((vehicle) => {
@@ -3516,84 +4128,407 @@ export default function TenantDashboard() {
                     ? Object.values(vehicle.vehicle_images)[0] 
                     : null
                   
-                  // Get category name from vehicleCategories
-                  const category = vehicleCategories.find(
-                    cat => cat.id === vehicle.vehicle_category_id
-                  )?.vehicle_category || 'N/A'
+                  // Get category name from vehicle response
+                  const category = vehicle.vehicle_category?.vehicle_category || 'N/A'
+                  
+                  const isHovered = hoveredVehicleCardId === vehicle.id
                   
                   return (
                     <div 
                       key={vehicle.id} 
                       className="bw-card"
                       style={{
-                        borderRadius: 'clamp(8px, 1.5vw, 12px)',
+                        borderRadius: '6px',
                         overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
+                        position: 'relative',
                         cursor: 'pointer',
                         padding: 0,
-                        height: '100%',
-                        transform: 'none',
+                        aspectRatio: '1',
+                        width: '100%',
                         border: '1px solid var(--bw-border)',
                         backgroundColor: 'var(--bw-bg-secondary)',
-                        transition: 'all 0.2s ease'
+                        transition: 'none'
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                        e.currentTarget.style.transform = 'translateY(-2px)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-                        e.currentTarget.style.transform = 'none'
-                      }}
+                      onMouseEnter={() => setHoveredVehicleCardId(vehicle.id)}
+                      onMouseLeave={() => setHoveredVehicleCardId(null)}
                       onClick={() => {
                         setEditingVehicleId(vehicle.id)
                         setShowVehicleEditModal(true)
                       }}
                     >
-                      {/* Vehicle Image */}
-                      <VehicleImageCard 
-                        imageUrl={firstImage}
-                        make={vehicle.make}
-                        model={vehicle.model}
-                      />
-                      
-                      {/* Vehicle Info */}
+                      {/* Vehicle Image - Always visible */}
                       <div style={{
-                        padding: 'clamp(16px, 3vw, 24px)',
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'var(--bw-bg-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}>
+                        {firstImage ? (
+                          <img 
+                            src={firstImage} 
+                            alt={`${vehicle.make} ${vehicle.model}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
+                          />
+                        ) : (
+                          <Car className="w-12 h-12" style={{ 
+                            width: 'clamp(32px, 5vw, 48px)',
+                            height: 'clamp(32px, 5vw, 48px)',
+                            color: 'var(--bw-disabled)', 
+                            opacity: 0.5 
+                          }} />
+                        )}
+                      </div>
+                      
+                      {/* Description Overlay - Slides up on hover to cover entire card */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        top: isHovered ? 0 : undefined,
+                        height: isHovered ? '100%' : 'auto',
+                        backgroundColor: 'var(--bw-bg-secondary)',
+                        borderTop: '1px solid var(--bw-border)',
+                        padding: isHovered ? 'clamp(20px, 5vw, 40px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px)' : 'clamp(16px, 3vw, 24px)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 'clamp(12px, 2vw, 16px)',
-                        flex: 1
+                        justifyContent: isHovered ? 'flex-start' : 'flex-start',
+                        alignItems: isHovered ? 'center' : 'stretch',
+                        textAlign: isHovered ? 'center' : 'left',
+                        zIndex: 2
                       }}>
-                        {/* Title */}
+                        {/* Default View - Vehicle Name, Category, and Dot */}
                         <div style={{
-                          fontSize: isMobile ? 'clamp(18px, 3vw, 22px)' : '16px',
-                          fontWeight: 600,
-                          color: 'var(--bw-text)',
-                          lineHeight: 1.3,
-                          fontFamily: '"Work Sans", sans-serif'
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 'clamp(8px, 1.5vw, 12px)',
+                          width: '100%',
+                          opacity: isHovered ? 0 : 1,
+                          transition: 'opacity 0.2s ease',
+                          pointerEvents: isHovered ? 'none' : 'auto'
                         }}>
-                          {vehicle.year} {vehicle.make} {vehicle.model}
-                        </div>
-                        
-                        {/* Category */}
-                        <div>
-                          <span className="bw-badge bw-badge-secondary" style={{
-                            fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px',
-                            padding: isMobile ? 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)' : '4px 8px',
-                            fontFamily: '"Work Sans", sans-serif'
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'clamp(8px, 1.5vw, 12px)',
+                            justifyContent: 'space-between'
                           }}>
-                            {category}
-                          </span>
+                            <div style={{
+                              fontSize: isMobile ? 'clamp(18px, 3vw, 22px)' : '16px',
+                              fontWeight: 600,
+                              color: 'var(--bw-text)',
+                              lineHeight: 1.3,
+                              fontFamily: '"Work Sans", sans-serif',
+                              flex: 1
+                            }}>
+                              {vehicle.year} {vehicle.make} {vehicle.model}
+                            </div>
+                            {/* Driver Status Indicator */}
+                            <div
+                              style={{
+                                width: isMobile ? 'clamp(12px, 2vw, 14px)' : '12px',
+                                height: isMobile ? 'clamp(12px, 2vw, 14px)' : '12px',
+                                borderRadius: '50%',
+                                backgroundColor: vehicle.driver ? '#ef4444' : '#10b981',
+                                flexShrink: 0,
+                                border: '2px solid var(--bw-bg)',
+                                boxShadow: '0 0 0 1px var(--bw-border)',
+                                cursor: 'help',
+                                position: 'relative'
+                              }}
+                              onMouseEnter={() => setTooltipVehicleId(vehicle.id)}
+                              onMouseLeave={() => setTooltipVehicleId(null)}
+                            >
+                              {tooltipVehicleId === vehicle.id && (
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  right: 0,
+                                  marginBottom: '8px',
+                                  padding: 'clamp(6px, 1vw, 8px) clamp(10px, 1.5vw, 12px)',
+                                  backgroundColor: 'var(--bw-bg-secondary)',
+                                  border: '1px solid var(--bw-border)',
+                                  borderRadius: 'clamp(4px, 1vw, 6px)',
+                                  fontSize: isMobile ? 'clamp(12px, 1.5vw, 13px)' : '13px',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  color: 'var(--bw-text)',
+                                  whiteSpace: 'nowrap',
+                                  zIndex: 1000,
+                                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                                  pointerEvents: 'none'
+                                }}>
+                                  {vehicle.driver ? (vehicle.driver.full_name || 'Has Driver Assigned') : 'Not Assigned'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Category and Driver Type */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'clamp(8px, 1.5vw, 12px)',
+                            flexWrap: 'wrap'
+                          }}>
+                            <span className="bw-badge bw-badge-secondary" style={{
+                              fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px',
+                              padding: isMobile ? 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)' : '4px 8px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {category}
+                            </span>
+                            
+                            {/* Driver Type */}
+                            {(vehicle.driver?.driver_type || vehicle.driver_type) && (
+                              <span className={`bw-badge ${(vehicle.driver?.driver_type || vehicle.driver_type) === 'in_house' ? 'bw-badge-primary' : 'bw-badge-secondary'}`} style={{
+                                fontSize: isMobile ? 'clamp(12px, 1.5vw, 14px)' : '13px',
+                                padding: isMobile ? 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)' : '4px 8px',
+                                fontFamily: '"Work Sans", sans-serif'
+                              }}>
+                                {(vehicle.driver?.driver_type || vehicle.driver_type) === 'in_house' ? 'In-House' : 'Outsourced'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         
+                        {/* Hover View - Full Details and Buttons */}
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 'clamp(16px, 2.5vw, 20px)',
+                          width: '100%',
+                          opacity: isHovered ? 1 : 0,
+                          transition: 'opacity 0.2s ease 0.1s',
+                          pointerEvents: isHovered ? 'auto' : 'none',
+                          position: isHovered ? 'relative' : 'absolute',
+                          top: isHovered ? 'auto' : 0,
+                          left: isHovered ? 'auto' : 0,
+                          right: isHovered ? 'auto' : 0,
+                          alignItems: 'center',
+                          textAlign: 'center'
+                        }}>
+                          {/* Vehicle Name */}
+                          <div style={{
+                            fontSize: isMobile ? 'clamp(20px, 3.5vw, 24px)' : '20px',
+                            fontWeight: 600,
+                            color: 'var(--bw-text)',
+                            lineHeight: 1.3,
+                            fontFamily: '"Work Sans", sans-serif',
+                            textAlign: 'center'
+                          }}>
+                            {vehicle.year} {vehicle.make} {vehicle.model}
+                          </div>
+                          
+                          {/* Category */}
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <span className="bw-badge bw-badge-secondary" style={{
+                              fontSize: isMobile ? 'clamp(13px, 2vw, 15px)' : '14px',
+                              padding: isMobile ? 'clamp(8px, 1.5vw, 10px) clamp(14px, 2.5vw, 18px)' : '6px 12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {category}
+                            </span>
+                          </div>
+                          
+                          {/* License Plate */}
+                          {vehicle.license_plate && (
+                            <div style={{
+                              fontSize: isMobile ? 'clamp(14px, 2.5vw, 16px)' : '15px',
+                              color: 'var(--bw-muted)',
+                              fontFamily: '"Work Sans", sans-serif',
+                              textAlign: 'center'
+                            }}>
+                              <span style={{ fontWeight: 500 }}>License Plate:</span> {vehicle.license_plate}
+                            </div>
+                          )}
+                          
+                          {/* Driver Name */}
+                          <div style={{
+                            fontSize: isMobile ? 'clamp(14px, 2.5vw, 16px)' : '15px',
+                            color: 'var(--bw-muted)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'clamp(8px, 1.5vw, 12px)',
+                            justifyContent: 'center',
+                            textAlign: 'center'
+                          }}>
+                            <div
+                              style={{
+                                width: isMobile ? 'clamp(12px, 2vw, 14px)' : '12px',
+                                height: isMobile ? 'clamp(12px, 2vw, 14px)' : '12px',
+                                borderRadius: '50%',
+                                backgroundColor: vehicle.driver ? '#ef4444' : '#10b981',
+                                flexShrink: 0,
+                                border: '2px solid var(--bw-bg)',
+                                boxShadow: '0 0 0 1px var(--bw-border)'
+                              }}
+                            />
+                            <span style={{ fontWeight: 500 }}>Driver:</span> {vehicle.driver ? (vehicle.driver.full_name || 'Assigned') : 'Not Assigned'}
+                          </div>
+                          
+                          {/* Assign/Unassign Driver Button */}
+                          {vehicle.driver ? (
+                            <div style={{ width: '100%' }}>
+                              <button
+                                className={`bw-btn-outline ${unassignHoveredVehicleId === vehicle.id ? 'custom-hover-border' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setUnassigningVehicleId(vehicle.id)
+                                  setShowUnassignConfirm(true)
+                                  setUnassignError(null)
+                                }}
+                                onMouseEnter={() => setUnassignHoveredVehicleId(vehicle.id)}
+                                onMouseLeave={() => setUnassignHoveredVehicleId(null)}
+                                style={{
+                                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                                  width: '100%',
+                                  borderRadius: 7,
+                                  backgroundColor: 'transparent',
+                                  border: unassignHoveredVehicleId === vehicle.id ? '2px solid #ef4444' : '1px solid #ef4444',
+                                  borderColor: '#ef4444',
+                                  color: '#ef4444',
+                                  transition: 'all 0.2s ease',
+                                  cursor: 'pointer'
+                                } as React.CSSProperties}
+                              >
+                                <span style={{ color: '#ef4444' }}>
+                                  Unassign
+                                </span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ width: '100%' }}>
+                              <button
+                                className={`bw-btn ${assignHoveredVehicleId === vehicle.id ? 'custom-hover-border' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setAssigningVehicleId(vehicle.id)
+                                  setShowAssignConfirm(true)
+                                  setSelectedDriverId('')
+                                  setAssignError(null)
+                                }}
+                                onMouseEnter={() => setAssignHoveredVehicleId(vehicle.id)}
+                                onMouseLeave={() => setAssignHoveredVehicleId(null)}
+                                style={{
+                                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                                  width: '100%',
+                                  borderRadius: 7,
+                                  backgroundColor: assignHoveredVehicleId === vehicle.id ? 'transparent' : '#10b981',
+                                  border: '2px solid #10b981',
+                                  borderColor: '#10b981',
+                                  color: assignHoveredVehicleId === vehicle.id ? '#10b981' : '#ffffff',
+                                  transition: 'all 0.2s ease',
+                                  cursor: 'pointer'
+                                } as React.CSSProperties}
+                              >
+                                <span style={{ color: assignHoveredVehicleId === vehicle.id ? '#10b981' : '#ffffff' }}>
+                                  Assign
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
                 })}
               </div>
             )}
+            
+            {/* Driver Status Info */}
+            <div style={{
+              marginTop: 'clamp(24px, 4vw, 32px)',
+              padding: 'clamp(12px, 2vw, 16px)',
+              backgroundColor: 'var(--bw-bg-secondary)',
+              border: '1px solid var(--bw-border)',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'clamp(12px, 2vw, 16px)'
+            }}>
+              <Info 
+                size={isMobile ? 20 : 18} 
+                style={{ 
+                  color: 'var(--bw-muted)',
+                  flexShrink: 0,
+                  marginTop: '2px'
+                }} 
+              />
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'clamp(8px, 1.5vw, 12px)'
+              }}>
+                <div style={{
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontWeight: 500,
+                  color: 'var(--bw-text)',
+                  fontFamily: '"Work Sans", sans-serif'
+                }}>
+                  Driver Status Indicators
+                </div>
+                <div style={{
+                  fontSize: isMobile ? 'clamp(12px, 1.8vw, 14px)' : '13px',
+                  color: 'var(--bw-muted)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  lineHeight: 1.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'clamp(6px, 1vw, 8px)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ef4444',
+                      flexShrink: 0,
+                      border: '2px solid var(--bw-bg)',
+                      boxShadow: '0 0 0 1px var(--bw-border)'
+                    }} />
+                    <span>Red indicator means the vehicle has a driver assigned</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+                    <div style={{
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: '#10b981',
+                      flexShrink: 0,
+                      border: '2px solid var(--bw-bg)',
+                      boxShadow: '0 0 0 1px var(--bw-border)'
+                    }} />
+                    <span>Green indicator means the vehicle has no driver assigned</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -3622,6 +4557,10 @@ export default function TenantDashboard() {
                 <div className="bw-info-item">
                   <span className="bw-info-label">Stripe Customer ID:</span>
                   <span className="bw-info-value">{info?.profile?.stripe_customer_id || 'Not connected'}</span>
+                </div>
+                <div className="bw-info-item">
+                  <span className="bw-info-label">Account Verified:</span>
+                  <span className="bw-info-value">{info?.is_verified ? 'Yes' : 'No'}</span>
                 </div>
               </div>
             </div>
@@ -3976,47 +4915,165 @@ export default function TenantDashboard() {
 
         {/* Add Driver Modal */}
       {showAddDriver && (
-        <div className="bw-modal-overlay" onClick={() => setShowAddDriver(false)}>
+        <div className="bw-modal-overlay" onClick={() => {
+          setShowAddDriver(false)
+          setAddDriverError(null)
+          setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
+        }}>
           <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
             <div className="bw-modal-header">
-              <h3>Add New Driver</h3>
-              <button className="bw-btn-icon" onClick={() => setShowAddDriver(false)}>
+              <h3 style={{ 
+                margin: 0, 
+                fontFamily: 'DM Sans, sans-serif', 
+                fontSize: '28px', 
+                fontWeight: 200, 
+                color: 'var(--bw-text)' 
+              }}>
+                Add New Driver
+              </h3>
+              <button className="bw-btn-icon" onClick={() => {
+                setShowAddDriver(false)
+                setAddDriverError(null)
+                setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
+              }}>
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
             <div className="bw-modal-body">
+              <p className="small-muted" style={{ 
+                margin: '0 0 24px 0', 
+                fontFamily: 'Work Sans, sans-serif', 
+                fontSize: '16px', 
+                fontWeight: 300, 
+                color: 'var(--bw-muted)' 
+              }}>
+                Enter the driver's information to send them a registration invitation.
+              </p>
+              
+              {addDriverError && (
+                <div style={{
+                  padding: '12px 16px',
+                  marginBottom: '24px',
+                  backgroundColor: 'rgba(197, 72, 61, 0.1)',
+                  border: '1px solid var(--bw-error)',
+                  borderRadius: '8px',
+                  color: 'var(--bw-error)',
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontSize: '14px',
+                  lineHeight: '1.5'
+                }}>
+                  {addDriverError}
+                </div>
+              )}
+              
               <div className="bw-form-grid">
                 <div className="bw-form-group">
-                  <label>First Name</label>
+                  <label className="small-muted" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: '13px', 
+                    color: 'var(--bw-muted)',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    First Name
+                  </label>
                   <input 
                     className="bw-input" 
                     value={newDriver.first_name} 
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDriver({ ...newDriver, first_name: e.target.value })} 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setNewDriver({ ...newDriver, first_name: e.target.value })
+                      setAddDriverError(null)
+                    }}
+                    style={{
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontSize: '16px',
+                      padding: '16px 18px',
+                      borderRadius: 0,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
                 <div className="bw-form-group">
-                  <label>Last Name</label>
+                  <label className="small-muted" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: '13px', 
+                    color: 'var(--bw-muted)',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    Last Name
+                  </label>
                   <input 
                     className="bw-input" 
                     value={newDriver.last_name} 
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDriver({ ...newDriver, last_name: e.target.value })} 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setNewDriver({ ...newDriver, last_name: e.target.value })
+                      setAddDriverError(null)
+                    }}
+                    style={{
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontSize: '16px',
+                      padding: '16px 18px',
+                      borderRadius: 0,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
                 <div className="bw-form-group">
-                  <label>Email</label>
+                  <label className="small-muted" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: '13px', 
+                    color: 'var(--bw-muted)',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    Email
+                  </label>
                   <input 
                     className="bw-input" 
                     type="email" 
                     value={newDriver.email} 
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDriver({ ...newDriver, email: e.target.value })} 
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setNewDriver({ ...newDriver, email: e.target.value })
+                      setAddDriverError(null)
+                    }}
+                    style={{
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontSize: '16px',
+                      padding: '16px 18px',
+                      borderRadius: 0,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
                 <div className="bw-form-group">
-                  <label>Driver Type</label>
+                  <label className="small-muted" style={{ 
+                    fontFamily: 'Work Sans, sans-serif', 
+                    fontSize: '13px', 
+                    color: 'var(--bw-muted)',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    Driver Type
+                  </label>
                   <select 
                     className="bw-input" 
                     value={newDriver.driver_type} 
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewDriver({ ...newDriver, driver_type: e.target.value as OnboardDriver['driver_type'] })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                      setNewDriver({ ...newDriver, driver_type: e.target.value as OnboardDriver['driver_type'] })
+                      setAddDriverError(null)
+                    }}
+                    style={{
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontSize: '16px',
+                      padding: '16px 18px',
+                      borderRadius: 0,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
                   >
                     <option value="outsourced">Outsourced</option>
                     <option value="in_house">In-House</option>
@@ -4027,7 +5084,11 @@ export default function TenantDashboard() {
             <div className="bw-modal-footer">
               <button 
                 className={`bw-btn-outline ${isCancelAddDriverHovered ? 'custom-hover-border' : ''}`}
-                onClick={() => setShowAddDriver(false)}
+                onClick={() => {
+                  setShowAddDriver(false)
+                  setAddDriverError(null)
+                  setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
+                }}
                 onMouseEnter={() => setIsCancelAddDriverHovered(true)}
                 onMouseLeave={() => setIsCancelAddDriverHovered(false)}
                 style={{
@@ -4054,6 +5115,7 @@ export default function TenantDashboard() {
               <button 
                 className={`bw-btn bw-btn-action ${isCreateDriverHovered ? 'custom-hover-border' : ''}`}
                 onClick={createDriver}
+                disabled={isCreatingDriver}
                 onMouseEnter={() => setIsCreateDriverHovered(true)}
                 onMouseLeave={() => setIsCreateDriverHovered(false)}
                 style={{
@@ -4070,115 +5132,13 @@ export default function TenantDashboard() {
                   border: isCreateDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
                   borderColor: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
                   color: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  opacity: isCreatingDriver ? 0.6 : 1,
+                  cursor: isCreatingDriver ? 'not-allowed' : 'pointer'
                 } as React.CSSProperties}
               >
                 <span style={{ color: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  Create Driver
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Driver Modal */}
-      {showAssignDriver && (
-        <div className="bw-modal-overlay" onClick={() => setShowAssignDriver(false)}>
-          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
-            <div className="bw-modal-header">
-              <h3>Assign Driver to Vehicle</h3>
-              <button className="bw-btn-icon" onClick={() => setShowAssignDriver(false)}>
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="bw-modal-body">
-              <div className="bw-form-grid">
-                <div className="bw-form-group">
-                  <label>Select Vehicle</label>
-                  <select 
-                    value={assign.vehicleId} 
-                    onChange={(e) => setAssign({ ...assign, vehicleId: e.target.value })}
-                    className="bw-input"
-                    style={{ color: '#374151', backgroundColor: '#ffffff' }}
-                  >
-                    <option value="">Choose a vehicle</option>
-                    {vehicles.map((vehicle) => (
-                      <option key={vehicle.id} value={vehicle.id} style={{ color: '#374151', backgroundColor: '#ffffff' }}>
-                        {vehicle.make} {vehicle.model} {vehicle.year} - {vehicle.license_plate}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="bw-form-group">
-                  <label>Select Driver</label>
-                  <select 
-                    value={assign.driverId} 
-                    onChange={(e) => setAssign({ ...assign, driverId: e.target.value })}
-                    className="bw-input"
-                    style={{ color: '#374151', backgroundColor: '#ffffff' }}
-                  >
-                    <option value="">Choose a driver</option>
-                    {drivers.map((driver) => (
-                      <option key={driver.id} value={driver.id} style={{ color: '#374151', backgroundColor: '#ffffff' }}>
-                        {driver.first_name} {driver.last_name} - {driver.email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="bw-modal-footer">
-              <button 
-                className={`bw-btn-outline ${isCancelAssignDriverHovered ? 'custom-hover-border' : ''}`}
-                onClick={() => setShowAssignDriver(false)}
-                onMouseEnter={() => setIsCancelAssignDriverHovered(true)}
-                onMouseLeave={() => setIsCancelAssignDriverHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isCancelAssignDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isCancelAssignDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  Cancel
-                </span>
-              </button>
-              <button 
-                className={`bw-btn bw-btn-action ${isAssignDriverModalHovered ? 'custom-hover-border' : ''}`}
-                onClick={assignVehicle}
-                onMouseEnter={() => setIsAssignDriverModalHovered(true)}
-                onMouseLeave={() => setIsAssignDriverModalHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isAssignDriverModalHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isAssignDriverModalHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isAssignDriverModalHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isAssignDriverModalHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  Assign Driver
+                  {isCreatingDriver ? 'Adding...' : 'Create Driver'}
                 </span>
               </button>
             </div>
@@ -4280,15 +5240,19 @@ export default function TenantDashboard() {
                         #{selectedBooking.id}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {getStatusIcon(selectedBooking.booking_status)}
-                      <span className={getStatusColor(selectedBooking.booking_status)} style={{
-                        fontSize: 'clamp(13px, 1.5vw, 15px)',
-                        fontWeight: 300,
-                        textTransform: 'capitalize'
-                      }}>
-                        {selectedBooking.booking_status}
-                      </span>
+                    <div style={{
+                      padding: '4px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: getStatusColorHex(selectedBooking.booking_status) + '20',
+                      border: `1px solid ${getStatusColorHex(selectedBooking.booking_status)}`,
+                      color: getStatusColorHex(selectedBooking.booking_status),
+                      fontSize: 'clamp(11px, 1.8vw, 12px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontWeight: 500,
+                      display: 'inline-block',
+                      textTransform: 'capitalize'
+                    }}>
+                      {selectedBooking.booking_status}
                     </div>
                   </div>
 
@@ -4458,7 +5422,7 @@ export default function TenantDashboard() {
                           fontSize: 'clamp(13px, 1.5vw, 15px)',
                           color: 'var(--bw-text)'
                         }}>
-                          {selectedBooking.city || 'N/A'}
+                          {selectedBooking.country || 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -4570,22 +5534,6 @@ export default function TenantDashboard() {
                     </div>
                   )}
 
-                  {/* Timestamps */}
-                  <div style={{
-                    paddingTop: 'clamp(12px, 2vw, 16px)',
-                    borderTop: '1px solid var(--bw-border)',
-                    fontSize: 'clamp(11px, 1.3vw, 13px)',
-                    color: 'var(--bw-muted)'
-                  }}>
-                    <div style={{ marginBottom: '4px' }}>
-                      Created: {selectedBooking.created_on ? new Date(selectedBooking.created_on).toLocaleString() : 'N/A'}
-                    </div>
-                    {selectedBooking.updated_on && (
-                      <div>
-                        Updated: {new Date(selectedBooking.updated_on).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -4997,6 +5945,378 @@ export default function TenantDashboard() {
               >
                 <span>
                   {isDeleting ? 'Deleting...' : 'Delete Vehicle'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unassign Driver Confirmation Modal */}
+      {showUnassignConfirm && unassigningVehicleId && (
+        <div className="bw-modal-overlay" onClick={() => {
+          if (!isUnassigning) {
+            setShowUnassignConfirm(false)
+            setUnassigningVehicleId(null)
+            setUnassignError(null)
+          }
+        }}>
+          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
+            maxWidth: '500px',
+            width: '90vw'
+          }}>
+            <div className="bw-modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderBottom: '1px solid var(--bw-border)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif',
+                color: '#ef4444'
+              }}>
+                Unassign Driver
+              </h3>
+              <button 
+                className="bw-btn-icon" 
+                onClick={() => {
+                  if (!isUnassigning) {
+                    setShowUnassignConfirm(false)
+                    setUnassigningVehicleId(null)
+                    setUnassignError(null)
+                  }
+                }}
+                style={{
+                  padding: '8px',
+                  minWidth: '32px',
+                  minHeight: '32px'
+                }}
+                disabled={isUnassigning}
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bw-modal-body" style={{
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--bw-border)'
+                }}>
+                  <AlertCircle className="w-5 h-5" style={{ color: '#ef4444', flexShrink: 0 }} />
+                  <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
+                    Are you sure you want to unassign the driver from this vehicle?
+                  </div>
+                </div>
+                {vehicles.find(v => v.id === unassigningVehicleId) && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid var(--bw-border)',
+                    fontSize: '13px'
+                  }}>
+                    <div style={{ color: 'var(--bw-muted)', marginBottom: '4px' }}>Vehicle Details:</div>
+                    <div style={{ color: 'var(--bw-text)', fontWeight: 500 }}>
+                      {vehicles.find(v => v.id === unassigningVehicleId)?.year} {vehicles.find(v => v.id === unassigningVehicleId)?.make} {vehicles.find(v => v.id === unassigningVehicleId)?.model}
+                    </div>
+                    {vehicles.find(v => v.id === unassigningVehicleId)?.driver && (
+                      <>
+                        <div style={{ color: 'var(--bw-muted)', marginTop: '8px', marginBottom: '4px' }}>Assigned Driver:</div>
+                        <div style={{ color: 'var(--bw-text)', fontWeight: 500 }}>
+                          {vehicles.find(v => v.id === unassigningVehicleId)?.driver?.full_name || 'Unknown'}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                {unassignError && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid #ef4444',
+                    fontSize: '13px',
+                    color: '#ef4444'
+                  }}>
+                    {unassignError}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bw-modal-footer" style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderTop: '1px solid var(--bw-border)'
+            }}>
+              <button
+                className={`bw-btn-outline ${isCancelUnassignHovered ? 'custom-hover-border' : ''}`}
+                onClick={() => {
+                  if (!isUnassigning) {
+                    setShowUnassignConfirm(false)
+                    setUnassigningVehicleId(null)
+                    setUnassignError(null)
+                  }
+                }}
+                onMouseEnter={() => !isUnassigning && setIsCancelUnassignHovered(true)}
+                onMouseLeave={() => setIsCancelUnassignHovered(false)}
+                disabled={isUnassigning}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  border: isCancelUnassignHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
+                  borderColor: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  color: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                  Cancel
+                </span>
+              </button>
+              <button
+                className={`bw-btn-outline ${isConfirmUnassignHovered ? 'custom-hover-border' : ''}`}
+                onClick={() => confirmUnassignDriver(true)}
+                onMouseEnter={() => !isUnassigning && setIsConfirmUnassignHovered(true)}
+                onMouseLeave={() => setIsConfirmUnassignHovered(false)}
+                disabled={isUnassigning}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  backgroundColor: 'transparent',
+                  border: isConfirmUnassignHovered ? '2px solid #dc2626' : '2px solid #ef4444',
+                  borderColor: isConfirmUnassignHovered ? '#dc2626' : '#ef4444',
+                  color: isConfirmUnassignHovered ? '#dc2626' : '#ef4444',
+                  boxShadow: isConfirmUnassignHovered ? 'inset 0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+                  transform: isConfirmUnassignHovered ? 'scale(0.98)' : 'scale(1)',
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isConfirmUnassignHovered ? '#dc2626' : '#ef4444' }}>
+                  {isUnassigning ? 'Unassigning...' : 'Unassign Driver'}
+                </span>
+              </button>
+            </div>
+            </div>
+          </div>
+        )}
+
+      {/* Assign Driver Confirmation Modal */}
+      {showAssignConfirm && assigningVehicleId && (
+        <div className="bw-modal-overlay" onClick={() => {
+          if (!isAssigning) {
+            setShowAssignConfirm(false)
+            setAssigningVehicleId(null)
+            setSelectedDriverId('')
+            setAssignError(null)
+          }
+        }}>
+          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
+            maxWidth: '500px',
+            width: '90vw'
+          }}>
+            <div className="bw-modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderBottom: '1px solid var(--bw-border)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif',
+                color: '#10b981'
+              }}>
+                Assign Driver
+              </h3>
+              <button 
+                className="bw-btn-icon" 
+                onClick={() => {
+                  if (!isAssigning) {
+                    setShowAssignConfirm(false)
+                    setAssigningVehicleId(null)
+                    setSelectedDriverId('')
+                    setAssignError(null)
+                  }
+                }}
+                style={{
+                  padding: '8px',
+                  minWidth: '32px',
+                  minHeight: '32px'
+                }}
+                disabled={isAssigning}
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bw-modal-body" style={{
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--bw-border)'
+                }}>
+                  <AlertCircle className="w-5 h-5" style={{ color: '#10b981', flexShrink: 0 }} />
+                  <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
+                    Select a driver to assign to this vehicle.
+                  </div>
+                </div>
+                {vehicles.find(v => v.id === assigningVehicleId) && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid var(--bw-border)',
+                    fontSize: '13px'
+                  }}>
+                    <div style={{ color: 'var(--bw-muted)', marginBottom: '4px' }}>Vehicle Details:</div>
+                    <div style={{ color: 'var(--bw-text)', fontWeight: 500 }}>
+                      {vehicles.find(v => v.id === assigningVehicleId)?.year} {vehicles.find(v => v.id === assigningVehicleId)?.make} {vehicles.find(v => v.id === assigningVehicleId)?.model}
+                    </div>
+                  </div>
+                )}
+                <div className="bw-form-group">
+                  <label>Select Driver</label>
+                  <select 
+                    value={selectedDriverId} 
+                    onChange={(e) => setSelectedDriverId(e.target.value)}
+                    className="bw-input"
+                    disabled={isAssigning}
+                    style={{ color: '#374151', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="">Choose a driver</option>
+                    {drivers.map((driver) => (
+                      <option key={driver.id} value={driver.id} style={{ color: '#374151', backgroundColor: '#ffffff' }}>
+                        {driver.first_name} {driver.last_name} - {driver.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {assignError && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid #ef4444',
+                    fontSize: '13px',
+                    color: '#ef4444'
+                  }}>
+                    {assignError}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bw-modal-footer" style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderTop: '1px solid var(--bw-border)'
+            }}>
+              <button
+                className={`bw-btn-outline ${isCancelAssignHovered ? 'custom-hover-border' : ''}`}
+                onClick={() => {
+                  if (!isAssigning) {
+                    setShowAssignConfirm(false)
+                    setAssigningVehicleId(null)
+                    setSelectedDriverId('')
+                    setAssignError(null)
+                  }
+                }}
+                onMouseEnter={() => !isAssigning && setIsCancelAssignHovered(true)}
+                onMouseLeave={() => setIsCancelAssignHovered(false)}
+                disabled={isAssigning}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  border: isCancelAssignHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
+                  borderColor: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  color: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                  Cancel
+                </span>
+              </button>
+              <button
+                className={`bw-btn ${isConfirmAssignHovered ? 'custom-hover-border' : ''}`}
+                onClick={confirmAssignDriver}
+                onMouseEnter={() => !isAssigning && setIsConfirmAssignHovered(true)}
+                onMouseLeave={() => setIsConfirmAssignHovered(false)}
+                disabled={isAssigning || !selectedDriverId}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  backgroundColor: isConfirmAssignHovered ? 'transparent' : '#10b981',
+                  border: '2px solid #10b981',
+                  borderColor: '#10b981',
+                  color: isConfirmAssignHovered ? '#10b981' : '#ffffff',
+                  boxShadow: isConfirmAssignHovered ? 'inset 0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+                  transform: isConfirmAssignHovered ? 'scale(0.98)' : 'scale(1)',
+                  opacity: (!selectedDriverId || isAssigning) ? 0.5 : 1,
+                  cursor: (!selectedDriverId || isAssigning) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isConfirmAssignHovered ? '#10b981' : '#ffffff' }}>
+                  {isAssigning ? 'Assigning...' : 'Assign Driver'}
                 </span>
               </button>
             </div>
@@ -5450,27 +6770,36 @@ export default function TenantDashboard() {
       <style>{`
         .bw-vehicle-grid {
           display: grid;
-          gap: 20px;
+          gap: clamp(16px, 3vw, 24px);
           padding: 0;
         }
         
-        /* Mobile: 2 columns */
-        @media (max-width: 767px) {
+        /* Very small screens: 1 column */
+        @media (max-width: 480px) {
+          .bw-vehicle-grid {
+            grid-template-columns: 1fr;
+            gap: clamp(12px, 2vw, 16px);
+          }
+        }
+        
+        /* Small screens: 2 columns */
+        @media (min-width: 481px) and (max-width: 767px) {
           .bw-vehicle-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            gap: clamp(14px, 2.5vw, 18px);
+          }
+        }
+        
+        /* Medium screens: 3 columns */
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .bw-vehicle-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(18px, 2.5vw, 22px);
           }
         }
         
         /* Large screens: 4 columns */
-        @media (min-width: 768px) {
-          .bw-vehicle-grid {
-            grid-template-columns: repeat(4, 1fr);
-          }
-        }
-        
-        /* Extra large screens: maintain 4 columns but allow more space */
-        @media (min-width: 1200px) {
+        @media (min-width: 1024px) {
           .bw-vehicle-grid {
             grid-template-columns: repeat(4, 1fr);
             gap: 24px;

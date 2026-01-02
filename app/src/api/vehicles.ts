@@ -2,7 +2,7 @@ import { http } from './http'
 import type { StandardResponse } from './tenant'
 
 export async function getVehicles() {
-  const { data } = await http.get<StandardResponse<VehicleResponse[]>>('/v1/vehicles')
+  const { data } = await http.get<StandardResponse<VehicleResponse[]>>('/v1/vehicles/')
   return data
 }
 
@@ -71,6 +71,11 @@ export async function getVehicleCategories() {
   return data
 }
 
+export async function getVehicleCategoriesByTenant(tenantId: number) {
+  const { data } = await http.get<StandardResponse<VehicleCategoryResponse[]>>(`/v1/vehicles/category/${tenantId}`)
+  return data
+}
+
 export async function createVehicleCategory(payload: VehicleCategoryCreate) {
   const { data } = await http.post<StandardResponse<VehicleCategoryResponse>>('/v1/vehicles/create_category', payload)
   return data
@@ -100,8 +105,21 @@ export type VehicleCreate = {
   seating_capacity: number
 }
 
+export type VehicleDriverInfo = {
+  full_name: string
+  completed_rides: number
+  is_active: boolean
+  is_registered: string
+  status?: string | null
+  phone_no?: string | null
+}
+
+export type VehicleCategoryInfo = {
+  vehicle_category: string
+  vehicle_flat_rate: number
+}
+
 export type VehicleResponse = {
-  tenant_id: number
   id: number
   make: string
   model: string
@@ -110,10 +128,17 @@ export type VehicleResponse = {
   color?: string
   status?: string
   seating_capacity: number
-  vehicle_category_id: number
   created_on: string
-  updated_on?: string | null
+  driver?: VehicleDriverInfo | null
+  vehicle_category?: VehicleCategoryInfo | null
   vehicle_images?: Record<string, string> | null
+  // Legacy fields for backward compatibility
+  tenant_id?: number
+  vehicle_category_id?: number
+  driver_id?: number | null
+  driver_type?: string | null
+  driver_name?: string | null
+  updated_on?: string | null
 }
 
 export type VehicleRate = {

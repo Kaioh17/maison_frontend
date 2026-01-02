@@ -309,6 +309,7 @@ export default function AddVehicle() {
                   value={formData.year} 
                   onChange={handleInputChange} 
                   placeholder="2024"
+                  maxLength={4}
                 />
               </div>
               <div className="bw-form-group">
@@ -329,6 +330,7 @@ export default function AddVehicle() {
                   value={formData.license_plate} 
                   onChange={handleInputChange} 
                   placeholder="ABC-123"
+                  maxLength={8}
                 />
               </div>
               <div className="bw-form-group">

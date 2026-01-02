@@ -1,18 +1,37 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
-import { getTenantSettings, updateTenantSettings, updateTenantLogo, testLogoEndpoint, type TenantSettingsResponse, type UpdateTenantSetting } from '@api/tenantSettings'
+import { 
+  getTenantConfig, 
+  updateTenantSettings, 
+  updateTenantPricing, 
+  updateTenantBranding, 
+  updateTenantLogo, 
+  testLogoEndpoint,
+  type TenantConfigResponse,
+  type TenantSettingsData,
+  type TenantPricingData,
+  type TenantBrandingData,
+  type UpdateTenantSettingsPayload,
+  type UpdateTenantPricingPayload,
+  type UpdateTenantBrandingPayload
+} from '@api/tenantSettings'
 import { upgradeSubscription } from '@api/subscription'
 import { useAuthStore } from '@store/auth'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, User, Building, MapPin, Phone, Mail, Shield, CreditCard, DollarSign, Clock, Car, Palette, Save, Edit, ChevronDown, ChevronUp, XCircle, ArrowUp } from 'lucide-react'
+import { Settings, User, Building, MapPin, Phone, Mail, Shield, CreditCard, DollarSign, Clock, Car, Palette, Save, Edit, ChevronDown, ChevronUp, XCircle, ArrowUp } from 'lucide-react'
+import UpgradePlanButton from '@components/UpgradePlanButton'
+import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
 export default function TenantSettings() {
   const [info, setInfo] = useState<any>(null)
-  const [tenantSettings, setTenantSettings] = useState<TenantSettingsResponse | null>(null)
+  const [tenantConfig, setTenantConfig] = useState<TenantConfigResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [editingSettings, setEditingSettings] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [editedSettings, setEditedSettings] = useState<UpdateTenantSetting | null>(null)
+  // Separate edited state for each section
+  const [editedSettings, setEditedSettings] = useState<TenantSettingsData | null>(null)
+  const [editedPricing, setEditedPricing] = useState<TenantPricingData | null>(null)
+  const [editedBranding, setEditedBranding] = useState<TenantBrandingData | null>(null)
   // Per-section editing state for laptop screens
   const [editingSections, setEditingSections] = useState<{ [key: string]: boolean }>({})
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -29,6 +48,7 @@ export default function TenantSettings() {
     rider: true
   })
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const { isOpen: menuIsOpen } = useSettingsMenu()
   const navigate = useNavigate()
   
   // Button hover states
@@ -68,13 +88,46 @@ export default function TenantSettings() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tenantInfo, settings] = await Promise.all([
+        const [tenantInfo, config] = await Promise.all([
           getTenantInfo(),
-          getTenantSettings()
+          getTenantConfig('all')
         ])
         setInfo(tenantInfo.data)
-        setTenantSettings(settings)
-        setEditedSettings(settings)
+        setTenantConfig(config)
+        // Initialize edited state from config with defaults if missing
+        if (config.settings) {
+          const settingsWithDefaults = {
+            ...config.settings,
+            config: {
+              booking: {
+                allow_guest_bookings: config.settings.config?.booking?.allow_guest_bookings ?? true,
+                show_vehicle_images: config.settings.config?.booking?.show_vehicle_images ?? true,
+                types: {
+                  airport: {
+                    is_deposit_required: config.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
+                  },
+                  dropoff: {
+                    is_deposit_required: config.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
+                  },
+                  hourly: {
+                    is_deposit_required: config.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
+                  }
+                }
+              },
+              branding: {
+                button_radius: config.settings.config?.branding?.button_radius ?? 0,
+                font_family: config.settings.config?.branding?.font_family ?? 'string'
+              },
+              features: {
+                vip_profiles: config.settings.config?.features?.vip_profiles ?? true,
+                show_loyalty_banner: config.settings.config?.features?.show_loyalty_banner ?? true
+              }
+            }
+          }
+          setEditedSettings(settingsWithDefaults)
+        }
+        if (config.pricing) setEditedPricing(config.pricing)
+        if (config.branding) setEditedBranding(config.branding)
       } catch (error) {
         console.error('Failed to load data:', error)
       } finally {
@@ -84,10 +137,66 @@ export default function TenantSettings() {
     loadData()
   }, [])
 
-  const handleSettingChange = (field: keyof UpdateTenantSetting, value: any) => {
+  const handleSettingChange = (field: keyof TenantSettingsData, value: any) => {
     if (editedSettings) {
       setEditedSettings({
         ...editedSettings,
+        [field]: value
+      })
+    }
+  }
+
+  const handleConfigChange = (path: string[], value: any) => {
+    if (editedSettings && editedSettings.config) {
+      // Deep clone the config to avoid mutation
+      const deepClone = (obj: any): any => {
+        if (obj === null || typeof obj !== 'object') return obj
+        if (Array.isArray(obj)) return obj.map(deepClone)
+        const cloned: any = {}
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            cloned[key] = deepClone(obj[key])
+          }
+        }
+        return cloned
+      }
+      
+      const newConfig = deepClone(editedSettings.config)
+      
+      // Navigate to the nested property and update
+      let current: any = newConfig
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {}
+        } else {
+          current[path[i]] = { ...current[path[i]] }
+        }
+        current = current[path[i]]
+      }
+      
+      // Set the final value
+      current[path[path.length - 1]] = value
+      
+      setEditedSettings({
+        ...editedSettings,
+        config: newConfig
+      })
+    }
+  }
+
+  const handlePricingChange = (field: keyof TenantPricingData, value: any) => {
+    if (editedPricing) {
+      setEditedPricing({
+        ...editedPricing,
+        [field]: value
+      })
+    }
+  }
+
+  const handleBrandingChange = (field: keyof TenantBrandingData, value: any) => {
+    if (editedBranding) {
+      setEditedBranding({
+        ...editedBranding,
         [field]: value
       })
     }
@@ -115,9 +224,12 @@ export default function TenantSettings() {
     try {
       setSavingLogo(true)
       await updateTenantLogo(logoFile)
-      // After successful logo update, refresh the settings to get the new logo URL
-      const refreshedSettings = await getTenantSettings()
-      setTenantSettings(refreshedSettings)
+      // After successful logo update, refresh the config to get the new logo URL
+      const refreshedConfig = await getTenantConfig('all')
+      setTenantConfig(refreshedConfig)
+      if (refreshedConfig.branding) {
+        setEditedBranding(refreshedConfig.branding)
+      }
       setLogoFile(null)
       setLogoPreview(null)
       alert('Logo updated successfully!')
@@ -130,13 +242,153 @@ export default function TenantSettings() {
   }
 
   const handleSaveSettings = async () => {
-    if (!editedSettings) return
-    
     try {
       setSaving(true)
-      const updatedSettings = await updateTenantSettings(editedSettings)
-      setTenantSettings(updatedSettings)
-      setEditedSettings(updatedSettings)
+      const updatePromises: Promise<any>[] = []
+      
+      // Check if settings changed
+      if (editedSettings && tenantConfig?.settings) {
+        const settingsChanged = 
+          editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
+          JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
+        
+        if (settingsChanged) {
+          // Send complete config object with all fields (JSONB requirement)
+          const completeConfig = {
+            rider_tiers_enabled: editedSettings.rider_tiers_enabled,
+            config: {
+              booking: {
+                allow_guest_bookings: editedSettings.config?.booking?.allow_guest_bookings ?? true,
+                show_vehicle_images: editedSettings.config?.booking?.show_vehicle_images ?? true,
+                types: {
+                  airport: {
+                    is_deposit_required: editedSettings.config?.booking?.types?.airport?.is_deposit_required ?? true
+                  },
+                  dropoff: {
+                    is_deposit_required: editedSettings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
+                  },
+                  hourly: {
+                    is_deposit_required: editedSettings.config?.booking?.types?.hourly?.is_deposit_required ?? true
+                  }
+                }
+              },
+              branding: {
+                button_radius: editedSettings.config?.branding?.button_radius ?? 0,
+                font_family: editedSettings.config?.branding?.font_family ?? 'string'
+              },
+              features: {
+                vip_profiles: editedSettings.config?.features?.vip_profiles ?? true,
+                show_loyalty_banner: editedSettings.config?.features?.show_loyalty_banner ?? true
+              }
+            }
+          }
+          
+          updatePromises.push(
+            updateTenantSettings(completeConfig).then(result => ({ type: 'settings', data: result }))
+          )
+        }
+      }
+      
+      // Check if pricing changed
+      if (editedPricing && tenantConfig?.pricing) {
+        const pricingChanged = 
+          editedPricing.base_fare !== tenantConfig.pricing.base_fare ||
+          editedPricing.per_mile_rate !== tenantConfig.pricing.per_mile_rate ||
+          editedPricing.per_minute_rate !== tenantConfig.pricing.per_minute_rate ||
+          editedPricing.per_hour_rate !== tenantConfig.pricing.per_hour_rate ||
+          editedPricing.cancellation_fee !== tenantConfig.pricing.cancellation_fee ||
+          editedPricing.discounts !== tenantConfig.pricing.discounts
+        
+        if (pricingChanged) {
+          updatePromises.push(
+            updateTenantPricing({
+              base_fare: editedPricing.base_fare,
+              per_mile_rate: editedPricing.per_mile_rate,
+              per_minute_rate: editedPricing.per_minute_rate,
+              per_hour_rate: editedPricing.per_hour_rate,
+              cancellation_fee: editedPricing.cancellation_fee,
+              discounts: editedPricing.discounts
+            }).then(result => ({ type: 'pricing', data: result }))
+          )
+        }
+      }
+      
+      // Check if branding changed (excluding logo_url which is handled separately)
+      if (editedBranding && tenantConfig?.branding) {
+        const brandingChanged = 
+          editedBranding.theme !== tenantConfig.branding.theme ||
+          editedBranding.primary_color !== tenantConfig.branding.primary_color ||
+          editedBranding.secondary_color !== tenantConfig.branding.secondary_color ||
+          editedBranding.accent_color !== tenantConfig.branding.accent_color ||
+          editedBranding.favicon_url !== tenantConfig.branding.favicon_url ||
+          editedBranding.slug !== tenantConfig.branding.slug ||
+          editedBranding.email_from_name !== tenantConfig.branding.email_from_name ||
+          editedBranding.email_from_address !== tenantConfig.branding.email_from_address ||
+          editedBranding.enable_branding !== tenantConfig.branding.enable_branding
+        
+        if (brandingChanged) {
+          updatePromises.push(
+            updateTenantBranding({
+              theme: editedBranding.theme,
+              primary_color: editedBranding.primary_color,
+              secondary_color: editedBranding.secondary_color,
+              accent_color: editedBranding.accent_color,
+              favicon_url: editedBranding.favicon_url,
+              slug: editedBranding.slug,
+              email_from_name: editedBranding.email_from_name,
+              email_from_address: editedBranding.email_from_address,
+              enable_branding: editedBranding.enable_branding
+            }).then(result => ({ type: 'branding', data: result }))
+          )
+        }
+      }
+      
+      if (updatePromises.length === 0) {
+        alert('No changes to save')
+        setSaving(false)
+        return
+      }
+      
+      // Execute all updates
+      const results = await Promise.all(updatePromises)
+      
+      // Refresh config to get latest data
+      const refreshedConfig = await getTenantConfig('all')
+      setTenantConfig(refreshedConfig)
+      if (refreshedConfig.settings) {
+        const settingsWithDefaults = {
+          ...refreshedConfig.settings,
+          config: {
+            booking: {
+              allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+              show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
+              types: {
+                airport: {
+                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
+                },
+                dropoff: {
+                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
+                },
+                hourly: {
+                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
+                }
+              }
+            },
+            branding: {
+              button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
+              font_family: refreshedConfig.settings.config?.branding?.font_family ?? 'string'
+            },
+            features: {
+              vip_profiles: refreshedConfig.settings.config?.features?.vip_profiles ?? true,
+              show_loyalty_banner: refreshedConfig.settings.config?.features?.show_loyalty_banner ?? true
+            }
+          }
+        }
+        setEditedSettings(settingsWithDefaults)
+      }
+      if (refreshedConfig.pricing) setEditedPricing(refreshedConfig.pricing)
+      if (refreshedConfig.branding) setEditedBranding(refreshedConfig.branding)
+      
       setEditingSettings(false)
       alert('Settings updated successfully!')
     } catch (error) {
@@ -149,7 +401,41 @@ export default function TenantSettings() {
 
 
   const handleCancelEdit = () => {
-    setEditedSettings(tenantSettings)
+    if (tenantConfig) {
+      if (tenantConfig.settings) {
+        const settingsWithDefaults = {
+          ...tenantConfig.settings,
+          config: {
+            booking: {
+              allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+              show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
+              types: {
+                airport: {
+                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
+                },
+                dropoff: {
+                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
+                },
+                hourly: {
+                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
+                }
+              }
+            },
+            branding: {
+              button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
+              font_family: tenantConfig.settings.config?.branding?.font_family ?? 'string'
+            },
+            features: {
+              vip_profiles: tenantConfig.settings.config?.features?.vip_profiles ?? true,
+              show_loyalty_banner: tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
+            }
+          }
+        }
+        setEditedSettings(settingsWithDefaults)
+      }
+      if (tenantConfig.pricing) setEditedPricing(tenantConfig.pricing)
+      if (tenantConfig.branding) setEditedBranding(tenantConfig.branding)
+    }
     setEditingSettings(false)
   }
 
@@ -183,13 +469,15 @@ export default function TenantSettings() {
         setShowUpgradeModal(false)
         alert('Subscription upgrade initiated successfully!')
         // Reload data to reflect the new subscription
-        const [tenantInfo, settings] = await Promise.all([
+        const [tenantInfo, config] = await Promise.all([
           getTenantInfo(),
-          getTenantSettings()
+          getTenantConfig('all')
         ])
         setInfo(tenantInfo.data)
-        setTenantSettings(settings)
-        setEditedSettings(settings)
+        setTenantConfig(config)
+        if (config.settings) setEditedSettings(config.settings)
+        if (config.pricing) setEditedPricing(config.pricing)
+        if (config.branding) setEditedBranding(config.branding)
       } else {
         setUpgradeError(response.error || 'Failed to upgrade subscription')
         setUpgradingPlan(null)
@@ -221,34 +509,26 @@ export default function TenantSettings() {
   }
 
   return (
-    <div className="bw">
-      {/* Header - Left aligned */}
+    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
+      <SettingsMenuBar />
+      
+      {/* Main Content */}
       <div style={{ 
-        width: '100%',
-        padding: `clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px)`,
-        marginBottom: 'clamp(24px, 4vw, 32px)'
+        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
+        transition: 'margin-left 0.3s ease',
+        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        boxSizing: 'border-box'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 2vw, 16px)', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <button 
-            className="bw-btn-outline" 
-            onClick={() => navigate('/tenant/overview')}
-            style={{ 
-              padding: 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 600,
-              fontSize: 'clamp(12px, 1.5vw, 14px)',
-              borderRadius: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              color: '#000000',
-              border: '1px solid var(--bw-border)',
-              backgroundColor: '#ffffff'
-            }}
-          >
-            <ArrowLeft className="w-4 h-4" style={{ color: '#000000' }} />
-            {isMobile ? 'Back' : 'Back to Dashboard'}
-          </button>
+        {/* Header - Left aligned */}
+        <div style={{ 
+          width: '100%',
+          maxWidth: '100%',
+          padding: `clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)`,
+          marginBottom: 'clamp(24px, 4vw, 32px)',
+          boxSizing: 'border-box'
+        }}>
           <h1 style={{ 
             fontSize: 'clamp(24px, 4vw, 32px)', 
             margin: 0,
@@ -256,583 +536,20 @@ export default function TenantSettings() {
             fontWeight: 200,
             color: 'var(--bw-text)'
           }}>
-            Settings
+            Tenant Settings
           </h1>
         </div>
-      </div>
 
       {/* Content Container */}
-      <div className="bw-container" style={{ padding: '0 clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px)' }}>
-
-      {/* Settings Sections */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-        gap: 'clamp(16px, 3vw, 24px)'
+      <div className="bw-container" style={{ 
+        padding: '0 clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        boxSizing: 'border-box'
       }}>
-        {/* Account Information */}
-        <div className="bw-card" style={{ 
-          backgroundColor: 'var(--bw-bg-secondary)',
-          border: '1px solid var(--bw-border)',
-          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-          padding: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <div 
-            className="bw-card-header" 
-            style={{ 
-              cursor: isMobile ? 'pointer' : 'default', 
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: openSections.accountInfo ? 'clamp(12px, 2vw, 16px)' : 0
-            }}
-            onClick={() => isMobile && toggleSection('accountInfo')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', flex: 1 }}>
-              <div className="bw-card-icon" style={{ color: 'var(--bw-text)' }}>
-                <User className="w-5 h-5" />
-              </div>
-              <h3 style={{ 
-                margin: 0,
-                fontSize: 'clamp(16px, 2.5vw, 20px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 400,
-                color: 'var(--bw-text)'
-              }}>
-                Account Information
-              </h3>
-            </div>
-            {isMobile && (
-              openSections.accountInfo ? (
-                <ChevronUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              ) : (
-                <ChevronDown className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              )
-            )}
-            {!isMobile && (
-              <button
-                className={`bw-btn-outline ${isEditAccountInfoHovered ? 'custom-hover-border' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingSections(prev => ({ ...prev, accountInfo: !prev.accountInfo }));
-                }}
-                onMouseEnter={() => setIsEditAccountInfoHovered(true)}
-                onMouseLeave={() => setIsEditAccountInfoHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isEditAccountInfoHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isEditAccountInfoHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isEditAccountInfoHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  backgroundColor: isEditAccountInfoHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isEditAccountInfoHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  {editingSections.accountInfo ? 'Cancel' : 'Edit'}
-                </span>
-              </button>
-            )}
-          </div>
-          {openSections.accountInfo && (
-          <div className="bw-info-grid" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(8px, 1.5vw, 12px)'
-          }}>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              paddingBottom: 'clamp(6px, 1vw, 8px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                First Name:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {info?.first_name}
-              </span>
-            </div>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              paddingBottom: 'clamp(6px, 1vw, 8px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Last Name:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {info?.last_name}
-              </span>
-            </div>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              paddingBottom: 'clamp(6px, 1vw, 8px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Email:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {info?.email}
-              </span>
-            </div>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              paddingBottom: 'clamp(6px, 1vw, 8px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Phone:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {info?.phone_no}
-              </span>
-            </div>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              paddingBottom: 'clamp(6px, 1vw, 8px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Role:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {info?.profile?.role}
-              </span>
-            </div>
-            <div className="bw-info-item" style={{
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}>
-              <span className="bw-info-label" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                color: 'var(--bw-muted)',
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Member Since:
-              </span>
-              <span className="bw-info-value" style={{
-                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                fontWeight: 300,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                {new Date(info?.created_on).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-          )}
-        </div>
-
-        {/* Company Information */}
-        <div className="bw-card" style={{ 
-          backgroundColor: 'var(--bw-bg-secondary)',
-          border: '1px solid var(--bw-border)',
-          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-          padding: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <div 
-            className="bw-card-header" 
-            style={{ 
-              cursor: isMobile ? 'pointer' : 'default', 
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: openSections.companyInfo ? 'clamp(12px, 2vw, 16px)' : 0
-            }}
-            onClick={() => isMobile && toggleSection('companyInfo')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', flex: 1 }}>
-              <div className="bw-card-icon" style={{ color: 'var(--bw-text)' }}>
-                <Building className="w-5 h-5" />
-              </div>
-              <h3 style={{ 
-                margin: 0,
-                fontSize: 'clamp(16px, 2.5vw, 20px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 400,
-                color: 'var(--bw-text)'
-              }}>
-                Company Information
-              </h3>
-            </div>
-            {isMobile && (
-              openSections.companyInfo ? (
-                <ChevronUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              ) : (
-                <ChevronDown className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              )
-            )}
-            {!isMobile && (
-              <button
-                className={`bw-btn-outline ${isEditCompanyInfoHovered ? 'custom-hover-border' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingSections(prev => ({ ...prev, companyInfo: !prev.companyInfo }));
-                }}
-                onMouseEnter={() => setIsEditCompanyInfoHovered(true)}
-                onMouseLeave={() => setIsEditCompanyInfoHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isEditCompanyInfoHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isEditCompanyInfoHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isEditCompanyInfoHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  backgroundColor: isEditCompanyInfoHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isEditCompanyInfoHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  {editingSections.companyInfo ? 'Cancel' : 'Edit'}
-                </span>
-              </button>
-            )}
-          </div>
-          {openSections.companyInfo && (
-          <div className="bw-info-grid" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(8px, 1.5vw, 12px)'
-          }}>
-            {[
-              { label: 'Company Name:', value: info?.profile?.company_name },
-              { label: 'Slug:', value: info?.profile?.slug },
-              { label: 'City:', value: info?.profile?.city },
-              { label: 'Address:', value: info?.profile?.address || 'Not provided' },
-              { label: 'Subscription Status:', value: info?.profile?.subscription_status || 'Free', isStatus: true },
-              { label: 'Account Status:', value: info?.profile?.subscription_status === 'active' ? 'Active' : info?.profile?.subscription_status || 'Free', isStatus: true }
-            ].map((item, idx, arr) => (
-              <div key={idx} className="bw-info-item" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingBottom: idx < arr.length - 1 ? 'clamp(6px, 1vw, 8px)' : 0,
-                borderBottom: idx < arr.length - 1 ? '1px solid var(--bw-border)' : 'none'
-              }}>
-                <span className="bw-info-label" style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  {item.label}
-                </span>
-                <span className={`bw-info-value ${item.isStatus && info?.profile?.subscription_status === 'active' ? 'text-green-500' : item.isStatus ? 'text-yellow-500' : ''}`} style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif',
-                  color: item.isStatus && info?.profile?.subscription_status === 'active' ? 'var(--bw-success)' : item.isStatus ? 'var(--bw-warning)' : 'var(--bw-text)'
-                }}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-
-        {/* Subscription & Billing */}
-        <div className="bw-card" style={{ 
-          backgroundColor: 'var(--bw-bg-secondary)',
-          border: '1px solid var(--bw-border)',
-          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-          padding: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <div 
-            className="bw-card-header" 
-            style={{ 
-              cursor: isMobile ? 'pointer' : 'default', 
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: openSections.subscription ? 'clamp(12px, 2vw, 16px)' : 0
-            }}
-            onClick={() => isMobile && toggleSection('subscription')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', flex: 1 }}>
-              <div className="bw-card-icon" style={{ color: 'var(--bw-text)' }}>
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <h3 style={{ 
-                margin: 0,
-                fontSize: 'clamp(16px, 2.5vw, 20px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 400,
-                color: 'var(--bw-text)'
-              }}>
-                Subscription & Billing
-              </h3>
-            </div>
-            {isMobile && (
-              openSections.subscription ? (
-                <ChevronUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              ) : (
-                <ChevronDown className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              )
-            )}
-            {!isMobile && (
-              <button
-                className={`bw-btn-outline ${isEditSubscriptionHovered ? 'custom-hover-border' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingSections(prev => ({ ...prev, subscription: !prev.subscription }));
-                }}
-                onMouseEnter={() => setIsEditSubscriptionHovered(true)}
-                onMouseLeave={() => setIsEditSubscriptionHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isEditSubscriptionHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isEditSubscriptionHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isEditSubscriptionHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  backgroundColor: isEditSubscriptionHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isEditSubscriptionHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  {editingSections.subscription ? 'Cancel' : 'Edit'}
-                </span>
-              </button>
-            )}
-          </div>
-          {openSections.subscription && (
-          <div className="bw-info-grid" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(8px, 1.5vw, 12px)'
-          }}>
-            {[
-              { label: 'Subscription Plan:', value: info?.profile?.subscription_plan || 'No plan' },
-              { label: 'Subscription Status:', value: info?.profile?.subscription_status || 'N/A' },
-              { label: 'Stripe Customer ID:', value: info?.profile?.stripe_customer_id || 'Not connected' },
-              { label: 'Stripe Account ID:', value: info?.profile?.stripe_account_id || 'Not connected' }
-            ].map((item, idx, arr) => (
-              <div key={idx} className="bw-info-item" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingBottom: idx < arr.length - 1 ? 'clamp(6px, 1vw, 8px)' : 0,
-                borderBottom: idx < arr.length - 1 ? '1px solid var(--bw-border)' : 'none'
-              }}>
-                <span className="bw-info-label" style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  {item.label}
-                </span>
-                <span className="bw-info-value" style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif',
-                  color: 'var(--bw-text)'
-                }}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-
-        {/* Statistics */}
-        <div className="bw-card" style={{ 
-          backgroundColor: 'var(--bw-bg-secondary)',
-          border: '1px solid var(--bw-border)',
-          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-          padding: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <div 
-            className="bw-card-header" 
-            style={{ 
-              cursor: isMobile ? 'pointer' : 'default', 
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: openSections.statistics ? 'clamp(12px, 2vw, 16px)' : 0
-            }}
-            onClick={() => isMobile && toggleSection('statistics')}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', flex: 1 }}>
-              <div className="bw-card-icon" style={{ color: 'var(--bw-text)' }}>
-                <Settings className="w-5 h-5" />
-              </div>
-              <h3 style={{ 
-                margin: 0,
-                fontSize: 'clamp(16px, 2.5vw, 20px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 400,
-                color: 'var(--bw-text)'
-              }}>
-                Statistics
-              </h3>
-            </div>
-            {isMobile && (
-              openSections.statistics ? (
-                <ChevronUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              ) : (
-                <ChevronDown className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-              )
-            )}
-            {!isMobile && (
-              <button
-                className={`bw-btn-outline ${isEditStatisticsHovered ? 'custom-hover-border' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingSections(prev => ({ ...prev, statistics: !prev.statistics }));
-                }}
-                onMouseEnter={() => setIsEditStatisticsHovered(true)}
-                onMouseLeave={() => setIsEditStatisticsHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isEditStatisticsHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isEditStatisticsHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isEditStatisticsHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  backgroundColor: isEditStatisticsHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <span style={{ color: isEditStatisticsHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                  {editingSections.statistics ? 'Cancel' : 'Edit'}
-                </span>
-              </button>
-            )}
-          </div>
-          {openSections.statistics && (
-          <div className="bw-info-grid" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(8px, 1.5vw, 12px)'
-          }}>
-            {[
-              { label: 'Total Drivers:', value: info?.stats?.drivers_count || 0 },
-              { label: 'Total Rides:', value: info?.stats?.total_ride_count || 0 },
-              { label: 'Daily Rides:', value: info?.stats?.daily_ride_count || 0 },
-              { label: 'Last Reset:', value: info?.stats?.last_ride_count_reset ? new Date(info.stats.last_ride_count_reset).toLocaleDateString() : 'N/A' }
-            ].map((item, idx, arr) => (
-              <div key={idx} className="bw-info-item" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                paddingBottom: idx < arr.length - 1 ? 'clamp(6px, 1vw, 8px)' : 0,
-                borderBottom: idx < arr.length - 1 ? '1px solid var(--bw-border)' : 'none'
-              }}>
-                <span className="bw-info-label" style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  {item.label}
-                </span>
-                <span className="bw-info-value" style={{
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif',
-                  color: 'var(--bw-text)'
-                }}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-      </div>
 
       {/* Tenant Settings Section */}
-      {tenantSettings && (
+      {tenantConfig && (
         <div className="bw-card" style={{ 
           marginTop: 'clamp(16px, 3vw, 24px)',
           backgroundColor: 'var(--bw-bg-secondary)',
@@ -1073,8 +790,8 @@ export default function TenantSettings() {
                 {editingSettings ? (
                   <select 
                     className="bw-input" 
-                    value={editedSettings?.theme || ''} 
-                    onChange={(e) => handleSettingChange('theme', e.target.value)}
+                    value={editedBranding?.theme || ''} 
+                    onChange={(e) => handleBrandingChange('theme', e.target.value)}
                     style={{
                       width: '100%',
                       maxWidth: '100%',
@@ -1099,7 +816,7 @@ export default function TenantSettings() {
                     fontWeight: 300,
                     color: 'var(--bw-text)'
                   }}>
-                    {tenantSettings.theme || 'Not set'}
+                    {tenantConfig.branding?.theme || 'Not set'}
                   </span>
                 )}
               </div>
@@ -1154,9 +871,9 @@ export default function TenantSettings() {
                         border: '1px solid var(--bw-border)'
                       }} />
                     )}
-                    {!logoPreview && tenantSettings.logo_url && (
+                    {!logoPreview && tenantConfig.branding?.logo_url && (
                       <img 
-                        src={tenantSettings.logo_url} 
+                        src={tenantConfig.branding.logo_url} 
                         alt="Current logo" 
                         style={{ 
                           width: 'clamp(40px, 5vw, 50px)', 
@@ -1245,14 +962,14 @@ export default function TenantSettings() {
                       </button>
                     </div>
                   )}
-                  {!logoFile && tenantSettings.logo_url && (
+                  {!logoFile && tenantConfig.branding?.logo_url && (
                     <span className="bw-info-value small-muted" style={{ 
                       fontSize: 'clamp(11px, 1.3vw, 12px)', 
                       color: 'var(--bw-muted)',
                       fontFamily: '"Work Sans", sans-serif',
                       fontWeight: 300
                     }}>
-                      Current logo: {tenantSettings.logo_url}
+                      Current logo: {tenantConfig.branding.logo_url}
                     </span>
                   )}
                 </div>
@@ -1271,8 +988,8 @@ export default function TenantSettings() {
                   <input 
                     className="bw-input" 
                     type="text" 
-                    value={editedSettings?.slug || ''} 
-                    onChange={(e) => handleSettingChange('slug', e.target.value)}
+                    value={editedBranding?.slug || ''} 
+                    onChange={(e) => handleBrandingChange('slug', e.target.value)}
                     placeholder="company-name"
                     style={{
                       width: '100%',
@@ -1294,7 +1011,7 @@ export default function TenantSettings() {
                     fontWeight: 300,
                     color: 'var(--bw-text)'
                   }}>
-                    {tenantSettings.slug || 'Not set'}
+                    {tenantConfig.branding?.slug || 'Not set'}
                   </span>
                 )}
               </div>
@@ -1311,8 +1028,8 @@ export default function TenantSettings() {
                 {editingSettings ? (
                   <select 
                     className="bw-input" 
-                    value={editedSettings?.enable_branding ? 'true' : 'false'} 
-                    onChange={(e) => handleSettingChange('enable_branding', e.target.value === 'true')}
+                    value={editedBranding?.enable_branding ? 'true' : 'false'} 
+                    onChange={(e) => handleBrandingChange('enable_branding', e.target.value === 'true')}
                     style={{
                       width: '100%',
                       maxWidth: '100%',
@@ -1336,7 +1053,7 @@ export default function TenantSettings() {
                     fontWeight: 300,
                     color: 'var(--bw-text)'
                   }}>
-                    {tenantSettings.enable_branding ? 'Yes' : 'No'}
+                    {tenantConfig.branding?.enable_branding ? 'Yes' : 'No'}
                   </span>
                 )}
               </div>
@@ -1440,8 +1157,8 @@ export default function TenantSettings() {
                       type="number" 
                       step="0.01" 
                       min="0"
-                      value={editedSettings?.[key as keyof UpdateTenantSetting] as number || 0} 
-                      onChange={(e) => handleSettingChange(key as keyof UpdateTenantSetting, parseFloat(e.target.value) || 0)}
+                      value={editedPricing?.[key as keyof TenantPricingData] as number || 0} 
+                      onChange={(e) => handlePricingChange(key as keyof TenantPricingData, parseFloat(e.target.value) || 0)}
                       placeholder={placeholder}
                       style={{
                         width: '100%',
@@ -1463,7 +1180,7 @@ export default function TenantSettings() {
                       fontWeight: 300,
                       color: 'var(--bw-text)'
                     }}>
-                      ${(tenantSettings[key as keyof TenantSettingsResponse] as number) || 0}
+                      ${(tenantConfig.pricing?.[key as keyof TenantPricingData] as number) || 0}
                     </span>
                   )}
                 </div>
@@ -1472,7 +1189,7 @@ export default function TenantSettings() {
             )}
           </div>
 
-          {/* Rider Settings */}
+          {/* Rider Tiers */}
           <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
             <div 
               style={{ 
@@ -1496,7 +1213,7 @@ export default function TenantSettings() {
                 color: 'var(--bw-text)'
               }}>
                 <User className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
-                Rider Configuration
+                Rider Tiers
               </h4>
               {isMobile && (
                 openSections.rider ? (
@@ -1504,38 +1221,6 @@ export default function TenantSettings() {
                 ) : (
                   <ChevronDown className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
                 )
-              )}
-              {!isMobile && (
-                <button
-                  className={`bw-btn-outline ${isEditRiderHovered ? 'custom-hover-border' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingSections(prev => ({ ...prev, rider: !prev.rider }));
-                  }}
-                  onMouseEnter={() => setIsEditRiderHovered(true)}
-                  onMouseLeave={() => setIsEditRiderHovered(false)}
-                  style={{
-                    padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                    width: isMobile ? '100%' : 'auto',
-                    justifyContent: 'center',
-                    borderRadius: 7,
-                    border: isEditRiderHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                    borderColor: isEditRiderHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                    color: isEditRiderHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                    backgroundColor: isEditRiderHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                    transition: 'all 0.2s ease'
-                  } as React.CSSProperties}
-                >
-                  <span style={{ color: isEditRiderHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                    {editingSections.rider ? 'Cancel' : 'Edit'}
-                  </span>
-                </button>
               )}
             </div>
             {openSections.rider && (
@@ -1584,10 +1269,32 @@ export default function TenantSettings() {
                     fontWeight: 300,
                     color: 'var(--bw-text)'
                   }}>
-                    {tenantSettings.rider_tiers_enabled ? 'Yes' : 'No'}
+                    {tenantConfig.settings?.rider_tiers_enabled ? 'Yes' : 'No'}
                   </span>
                 )}
               </div>
+            </div>
+            )}
+          </div>
+
+          {/* Booking Configuration */}
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+            <h4 style={{ 
+              margin: '0 0 clamp(12px, 2vw, 16px) 0', 
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300,
+              color: 'var(--bw-text)'
+            }}>
+              Booking Configuration
+            </h4>
+            <div className="bw-form-grid" style={{ 
+              display: 'grid', 
+              gap: 'clamp(12px, 2vw, 16px)', 
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
               <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
                 <label className="bw-form-label small-muted" style={{
                   fontSize: 'clamp(11px, 1.3vw, 13px)',
@@ -1596,56 +1303,13 @@ export default function TenantSettings() {
                   color: 'var(--bw-muted)',
                   marginBottom: 'clamp(4px, 0.8vw, 6px)'
                 }}>
-                  Cancellation Fee ($)
-                </label>
-                {editingSettings ? (
-                  <input 
-                    className="bw-input" 
-                    type="number" 
-                    step="0.01" 
-                    min="0"
-                    value={editedSettings?.cancellation_fee || 0} 
-                    onChange={(e) => handleSettingChange('cancellation_fee', parseFloat(e.target.value) || 0)}
-                    placeholder="10.00"
-                    style={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box',
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      borderRadius: 0,
-                      color: 'var(--bw-text)',
-                      backgroundColor: 'var(--bw-bg)',
-                      border: '1px solid var(--bw-border)'
-                    }}
-                  />
-                ) : (
-                  <span className="bw-info-value" style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-text)'
-                  }}>
-                    ${tenantSettings.cancellation_fee || 0}
-                  </span>
-                )}
-              </div>
-              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
-                }}>
-                  Discounts Enabled
+                  Allow Guest Bookings
                 </label>
                 {editingSettings ? (
                   <select 
                     className="bw-input" 
-                    value={editedSettings?.discounts ? 'true' : 'false'} 
-                    onChange={(e) => handleSettingChange('discounts', e.target.value === 'true')}
+                    value={editedSettings?.config?.booking?.allow_guest_bookings ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['booking', 'allow_guest_bookings'], e.target.value === 'true')}
                     style={{
                       width: '100%',
                       maxWidth: '100%',
@@ -1669,12 +1333,388 @@ export default function TenantSettings() {
                     fontWeight: 300,
                     color: 'var(--bw-text)'
                   }}>
-                    {tenantSettings.discounts ? 'Yes' : 'No'}
+                    {tenantConfig.settings?.config?.booking?.allow_guest_bookings ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Show Vehicle Images
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.booking?.show_vehicle_images ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['booking', 'show_vehicle_images'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.booking?.show_vehicle_images ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Airport - Deposit Required
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.booking?.types?.airport?.is_deposit_required ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['booking', 'types', 'airport', 'is_deposit_required'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.booking?.types?.airport?.is_deposit_required ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Dropoff - Deposit Required
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.booking?.types?.dropoff?.is_deposit_required ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['booking', 'types', 'dropoff', 'is_deposit_required'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.booking?.types?.dropoff?.is_deposit_required ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Hourly - Deposit Required
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.booking?.types?.hourly?.is_deposit_required ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['booking', 'types', 'hourly', 'is_deposit_required'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.booking?.types?.hourly?.is_deposit_required ? 'Yes' : 'No'}
                   </span>
                 )}
               </div>
             </div>
-            )}
+          </div>
+
+          {/* Branding Configuration */}
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+            <h4 style={{ 
+              margin: '0 0 clamp(12px, 2vw, 16px) 0', 
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300,
+              color: 'var(--bw-text)'
+            }}>
+              Branding Configuration
+            </h4>
+            <div className="bw-form-grid" style={{ 
+              display: 'grid', 
+              gap: 'clamp(12px, 2vw, 16px)', 
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Button Radius
+                </label>
+                {editingSettings ? (
+                  <input 
+                    className="bw-input" 
+                    type="number" 
+                    step="1" 
+                    min="0"
+                    value={editedSettings?.config?.branding?.button_radius || 0} 
+                    onChange={(e) => handleConfigChange(['branding', 'button_radius'], parseInt(e.target.value) || 0)}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  />
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.branding?.button_radius ?? 0}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Font Family
+                </label>
+                {editingSettings ? (
+                  <input 
+                    className="bw-input" 
+                    type="text" 
+                    value={editedSettings?.config?.branding?.font_family || ''} 
+                    onChange={(e) => handleConfigChange(['branding', 'font_family'], e.target.value)}
+                    placeholder="Arial, sans-serif"
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  />
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.branding?.font_family || 'Not set'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Features Configuration */}
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+            <h4 style={{ 
+              margin: '0 0 clamp(12px, 2vw, 16px) 0', 
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300,
+              color: 'var(--bw-text)'
+            }}>
+              Features Configuration
+            </h4>
+            <div className="bw-form-grid" style={{ 
+              display: 'grid', 
+              gap: 'clamp(12px, 2vw, 16px)', 
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  VIP Profiles
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.features?.vip_profiles ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['features', 'vip_profiles'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.features?.vip_profiles ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                <label className="bw-form-label small-muted" style={{
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Show Loyalty Banner
+                </label>
+                {editingSettings ? (
+                  <select 
+                    className="bw-input" 
+                    value={editedSettings?.config?.features?.show_loyalty_banner ? 'true' : 'false'} 
+                    onChange={(e) => handleConfigChange(['features', 'show_loyalty_banner'], e.target.value === 'true')}
+                    style={{
+                      width: '100%',
+                      maxWidth: '100%',
+                      boxSizing: 'border-box',
+                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      fontFamily: '"Work Sans", sans-serif',
+                      borderRadius: 0,
+                      color: 'var(--bw-text)',
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)'
+                    }}
+                  >
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                ) : (
+                  <span className="bw-info-value" style={{
+                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 300,
+                    color: 'var(--bw-text)'
+                  }}>
+                    {tenantConfig.settings?.config?.features?.show_loyalty_banner ? 'Yes' : 'No'}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Last Updated Info */}
@@ -1695,7 +1735,7 @@ export default function TenantSettings() {
               fontWeight: 300
             }}>
               <Clock className="w-4 h-4" style={{ color: 'var(--bw-muted)' }} />
-              Last updated: {tenantSettings.updated_on ? new Date(tenantSettings.updated_on).toLocaleString() : 'Never'}
+              Last updated: Never
             </div>
           </div>
           </>
@@ -1703,318 +1743,7 @@ export default function TenantSettings() {
         </div>
       )}
       </div>
-
-      {/* Upgrade Plan Button - Bottom Right */}
-      <div style={{
-        position: 'fixed',
-        bottom: 'clamp(24px, 4vw, 32px)',
-        right: 'clamp(24px, 4vw, 32px)',
-        zIndex: 1000
-      }}>
-        <button
-          onClick={() => setShowUpgradeModal(true)}
-          style={{
-            padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-            fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-            fontFamily: '"Work Sans", sans-serif',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-            borderRadius: 7,
-            backgroundColor: 'var(--bw-accent)',
-            color: '#ffffff',
-            border: 'none',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
-            e.currentTarget.style.color = '#ffffff'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
-            e.currentTarget.style.color = '#ffffff'
-          }}
-        >
-          <ArrowUp className="w-4 h-4" style={{ 
-            width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-            height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-          }} />
-          Upgrade Plan
-        </button>
       </div>
-
-      {/* Upgrade Subscription Modal */}
-      {showUpgradeModal && (
-        <div className="bw-modal-overlay" onClick={() => setShowUpgradeModal(false)}>
-          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
-            maxWidth: '900px',
-            width: '90vw',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}>
-            <div className="bw-modal-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 2.5vw, 24px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Upgrade Subscription Plan
-              </h3>
-              <button 
-                className="bw-btn-icon" 
-                onClick={() => {
-                  setShowUpgradeModal(false)
-                  setUpgradeError(null)
-                }}
-                style={{
-                  padding: '8px',
-                  minWidth: '32px',
-                  minHeight: '32px'
-                }}
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="bw-modal-body" style={{
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300
-            }}>
-              {upgradeError && (
-                <div style={{
-                  marginBottom: '16px',
-                  padding: '12px',
-                  backgroundColor: 'var(--bw-error, #C5483D)',
-                  color: '#ffffff',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  {upgradeError}
-                </div>
-              )}
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-                gap: 'clamp(16px, 2.5vw, 24px)',
-                marginTop: '16px'
-              }}>
-                {[
-                  {
-                    name: 'Starter',
-                    product_type: 'starter',
-                    price: '$0.00',
-                    period: '/month',
-                    description: 'Perfect for solo drivers and small fleets.',
-                    price_id: 'price_1ShzxJQtWPwjkVcEAMWx8Sgq',
-                    features: [
-                      { text: 'Up to 5 vehicles', included: true },
-                      { text: 'Up to 10 drivers', included: true },
-                      { text: 'Basic booking system', included: true },
-                      { text: 'Email support', included: true }
-                    ]
-                  },
-                  {
-                    name: 'Premium',
-                    product_type: 'premium',
-                    price: '$100',
-                    period: '/month',
-                    description: 'Ideal for growing businesses',
-                    popular: true,
-                    price_id: 'price_1Si00KQtWPwjkVcEa7LKC5EM',
-                    features: [
-                      { text: 'Up to 25 vehicles', included: true },
-                      { text: 'Up to 50 drivers', included: true },
-                      { text: 'Advanced booking system', included: true },
-                      { text: 'Email & phone support', included: true },
-                      { text: 'Custom branding', included: true },
-                      { text: 'Advanced analytics', included: true }
-                    ]
-                  },
-                  {
-                    name: 'Diamond',
-                    product_type: 'diamond',
-                    price: '$300',
-                    period: '/month',
-                    description: 'For large fleets and enterprises',
-                    price_id: 'price_1Si01bQtWPwjkVcEMk6XJREA',
-                    features: [
-                      { text: 'Unlimited vehicles', included: true },
-                      { text: 'Unlimited drivers', included: true },
-                      { text: 'Enterprise booking system', included: true },
-                      { text: '24/7 dedicated support', included: true },
-                      { text: 'Custom branding', included: true },
-                      { text: 'Advanced analytics', included: true }
-                    ]
-                  }
-                ].map((plan) => {
-                  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-                  const planOrder = ['starter', 'premium', 'diamond']
-                  const currentPlanIndex = planOrder.indexOf(currentPlan)
-                  const planIndex = planOrder.indexOf(plan.product_type)
-                  const isCurrentPlan = currentPlan === plan.product_type
-                  const isLowerPlan = planIndex < currentPlanIndex
-                  const isDisabled = isCurrentPlan || isLowerPlan
-
-                  const CheckIcon = () => (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--bw-success)' }}>
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                  )
-
-                  return (
-                    <div
-                      key={plan.product_type}
-                      className="bw-card"
-                      style={{
-                        padding: 'clamp(20px, 3vw, 24px)',
-                        borderRadius: 'clamp(8px, 1.5vw, 12px)',
-                        border: plan.popular && !isDisabled ? '2px solid var(--bw-accent)' : '1px solid var(--bw-border)',
-                        position: 'relative',
-                        opacity: isDisabled ? 0.5 : 1,
-                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        backgroundColor: 'var(--bw-bg-secondary)'
-                      }}
-                    >
-                      {plan.popular && !isDisabled && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '-12px',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: 'var(--bw-accent)',
-                          color: '#ffffff',
-                          padding: '4px 16px',
-                          fontSize: 'clamp(11px, 1.3vw, 12px)',
-                          fontFamily: '"Work Sans", sans-serif',
-                          fontWeight: 600,
-                          borderRadius: '4px'
-                        }}>
-                          Most Popular
-                        </div>
-                      )}
-                      {isCurrentPlan && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '-12px',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          background: 'var(--bw-muted)',
-                          color: '#ffffff',
-                          padding: '4px 16px',
-                          fontSize: 'clamp(11px, 1.3vw, 12px)',
-                          fontFamily: '"Work Sans", sans-serif',
-                          fontWeight: 600,
-                          borderRadius: '4px'
-                        }}>
-                          Current Plan
-                        </div>
-                      )}
-                      <div style={{ textAlign: 'center', marginBottom: 'clamp(16px, 2.5vw, 20px)' }}>
-                        <h4 style={{
-                          fontFamily: '"DM Sans", sans-serif',
-                          fontSize: 'clamp(20px, 3vw, 24px)',
-                          fontWeight: 400,
-                          color: 'var(--bw-text)',
-                          marginBottom: 'clamp(8px, 1.5vw, 12px)'
-                        }}>{plan.name}</h4>
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'baseline',
-                          justifyContent: 'center',
-                          gap: 'clamp(4px, 1vw, 8px)',
-                          marginBottom: 'clamp(8px, 1.5vw, 12px)'
-                        }}>
-                          <span style={{
-                            fontFamily: '"DM Sans", sans-serif',
-                            fontSize: 'clamp(28px, 4vw, 36px)',
-                            fontWeight: 200,
-                            color: 'var(--bw-text)'
-                          }}>{plan.price}</span>
-                          <span style={{
-                            fontFamily: '"Work Sans", sans-serif',
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            color: 'var(--bw-muted)'
-                          }}>{plan.period}</span>
-                        </div>
-                        <p style={{
-                          fontFamily: '"Work Sans", sans-serif',
-                          fontSize: 'clamp(12px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
-                          marginBottom: 'clamp(12px, 2vw, 16px)'
-                        }}>{plan.description}</p>
-                        <button
-                          className={plan.popular && !isDisabled ? "bw-btn" : "bw-btn-outline"}
-                          onClick={() => !isDisabled && handleUpgradePlan(plan)}
-                          disabled={isDisabled || upgradingPlan !== null}
-                          style={{
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            padding: 'clamp(10px, 1.5vw, 12px) clamp(16px, 2.5vw, 20px)',
-                            width: '100%',
-                            cursor: isDisabled ? 'not-allowed' : 'pointer',
-                            opacity: upgradingPlan === plan.product_type ? 0.6 : 1,
-                            fontFamily: '"Work Sans", sans-serif',
-                            fontWeight: 600,
-                            borderRadius: 7
-                          }}
-                        >
-                          {upgradingPlan === plan.product_type ? 'Processing...' : isCurrentPlan ? 'Current Plan' : isLowerPlan ? 'Lower Plan' : 'Upgrade'}
-                        </button>
-                      </div>
-                      <div style={{
-                        borderTop: '1px solid var(--bw-border)',
-                        paddingTop: 'clamp(16px, 2.5vw, 20px)',
-                        marginTop: 'clamp(16px, 2.5vw, 20px)'
-                      }}>
-                        <ul style={{
-                          listStyle: 'none',
-                          padding: 0,
-                          margin: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 'clamp(8px, 1.5vw, 12px)'
-                        }}>
-                          {plan.features.map((feature, idx) => (
-                            <li key={idx} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 'clamp(8px, 1.5vw, 12px)'
-                            }}>
-                              <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0
-                              }}>
-                                {feature.included ? <CheckIcon /> : null}
-                              </div>
-                              <span style={{
-                                fontFamily: '"Work Sans", sans-serif',
-                                fontSize: 'clamp(12px, 1.5vw, 14px)',
-                                color: feature.included ? 'var(--bw-text)' : 'var(--bw-muted)'
-                              }}>{feature.text}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 } 

@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { useFavicon } from '@hooks/useFavicon'
 
 export default function RiderLogin() {
+  useFavicon()
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [isLoading, setIsLoading] = useState(false)
@@ -13,7 +15,6 @@ export default function RiderLogin() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
-  const { slug } = useParams<{ slug: string }>()
   const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
   
   const navigate = useNavigate()
@@ -80,9 +81,9 @@ export default function RiderLogin() {
   // Redirect authenticated riders
   useEffect(() => {
     if (isAuthenticated && role === 'rider') {
-      navigate(slug ? `/${slug}/rider/dashboard` : '/rider', { replace: true })
+      navigate('/rider/dashboard', { replace: true })
     }
-  }, [isAuthenticated, role, navigate, slug])
+  }, [isAuthenticated, role, navigate])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
@@ -95,8 +96,8 @@ export default function RiderLogin() {
       const data = await loginRider(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
       
-      // Navigate to rider dashboard with slug if available
-      navigate(slug ? `/${slug}/rider/dashboard` : '/rider', { replace: true })
+      // Navigate to rider dashboard
+      navigate('/rider/dashboard', { replace: true })
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
     } finally {
@@ -322,7 +323,7 @@ export default function RiderLogin() {
                 </div>
                 <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
                   Don't have an account?{' '}
-                  <Link to={slug ? `/${slug}/riders/register` : '/riders/register'} style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
+                  <Link to="/riders/register" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
                     signup
                   </Link>
                 </p>

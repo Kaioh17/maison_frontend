@@ -5,8 +5,11 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
 import { loginRider } from '@api/auth'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { useFavicon } from '@hooks/useFavicon'
+import CountryAutocomplete from '@components/CountryAutocomplete'
 
 export default function RiderProfile() {
+  useFavicon()
   const [userInfo, setUserInfo] = useState<UserResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -19,17 +22,12 @@ export default function RiderProfile() {
 
   useEffect(() => {
     if (!isAuthenticated || role !== 'rider') {
-      // Riders must use slug-based login
-      if (slug) {
-        navigate(`/${slug}/riders/login`, { replace: true })
-      } else {
-        // No slug available, redirect to home
-        navigate('/', { replace: true })
-      }
+      // Riders must use subdomain-based login
+      navigate('/riders/login', { replace: true })
       return
     }
     loadUserInfo()
-  }, [isAuthenticated, role, navigate, slug])
+  }, [isAuthenticated, role, navigate])
 
   const loadUserInfo = async () => {
     try {
@@ -79,7 +77,8 @@ export default function RiderProfile() {
 
   const handleLogout = () => {
     logout()
-    navigate(slug ? `/${slug}/riders/login` : '/', { replace: true })
+    // Login URL - subdomain handles tenant context
+    navigate('/riders/login', { replace: true })
   }
 
   if (isLoading) {
@@ -437,13 +436,11 @@ export default function RiderProfile() {
             <div className="bw-info-item">
               <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Country:</span>
               {isEditing ? (
-                <input
-                  name="country"
-                  type="text"
+                <CountryAutocomplete
                   value={displayData.country || ''}
-                  onChange={handleInputChange}
+                  onChange={(value) => setEditedData({ ...editedData, country: value })}
                   className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
                 <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.country}</span>
@@ -511,7 +508,7 @@ export default function RiderProfile() {
 
         {/* Navigation Links */}
         <div style={{ marginTop: 'clamp(24px, 4vw, 32px)', display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-          <Link to={slug ? `/${slug}/rider/dashboard` : '/rider'} style={{ textDecoration: 'none' }}>
+          <Link to="/rider/dashboard" style={{ textDecoration: 'none' }}>
             <button 
               className="bw-btn" 
               style={{ 

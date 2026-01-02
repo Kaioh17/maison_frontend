@@ -34,15 +34,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
               switch (role) {
                 case 'tenant':
                   const tenantResponse = await refreshTenantToken()
-                  newToken = tenantResponse.new_access_token
+                  newToken = tenantResponse.access_token
                   break
                 case 'driver':
                   const driverResponse = await refreshDriverToken()
-                  newToken = driverResponse.new_access_token
+                  newToken = driverResponse.access_token
                   break
                 case 'rider':
                   const riderResponse = await refreshRiderToken()
-                  newToken = riderResponse.new_access_token
+                  newToken = riderResponse.access_token
                   break
                 default:
                   throw new Error('Unknown role')

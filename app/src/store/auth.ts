@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { UserRole } from '@config'
 import { jwtDecode } from 'jwt-decode'
+import { logout as logoutApi } from '@api/auth'
 
 type TokenPayload = { id: string; role: UserRole; tenant_id?: string; exp?: number }
 
@@ -63,13 +64,21 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true 
         })
       },
-      logout: () => set({ 
-        accessToken: null, 
-        role: null, 
-        userId: null, 
-        tenantId: null,
-        isAuthenticated: false 
-      }),
+      logout: () => {
+        // Call logout API endpoint in background (fire-and-forget)
+        logoutApi().catch((error) => {
+          // Log error but continue with logout even if API call fails
+          console.error('Logout API call failed:', error)
+        })
+        // Clear local state immediately
+        set({ 
+          accessToken: null, 
+          role: null, 
+          userId: null, 
+          tenantId: null,
+          isAuthenticated: false 
+        })
+      },
       getUserId: () => get().userId,
       getTenantId: () => get().tenantId,
       checkAuthStatus: () => {
