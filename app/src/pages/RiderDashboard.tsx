@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { createBooking, getBookings, type BookingResponse } from '@api/bookings'
+import { createBooking, getBookings, getBookingAnalytics, type BookingResponse, type BookingAnalyticsResponse } from '@api/bookings'
 import { getVehicles, type VehicleResponse } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, LogOut, UserCircle, Menu, X, LayoutDashboard, BookOpen, List, Truck } from 'lucide-react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle } from '@phosphor-icons/react'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 
@@ -30,17 +30,21 @@ export default function RiderDashboard() {
   })
   const [bookings, setBookings] = useState<BookingResponse[]>([])
   const [vehicles, setVehicles] = useState<VehicleResponse[]>([])
+  const [analytics, setAnalytics] = useState<BookingAnalyticsResponse | null>(null)
   const [isLoadingBookings, setIsLoadingBookings] = useState(false)
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false)
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false)
   const [isLoading, setIsLoading] = useState(false) // Only for booking creation
   const [error, setError] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
-  const [totalBookings, setTotalBookings] = useState(0)
+  // Limit-based loading state (replacing pagination)
+  const [bookingsLimit, setBookingsLimit] = useState(5)
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('')
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('')
+  const [lastSelectedFilter, setLastSelectedFilter] = useState<string>('')
+  const [hasMoreBookings, setHasMoreBookings] = useState(true)
   
   const { tenantInfo, slug } = useTenantInfo()
   const navigate = useNavigate()
@@ -64,27 +68,59 @@ export default function RiderDashboard() {
       setError('')
       
       // For dashboard, load all bookings (no pagination) to get accurate stats
-      // For all-bookings, use pagination
       const currentSection = section || activeSection
       const params = currentSection === 'dashboard' 
         ? undefined // Load all bookings for dashboard stats
-        : { page, limit: limit || pageSize }
+        : undefined // This function is only used for dashboard now
       
       const bookingsResponse = await getBookings(params)
       
       if (bookingsResponse.success && bookingsResponse.data) {
         setBookings(bookingsResponse.data)
-        // For dashboard, total is the length of all loaded bookings
-        // For all-bookings, we'll use the length as an approximation (API might not return total count)
-        setTotalBookings(bookingsResponse.data.length)
       } else {
         setBookings([])
-        setTotalBookings(0)
       }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load bookings')
       setBookings([])
-      setTotalBookings(0)
+    } finally {
+      setIsLoadingBookings(false)
+    }
+  }
+
+  // Load all bookings with filters (for all-bookings section)
+  const loadAllBookings = async (limit: number, status?: string, serviceType?: string) => {
+    try {
+      setIsLoadingBookings(true)
+      setError('')
+      const previousCount = bookings.length
+      const params: { limit: number; booking_status?: string; service_type?: string } = { limit }
+      if (status) {
+        params.booking_status = status
+      }
+      if (serviceType) {
+        params.service_type = serviceType
+      }
+      const response = await getBookings(params)
+      if (response.success && response.data) {
+        const newBookings = response.data
+        setBookings(newBookings)
+        
+        // If we got fewer bookings than requested, we've reached the end
+        // Also check if the count didn't increase (edge case)
+        if (newBookings.length < limit || (previousCount > 0 && newBookings.length === previousCount)) {
+          setHasMoreBookings(false)
+        } else {
+          setHasMoreBookings(true)
+        }
+      } else {
+        setError(response.message || 'Failed to load bookings')
+        setHasMoreBookings(false)
+      }
+    } catch (err: any) {
+      console.error('Failed to load bookings:', err)
+      setError(err.response?.data?.detail || err.message || 'Failed to load bookings')
+      setHasMoreBookings(false)
     } finally {
       setIsLoadingBookings(false)
     }
@@ -110,6 +146,27 @@ export default function RiderDashboard() {
     }
   }
 
+  const loadAnalytics = async () => {
+    try {
+      setIsLoadingAnalytics(true)
+      setError('')
+      
+      const analyticsResponse = await getBookingAnalytics()
+      
+      if (analyticsResponse.success && analyticsResponse.data) {
+        setAnalytics(analyticsResponse.data)
+      } else {
+        setAnalytics(null)
+      }
+    } catch (err: any) {
+      console.error('Failed to load analytics:', err)
+      setError(err.response?.data?.detail || 'Failed to load analytics')
+      setAnalytics(null)
+    } finally {
+      setIsLoadingAnalytics(false)
+    }
+  }
+
   // Determine active section from URL
   const getActiveSectionFromUrl = (): MenuSection => {
     const path = location.pathname
@@ -128,17 +185,34 @@ export default function RiderDashboard() {
 
   // Section-based loading
   useEffect(() => {
-    // Load bookings for dashboard or all-bookings sections
-    if (activeSection === 'dashboard' || activeSection === 'all-bookings') {
-      // For dashboard: load all bookings if we haven't loaded for dashboard yet, or if we're switching from all-bookings
-      // For all-bookings: load with pagination if we haven't loaded for all-bookings yet, or if we're switching from dashboard
-      const needsReload = 
-        (activeSection === 'dashboard' && lastBookingsSection !== 'dashboard') ||
-        (activeSection === 'all-bookings' && (lastBookingsSection !== 'all-bookings' || bookings.length === 0))
+    // Load analytics and bookings for dashboard section
+    if (activeSection === 'dashboard') {
+      // Load analytics for dashboard stats
+      if (!analytics && !isLoadingAnalytics) {
+        loadAnalytics()
+      }
+      // Load all bookings for dashboard (for recent/upcoming rides display)
+      if (lastBookingsSection !== 'dashboard' && !isLoadingBookings) {
+        loadBookings(1, undefined, 'dashboard')
+        setLastBookingsSection('dashboard')
+      }
+    }
+    
+    // Load bookings for all-bookings section
+    if (activeSection === 'all-bookings') {
+      const needsReload = lastBookingsSection !== 'all-bookings' || bookings.length === 0
       
       if (needsReload && !isLoadingBookings) {
-        loadBookings(activeSection === 'all-bookings' ? currentPage : 1, undefined, activeSection)
-        setLastBookingsSection(activeSection)
+        // Reset hasMoreBookings when first loading the section
+        if (bookingsLimit === 5) {
+          setHasMoreBookings(true)
+        }
+        loadAllBookings(
+          bookingsLimit, 
+          bookingStatusFilter || undefined,
+          serviceTypeFilter || undefined
+        )
+        setLastBookingsSection('all-bookings')
       }
     }
     
@@ -151,13 +225,22 @@ export default function RiderDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, location.pathname])
 
-  // Reload bookings when page changes in all-bookings section
+  // Reload bookings when limit or filters change in all-bookings section
   useEffect(() => {
-    if (activeSection === 'all-bookings' && currentPage > 1 && !isLoadingBookings) {
-      loadBookings(currentPage, undefined, 'all-bookings')
+    const path = location.pathname
+    if (path.includes('/rider/see-bookings')) {
+      // Reset hasMoreBookings when first loading the section
+      if (bookingsLimit === 5) {
+        setHasMoreBookings(true)
+      }
+      loadAllBookings(
+        bookingsLimit, 
+        bookingStatusFilter || undefined,
+        serviceTypeFilter || undefined
+      )
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage])
+  }, [location.pathname, bookingsLimit, bookingStatusFilter, serviceTypeFilter])
 
   const book = async () => {
     // Dynamic validation based on service type
@@ -340,6 +423,90 @@ export default function RiderDashboard() {
     }
   }
 
+  const getStatusColorHex = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'active':
+      case 'confirmed':
+        return '#10b981'
+      case 'pending':
+        return '#f59e0b'
+      case 'cancelled':
+        return '#ef4444'
+      default:
+        return '#6b7280'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    const color = getStatusColorHex(status)
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'active':
+      case 'confirmed':
+        return <CheckCircle size={14} style={{ color }} />
+      case 'pending':
+        return <Clock size={14} style={{ color }} />
+      case 'cancelled':
+        return <XCircle size={14} style={{ color }} />
+      default:
+        return <WarningCircle size={14} style={{ color }} />
+    }
+  }
+
+  const handleStatusFilterChange = (value: string) => {
+    setBookingStatusFilter(value)
+    // Reset limit when filter changes
+    setBookingsLimit(5)
+    setHasMoreBookings(true)
+  }
+
+  const handleServiceTypeFilterChange = (value: string) => {
+    setServiceTypeFilter(value)
+    // Reset limit when filter changes
+    setBookingsLimit(5)
+    setHasMoreBookings(true)
+  }
+
+  const handleNestedFilterChange = (value: string) => {
+    setLastSelectedFilter(value)
+    
+    if (!value) {
+      // Clear all filters
+      setBookingStatusFilter('')
+      setServiceTypeFilter('')
+      setBookingsLimit(5)
+      setHasMoreBookings(true)
+      return
+    }
+    
+    const [category, filterValue] = value.split(':')
+    
+    if (category === 'status') {
+      setBookingStatusFilter(filterValue || '')
+    } else if (category === 'service_type') {
+      setServiceTypeFilter(filterValue || '')
+    }
+    
+    // Reset limit when filter changes
+    setBookingsLimit(5)
+    setHasMoreBookings(true)
+  }
+
+  const removeFilter = (type: 'status' | 'service_type') => {
+    if (type === 'status') {
+      setBookingStatusFilter('')
+    } else {
+      setServiceTypeFilter('')
+    }
+    setBookingsLimit(5)
+    setHasMoreBookings(true)
+  }
+
+  const handleShowMore = () => {
+    setBookingsLimit(prev => prev + 5)
+  }
+
   // Filter bookings
   const now = new Date()
   const recentBookings = bookings
@@ -358,12 +525,15 @@ export default function RiderDashboard() {
     .sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime())
     .slice(0, 5)
 
-  const dashboardTotalBookings = bookings.length
-  const completedBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'completed').length
-  const pendingBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
+  // Use analytics data if available, otherwise fallback to calculated values
+  const dashboardTotalBookings = analytics?.total ?? bookings.length
+  const completedBookings = analytics?.completed ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'completed').length
+  const pendingBookings = analytics?.pending ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
+  const confirmedBookings = analytics?.confirmed ?? 0
+  const cancelledBookings = analytics?.cancelled ?? 0
 
   const menuItems = [
-    { id: 'dashboard' as MenuSection, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard' as MenuSection, label: 'Dashboard', icon: SquaresFour },
     { id: 'book-ride' as MenuSection, label: 'Book a Ride', icon: BookOpen },
     { id: 'all-bookings' as MenuSection, label: 'See All Bookings', icon: List },
     { id: 'vehicles' as MenuSection, label: 'See Vehicles', icon: Truck },
@@ -594,7 +764,7 @@ export default function RiderDashboard() {
               fontWeight: 300
             }}
           >
-            <LogOut size={18} />
+            <SignOut size={18} />
             Logout
           </button>
         </div>
@@ -638,7 +808,7 @@ export default function RiderDashboard() {
                 color: 'var(--bw-text)'
               }}
             >
-              <Menu size={20} />
+              <List size={20} />
             </button>
           )}
 
@@ -672,7 +842,7 @@ export default function RiderDashboard() {
         {/* Dashboard Section */}
         {activeSection === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 24px)' }}>
-            {isLoadingBookings && bookings.length === 0 ? (
+            {(isLoadingAnalytics || (isLoadingBookings && bookings.length === 0)) ? (
               <div style={{
                 textAlign: 'center',
                 padding: 'clamp(40px, 8vw, 60px)',
@@ -1371,15 +1541,197 @@ export default function RiderDashboard() {
             borderRadius: '12px',
             padding: 'clamp(16px, 3vw, 20px)'
           }}>
-            <h2 style={{
-              margin: '0 0 clamp(16px, 3vw, 20px) 0',
-              fontSize: 'clamp(18px, 3vw, 22px)',
-              fontWeight: 400,
-              fontFamily: 'Work Sans, sans-serif',
-              color: 'var(--bw-text)'
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'flex-start' : 'center',
+              marginBottom: 'clamp(16px, 3vw, 20px)',
+              gap: 'clamp(12px, 2vw, 16px)'
             }}>
-              My Bookings
-            </h2>
+              {/* Filter Dropdown */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'clamp(8px, 1.5vw, 12px)',
+                flexWrap: 'wrap'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'clamp(8px, 1.5vw, 12px)',
+                  flexWrap: 'wrap'
+                }}>
+                  <label style={{
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300,
+                    opacity: 0.8
+                  }}>
+                    Filter by:
+                  </label>
+                  
+                  {/* Single Nested Filter Dropdown */}
+                  <select
+                    value={lastSelectedFilter}
+                    onChange={(e) => {
+                      const optionValue = e.target.value
+                      handleNestedFilterChange(optionValue)
+                    }}
+                    disabled={isLoadingBookings}
+                    style={{
+                      padding: 'clamp(8px, 1.5vw, 10px) clamp(12px, 2vw, 16px)',
+                      border: '1px solid var(--bw-border)',
+                      borderRadius: '6px',
+                      backgroundColor: 'var(--bw-bg)',
+                      color: 'var(--bw-text)',
+                      fontSize: 'clamp(13px, 2vw, 14px)',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontWeight: 300,
+                      cursor: isLoadingBookings ? 'not-allowed' : 'pointer',
+                      opacity: isLoadingBookings ? 0.6 : 1,
+                      minWidth: 'clamp(180px, 25vw, 220px)'
+                    }}
+                  >
+                    <option value="" style={{ color: 'var(--bw-text)', opacity: 0.6, fontWeight: 300 }}>Select Filter</option>
+                    
+                    {/* Status Group */}
+                    <optgroup label="Status" style={{ 
+                      color: 'var(--bw-text)', 
+                      fontWeight: 400,
+                      fontStyle: 'normal'
+                    }}>
+                      <option value="status:" style={{ 
+                        color: 'var(--bw-text)', 
+                        opacity: 0.6, 
+                        fontWeight: 300
+                      }}>All Statuses</option>
+                      <option value="status:pending" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Pending</option>
+                      <option value="status:confirmed" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Confirmed</option>
+                      <option value="status:completed" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Completed</option>
+                      <option value="status:cancelled" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Cancelled</option>
+                    </optgroup>
+                    
+                    {/* Service Type Group */}
+                    <optgroup label="Service Type" style={{ 
+                      color: 'var(--bw-text)', 
+                      fontWeight: 400,
+                      fontStyle: 'normal'
+                    }}>
+                      <option value="service_type:" style={{ 
+                        color: 'var(--bw-text)', 
+                        opacity: 0.6, 
+                        fontWeight: 300
+                      }}>All Service Types</option>
+                      <option value="service_type:airport" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Airport</option>
+                      <option value="service_type:dropoff" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Dropoff</option>
+                      <option value="service_type:hourly" style={{ 
+                        color: 'var(--bw-text)', 
+                        fontWeight: 300
+                      }}>Hourly</option>
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* Selected Filter Tags */}
+                {(bookingStatusFilter || serviceTypeFilter) && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'clamp(6px, 1.5vw, 8px)',
+                    flexWrap: 'wrap'
+                  }}>
+                    {bookingStatusFilter && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 12px)',
+                        backgroundColor: 'var(--bw-bg)',
+                        border: '1px solid var(--bw-border)',
+                        borderRadius: '6px',
+                        fontSize: 'clamp(12px, 1.8vw, 13px)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontWeight: 300,
+                        color: 'var(--bw-text)'
+                      }}>
+                        <span>Status: {bookingStatusFilter.charAt(0).toUpperCase() + bookingStatusFilter.slice(1)}</span>
+                        <button
+                          onClick={() => removeFilter('status')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--bw-text)',
+                            cursor: 'pointer',
+                            padding: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            opacity: 0.7
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                    {serviceTypeFilter && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 12px)',
+                        backgroundColor: 'var(--bw-bg)',
+                        border: '1px solid var(--bw-border)',
+                        borderRadius: '6px',
+                        fontSize: 'clamp(12px, 1.8vw, 13px)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontWeight: 300,
+                        color: 'var(--bw-text)'
+                      }}>
+                        <span>Service: {serviceTypeFilter === 'dropoff' ? 'Dropoff' : serviceTypeFilter.charAt(0).toUpperCase() + serviceTypeFilter.slice(1)}</span>
+                        <button
+                          onClick={() => removeFilter('service_type')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--bw-text)',
+                            cursor: 'pointer',
+                            padding: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            opacity: 0.7
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {isLoadingBookings && bookings.length === 0 ? (
               <div style={{
@@ -1430,39 +1782,45 @@ export default function RiderDashboard() {
                       backgroundColor: 'var(--bw-bg)'
                     }}
                   >
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '12px',
-                      flexWrap: 'wrap',
-                      gap: '8px'
-                    }}>
-                      <div>
-                        <div style={{
-                          fontSize: 'clamp(16px, 3vw, 18px)',
-                          fontWeight: 600,
-                          color: 'var(--bw-text)',
-                          marginBottom: '4px'
-                        }}>
-                          Booking #{booking.id}
-                        </div>
-                      </div>
                       <div style={{
-                        padding: '4px 12px',
-                        borderRadius: '12px',
-                        backgroundColor: booking.booking_status?.toLowerCase() === 'pending' 
-                          ? '#fed7aa' 
-                          : getStatusColor(booking.booking_status) + '20',
-                        color: booking.booking_status?.toLowerCase() === 'pending'
-                          ? '#c2410c'
-                          : getStatusColor(booking.booking_status),
-                        fontSize: 'clamp(11px, 1.8vw, 12px)',
-                        fontWeight: 500
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: '12px',
+                        flexWrap: 'wrap',
+                        gap: '8px'
                       }}>
-                        {booking.booking_status}
+                        <div>
+                          <div style={{
+                            fontSize: 'clamp(16px, 3vw, 18px)',
+                            fontWeight: 600,
+                            color: 'var(--bw-text)',
+                            marginBottom: '4px'
+                          }}>
+                            Booking #{booking.id}
+                          </div>
+                        </div>
+                        {booking.booking_status && (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
+                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
+                            fontSize: 'clamp(11px, 1.8vw, 12px)',
+                            fontFamily: 'Work Sans, sans-serif',
+                            fontWeight: 500,
+                            color: getStatusColorHex(booking.booking_status)
+                          }}>
+                            {getStatusIcon(booking.booking_status)}
+                            <span style={{ textTransform: 'capitalize' }}>
+                              {booking.booking_status}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
 
                     <div style={{
                       display: 'flex',
@@ -1562,70 +1920,57 @@ export default function RiderDashboard() {
                   </div>
                 ))}
               </div>
-              
-              {/* Pagination Controls */}
-              {bookings.length > 0 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginTop: 'clamp(16px, 3vw, 24px)',
-                  paddingTop: 'clamp(16px, 3vw, 24px)',
-                  borderTop: '1px solid var(--bw-border)',
-                  flexWrap: 'wrap',
-                  gap: '12px'
-                }}>
+
+              {/* Show More Button */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'clamp(8px, 2vw, 12px)',
+                marginTop: 'clamp(16px, 3vw, 24px)'
+              }}>
+                {!hasMoreBookings && bookings.length > 0 && (
                   <div style={{
                     fontSize: 'clamp(13px, 2vw, 14px)',
                     color: 'var(--bw-text)',
-                    opacity: 0.7
+                    opacity: 0.7,
+                    fontFamily: 'Work Sans, sans-serif',
+                    textAlign: 'center'
                   }}>
-                    Page {currentPage} {totalBookings > 0 && `(${totalBookings} total)`}
+                    That's all your bookings so far
                   </div>
-                  <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center'
-                  }}>
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || isLoadingBookings}
-                      style={{
-                        padding: 'clamp(8px, 1.5vw, 10px) clamp(16px, 3vw, 20px)',
-                        backgroundColor: currentPage === 1 || isLoadingBookings ? 'transparent' : 'var(--bw-fg)',
-                        color: currentPage === 1 || isLoadingBookings ? 'var(--bw-text)' : 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)',
-                        borderRadius: '6px',
-                        cursor: currentPage === 1 || isLoadingBookings ? 'not-allowed' : 'pointer',
-                        fontSize: 'clamp(13px, 2vw, 14px)',
-                        fontFamily: 'Work Sans, sans-serif',
-                        fontWeight: 500,
-                        opacity: currentPage === 1 || isLoadingBookings ? 0.5 : 1
-                      }}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                      disabled={bookings.length < pageSize || isLoadingBookings}
-                      style={{
-                        padding: 'clamp(8px, 1.5vw, 10px) clamp(16px, 3vw, 20px)',
-                        backgroundColor: (bookings.length < pageSize || isLoadingBookings) ? 'transparent' : 'var(--bw-fg)',
-                        color: (bookings.length < pageSize || isLoadingBookings) ? 'var(--bw-text)' : 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)',
-                        borderRadius: '6px',
-                        cursor: (bookings.length < pageSize || isLoadingBookings) ? 'not-allowed' : 'pointer',
-                        fontSize: 'clamp(13px, 2vw, 14px)',
-                        fontFamily: 'Work Sans, sans-serif',
-                        fontWeight: 500,
-                        opacity: (bookings.length < pageSize || isLoadingBookings) ? 0.5 : 1
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+                <button
+                  onClick={handleShowMore}
+                  disabled={isLoadingBookings || !hasMoreBookings}
+                  style={{
+                    padding: 'clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 32px)',
+                    backgroundColor: 'var(--bw-fg)',
+                    color: 'var(--bw-bg)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: (isLoadingBookings || !hasMoreBookings) ? 'not-allowed' : 'pointer',
+                    fontSize: 'clamp(14px, 2.5vw, 16px)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 600,
+                    opacity: (isLoadingBookings || !hasMoreBookings) ? 0.4 : 1,
+                    filter: !hasMoreBookings ? 'blur(0.5px)' : 'none',
+                    transition: 'opacity 0.2s ease, filter 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoadingBookings && hasMoreBookings) {
+                      e.currentTarget.style.opacity = '0.9'
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isLoadingBookings && hasMoreBookings) {
+                      e.currentTarget.style.opacity = '1'
+                    }
+                  }}
+                >
+                  {isLoadingBookings ? 'Loading...' : 'Show More'}
+                </button>
+              </div>
               </>
             )}
           </div>

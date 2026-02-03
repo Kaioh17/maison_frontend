@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFavicon } from '@hooks/useFavicon'
-import { CheckCircle, Home } from 'lucide-react'
+import { CheckCircle, House } from '@phosphor-icons/react'
 
 export default function BookingComplete() {
   useFavicon()
@@ -136,7 +136,7 @@ export default function BookingComplete() {
             e.currentTarget.style.boxShadow = 'none'
           }}
         >
-          <Home size={18} />
+          <House size={18} />
           <span>Back to Dashboard</span>
         </button>
       </div>

@@ -105,6 +105,21 @@ maison_frontend/
    npm run dev:network
    ```
 
+### Local Subdomain Testing
+
+To test tenant-specific subdomains locally:
+
+1. Edit `C:\Windows\System32\drivers\etc\hosts` as Administrator
+2. Add entries like: `127.0.0.1 tenant-slug.localhost`
+3. Flush DNS: `ipconfig /flushdns`
+4. Access: `http://tenant-slug.localhost:3000`
+
+#### Common Test Slugs
+- tenant1.localhost
+- tenant2.localhost
+- ridez.localhost
+- demo.localhost
+
 ### Mobile Application Setup
 
 1. **Navigate to mobile app directory**

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Eye, EyeSlash, Envelope, Lock, ArrowRight } from '@phosphor-icons/react'
 import { loginDriver } from '@api/auth'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 
@@ -19,6 +19,22 @@ export default function DriverLogin() {
   
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
+  const [searchParams] = useSearchParams()
+
+  // Auto-login with token from query parameter (for switch to driver mode)
+  useEffect(() => {
+    const token = searchParams.get('token')
+    if (token && role !== 'driver') {
+      // Automatically log in with the provided token
+      useAuthStore.getState().login({ token })
+      // Remove token from URL for security and cleanliness
+      const newSearchParams = new URLSearchParams(searchParams)
+      newSearchParams.delete('token')
+      const newUrl = window.location.pathname + (newSearchParams.toString() ? `?${newSearchParams.toString()}` : '')
+      window.history.replaceState({}, '', newUrl)
+      // The redirect effect below will handle navigation to dashboard
+    }
+  }, [searchParams, role])
 
   // Determine current theme
   const getCurrentTheme = () => {
@@ -267,7 +283,7 @@ export default function DriverLogin() {
             <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
               <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
               <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Mail size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
                 <input 
                   id="email" 
                   name="email" 
@@ -301,7 +317,7 @@ export default function DriverLogin() {
                   onClick={() => setShowPassword(!showPassword)} 
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 

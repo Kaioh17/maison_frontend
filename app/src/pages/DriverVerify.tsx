@@ -4,7 +4,7 @@ import { verifyDriverToken } from '@api/driver'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { useFavicon } from '@hooks/useFavicon'
-import { Key } from 'lucide-react'
+import { Key } from '@phosphor-icons/react'
 
 export default function DriverVerify() {
   useFavicon()

@@ -347,4 +347,25 @@ export type OnboardDriverResponse = OnboardDriver & {
   created_on: string
 }
 
-export type AssignDriver = { driver_id: number } 
+export type AssignDriver = { driver_id: number }
+
+export type TenantAnalysisData = {
+  completed_rides: number
+  pending_rides: number
+  available_drivers: number
+  total_revenue: number
+  total_drivers: number
+  total_vehicles: number
+  total_bookings: number
+  todays_revenue: number
+}
+
+export async function getTenantAnalysis() {
+  const { data } = await http.get<StandardResponse<TenantAnalysisData>>('/v1/tenant/analysis')
+  return data
+}
+
+export async function becomeDriver() {
+  const { data } = await http.post<StandardResponse<{ access_token: string }>>('/v1/tenant/driver')
+  return data
+} 

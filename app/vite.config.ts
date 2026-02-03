@@ -11,5 +11,7 @@ export default defineConfig({
 		proxy: {
 			'/api': process.env.VITE_API_PROXY || 'http://localhost:8000',
 		},
+	
+		strictPort: false,
 	},
 })

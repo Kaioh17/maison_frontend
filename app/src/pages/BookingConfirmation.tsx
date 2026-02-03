@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { approveBooking, type BookingResponse } from '@api/bookings'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, Clock, DollarSign, Car, ChevronDown, X, Check } from 'lucide-react'
+import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check } from '@phosphor-icons/react'
 
 // Stripe Logo SVG Component
 const StripeLogo = ({ size = 20 }: { size?: number }) => (
@@ -28,6 +28,7 @@ export default function BookingConfirmation() {
   const [error, setError] = useState('')
   const [booking, setBooking] = useState<BookingResponse | null>(null)
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
+  const [showDeclineWarning, setShowDeclineWarning] = useState(false)
 
   useEffect(() => {
     // Get booking data from navigation state
@@ -145,9 +146,10 @@ export default function BookingConfirmation() {
       minHeight: '100vh',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
-      padding: 'clamp(16px, 3vw, 24px)',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      overflowX: 'hidden',
+      width: '100%'
     }}>
       <div style={{
         maxWidth: '600px',
@@ -155,18 +157,67 @@ export default function BookingConfirmation() {
         width: '100%',
         flex: 1,
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        padding: '0 clamp(16px, 3vw, 24px)',
+        paddingTop: 'clamp(16px, 3vw, 24px)'
       }}>
-        <h1 style={{
-          margin: '0 0 clamp(24px, 4vw, 32px) 0',
-          fontSize: 'clamp(24px, 4vw, 32px)',
-          fontWeight: 200,
-          fontFamily: 'DM Sans, sans-serif',
-          color: 'var(--bw-text)',
-          textAlign: 'center'
+        {/* Header with X button and title */}
+        <div style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: 'clamp(24px, 4vw, 32px)'
         }}>
-          Confirm Your Ride
-        </h1>
+          {/* X button for decline - positioned at top left */}
+          <button
+            onClick={() => setShowDeclineWarning(true)}
+            disabled={isLoading}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              padding: 'clamp(8px, 1.5vw, 12px)',
+              borderRadius: '8px',
+              backgroundColor: 'transparent',
+              color: 'var(--bw-text)',
+              border: 'none',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: isLoading ? 0.6 : 0.8,
+              transition: 'all 0.2s ease',
+              zIndex: 1
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
+                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.color = '#ef4444'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.opacity = '0.8'
+                e.currentTarget.style.color = 'var(--bw-text)'
+              }
+            }}
+          >
+            <X size={24} />
+          </button>
+          <h1 style={{
+            margin: '0 auto',
+            fontSize: 'clamp(24px, 4vw, 32px)',
+            fontWeight: 200,
+            fontFamily: 'DM Sans, sans-serif',
+            color: 'var(--bw-text)',
+            textAlign: 'center',
+            flex: 1
+          }}>
+            Confirm Your Ride
+          </h1>
+        </div>
 
         {error && (
           <div style={{
@@ -182,39 +233,29 @@ export default function BookingConfirmation() {
           </div>
         )}
 
-        {/* Booking Details Card */}
-        <div style={{
-          backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-          border: '1px solid var(--bw-border)',
-          borderRadius: '16px',
-          padding: 'clamp(20px, 4vw, 28px)',
-          marginBottom: 'clamp(20px, 4vw, 24px)',
-          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-          transition: 'box-shadow 0.2s ease'
-        }}>
-          {/* Price */}
-          {booking.estimated_price > 0 && (
+        {/* Price Section */}
+        {booking.estimated_price > 0 && (
+          <div style={{
+            backgroundColor: 'var(--bw-bg-secondary)',
+            borderTop: '1px solid var(--bw-border)',
+            borderBottom: '1px solid var(--bw-border)',
+            borderRadius: '10px',
+            padding: 'clamp(20px, 4vw, 28px)',
+            marginLeft: 'clamp(-16px, -3vw, -24px)',
+            marginRight: 'clamp(-16px, -3vw, -24px)',
+            marginBottom: 'clamp(10px, 2vw, 12px)',
+            width: 'calc(100% + clamp(32px, 6vw, 48px))',
+            maxWidth: '100vw',
+            boxSizing: 'border-box',
+            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+            transition: 'box-shadow 0.2s ease'
+          }}>
             <div style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: 'clamp(20px, 4vw, 24px)',
-              paddingBottom: 'clamp(16px, 3vw, 20px)',
-              borderBottom: '1px solid var(--bw-border)'
+              flexDirection: 'column',
+              gap: booking.deposit != null && booking.deposit !== undefined ? 'clamp(12px, 2.5vw, 16px)' : '0'
             }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '12px',
-                backgroundColor: 'var(--bw-bg-secondary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--bw-border)'
-              }}>
-                <DollarSign size={24} style={{ color: 'var(--bw-text)', opacity: 0.8 }} />
-              </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <div style={{
                   fontSize: 'clamp(12px, 2vw, 14px)',
                   color: 'var(--bw-text)',
@@ -234,9 +275,58 @@ export default function BookingConfirmation() {
                   ${booking.estimated_price.toFixed(2)}
                 </div>
               </div>
+              {booking.deposit != null && booking.deposit !== undefined && (
+                <div>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    marginBottom: '4px',
+                    fontFamily: 'Work Sans, sans-serif'
+                  }}>
+                    Deposit
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(24px, 4vw, 32px)',
+                    fontWeight: 600,
+                    color: 'var(--bw-text)',
+                    fontFamily: 'DM Sans, sans-serif',
+                    letterSpacing: '-0.02em',
+                    marginBottom: 'clamp(8px, 1.5vw, 12px)'
+                  }}>
+                    ${booking.deposit.toFixed(2)}
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(11px, 1.8vw, 12px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.6,
+                    fontFamily: 'Work Sans, sans-serif',
+                    lineHeight: 1.4
+                  }}>
+                    This deposit will be charged now. The remaining balance of ${(booking.estimated_price - booking.deposit).toFixed(2)} plus tax will be charged upon trip completion.
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
+        {/* Booking Details Card */}
+        <div style={{
+          backgroundColor: 'var(--bw-bg-secondary)',
+          borderTop: '1px solid var(--bw-border)',
+          borderBottom: '1px solid var(--bw-border)',
+          borderRadius: '10px',
+          padding: 'clamp(20px, 4vw, 28px)',
+          marginLeft: 'clamp(-16px, -3vw, -24px)',
+          marginRight: 'clamp(-16px, -3vw, -24px)',
+          marginBottom: 'clamp(10px, 2vw, 12px)',
+          width: 'calc(100% + clamp(32px, 6vw, 48px))',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
+          transition: 'box-shadow 0.2s ease'
+        }}>
           {/* Service Type */}
           <div style={{
             display: 'flex',
@@ -246,7 +336,6 @@ export default function BookingConfirmation() {
             marginBottom: 'clamp(16px, 3vw, 20px)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-              <Car size={20} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
               <div style={{
                 fontSize: 'clamp(12px, 2vw, 14px)',
                 color: 'var(--bw-text)',
@@ -275,54 +364,22 @@ export default function BookingConfirmation() {
             </div>
           </div>
 
-          {/* Pickup Location */}
+          {/* Route Information - Merged Container */}
           <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 'clamp(12px, 2.5vw, 16px)',
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            padding: 'clamp(12px, 2.5vw, 16px)',
+            padding: 'clamp(16px, 3vw, 20px)',
             borderRadius: '12px',
             backgroundColor: 'var(--bw-bg-secondary)',
             border: '1px solid var(--bw-border)',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'clamp(16px, 3vw, 20px)'
           }}>
-            <MapPin size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{
-                fontSize: 'clamp(12px, 2vw, 14px)',
-                color: 'var(--bw-text)',
-                opacity: 0.7,
-                marginBottom: '6px',
-                fontFamily: 'Work Sans, sans-serif',
-                fontWeight: 500
-              }}>
-                Pickup Location
-              </div>
-              <div style={{
-                fontSize: 'clamp(14px, 2.5vw, 16px)',
-                color: 'var(--bw-text)',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, sans-serif',
-                lineHeight: 1.5
-              }}>
-                {booking.pickup_location}
-              </div>
-            </div>
-          </div>
-
-          {/* Dropoff Location */}
-          {booking.dropoff_location && (
+            {/* Pickup Location */}
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
-              gap: 'clamp(12px, 2.5vw, 16px)',
-              marginBottom: 'clamp(16px, 3vw, 20px)',
-              padding: 'clamp(12px, 2.5vw, 16px)',
-              borderRadius: '12px',
-              backgroundColor: 'var(--bw-bg-secondary)',
-              border: '1px solid var(--bw-border)',
-              transition: 'all 0.2s ease'
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
               <MapPin size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
@@ -334,7 +391,7 @@ export default function BookingConfirmation() {
                   fontFamily: 'Work Sans, sans-serif',
                   fontWeight: 500
                 }}>
-                  Dropoff Location
+                  Pickup Location
                 </div>
                 <div style={{
                   fontSize: 'clamp(14px, 2.5vw, 16px)',
@@ -343,62 +400,50 @@ export default function BookingConfirmation() {
                   fontFamily: 'Work Sans, sans-serif',
                   lineHeight: 1.5
                 }}>
-                  {booking.dropoff_location}
+                  {booking.pickup_location}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Pickup Time */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 'clamp(12px, 2.5vw, 16px)',
-            marginBottom: 'clamp(16px, 3vw, 20px)',
-            padding: 'clamp(12px, 2.5vw, 16px)',
-            borderRadius: '12px',
-            backgroundColor: 'var(--bw-bg-secondary)',
-            border: '1px solid var(--bw-border)',
-            transition: 'all 0.2s ease'
-          }}>
-            <Calendar size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
+            {/* Dropoff Location */}
+            {booking.dropoff_location && (
               <div style={{
-                fontSize: 'clamp(12px, 2vw, 14px)',
-                color: 'var(--bw-text)',
-                opacity: 0.7,
-                marginBottom: '6px',
-                fontFamily: 'Work Sans, sans-serif',
-                fontWeight: 500
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'clamp(12px, 2.5vw, 16px)'
               }}>
-                Pickup Time
+                <MapPin size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    marginBottom: '6px',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 500
+                  }}>
+                    Dropoff Location
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(14px, 2.5vw, 16px)',
+                    color: 'var(--bw-text)',
+                    fontWeight: 400,
+                    fontFamily: 'Work Sans, sans-serif',
+                    lineHeight: 1.5
+                  }}>
+                    {booking.dropoff_location}
+                  </div>
+                </div>
               </div>
-              <div style={{
-                fontSize: 'clamp(14px, 2.5vw, 16px)',
-                color: 'var(--bw-text)',
-                fontWeight: 400,
-                fontFamily: 'Work Sans, sans-serif',
-                lineHeight: 1.5
-              }}>
-                {formatDate(booking.pickup_time)}
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Dropoff Time (ETA) */}
-          {booking.dropoff_time && (
+            {/* Pickup Time */}
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
-              gap: 'clamp(12px, 2.5vw, 16px)',
-              marginBottom: 'clamp(16px, 3vw, 20px)',
-              padding: 'clamp(12px, 2.5vw, 16px)',
-              borderRadius: '12px',
-              backgroundColor: 'var(--bw-bg-secondary)',
-              border: '1px solid var(--bw-border)',
-              transition: 'all 0.2s ease'
+              gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
-              <Clock size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
+              <Calendar size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: 'clamp(12px, 2vw, 14px)',
@@ -408,7 +453,7 @@ export default function BookingConfirmation() {
                   fontFamily: 'Work Sans, sans-serif',
                   fontWeight: 500
                 }}>
-                  Estimated Dropoff Time (ETA)
+                  Pickup Time
                 </div>
                 <div style={{
                   fontSize: 'clamp(14px, 2.5vw, 16px)',
@@ -417,20 +462,58 @@ export default function BookingConfirmation() {
                   fontFamily: 'Work Sans, sans-serif',
                   lineHeight: 1.5
                 }}>
-                  {formatDate(booking.dropoff_time)}
+                  {formatDate(booking.pickup_time)}
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Dropoff Time (ETA) */}
+            {booking.dropoff_time && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'clamp(12px, 2.5vw, 16px)'
+              }}>
+                <Clock size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    marginBottom: '6px',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 500
+                  }}>
+                    ETA
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(14px, 2.5vw, 16px)',
+                    color: 'var(--bw-text)',
+                    fontWeight: 400,
+                    fontFamily: 'Work Sans, sans-serif',
+                    lineHeight: 1.5
+                  }}>
+                    {formatDate(booking.dropoff_time)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Payment Method Selection */}
         <div style={{
-          backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-          border: '1px solid var(--bw-border)',
-          borderRadius: '12px',
+          backgroundColor: 'var(--bw-bg-secondary)',
+          borderTop: '1px solid var(--bw-border)',
+          borderBottom: '1px solid var(--bw-border)',
+          borderRadius: '10px',
           padding: 'clamp(20px, 4vw, 24px)',
+          marginLeft: 'clamp(-16px, -3vw, -24px)',
+          marginRight: 'clamp(-16px, -3vw, -24px)',
           marginBottom: 'clamp(20px, 4vw, 24px)',
+          width: 'calc(100% + clamp(32px, 6vw, 48px))',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}>
           <h2 style={{
@@ -457,9 +540,10 @@ export default function BookingConfirmation() {
               fontWeight: 400,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
               transition: 'all 0.2s ease',
-              boxShadow: selectedPaymentMethod ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none'
+              boxShadow: selectedPaymentMethod ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none',
+              position: 'relative'
             }}
             onMouseEnter={(e) => {
               if (!selectedPaymentMethod) {
@@ -472,12 +556,8 @@ export default function BookingConfirmation() {
               }
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {selectedPaymentMethod === 'card' && <StripeLogo size={20} />}
-              {selectedPaymentMethod === 'zelle' && <ZelleLogo size={20} />}
-              <span>{getPaymentMethodDisplayName(selectedPaymentMethod)}</span>
-            </div>
-            <ChevronDown size={20} style={{ color: 'var(--bw-text)', opacity: 0.6 }} />
+            <span>{getPaymentMethodDisplayName(selectedPaymentMethod)}</span>
+            <CaretDown size={20} style={{ color: 'var(--bw-text)', opacity: 0.6, position: 'absolute', right: 'clamp(16px, 3vw, 20px)' }} />
           </button>
           {/* Payment Method Information */}
           {selectedPaymentMethod && (
@@ -502,12 +582,28 @@ export default function BookingConfirmation() {
           )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Footer - Extra padding for fixed button */}
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'clamp(12px, 2.5vw, 16px)',
-          marginBottom: 'clamp(32px, 5vw, 48px)'
+          paddingBottom: 'clamp(100px, 15vw, 120px)'
+        }} />
+      </div>
+
+      {/* Fixed Confirm Ride Button */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 'clamp(16px, 3vw, 24px)',
+        backgroundColor: 'var(--bw-bg)',
+        borderTop: '1px solid var(--bw-border)',
+        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)',
+        zIndex: 100
+      }}>
+        <div style={{
+          maxWidth: '600px',
+          margin: '0 auto',
+          width: '100%'
         }}>
           <button
             onClick={handleConfirm}
@@ -542,56 +638,6 @@ export default function BookingConfirmation() {
           >
             {isLoading ? 'Processing...' : 'Confirm Ride'}
           </button>
-          <button
-            onClick={handleDecline}
-            disabled={isLoading}
-            style={{
-              width: '100%',
-              padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-              borderRadius: '12px',
-              backgroundColor: 'transparent',
-              color: '#ef4444',
-              border: '1px solid #ef4444',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              fontFamily: 'Work Sans, sans-serif',
-              fontWeight: 600,
-              fontSize: 'clamp(14px, 2.5vw, 16px)',
-              opacity: isLoading ? 0.6 : 1,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }
-            }}
-          >
-            Decline Ride
-          </button>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          textAlign: 'center',
-          paddingTop: 'clamp(24px, 4vw, 32px)',
-          borderTop: '1px solid var(--bw-border)',
-          marginTop: 'auto'
-        }}>
-          <p style={{
-            fontSize: 'clamp(11px, 1.8vw, 12px)',
-            color: 'var(--bw-text)',
-            opacity: 0.5,
-            margin: 0,
-            fontFamily: 'Work Sans, sans-serif'
-          }}>
-            Powered by Maison
-          </p>
         </div>
       </div>
 
@@ -699,13 +745,14 @@ export default function BookingConfirmation() {
                       fontFamily: 'Work Sans, sans-serif',
                       fontSize: 'clamp(15px, 2.5vw, 17px)',
                       fontWeight: isSelected ? 500 : 400,
-                      textAlign: 'left',
+                      textAlign: 'center',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
+                      justifyContent: 'center',
                       transition: 'all 0.2s ease',
                       boxShadow: isSelected ? '0 2px 8px rgba(0, 0, 0, 0.1)' : 'none',
-                      textTransform: 'capitalize'
+                      textTransform: 'capitalize',
+                      position: 'relative'
                     }}
                     onMouseEnter={(e) => {
                       if (!isSelected) {
@@ -720,16 +767,9 @@ export default function BookingConfirmation() {
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 2.5vw, 16px)' }}>
-                      {method === 'card' && <StripeLogo size={24} />}
-                      {method === 'zelle' && <ZelleLogo size={24} />}
-                      {method === 'cash' && (
-                        <DollarSign size={24} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
-                      )}
-                      <span>{method.charAt(0).toUpperCase() + method.slice(1)}</span>
-                    </div>
+                    <span>{method.charAt(0).toUpperCase() + method.slice(1)}</span>
                     {isSelected && (
-                      <Check size={20} style={{ color: 'var(--bw-accent)' }} />
+                      <Check size={20} style={{ color: 'var(--bw-accent)', position: 'absolute', right: 'clamp(16px, 3vw, 20px)' }} />
                     )}
                   </button>
                 )
@@ -752,6 +792,160 @@ export default function BookingConfirmation() {
               }}>
                 Your payment information is secure and encrypted. Select a payment method to continue.
               </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Decline Warning Modal */}
+      {showDeclineWarning && (
+        <>
+          {/* Blurred Backdrop */}
+          <div
+            onClick={() => setShowDeclineWarning(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+              zIndex: 2000,
+              animation: 'fadeIn 0.2s ease'
+            }}
+          />
+          {/* Warning Card */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
+              border: '1px solid var(--bw-border)',
+              borderRadius: '16px',
+              padding: 'clamp(24px, 4vw, 32px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              zIndex: 2001,
+              maxWidth: 'clamp(300px, 90vw, 400px)',
+              width: '100%',
+              animation: 'fadeIn 0.2s ease'
+            }}
+          >
+            {/* Warning Icon and Message */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 'clamp(16px, 3vw, 20px)',
+              marginBottom: 'clamp(24px, 4vw, 32px)'
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid #ef4444'
+              }}>
+                <X size={32} style={{ color: '#ef4444' }} />
+              </div>
+              <h2 style={{
+                margin: 0,
+                fontSize: 'clamp(20px, 3.5vw, 24px)',
+                fontWeight: 600,
+                fontFamily: 'DM Sans, sans-serif',
+                color: 'var(--bw-text)',
+                textAlign: 'center'
+              }}>
+                Terminate Booking?
+              </h2>
+              <p style={{
+                margin: 0,
+                fontSize: 'clamp(14px, 2.5vw, 16px)',
+                color: 'var(--bw-text)',
+                opacity: 0.8,
+                fontFamily: 'Work Sans, sans-serif',
+                textAlign: 'center',
+                lineHeight: 1.5
+              }}>
+                By clicking this, you will be terminating the booking. This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{
+              display: 'flex',
+              gap: 'clamp(12px, 2.5vw, 16px)',
+              flexDirection: 'column'
+            }}>
+              <button
+                onClick={handleDecline}
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                  borderRadius: '12px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontWeight: 600,
+                  fontSize: 'clamp(15px, 2.5vw, 17px)',
+                  opacity: isLoading ? 0.6 : 1,
+                  transition: 'all 0.2s ease',
+                  boxShadow: isLoading ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
+                  }
+                }}
+              >
+                {isLoading ? 'Terminating...' : 'Yes, Terminate Booking'}
+              </button>
+              <button
+                onClick={() => setShowDeclineWarning(false)}
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                  borderRadius: '12px',
+                  backgroundColor: 'transparent',
+                  color: 'var(--bw-text)',
+                  border: '1px solid var(--bw-border)',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontWeight: 600,
+                  fontSize: 'clamp(15px, 2.5vw, 17px)',
+                  opacity: isLoading ? 0.6 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </>

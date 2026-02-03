@@ -91,15 +91,15 @@ export default function LocationAutocomplete({
 
   // Handle suggestion selection
   const handleSelectSuggestion = async (suggestion: MapboxSuggestion) => {
-    // Get full location details to use name_preferred
+    // Get full location details to use name_preferred (or name for airports)
     let displayAddress = formatSuggestion(suggestion) // Fallback to suggestion format
     
     if (suggestion.mapbox_id) {
       try {
         const details = await getLocationDetails(suggestion.mapbox_id, sessionToken)
         if (details && details.features && details.features.length > 0) {
-          // Use name_preferred from the retrieved location details
-          const formattedFromDetails = formatLocationDetails(details)
+          // Use formatLocationDetails with isAirport flag to get proper airport name
+          const formattedFromDetails = formatLocationDetails(details, isAirportOnly)
           if (formattedFromDetails) {
             displayAddress = formattedFromDetails
           }

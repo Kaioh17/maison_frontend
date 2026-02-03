@@ -1,28 +1,28 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Settings, User, Building, Wrench, Car, CreditCard, HelpCircle, X, Menu, Palette, DollarSign, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, X, List, Palette, CurrencyDollar, CaretRight } from '@phosphor-icons/react'
 import { getStripeLoginLink } from '@api/tenantSettings'
 
 interface MenuItem {
   path: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ size?: number | string; style?: React.CSSProperties }>
   submenu?: MenuItem[]
 }
 
 const menuItems: MenuItem[] = [
-  { path: '/tenant/settings/general', label: 'General View', icon: Settings },
+  { path: '/tenant/settings/general', label: 'General View', icon: Gear },
   { path: '/tenant/settings/account', label: 'Account Information', icon: User },
   { path: '/tenant/settings/company', label: 'Company Information', icon: Building },
   { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings', icon: Wrench },
   { path: '/tenant/settings/branding', label: 'Branding Settings', icon: Palette },
-  { path: '/tenant/settings/pricing', label: 'Pricing Settings', icon: DollarSign },
+  { path: '/tenant/settings/pricing', label: 'Pricing Settings', icon: CurrencyDollar },
   { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration', icon: Car },
   { path: '/tenant/settings/plans', label: 'Plans', icon: CreditCard },
   { 
     path: '/tenant/settings/help', 
     label: 'Help', 
-    icon: HelpCircle,
+    icon: Question,
     submenu: [
       { path: '/tenant/settings/help/stripe', label: 'Stripe Integration', icon: CreditCard }
     ]
@@ -163,9 +163,9 @@ export default function SettingsMenuBar() {
           aria-label="Toggle menu"
         >
           {isOpen ? (
-            <X className="w-5 h-5" style={{ width: 'clamp(20px, 2.5vw, 24px)', height: 'clamp(20px, 2.5vw, 24px)', color: 'var(--bw-text)' }} />
+            <X size="clamp(20px, 2.5vw, 24px)" style={{ color: 'var(--bw-text)' }} />
           ) : (
-            <Menu className="w-5 h-5" style={{ width: 'clamp(20px, 2.5vw, 24px)', height: 'clamp(20px, 2.5vw, 24px)', color: 'var(--bw-text)' }} />
+            <List size="clamp(20px, 2.5vw, 24px)" style={{ color: 'var(--bw-text)' }} />
           )}
         </button>
       )}
@@ -238,7 +238,7 @@ export default function SettingsMenuBar() {
                 }}
                 aria-label="Toggle menu"
               >
-                <X className="w-5 h-5" style={{ width: 'clamp(18px, 2vw, 20px)', height: 'clamp(18px, 2vw, 20px)', color: 'var(--bw-text)' }} />
+                <X size="clamp(18px, 2vw, 20px)" style={{ color: 'var(--bw-text)' }} />
               </button>
             )}
           </div>
@@ -276,7 +276,7 @@ export default function SettingsMenuBar() {
               }}
               aria-label="Toggle menu"
             >
-              <Menu className="w-5 h-5" style={{ width: 'clamp(18px, 2vw, 20px)', height: 'clamp(18px, 2vw, 20px)', color: 'var(--bw-text)' }} />
+              <List size="clamp(18px, 2vw, 20px)" style={{ color: 'var(--bw-text)' }} />
             </button>
           </div>
         )}
@@ -313,7 +313,7 @@ export default function SettingsMenuBar() {
                 e.currentTarget.style.backgroundColor = 'transparent'
               }}
             >
-              <ArrowLeft className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+              <ArrowLeft size={18} style={{ flexShrink: 0 }} />
               <span>Back to Dashboard</span>
             </button>
           </div>
@@ -373,12 +373,12 @@ export default function SettingsMenuBar() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: isOpen ? '12px' : '0', flex: 1 }}>
-                    <IconComponent className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                    <IconComponent size={18} style={{ flexShrink: 0 }} />
                     {isOpen && <span>{item.label}</span>}
                   </div>
                   {isOpen && hasSubmenu && (
-                    <ChevronRight 
-                      className="w-4 h-4" 
+                    <CaretRight 
+                      size={16}
                       style={{ 
                         width: '16px', 
                         height: '16px', 
@@ -434,7 +434,7 @@ export default function SettingsMenuBar() {
                             }
                           }}
                         >
-                          <SubIconComponent className="w-3 h-3" style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                          <SubIconComponent size={14} style={{ flexShrink: 0 }} />
                           <span>{subItem.label}</span>
                         </button>
                       )
@@ -494,7 +494,7 @@ export default function SettingsMenuBar() {
             title={!isOpen ? 'Stripe Dashboard' : undefined}
           >
             {isOpen && <span>Stripe Dashboard</span>}
-            {!isOpen && !loadingStripeLink && <CreditCard className="w-4 h-4" style={{ width: '18px', height: '18px' }} />}
+            {!isOpen && !loadingStripeLink && <CreditCard size={18} />}
             {!isOpen && loadingStripeLink && <span style={{ fontSize: '12px' }}>...</span>}
             {isOpen && loadingStripeLink && <span>Loading...</span>}
           </button>

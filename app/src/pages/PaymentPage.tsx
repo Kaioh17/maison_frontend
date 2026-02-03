@@ -5,7 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { STRIPE_PUBLISHABLE_KEY } from '@config'
 import { type BookingResponse } from '@api/bookings'
 import { useFavicon } from '@hooks/useFavicon'
-import { Loader2, ArrowLeft, CreditCard } from 'lucide-react'
+import { Spinner, ArrowLeft, CreditCard } from '@phosphor-icons/react'
 
 // Function to initialize Stripe with optional connected account
 const getStripePromise = (tenantAcctId?: string) => {
@@ -102,6 +102,22 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
         marginBottom: 'clamp(24px, 4vw, 32px)'
       }}>
         <PaymentElement />
+        <style>{`
+          /* Reduce font size of Stripe terms text */
+          .pii-consent-text,
+          [data-testid="pii-consent-text"],
+          .pii-consent-text p,
+          div[class*="pii"],
+          div[class*="consent"] {
+            font-size: clamp(10px, 1.5vw, 11px) !important;
+          }
+          /* Target Stripe's terms text more specifically */
+          form > div > div:last-child,
+          .StripeElement + div,
+          div[class*="Stripe"] div[class*="text"]:last-child {
+            font-size: clamp(10px, 1.5vw, 11px) !important;
+          }
+        `}</style>
       </div>
 
       <div style={{
@@ -146,7 +162,7 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
         >
           {isProcessing ? (
             <>
-              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <Spinner size={20} style={{ animation: 'spin 1s linear infinite' }} />
               Processing Payment...
             </>
           ) : (
@@ -199,6 +215,17 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        /* Reduce font size of Stripe terms text */
+        .pii-consent-text,
+        [data-testid="pii-consent-text"],
+        .pii-consent-text p,
+        div[class*="pii"],
+        div[class*="consent"],
+        form > div > div:last-child p,
+        .StripeElement + div p,
+        div[class*="Stripe"] div[class*="text"]:last-child {
+          font-size: clamp(10px, 1.5vw, 11px) !important;
         }
       `}</style>
     </form>
@@ -385,6 +412,22 @@ export default function PaymentPage() {
         <Elements stripe={stripePromise} options={options}>
           <PaymentForm booking={booking} clientSecret={clientSecret} />
         </Elements>
+
+        {/* Global styles for Stripe terms text */}
+        <style>{`
+          /* Reduce font size of Stripe payment terms text */
+          .pii-consent-text,
+          [data-testid="pii-consent-text"],
+          .pii-consent-text p,
+          div[class*="pii"],
+          div[class*="consent"],
+          form[class*="Stripe"] p,
+          div[class*="Stripe"] p:last-child,
+          div[class*="Stripe"] div[class*="text"] p {
+            font-size: clamp(10px, 1.5vw, 11px) !important;
+            line-height: 1.4 !important;
+          }
+        `}</style>
 
         {/* Footer */}
         <div style={{

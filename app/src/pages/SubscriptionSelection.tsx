@@ -43,8 +43,8 @@ export default function SubscriptionSelection() {
       ]
     },
     {
-      name: 'Premium',
-      product_type: 'premium',
+      name: 'Growth',
+      product_type: 'growth',
       price: '$100',
       period: '/month',
       description: 'Ideal for growing businesses',
@@ -64,8 +64,8 @@ export default function SubscriptionSelection() {
       ]
     },
     {
-      name: 'Diamond',
-      product_type: 'diamond',
+      name: 'Fleet',
+      product_type: 'fleet',
       price: '$300',
       period: '/month',
       description: 'For large fleets and enterprises',
