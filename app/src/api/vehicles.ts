@@ -110,6 +110,7 @@ export type VehicleDriverInfo = {
   completed_rides: number
   is_active: boolean
   is_registered: string
+  driver_type?: string
   status?: string | null
   phone_no?: string | null
 }

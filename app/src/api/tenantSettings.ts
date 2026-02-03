@@ -15,17 +15,7 @@ export type SettingsConfig = {
   booking: {
     allow_guest_bookings: boolean
     show_vehicle_images: boolean
-    types: {
-      airport: {
-        is_deposit_required: boolean
-      }
-      dropoff: {
-        is_deposit_required: boolean
-      }
-      hourly: {
-        is_deposit_required: boolean
-      }
-    }
+    types: Record<string, { is_deposit_required: boolean }>
   }
   branding: {
     button_radius: number

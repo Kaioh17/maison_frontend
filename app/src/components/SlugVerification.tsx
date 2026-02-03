@@ -33,7 +33,7 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
       try {
         setIsLoading(true)
         const response = await verifySlug(slug)
-        const isValidResult = response.success && !!response.data
+        const isValidResult = !!(response.success && response.data)
         setIsValid(isValidResult)
         
         // Cache the result

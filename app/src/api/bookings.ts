@@ -22,6 +22,7 @@ export type BookingResponse = {
   vehicle_id?: number
   id?: number
   updated_on?: string | null
+  estimated_duration?: number | null
   is_approved?: boolean
   payment?: {
     client_secret: string

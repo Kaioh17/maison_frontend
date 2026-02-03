@@ -38,7 +38,7 @@ export function useTenantInfo() {
           // Note: tenant_id is not cached, so we'll need to fetch it if needed
           const transformedInfo: TenantInfo = {
             company_name: cached.data.profile.company_name,
-            slug: cached.data.branding.slug || cached.data.settings.slug || slug,
+            slug: cached.data.branding.slug || slug,
             logo_url: cached.data.branding.logo_url || null,
             favicon_url: cached.data.branding.favicon_url || null,
             // tenant_id not available from cache, will need to fetch if required
@@ -75,7 +75,7 @@ export function useTenantInfo() {
           // Extract company_name from profile, logo_url and favicon_url from branding
           const transformedInfo: TenantInfo = {
             company_name: response.data.profile.company_name,
-            slug: response.data.branding.slug || response.data.settings.slug || slug,
+            slug: response.data.branding.slug || slug,
             logo_url: response.data.branding.logo_url || null,
             favicon_url: response.data.branding.favicon_url || null,
             tenant_id: tenantId,

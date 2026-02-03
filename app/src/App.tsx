@@ -1,49 +1,61 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Landing from '@pages/Landing'
-import Login from '@pages/Login'
-import Signup from '@pages/Signup'
-import TenantDashboard from '@pages/TenantDashboard'
-import DriverDashboard from '@pages/DriverDashboard'
-import DriverLogin from '@pages/DriverLogin'
-import DriverRegistration from '@pages/DriverRegistration'
-import DriverVerify from '@pages/DriverVerify'
-import RiderDashboard from '@pages/RiderDashboard'
-import RiderRegistration from '@pages/RiderRegistration'
-import RiderProfile from '@pages/RiderProfile'
-import RiderLogin from '@pages/RiderLogin'
-import BookingConfirmation from '@pages/BookingConfirmation'
-import BookingSuccess from '@pages/BookingSuccess'
-import PaymentPage from '@pages/PaymentPage'
-import BookingComplete from '@pages/BookingComplete'
-import BookingFailed from '@pages/BookingFailed'
-import VehicleRates from '@pages/VehicleRates'
-import TenantSettings from '@pages/TenantSettings'
-import GeneralView from '@pages/settings/GeneralView'
-import AccountInformation from '@pages/settings/AccountInformation'
-import CompanyInformation from '@pages/settings/CompanyInformation'
-import VehicleConfiguration from '@pages/settings/VehicleConfiguration'
-import BrandingSettings from '@pages/settings/BrandingSettings'
-import PricingSettings from '@pages/settings/PricingSettings'
-import Plans from '@pages/settings/Plans'
-import Help from '@pages/settings/Help'
-import StripeDocs from '@pages/settings/StripeDocs'
-import AddVehicle from '@pages/AddVehicle'
-import NotFound from '@pages/NotFound'
-import SubscriptionSelection from '@pages/SubscriptionSelection'
-import Success from '@pages/Success'
-import StripeReturn from '@pages/StripeReturn'
-import StripeReauth from '@pages/StripeReauth'
 import ProtectedRoute from '@components/ProtectedRoute'
 import SlugVerification from '@components/SlugVerification'
 import SubdomainBlock from '@components/SubdomainBlock'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 
+// Route-level code splitting: pages load on demand
+const Landing = lazy(() => import('@pages/Landing'))
+const Login = lazy(() => import('@pages/Login'))
+const Signup = lazy(() => import('@pages/Signup'))
+const TenantDashboard = lazy(() => import('@pages/TenantDashboard'))
+const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
+const DriverLogin = lazy(() => import('@pages/DriverLogin'))
+const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
+const DriverVerify = lazy(() => import('@pages/DriverVerify'))
+const RiderDashboard = lazy(() => import('@pages/RiderDashboard'))
+const RiderRegistration = lazy(() => import('@pages/RiderRegistration'))
+const RiderProfile = lazy(() => import('@pages/RiderProfile'))
+const RiderLogin = lazy(() => import('@pages/RiderLogin'))
+const BookingConfirmation = lazy(() => import('@pages/BookingConfirmation'))
+const BookingSuccess = lazy(() => import('@pages/BookingSuccess'))
+const PaymentPage = lazy(() => import('@pages/PaymentPage'))
+const BookingComplete = lazy(() => import('@pages/BookingComplete'))
+const BookingFailed = lazy(() => import('@pages/BookingFailed'))
+const VehicleRates = lazy(() => import('@pages/VehicleRates'))
+const TenantSettings = lazy(() => import('@pages/TenantSettings'))
+const GeneralView = lazy(() => import('@pages/settings/GeneralView'))
+const AccountInformation = lazy(() => import('@pages/settings/AccountInformation'))
+const CompanyInformation = lazy(() => import('@pages/settings/CompanyInformation'))
+const VehicleConfiguration = lazy(() => import('@pages/settings/VehicleConfiguration'))
+const BrandingSettings = lazy(() => import('@pages/settings/BrandingSettings'))
+const PricingSettings = lazy(() => import('@pages/settings/PricingSettings'))
+const Plans = lazy(() => import('@pages/settings/Plans'))
+const Help = lazy(() => import('@pages/settings/Help'))
+const StripeDocs = lazy(() => import('@pages/settings/StripeDocs'))
+const AddVehicle = lazy(() => import('@pages/AddVehicle'))
+const NotFound = lazy(() => import('@pages/NotFound'))
+const SubscriptionSelection = lazy(() => import('@pages/SubscriptionSelection'))
+const Success = lazy(() => import('@pages/Success'))
+const StripeReturn = lazy(() => import('@pages/StripeReturn'))
+const StripeReauth = lazy(() => import('@pages/StripeReauth'))
+
+function PageFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="animate-pulse text-gray-500 dark:text-gray-400">Loading…</div>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <>
       <AccountVerificationNotification />
-      <Routes>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
       <Route path="/" element={<SubdomainBlock><Landing /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
 
@@ -514,7 +526,8 @@ export default function App() {
 
       {/* 404 - Catch all unmatched routes */}
       <Route path="*" element={<NotFound />} />
-    </Routes>
+        </Routes>
+      </Suspense>
     </>
   )
 } 

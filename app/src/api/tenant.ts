@@ -297,6 +297,7 @@ export type VehicleResponse = {
   status?: string
   seating_capacity: number
   vehicle_category_id?: number
+  vehicle_category?: { vehicle_category: string } | null
   driver?: VehicleDriverInfo | null
   vehicle_images?: Record<string, string> | null
   created_on: string
@@ -333,6 +334,7 @@ export type BookingResponse = {
   vehicle_id?: number
   id?: number
   updated_on?: string | null
+  estimated_duration?: number | null
 }
 
 export type OnboardDriver = {
