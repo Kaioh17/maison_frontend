@@ -22,6 +22,7 @@
       "@hooks/*": ["src/hooks/*"],
       "@utils/*": ["src/utils/*"],
       "@config": ["src/config"],
+      "@config/host": ["src/config/host"],
       "@data/*": ["src/data/*"]
     }
   },

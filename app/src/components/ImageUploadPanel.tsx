@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react'
-import { getVehicleImageTypes } from '@api/vehicles'
+import { getVehicleImageTypes, updateVehicleImage } from '@api/vehicles'
 
 interface ImageUploadPanelProps {
   vehicleId: number
@@ -121,7 +121,6 @@ export default function ImageUploadPanel({
     setError(null)
 
     try {
-      const { updateVehicleImage } = await import('@api/vehicles')
       const imageFiles: File[] = []
       const imageTypes: string[] = []
       

@@ -14,6 +14,7 @@ import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, Use
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
+import { getTenantAppUrl } from '@config/host'
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 
@@ -2310,15 +2311,9 @@ export default function TenantDashboard() {
                     const accessToken = response.data?.access_token || (response as any).access_token
                     
                     if (accessToken) {
-                      // Get the current slug from hostname
                       const hostname = window.location.hostname
-                      const slug = extractSubdomain(hostname) || 'ridez' // fallback to 'ridez' if no slug found
-                      const port = window.location.port ? `:${window.location.port}` : ''
-                      
-                      // Navigate to driver login with token, which will auto-login and redirect to dashboard
-                      const driverLoginUrl = `http://${slug}.localhost${port}/driver/login?token=${encodeURIComponent(accessToken)}`
-                      
-                      // Open driver login page in a new tab
+                      const slug = extractSubdomain(hostname) || 'ridez'
+                      const driverLoginUrl = getTenantAppUrl(slug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
                       window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
                       
                       // Close modal on success
@@ -5144,7 +5139,7 @@ export default function TenantDashboard() {
                               onMouseEnter={() => !isSaving && setIsSaveRateHovered(true)}
                               onMouseLeave={() => setIsSaveRateHovered(false)}
                               onClick={() => {
-                                const newRate = parseFloat(document.querySelector(`input[data-category="${category.vehicle_category}"]`)?.value || '0') || 0
+                                const newRate = parseFloat((document.querySelector(`input[data-category="${category.vehicle_category}"]`) as HTMLInputElement | null)?.value || '0') || 0
                                 if (newRate > 0) {
                                   saveVehicleRate(category.vehicle_category, newRate)
                                 } else {

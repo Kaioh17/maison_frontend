@@ -1,0 +1,1 @@
+import{x as s}from"./index-DaAC2zqA.js";async function c(t){const{data:a}=await s.post("/v1/subscription/",t);return a}async function o(t){const{data:a}=await s.patch("/v1/subscription/",t);return a}export{c,o as u};
