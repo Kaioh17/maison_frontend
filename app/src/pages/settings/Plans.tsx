@@ -97,8 +97,8 @@ export default function Plans() {
       ]
     },
     {
-      name: 'Premium',
-      product_type: 'premium',
+      name: 'Growth',
+      product_type: 'growth',
       price: '$100',
       period: '/month',
       description: 'Ideal for growing businesses',
@@ -114,8 +114,8 @@ export default function Plans() {
       ]
     },
     {
-      name: 'Diamond',
-      product_type: 'diamond',
+      name: 'Fleet',
+      product_type: 'fleet',
       price: '$300',
       period: '/month',
       description: 'For large fleets and enterprises',
@@ -132,7 +132,7 @@ export default function Plans() {
   ]
 
   const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-  const planOrder = ['starter', 'premium', 'diamond']
+  const planOrder = ['starter', 'growth', 'fleet']
 
   const CheckIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--bw-success)' }}>
@@ -174,7 +174,7 @@ export default function Plans() {
 
       {/* Content Container */}
       <div className="bw-container" style={{ 
-        padding: '0 clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)',
+        padding: 'clamp(24px, 4vw, 40px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)',
         maxWidth: '100%',
         overflowX: 'hidden',
         boxSizing: 'border-box'
@@ -212,13 +212,16 @@ export default function Plans() {
                 key={plan.product_type}
                 className="bw-card"
                 style={{
-                  padding: 'clamp(20px, 3vw, 24px)',
+                  padding: 'clamp(32px, 4vw, 40px) clamp(20px, 3vw, 24px) clamp(20px, 3vw, 24px) clamp(20px, 3vw, 24px)',
                   borderRadius: 'clamp(8px, 1.5vw, 12px)',
                   border: plan.popular && !isDisabled ? '2px solid var(--bw-accent)' : '1px solid var(--bw-border)',
                   position: 'relative',
                   opacity: isDisabled ? 0.5 : 1,
                   cursor: isDisabled ? 'not-allowed' : 'pointer',
-                  backgroundColor: 'var(--bw-bg-secondary)'
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
                 }}
               >
                 {plan.popular && !isDisabled && (
@@ -348,7 +351,7 @@ export default function Plans() {
         </div>
       </div>
 
-        {/* Upgrade Plan Button - Only show if not diamond */}
+        {/* Upgrade Plan Button - Only show if not fleet */}
         <UpgradePlanButton 
           currentPlan={currentPlan}
           onUpgradeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

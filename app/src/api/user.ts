@@ -31,8 +31,8 @@ export interface UserResponse {
   updated_on: string
 }
 
-export async function createUser(tenantId: string, payload: UserCreate) {
-  const { data } = await http.post<StandardResponse<UserResponse>>(`/v1/users/add/${tenantId}`, payload)
+export async function createUser(slug: string, payload: UserCreate) {
+  const { data } = await http.post<StandardResponse<UserResponse>>(`/v1/users/add/${slug}`, payload)
   return data
 }
 

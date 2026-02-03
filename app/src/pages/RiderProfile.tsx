@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { User, Mail, Phone, MapPin, Calendar, Shield, LogOut, Edit2, Save, X } from 'lucide-react'
+import { User, Envelope, Phone, MapPin, Calendar, Shield, SignOut, Pencil, FloppyDisk, X } from '@phosphor-icons/react'
 import { getUserInfo, type UserResponse } from '@api/user'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
@@ -7,6 +7,8 @@ import { loginRider } from '@api/auth'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
+import StateAutocomplete from '@components/StateAutocomplete'
+import CityAutocomplete from '@components/CityAutocomplete'
 
 export default function RiderProfile() {
   useFavicon()
@@ -219,7 +221,7 @@ export default function RiderProfile() {
                   fontSize: 'clamp(14px, 2.5vw, 16px)'
                 }}
               >
-                <Edit2 size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
+                <Pencil size={16} />
                 Edit Profile
               </button>
             ) : (
@@ -260,7 +262,7 @@ export default function RiderProfile() {
                     fontSize: 'clamp(14px, 2.5vw, 16px)'
                   }}
                 >
-                  <Save size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
+                  <FloppyDisk size={16} />
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </>
@@ -282,7 +284,7 @@ export default function RiderProfile() {
                 fontSize: 'clamp(14px, 2.5vw, 16px)'
               }}
             >
-              <LogOut size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
+              <SignOut size={16} />
               Logout
             </button>
           </div>
@@ -308,7 +310,7 @@ export default function RiderProfile() {
           <div className="bw-card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <User className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
+                <User size={20} />
               </div>
               <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Personal Information</h3>
             </div>
@@ -382,7 +384,7 @@ export default function RiderProfile() {
           <div className="bw-card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <MapPin className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
+                <MapPin size={20} />
               </div>
               <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Address Information</h3>
             </div>
@@ -406,13 +408,12 @@ export default function RiderProfile() {
             <div className="bw-info-item">
               <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>City:</span>
               {isEditing ? (
-                <input
-                  name="city"
-                  type="text"
+                <CityAutocomplete
                   value={displayData.city || ''}
-                  onChange={handleInputChange}
+                  onChange={(value) => setEditedData({ ...editedData, city: value })}
+                  selectedState={displayData.state || ''}
                   className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
                 <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.city}</span>
@@ -421,13 +422,11 @@ export default function RiderProfile() {
             <div className="bw-info-item">
               <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>State:</span>
               {isEditing ? (
-                <input
-                  name="state"
-                  type="text"
+                <StateAutocomplete
                   value={displayData.state || ''}
-                  onChange={handleInputChange}
+                  onChange={(value) => setEditedData({ ...editedData, state: value, city: '' })}
                   className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
                 <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.state}</span>
@@ -456,6 +455,7 @@ export default function RiderProfile() {
                   onChange={handleInputChange}
                   className="bw-input"
                   style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  maxLength={5}
                 />
               ) : (
                 <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.postal_code}</span>
@@ -469,7 +469,7 @@ export default function RiderProfile() {
           <div className="bw-card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
               <div className="bw-card-icon">
-                <Shield className="w-5 h-5" style={{ width: 'clamp(18px, 2.5vw, 20px)', height: 'clamp(18px, 2.5vw, 20px)' }} />
+                <Shield size={20} />
               </div>
               <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Account Details</h3>
             </div>

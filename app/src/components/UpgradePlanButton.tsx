@@ -10,8 +10,8 @@ interface UpgradePlanButtonProps {
 export default function UpgradePlanButton({ currentPlan, onUpgradeClick, isMobile = false }: UpgradePlanButtonProps) {
   const [isHovered, setIsHovered] = useState(false)
   
-  // Don't show if plan is "diamond"
-  if (currentPlan?.toLowerCase() === 'diamond') {
+  // Don't show if plan is "fleet"
+  if (currentPlan?.toLowerCase() === 'fleet') {
     return null
   }
 

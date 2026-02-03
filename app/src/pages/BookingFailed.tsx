@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFavicon } from '@hooks/useFavicon'
-import { XCircle, Home, ArrowLeft } from 'lucide-react'
+import { XCircle, House, ArrowLeft } from '@phosphor-icons/react'
 
 export default function BookingFailed() {
   useFavicon()
@@ -118,7 +118,7 @@ export default function BookingFailed() {
               e.currentTarget.style.boxShadow = 'none'
             }}
           >
-            <Home size={18} />
+            <House size={18} />
             <span>Back to Dashboard</span>
           </button>
           <button

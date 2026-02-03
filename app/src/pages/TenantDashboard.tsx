@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver } from '@api/tenant'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
 import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
@@ -10,9 +10,10 @@ import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Settings, TrendingUp, DollarSign, Clock, MapPin, User, Phone, Mail, Plus, Edit, Trash2, CheckCircle, XCircle, AlertCircle, Palette, Save, Menu, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Info, Search } from 'lucide-react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
+import { extractSubdomain } from '@utils/subdomain'
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 
@@ -44,9 +45,7 @@ function VehicleImageCard({ imageUrl, make, model }: { imageUrl: string | null, 
           onError={() => setImageError(true)}
         />
       ) : (
-        <Car className="w-12 h-12" style={{ 
-          width: 'clamp(32px, 5vw, 48px)',
-          height: 'clamp(32px, 5vw, 48px)',
+        <Car size="clamp(32px, 5vw, 48px)" style={{ 
           color: 'var(--bw-disabled)', 
           opacity: 0.5 
         }} />
@@ -64,6 +63,7 @@ export default function TenantDashboard() {
   const [vehicles, setVehicles] = useState<VehicleResponse[]>([])
   const [bookings, setBookings] = useState<BookingResponse[]>([])
   const [vehicleCategories, setVehicleCategories] = useState<any[]>([])
+  const [analysis, setAnalysis] = useState<TenantAnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
   
   // Booking filters
@@ -160,6 +160,8 @@ export default function TenantDashboard() {
   
   // Switch to driver mode state
   const [showDriverModeConfirm, setShowDriverModeConfirm] = useState(false)
+  const [isSwitchingToDriver, setIsSwitchingToDriver] = useState(false)
+  const [switchToDriverError, setSwitchToDriverError] = useState<string | null>(null)
   const [isAddVehicleHovered, setIsAddVehicleHovered] = useState(false)
   
   // Button hover states
@@ -225,6 +227,7 @@ export default function TenantDashboard() {
       const tenantInfoPromise = getTenantInfo()
       const driversPromise = getTenantDrivers()
       const vehiclesPromise = getTenantVehicles()
+      const analysisPromise = getTenantAnalysis()
       
       // Build booking filter params
       const bookingParams: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
@@ -235,12 +238,13 @@ export default function TenantDashboard() {
       const bookingsPromise = getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
       const tenantConfigPromise = getTenantConfig('all')
       
-      const [i, d, v, b, tc] = await Promise.all([
+      const [i, d, v, b, tc, analysisData] = await Promise.all([
         tenantInfoPromise,
         driversPromise,
         vehiclesPromise,
         bookingsPromise,
         tenantConfigPromise,
+        analysisPromise,
       ])
       
       if (i.data) {
@@ -302,6 +306,14 @@ export default function TenantDashboard() {
       } else {
         console.error('No tenant config data in response:', tc)
         setError('Failed to load tenant config - no data in response')
+      }
+      
+      // Handle analysis data
+      if (analysisData.success && analysisData.data) {
+        setAnalysis(analysisData.data)
+      } else {
+        console.error('No analysis data in response:', analysisData)
+        // Don't set error here as analysis is supplementary data
       }
       
     } catch (error: any) {
@@ -566,12 +578,22 @@ export default function TenantDashboard() {
   const getStatusIcon = (status: string) => {
     const color = getStatusColorHex(status)
     switch (status?.toLowerCase()) {
-      case 'completed': return <CheckCircle className="w-4 h-4" style={{ color }} />
-      case 'active': return <CheckCircle className="w-4 h-4" style={{ color }} />
-      case 'pending': return <AlertCircle className="w-4 h-4" style={{ color }} />
-      case 'cancelled': return <XCircle className="w-4 h-4" style={{ color }} />
-      default: return <AlertCircle className="w-4 h-4" style={{ color }} />
+      case 'completed': return <CheckCircle size={16} style={{ color }} />
+      case 'active': return <CheckCircle size={16} style={{ color }} />
+      case 'pending': return <WarningCircle size={16} style={{ color }} />
+      case 'cancelled': return <XCircle size={16} style={{ color }} />
+      default: return <WarningCircle size={16} style={{ color }} />
     }
+  }
+
+  // Helper function to get initials from name
+  const getInitials = (name: string | null | undefined): string => {
+    if (!name || name === 'None' || name === 'Anonymous Customer') return '?'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return name[0].toUpperCase()
   }
 
   const getVehicleRate = (category: string) => {
@@ -1009,12 +1031,12 @@ export default function TenantDashboard() {
     }
   }
 
-  const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'overview', label: 'Overview', icon: TrendingUp },
+  const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ size?: number | string; style?: React.CSSProperties }> }> = [
+    { id: 'overview', label: 'Overview', icon: TrendUp },
     { id: 'drivers', label: 'Drivers', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'vehicles', label: 'Vehicles', icon: Car },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Settings', icon: Gear },
   ]
 
   // Determine active tab from URL or internal state
@@ -1038,6 +1060,12 @@ export default function TenantDashboard() {
   }, [location.pathname, settingsMenuOpen])
 
   const activeTab = getActiveTab()
+
+  // Get dynamic page title based on active tab
+  const getPageTitle = (): string => {
+    const activeTabData = tabs.find(tab => tab.id === activeTab)
+    return activeTabData?.label || 'Overview'
+  }
 
   // Handle tab navigation
   const handleTabClick = (tabId: TabType) => {
@@ -1091,7 +1119,7 @@ export default function TenantDashboard() {
         
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ color: '#6b7280', marginBottom: '16px' }}>
-            <AlertCircle className="w-12 h-12 mx-auto" />
+            <WarningCircle size={48} className="mx-auto" />
           </div>
           <h3 style={{ margin: '0 0 16px 0', color: '#6b7280' }}>No Tenant Information</h3>
           <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>Unable to load tenant information. Please try again.</p>
@@ -1147,7 +1175,7 @@ export default function TenantDashboard() {
         
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ color: 'var(--bw-error, #C5483D)', marginBottom: '16px' }}>
-            <AlertCircle className="w-12 h-12 mx-auto" />
+            <WarningCircle size={48} className="mx-auto" />
           </div>
           <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-error, #C5483D)' }}>Error Loading Dashboard</h3>
           <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>{error}</p>
@@ -1185,8 +1213,15 @@ export default function TenantDashboard() {
     )
   }
 
+  const lightMode = isLightMode()
+  
   return (
-    <div className="bw" style={{ position: 'relative', minHeight: '100vh', display: 'flex' }}>
+    <div className="bw" style={{ 
+      position: 'relative', 
+      minHeight: '100vh', 
+      display: 'flex',
+      backgroundColor: lightMode ? '#f8fafc' : 'var(--bw-bg)'
+    }}>
       {/* Token Expiration Notification */}
       <TokenExpirationNotification />
       
@@ -1215,14 +1250,14 @@ export default function TenantDashboard() {
           left: isMobile ? (isMenuOpen ? '0' : '-100%') : (isMenuOpen ? '0' : '-20%'),
           width: isMobile ? '100%' : '20%',
           height: '100vh',
-          backgroundColor: 'var(--bw-bg)',
-          borderRight: '1px solid var(--bw-border)',
+          backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg)',
+          borderRight: `1px solid ${lightMode ? '#e2e8f0' : 'var(--bw-border)'}`,
           zIndex: 999,
           transition: 'left 0.3s ease',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: isMenuOpen ? 'var(--bw-shadow)' : 'none'
+          boxShadow: isMenuOpen ? (lightMode ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'var(--bw-shadow)') : 'none'
         }}
       >
         {/* Company Name in Sidebar */}
@@ -1259,9 +1294,9 @@ export default function TenantDashboard() {
             <h1 style={{ 
               fontFamily: '"DM Sans", sans-serif',
               fontSize: 'clamp(20px, 3vw, 32px)',
-              fontWeight: 300,
+              fontWeight: 600,
               margin: 0,
-              color: 'var(--bw-text)',
+              color: lightMode ? '#0f172a' : '#ffffff',
               letterSpacing: '0.5px',
               lineHeight: '1.2',
               flex: 1,
@@ -1287,7 +1322,7 @@ export default function TenantDashboard() {
               flexShrink: 0
             }}
           >
-            <XCircle className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
+            <XCircle size={20} />
           </button>
         </div>
 
@@ -1314,21 +1349,25 @@ export default function TenantDashboard() {
                     alignItems: 'center',
                     gap: '12px',
                     padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
-                    backgroundColor: isActive ? 'var(--bw-bg-hover)' : 'transparent',
+                    backgroundColor: isActive 
+                      ? (lightMode && tab.id === 'overview' ? 'rgba(155, 97, 209, 0.81)' : lightMode ? 'rgba(155, 97, 209, 0.1)' : 'var(--bw-bg-hover)')
+                      : 'transparent',
                     border: 'none',
-                    borderLeft: isActive ? '3px solid var(--bw-accent)' : '3px solid transparent',
-                    color: 'var(--bw-text)',
+                    borderLeft: isActive ? (lightMode && tab.id === 'overview' ? '3px solid rgba(155, 97, 209, 0.81)' : '2px solid var(--bw-accent)') : '2px solid transparent',
+                    color: isActive && lightMode && tab.id === 'overview' ? '#ffffff' : 'var(--bw-text)',
                     cursor: 'pointer',
                     fontSize: 'clamp(13px, 1.5vw, 15px)',
                     fontFamily: '"Work Sans", sans-serif',
                     fontWeight: 300,
                     textAlign: 'left',
                     transition: 'all 0.2s ease',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    boxShadow: isActive && tab.id === 'overview' && !lightMode ? '0 0 12px rgba(155, 97, 209, 0.3)' : 'none',
+                    position: 'relative'
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                      e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -1338,15 +1377,13 @@ export default function TenantDashboard() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <IconComponent className="w-4 h-4" style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                    <IconComponent size={18} style={{ flexShrink: 0 }} />
                     <span>{tab.label}</span>
                   </div>
                   {isSettings && (
-                    <ChevronDown 
-                      className="w-4 h-4" 
+                    <CaretDown 
+                      size={16}
                       style={{ 
-                        width: '16px', 
-                        height: '16px', 
                         flexShrink: 0,
                         transform: settingsMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s ease'
@@ -1427,20 +1464,25 @@ export default function TenantDashboard() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'flex-start',
-            marginBottom: '4px'
+            gap: '12px'
           }}>
+            <div style={{
+              fontSize: 'clamp(11px, 1.2vw, 13px)',
+              color: 'var(--bw-muted)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              Welcome back, {info?.first_name}
+            </div>
             <ThemeToggle />
           </div>
-          <div style={{
-            fontSize: 'clamp(11px, 1.2vw, 13px)',
-            color: 'var(--bw-muted)',
-            fontFamily: '"Work Sans", sans-serif',
-            fontWeight: 300
-          }}>
-            Welcome back, {info?.first_name}
-          </div>
           <button
-            onClick={() => setShowDriverModeConfirm(true)}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setShowDriverModeConfirm(true)
+            }}
             style={{
               width: '100%',
               display: 'flex',
@@ -1536,42 +1578,23 @@ export default function TenantDashboard() {
                 minHeight: '40px'
               }}
             >
-              <Menu className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
+              <List size={20} />
             </button>
 
-            {/* Desktop: Show tabs inline (hidden on mobile) */}
-            <div style={{ 
-              display: isMobile ? 'none' : 'flex',
-              gap: '8px',
+            {/* Dynamic Page Title */}
+            <h3 style={{
+              margin: 0,
+              fontSize: 'clamp(20px, 3vw, 28px)',
+              fontWeight: 400,
+              fontFamily: '"Work Sans", sans-serif',
+              color: 'var(--bw-text)',
+              flex: 1,
+              display: 'flex',
               alignItems: 'center',
-              flexWrap: 'wrap',
-              flex: 1
-            }}
-            className="desktop-tabs"
-            >
-              {tabs.map((tab) => {
-                const IconComponent = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    className={`bw-tab ${activeTab === tab.id ? 'bw-tab-active' : ''}`}
-                    onClick={() => {
-                      handleTabClick(tab.id as TabType)
-                      setIsMenuOpen(false)
-                    }}
-                    style={{
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                      fontWeight: 300
-                    }}
-                  >
-                    <IconComponent className="w-4 h-4" style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
-                    <span style={{ whiteSpace: 'nowrap' }}>{tab.label}</span>
-                  </button>
-                )
-              })}
-            </div>
+              lineHeight: 1
+            }}>
+              {getPageTitle()}
+            </h3>
 
             {/* Desktop Actions */}
             <div style={{ 
@@ -1581,9 +1604,13 @@ export default function TenantDashboard() {
             }}
             className="desktop-actions"
             >
-              <ThemeToggle />
               <button 
-                onClick={() => setShowDriverModeConfirm(true)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowDriverModeConfirm(true)
+                }}
                 style={{ 
                   fontFamily: '"Work Sans", sans-serif',
                   fontSize: 'clamp(12px, 1.5vw, 14px)',
@@ -1594,7 +1621,9 @@ export default function TenantDashboard() {
                   border: 'none',
                   borderRadius: 7,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  height: 'fit-content',
+                  lineHeight: 1
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
@@ -1627,6 +1656,12 @@ export default function TenantDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 24px)' }}>
             {/* Today's KPIs - Big Cards */}
             {(() => {
+              // Use API data if available, otherwise fallback to calculated values
+              const pendingBookings = analysis?.pending_rides ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
+              const availableDrivers = analysis?.available_drivers ?? drivers.filter(d => d.is_active).length
+              const todaysRevenue = analysis?.todays_revenue ?? 0
+              
+              // Calculate active rides from today's bookings (not provided by API)
               const today = new Date()
               today.setHours(0, 0, 0, 0)
               const todayEnd = new Date(today)
@@ -1638,19 +1673,34 @@ export default function TenantDashboard() {
               })
               
               const activeRidesToday = todayBookings.filter(b => b.booking_status?.toLowerCase() === 'active').length
-              const pendingBookings = bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
-              const availableDrivers = drivers.filter(d => d.is_active).length
+              
+              // Calculate available vehicles (not provided by API)
               const availableVehicles = vehicles.filter(v => v.status === 'active').length
-              const todaysRevenue = todayBookings
-                .filter(b => b.booking_status?.toLowerCase() === 'completed')
-                .reduce((sum, b) => sum + (b.estimated_price || 0), 0)
+              
+              // Calculate offline drivers (total - available)
+              const totalDrivers = analysis?.total_drivers ?? drivers.length
+              const offlineDrivers = totalDrivers - availableDrivers
+              
+              // Helper function to get trend metric (mock data for now)
+              const getTrendMetric = (label: string): string => {
+                // Mock trend data - in production, this would come from API
+                const mockTrends: { [key: string]: number | null } = {
+                  'Active Rides': 12,
+                  'Pending': -5,
+                  'Available Drivers': null,
+                  'Offline Drivers': 3,
+                  "Today's Revenue": 8
+                }
+                const trend = mockTrends[label]
+                return trend !== null && trend !== undefined ? (trend > 0 ? `+${trend}%` : `${trend}%`) : '--'
+              }
               
               const kpiCards = [
-                { value: activeRidesToday, label: 'Active Rides', isCurrency: false },
-                { value: pendingBookings, label: 'Pending', isCurrency: false },
-                { value: availableDrivers, label: 'Available Drivers', isCurrency: false },
-                { value: availableVehicles, label: 'Available Vehicles', isCurrency: false },
-                { value: todaysRevenue.toFixed(0), label: "Today's Revenue", isCurrency: true }
+                { value: activeRidesToday, label: 'Active Rides', isCurrency: false, icon: Car, trend: getTrendMetric('Active Rides') },
+                { value: pendingBookings, label: 'Pending', isCurrency: false, icon: Clock, trend: getTrendMetric('Pending') },
+                { value: availableDrivers, label: 'Available Drivers', isCurrency: false, icon: Users, trend: getTrendMetric('Available Drivers') },
+                { value: offlineDrivers, label: 'Offline Drivers', isCurrency: false, icon: Users, trend: getTrendMetric('Offline Drivers') },
+                { value: todaysRevenue.toFixed(0), label: "Today's Revenue", isCurrency: true, icon: Wallet, trend: getTrendMetric("Today's Revenue") }
               ]
               
               const totalKpis = kpiCards.length
@@ -1672,16 +1722,58 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                         minHeight: 'clamp(120px, 20vw, 160px)',
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'center'
-                      }}>
+                        justifyContent: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right corner */}
+                        {(() => {
+                          const IconComponent = kpiCards[currentKpiIndex].icon
+                          return IconComponent ? (
+                            <div style={{
+                              position: 'absolute',
+                              top: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              opacity: lightMode ? 0.2 : 0.3
+                            }}>
+                              <IconComponent size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                            </div>
+                          ) : null
+                        })()}
+                        
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = kpiCards[currentKpiIndex].trend
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
+                        
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
@@ -1690,7 +1782,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1731,7 +1823,7 @@ export default function TenantDashboard() {
                             e.currentTarget.style.borderColor = 'var(--bw-border)'
                           }}
                         >
-                          <ChevronLeft className="w-5 h-5" />
+                          <CaretLeft size={20} />
                         </button>
                         
                         {/* Dots Indicator */}
@@ -1785,7 +1877,7 @@ export default function TenantDashboard() {
                             e.currentTarget.style.borderColor = 'var(--bw-border)'
                           }}
                         >
-                          <ChevronRight className="w-5 h-5" />
+                          <CaretRight size={20} />
                         </button>
                       </div>
                     </div>
@@ -1800,12 +1892,47 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)'
-                      }}>
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 'clamp(12px, 2vw, 16px)',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          opacity: lightMode ? 0.2 : 0.3
+                        }}>
+                          <Car size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                        </div>
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = getTrendMetric('Active Rides')
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
@@ -1814,7 +1941,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1826,12 +1953,47 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)'
-                      }}>
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 'clamp(12px, 2vw, 16px)',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          opacity: lightMode ? 0.2 : 0.3
+                        }}>
+                          <Clock size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                        </div>
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = getTrendMetric('Pending')
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
@@ -1840,7 +2002,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1852,12 +2014,47 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)'
-                      }}>
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 'clamp(12px, 2vw, 16px)',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          opacity: lightMode ? 0.2 : 0.3
+                        }}>
+                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                        </div>
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = getTrendMetric('Available Drivers')
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
@@ -1866,7 +2063,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1874,29 +2071,64 @@ export default function TenantDashboard() {
                         </div>
                       </div>
 
-                      {/* Available Vehicles */}
+                      {/* Offline Drivers */}
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)'
-                      }}>
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 'clamp(12px, 2vw, 16px)',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          opacity: lightMode ? 0.2 : 0.3
+                        }}>
+                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                        </div>
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = getTrendMetric('Offline Drivers')
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
-                          {availableVehicles}
+                          {offlineDrivers}
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
-                          Available
+                          Offline Drivers
                         </div>
                       </div>
 
@@ -1904,12 +2136,47 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: '1px solid var(--bw-border)'
-                      }}>
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRadius: '12px'
+                      } as React.CSSProperties}>
+                        {/* Icon in top-right */}
+                        <div style={{
+                          position: 'absolute',
+                          top: 'clamp(12px, 2vw, 16px)',
+                          right: 'clamp(12px, 2vw, 16px)',
+                          opacity: lightMode ? 0.2 : 0.3
+                        }}>
+                          <Wallet size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                        </div>
+                        {/* Trend metric in bottom-right */}
+                        {(() => {
+                          const trend = getTrendMetric("Today's Revenue")
+                          const isPositive = trend?.startsWith('+')
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'clamp(12px, 2vw, 16px)',
+                              right: 'clamp(12px, 2vw, 16px)',
+                              fontSize: 'clamp(10px, 1.2vw, 12px)',
+                              fontWeight: 500,
+                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
+                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {trend}
+                            </div>
+                          )
+                        })()}
                         <div style={{
                           fontSize: 'clamp(28px, 5vw, 48px)',
                           fontWeight: 700,
-                          color: 'var(--bw-text)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           lineHeight: 1.1,
                           marginBottom: 'clamp(4px, 1vw, 8px)',
                           fontFamily: '"Work Sans", sans-serif'
@@ -1918,7 +2185,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: 'var(--bw-muted)',
+                          color: lightMode ? '#1a1a1a' : '#ffffff',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1951,15 +2218,20 @@ export default function TenantDashboard() {
                 Switch to Driver Mode
               </h3>
               <button 
+                type="button"
                 className="bw-btn-icon" 
-                onClick={() => setShowDriverModeConfirm(false)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowDriverModeConfirm(false)
+                }}
                 style={{
                   padding: '8px',
                   minWidth: '32px',
                   minHeight: '32px'
                 }}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -1984,6 +2256,18 @@ export default function TenantDashboard() {
                 }}>
                   Do you want to continue?
                 </p>
+                {switchToDriverError && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '7px',
+                    color: 'var(--bw-error, #ff4444)',
+                    fontSize: 'clamp(13px, 1.8vw, 15px)'
+                  }}>
+                    {switchToDriverError}
+                  </div>
+                )}
               </div>
             </div>
             <div className="bw-modal-footer" style={{
@@ -1994,8 +2278,13 @@ export default function TenantDashboard() {
               borderTop: '1px solid var(--bw-border)'
             }}>
               <button
+                type="button"
                 className="bw-btn-outline"
-                onClick={() => setShowDriverModeConfirm(false)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowDriverModeConfirm(false)
+                }}
                 style={{
                   padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
                   fontSize: 'clamp(14px, 2vw, 16px)',
@@ -2007,30 +2296,69 @@ export default function TenantDashboard() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // TODO: Implement driver mode switch
-                  setShowDriverModeConfirm(false)
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  try {
+                    setIsSwitchingToDriver(true)
+                    setSwitchToDriverError(null)
+                    
+                    const response = await becomeDriver()
+                    
+                    // Handle both StandardResponse format and direct access_token format
+                    const accessToken = response.data?.access_token || (response as any).access_token
+                    
+                    if (accessToken) {
+                      // Get the current slug from hostname
+                      const hostname = window.location.hostname
+                      const slug = extractSubdomain(hostname) || 'ridez' // fallback to 'ridez' if no slug found
+                      const port = window.location.port ? `:${window.location.port}` : ''
+                      
+                      // Navigate to driver login with token, which will auto-login and redirect to dashboard
+                      const driverLoginUrl = `http://${slug}.localhost${port}/driver/login?token=${encodeURIComponent(accessToken)}`
+                      
+                      // Open driver login page in a new tab
+                      window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
+                      
+                      // Close modal on success
+                      setShowDriverModeConfirm(false)
+                    } else {
+                      setSwitchToDriverError(response.error || 'Failed to get driver access token')
+                    }
+                  } catch (err: any) {
+                    console.error('Failed to switch to driver mode:', err)
+                    setSwitchToDriverError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to switch to driver mode. Please try again.')
+                  } finally {
+                    setIsSwitchingToDriver(false)
+                  }
                 }}
+                disabled={isSwitchingToDriver}
                 style={{
                   padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
                   fontSize: 'clamp(14px, 2vw, 16px)',
                   fontFamily: '"Work Sans", sans-serif',
                   fontWeight: 400,
                   borderRadius: 7,
-                  backgroundColor: 'rgba(155, 97, 209, 0.81)',
+                  backgroundColor: isSwitchingToDriver ? 'rgba(155, 97, 209, 0.5)' : 'rgba(155, 97, 209, 0.81)',
                   color: '#ffffff',
                   border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
+                  cursor: isSwitchingToDriver ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSwitchingToDriver ? 0.6 : 1
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+                  if (!isSwitchingToDriver) {
+                    e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+                  if (!isSwitchingToDriver) {
+                    e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+                  }
                 }}
               >
-                Continue
+                {isSwitchingToDriver ? 'Switching...' : 'Continue'}
               </button>
             </div>
           </div>
@@ -2050,20 +2378,23 @@ export default function TenantDashboard() {
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
                 textAlign: 'center',
-                border: '1px solid var(--bw-border)'
-              }}>
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                borderRadius: '12px'
+              } as React.CSSProperties}>
                 <div style={{
                   fontSize: 'clamp(24px, 4vw, 36px)',
                   fontWeight: 600,
-                  color: 'var(--bw-text)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   marginBottom: 'clamp(4px, 1vw, 6px)',
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
-                  {drivers.length}
+                  {analysis?.total_drivers ?? drivers.length}
                 </div>
                 <div style={{
                   fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: 'var(--bw-muted)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   fontWeight: 300,
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
@@ -2074,20 +2405,23 @@ export default function TenantDashboard() {
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
                 textAlign: 'center',
-                border: '1px solid var(--bw-border)'
-              }}>
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                borderRadius: '12px'
+              } as React.CSSProperties}>
                 <div style={{
                   fontSize: 'clamp(24px, 4vw, 36px)',
                   fontWeight: 600,
-                  color: 'var(--bw-text)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   marginBottom: 'clamp(4px, 1vw, 6px)',
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
-                  {vehicles.length}
+                  {analysis?.total_vehicles ?? vehicles.length}
                 </div>
                 <div style={{
                   fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: 'var(--bw-muted)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   fontWeight: 300,
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
@@ -2098,20 +2432,23 @@ export default function TenantDashboard() {
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
                 textAlign: 'center',
-                border: '1px solid var(--bw-border)'
-              }}>
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
+                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                borderRadius: '12px'
+              } as React.CSSProperties}>
                 <div style={{
                   fontSize: 'clamp(24px, 4vw, 36px)',
                   fontWeight: 600,
-                  color: 'var(--bw-text)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   marginBottom: 'clamp(4px, 1vw, 6px)',
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
-                  {bookings.length}
+                  {analysis?.total_bookings ?? bookings.length}
                 </div>
                 <div style={{
                   fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: 'var(--bw-muted)',
+                  color: lightMode ? '#1a1a1a' : '#ffffff',
                   fontWeight: 300,
                   fontFamily: '"Work Sans", sans-serif'
                 }}>
@@ -2129,7 +2466,10 @@ export default function TenantDashboard() {
               {/* Company Information */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                border: '1px solid var(--bw-border)'
+                border: lightMode ? '1px solid #e2e8f0' : '1px solid var(--bw-border)',
+                backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg-secondary)',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                borderRadius: lightMode ? '12px' : undefined
               }}>
                 <h3 style={{ 
                   margin: '0 0 clamp(12px, 2vw, 16px) 0',
@@ -2224,7 +2564,10 @@ export default function TenantDashboard() {
               {/* Recent Bookings */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                border: '1px solid var(--bw-border)'
+                border: lightMode ? '1px solid #e2e8f0' : '1px solid var(--bw-border)',
+                backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg-secondary)',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                borderRadius: lightMode ? '12px' : undefined
               }}>
                 <div style={{ 
                   display: 'flex', 
@@ -2275,7 +2618,7 @@ export default function TenantDashboard() {
               }}>
                 {bookings.length === 0 ? (
                   <div className="bw-empty-state" style={{ padding: '24px', textAlign: 'center' }}>
-                    <Calendar className="w-8 h-8" style={{ color: '#9ca3af', marginBottom: '8px' }} />
+                    <Calendar size={32} style={{ color: '#9ca3af', marginBottom: '8px' }} />
                     <div style={{ color: '#6b7280', fontSize: '14px' }}>No bookings yet</div>
                     <div style={{ color: '#9ca3af', fontSize: '12px' }}>Bookings will appear here</div>
                   </div>
@@ -2306,30 +2649,46 @@ export default function TenantDashboard() {
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                            {/* Route Visualization */}
                             <div style={{ 
-                              padding: '4px', 
-                              borderRadius: '4px',
-                              color: 'var(--bw-text)',
-                              background: 'transparent'
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '4px',
+                              paddingTop: '2px'
                             }}>
-                              <MapPin className="w-3 h-3" style={{ color: 'var(--bw-text)' }} />
+                              {/* Start node */}
+                              <Circle size={8} weight="fill" style={{ color: '#10b981', flexShrink: 0 }} />
+                            {/* Dotted line */}
+                            <div style={{
+                              width: '2px',
+                              height: '24px',
+                              borderLeft: `2px dotted ${lightMode ? '#cbd5e1' : 'var(--bw-border)'}`,
+                              margin: '2px 0'
+                            }} />
+                              {/* End node */}
+                              <Circle size={8} weight="fill" style={{ color: '#ef4444', flexShrink: 0 }} />
                             </div>
-                            <div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               <div className="bw-recent-title" style={{ 
                                 fontWeight: '600', 
                                 fontSize: '14px', 
                                 color: 'var(--bw-text)',
-                                marginBottom: '2px'
+                                marginBottom: '4px',
+                                lineHeight: 1.4
                               }}>
-                                {booking.pickup_location} → {booking.dropoff_location}
+                                <div style={{ marginBottom: '2px' }}>{booking.pickup_location}</div>
+                                <div style={{ color: 'var(--bw-muted)', fontSize: '12px', fontWeight: 400 }}>↓</div>
+                                <div>{booking.dropoff_location}</div>
                               </div>
                               <div className="bw-recent-meta" style={{ 
                                 fontSize: '12px', 
                                 color: 'var(--bw-muted)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '8px',
+                                marginTop: '4px'
                               }}>
                                 <span>{new Date(booking.pickup_time).toLocaleDateString()}</span>
                                 <span>•</span>
@@ -2338,7 +2697,69 @@ export default function TenantDashboard() {
                             </div>
                           </div>
                           <div className="bw-recent-status">
-                            {getStatusIcon(booking.booking_status)}
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              color: (() => {
+                                const status = booking.booking_status?.toLowerCase();
+                                if (lightMode) {
+                                  if (status === 'completed' || status === 'active') {
+                                    return '#047857'; // dark green
+                                  } else if (status === 'pending') {
+                                    return '#d97706'; // dark amber
+                                  } else if (status === 'cancelled') {
+                                    return '#dc2626'; // dark red
+                                  }
+                                  return '#64748b'; // slate-500
+                                }
+                                return getStatusColorHex(booking.booking_status);
+                              })(),
+                              backgroundColor: (() => {
+                                const status = booking.booking_status?.toLowerCase();
+                                if (lightMode) {
+                                  if (status === 'completed' || status === 'active') {
+                                    return '#d1fae5'; // light mint-green
+                                  } else if (status === 'pending') {
+                                    return '#fef3c7'; // light amber
+                                  } else if (status === 'cancelled') {
+                                    return '#fee2e2'; // light red
+                                  }
+                                  return '#f1f5f9'; // slate-100
+                                }
+                                if (status === 'completed' || status === 'active') {
+                                  return 'rgba(16, 185, 129, 0.1)';
+                                } else if (status === 'pending') {
+                                  return 'rgba(245, 158, 11, 0.1)';
+                                } else if (status === 'cancelled') {
+                                  return 'rgba(239, 68, 68, 0.1)';
+                                }
+                                return 'rgba(107, 114, 128, 0.1)';
+                              })(),
+                              backdropFilter: lightMode ? 'none' : 'blur(4px)',
+                              WebkitBackdropFilter: lightMode ? 'none' : 'blur(4px)',
+                              border: lightMode ? 'none' : `1px solid ${(() => {
+                                const status = booking.booking_status?.toLowerCase();
+                                if (status === 'completed' || status === 'active') {
+                                  return 'rgba(16, 185, 129, 0.2)';
+                                } else if (status === 'pending') {
+                                  return 'rgba(245, 158, 11, 0.2)';
+                                } else if (status === 'cancelled') {
+                                  return 'rgba(239, 68, 68, 0.2)';
+                                }
+                                return 'rgba(107, 114, 128, 0.2)';
+                              })()}`,
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              {getStatusIcon(booking.booking_status)}
+                              <span style={{ textTransform: 'capitalize' }}>
+                                {booking.booking_status || 'Unknown'}
+                              </span>
+                            </span>
                           </div>
                         </div>
                         
@@ -2348,25 +2769,67 @@ export default function TenantDashboard() {
                           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
                           gap: '8px', 
                           fontSize: '12px',
-                          color: '#6b7280',
-                          borderTop: '1px solid #f3f4f6',
+                          color: 'var(--bw-muted)',
+                          borderTop: '1px solid var(--bw-border)',
                           paddingTop: '8px'
                         }}>
                           {!isMobile && (
-                            <div>
-                              <span style={{ fontWeight: '500' }}>Customer:</span> {booking.customer_name || 'Anonymous Customer'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Customer:</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '50%',
+                                  backgroundColor: lightMode ? 'rgba(155, 97, 209, 0.1)' : 'rgba(155, 97, 209, 0.2)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '10px',
+                                  fontWeight: 600,
+                                  color: lightMode ? '#7c3aed' : 'rgba(155, 97, 209, 0.9)',
+                                  flexShrink: 0
+                                }}>
+                                  {getInitials(booking.customer_name)}
+                                </div>
+                                <span>{booking.customer_name || 'Anonymous Customer'}</span>
+                              </div>
                             </div>
                           )}
                           {!isMobile && (
-                            <div>
-                              <span style={{ fontWeight: '500' }}>Driver:</span> {booking.driver_name && booking.driver_name !== 'None' ? booking.driver_name : 'No assigned driver'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Driver:</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {booking.driver_name && booking.driver_name !== 'None' ? (
+                                  <>
+                                    <div style={{
+                                      width: '24px',
+                                      height: '24px',
+                                      borderRadius: '50%',
+                                      backgroundColor: lightMode ? '#e2e8f0' : 'rgba(59, 130, 246, 0.2)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '10px',
+                                      fontWeight: 600,
+                                      color: lightMode ? '#475569' : 'rgba(59, 130, 246, 0.9)',
+                                      flexShrink: 0
+                                    }}>
+                                      {getInitials(booking.driver_name)}
+                                    </div>
+                                    <span>{booking.driver_name}</span>
+                                  </>
+                                ) : (
+                                  <span style={{ color: 'var(--bw-muted)' }}>No assigned driver</span>
+                                )}
+                              </div>
                             </div>
                           )}
                           <div>
-                            <span style={{ fontWeight: '500' }}>Vehicle:</span> {booking.vehicle || 'N/A'}
+                            <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Vehicle:</span> {booking.vehicle || 'N/A'}
                           </div>
                           <div>
-                            <span style={{ fontWeight: '500' }}>Fare:</span> ${booking.estimated_price || '0.00'}
+                            <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Fare:</span> ${booking.estimated_price || '0.00'}
                           </div>
                         </div>
                       </div>
@@ -2401,14 +2864,14 @@ export default function TenantDashboard() {
                           color: '#6b7280',
                           fontSize: '14px'
                         }}>
-                          <Calendar className="w-4 h-4" />
+                          <Calendar size={16} />
                           <span>
                             {showMoreBookings 
                               ? `Show Less` 
                               : `View ${bookings.length - 3} more bookings`}
                           </span>
                           {showMoreBookings ? (
-                            <ChevronUp className="w-4 h-4" />
+                            <CaretUp size={16} />
                           ) : (
                             <span style={{ fontSize: '12px' }}>→</span>
                           )}
@@ -2498,18 +2961,11 @@ export default function TenantDashboard() {
           <div className="bw-content">
             <div className="bw-content-header" style={{
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               alignItems: 'center',
               marginBottom: 'clamp(16px, 3vw, 24px)',
               gap: 'clamp(12px, 2vw, 16px)'
             }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3vw, 28px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>Driver Management</h3>
               <button 
                 className={`bw-btn bw-btn-action ${isAddDriverHovered ? 'custom-hover-border' : ''}`}
                 onClick={() => setShowAddDriver(true)}
@@ -2562,7 +3018,7 @@ export default function TenantDashboard() {
                         display: 'flex',
                         justifyContent: 'center'
                       }}>
-                        <User className="w-8 h-8" style={{ 
+                        <User size={32} style={{ 
                           width: 'clamp(32px, 5vw, 48px)', 
                           height: 'clamp(32px, 5vw, 48px)',
                           color: 'var(--bw-muted)'
@@ -2674,7 +3130,7 @@ export default function TenantDashboard() {
                               color: 'var(--bw-text)',
                               fontFamily: '"Work Sans", sans-serif'
                             }}>
-                              <Phone className="w-3 h-3" style={{ 
+                              <Phone size={12} style={{ 
                                 width: 'clamp(14px, 2vw, 16px)',
                                 height: 'clamp(14px, 2vw, 16px)',
                                 color: 'var(--bw-muted)' 
@@ -2752,7 +3208,7 @@ export default function TenantDashboard() {
                   {drivers.length === 0 ? (
                     <div className="bw-empty-state">
                       <div className="bw-empty-icon">
-                        <User className="w-8 h-8" />
+                        <User size={32} />
                       </div>
                       <div className="bw-empty-text">No drivers yet</div>
                       <div className="bw-empty-subtext">Add your first driver to get started</div>
@@ -2768,7 +3224,7 @@ export default function TenantDashboard() {
                         <div className="bw-table-cell">
                           <div className="bw-user-info">
                             <div className="bw-user-avatar">
-                              <User className="w-4 h-4" />
+                              <User size={16} />
                             </div>
                             <div>
                               <div className="bw-user-name">{driver.first_name} {driver.last_name}</div>
@@ -2779,7 +3235,7 @@ export default function TenantDashboard() {
                         <div className="bw-table-cell">
                           <div className="bw-contact-info">
                             <div className="bw-contact-item">
-                              <Phone className="w-3 h-3" />
+                              <Phone size={12} />
                               {driver.phone_no}
                             </div>
                           </div>
@@ -2817,18 +3273,11 @@ export default function TenantDashboard() {
             <div className="bw-content-header" style={{
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               alignItems: isMobile ? 'flex-start' : 'center',
               marginBottom: 'clamp(16px, 3vw, 24px)',
               gap: 'clamp(12px, 2vw, 16px)'
             }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3vw, 28px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>Booking Management</h3>
               <div style={{ 
                 display: 'flex', 
                 gap: 'clamp(8px, 1.5vw, 12px)', 
@@ -2859,7 +3308,7 @@ export default function TenantDashboard() {
             </div>
 
             {/* Filters and Search Bar */}
-            <div style={{
+            <div className="booking-search-filters-wrapper" style={{
               marginBottom: 'clamp(16px, 3vw, 24px)',
               display: 'flex',
               gap: 'clamp(12px, 2vw, 16px)',
@@ -2868,7 +3317,7 @@ export default function TenantDashboard() {
               justifyContent: 'space-between'
             }}>
               {/* Search Bar */}
-              <div style={{
+              <div className="booking-search-container" style={{
                 flex: 1,
                 minWidth: isMobile ? '100%' : '200px',
                 maxWidth: '50%'
@@ -2887,13 +3336,11 @@ export default function TenantDashboard() {
                     alignItems: 'center',
                     width: '100%'
                   }}>
-                    <Search 
-                      className="search-icon"
+                    <MagnifyingGlass 
+                      size="clamp(16px, 2.5vw, 20px)"
                       style={{
                         position: 'absolute',
                         left: 'clamp(12px, 2vw, 16px)',
-                        width: 'clamp(16px, 2.5vw, 20px)',
-                        height: 'clamp(16px, 2.5vw, 20px)',
                         color: 'var(--bw-muted)',
                         pointerEvents: 'none',
                         zIndex: 1
@@ -2954,12 +3401,9 @@ export default function TenantDashboard() {
               </div>
 
               {/* Filter Dropdowns */}
-              <div style={{
-                display: 'flex',
-                gap: 'clamp(8px, 1.5vw, 12px)',
-                alignItems: 'center',
-                flexWrap: 'nowrap',
-                marginLeft: 'auto'
+              <div className="booking-filters-container" style={{
+                marginLeft: 'auto',
+                minWidth: 0
               }}>
                 {/* Booking Status Filter */}
                 <select
@@ -2986,7 +3430,7 @@ export default function TenantDashboard() {
                       loadBookings()
                     }, 0)
                   }}
-                  className="bw-input"
+                  className="bw-input booking-filter-select"
                   style={{
                     padding: 'clamp(8px, 1.5vw, 12px)',
                     fontSize: 'clamp(13px, 2vw, 14px)',
@@ -2996,8 +3440,11 @@ export default function TenantDashboard() {
                     backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     minHeight: 'clamp(40px, 5vw, 48px)',
-                    width: 'auto',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0
                   }}
                 >
                   <option value="">All Status</option>
@@ -3032,7 +3479,7 @@ export default function TenantDashboard() {
                       loadBookings()
                     }, 0)
                   }}
-                  className="bw-input"
+                  className="bw-input booking-filter-select"
                   style={{
                     padding: 'clamp(8px, 1.5vw, 12px)',
                     fontSize: 'clamp(13px, 2vw, 14px)',
@@ -3042,8 +3489,11 @@ export default function TenantDashboard() {
                     backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     minHeight: 'clamp(40px, 5vw, 48px)',
-                    width: 'auto',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0
                   }}
                 >
                   <option value="">All Services</option>
@@ -3078,7 +3528,7 @@ export default function TenantDashboard() {
                       loadBookings()
                     }, 0)
                   }}
-                  className="bw-input"
+                  className="bw-input booking-filter-select booking-filter-vehicle"
                   style={{
                     padding: 'clamp(8px, 1.5vw, 12px)',
                     fontSize: 'clamp(13px, 2vw, 14px)',
@@ -3088,13 +3538,16 @@ export default function TenantDashboard() {
                     backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     minHeight: 'clamp(40px, 5vw, 48px)',
-                    width: 'auto',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0
                   }}
                 >
                   <option value="">All Vehicles</option>
                   {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
+                    <option key={vehicle.id} value={vehicle.id} title={`${vehicle.make} ${vehicle.model} ${vehicle.year ? `(${vehicle.year})` : ''} ${vehicle.license_plate ? `- ${vehicle.license_plate}` : ''}`}>
                       {vehicle.make} {vehicle.model} {vehicle.year ? `(${vehicle.year})` : ''} {vehicle.license_plate ? `- ${vehicle.license_plate}` : ''}
                     </option>
                   ))}
@@ -3121,9 +3574,7 @@ export default function TenantDashboard() {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <AlertCircle style={{
-                    width: '16px',
-                    height: '16px',
+                  <WarningCircle size={16} style={{
                     flexShrink: 0
                   }} />
                   <span>{searchError}</span>
@@ -3161,7 +3612,7 @@ export default function TenantDashboard() {
                         display: 'flex',
                         justifyContent: 'center'
                       }}>
-                        <Calendar className="w-8 h-8" style={{ 
+                        <Calendar size={32} style={{ 
                           width: 'clamp(32px, 5vw, 48px)', 
                           height: 'clamp(32px, 5vw, 48px)',
                           color: 'var(--bw-muted)'
@@ -3283,7 +3734,7 @@ export default function TenantDashboard() {
                               color: 'var(--bw-text)',
                               fontFamily: '"Work Sans", sans-serif'
                             }}>
-                              <MapPin className="w-4 h-4" style={{
+                              <MapPin size={16} style={{
                                 width: 'clamp(16px, 2.5vw, 18px)',
                                 height: 'clamp(16px, 2.5vw, 18px)',
                                 color: 'var(--bw-muted)',
@@ -3301,7 +3752,7 @@ export default function TenantDashboard() {
                                 color: 'var(--bw-text)',
                                 fontFamily: '"Work Sans", sans-serif'
                               }}>
-                                <MapPin className="w-4 h-4" style={{
+                                <MapPin size={16} style={{
                                   width: 'clamp(16px, 2.5vw, 18px)',
                                   height: 'clamp(16px, 2.5vw, 18px)',
                                   color: 'var(--bw-muted)',
@@ -3428,7 +3879,7 @@ export default function TenantDashboard() {
                   {filteredBookings.length === 0 ? (
                     <div className="bw-empty-state">
                       <div className="bw-empty-icon">
-                        <Calendar className="w-8 h-8" />
+                        <Calendar size={32} />
                       </div>
                       <div className="bw-empty-text">No bookings yet</div>
                       <div className="bw-empty-subtext">Bookings will appear here once riders start using your service</div>
@@ -3460,12 +3911,12 @@ export default function TenantDashboard() {
                               </span>
                             </div>
                             <div className="bw-route-item" style={{ fontSize: '12px', color: '#6b7280' }}>
-                              <MapPin className="w-3 h-3" />
+                              <MapPin size={12} />
                               <span style={{ marginLeft: '4px' }}>From: {booking.pickup_location}</span>
                             </div>
                             {booking.dropoff_location && (
                               <div className="bw-route-item" style={{ fontSize: '12px', color: '#6b7280' }}>
-                                <MapPin className="w-3 h-3" />
+                                <MapPin size={12} />
                                 <span style={{ marginLeft: '4px' }}>To: {booking.dropoff_location}</span>
                               </div>
                             )}
@@ -3543,18 +3994,11 @@ export default function TenantDashboard() {
             <div className="bw-content-header" style={{
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'space-between',
+              justifyContent: 'flex-end',
               alignItems: isMobile ? 'flex-start' : 'center',
               marginBottom: 'clamp(16px, 3vw, 24px)',
               gap: 'clamp(12px, 2vw, 16px)'
             }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3vw, 28px)',
-                fontWeight: isMobile ? 400 : 200,
-                fontFamily: isMobile ? '"DM Sans", sans-serif' : '"DM Sans", sans-serif',
-                color: 'var(--bw-text)'
-              }}>Vehicle Management</h3>
               <div style={{
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
@@ -4094,7 +4538,7 @@ export default function TenantDashboard() {
                     display: 'flex',
                     justifyContent: 'center'
                   }}>
-                    <Car className="w-8 h-8" style={{ 
+                    <Car size={32} style={{ 
                       width: 'clamp(32px, 5vw, 48px)', 
                       height: 'clamp(32px, 5vw, 48px)',
                       color: 'var(--bw-muted)'
@@ -4178,7 +4622,7 @@ export default function TenantDashboard() {
                             }}
                           />
                         ) : (
-                          <Car className="w-12 h-12" style={{ 
+                          <Car size={48} style={{ 
                             width: 'clamp(32px, 5vw, 48px)',
                             height: 'clamp(32px, 5vw, 48px)',
                             color: 'var(--bw-disabled)', 
@@ -4624,7 +5068,7 @@ export default function TenantDashboard() {
                 onClick={() => setVehicleSettingsOpen(!vehicleSettingsOpen)}
               >
                 <h4 style={{ margin: 0 }}>Vehicle Settings</h4>
-                {vehicleSettingsOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                {vehicleSettingsOpen ? <CaretUp size={20} /> : <CaretDown size={20} />}
               </div>
               {vehicleSettingsOpen && (
               <>
@@ -4896,7 +5340,7 @@ export default function TenantDashboard() {
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <Settings className="w-4 h-4" style={{ 
+                <Gear size={16} style={{ 
                   color: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
                   width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
                   height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
@@ -4936,7 +5380,7 @@ export default function TenantDashboard() {
                 setAddDriverError(null)
                 setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
               }}>
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body">
@@ -5202,7 +5646,7 @@ export default function TenantDashboard() {
                   minHeight: '32px'
                 }}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -5340,7 +5784,7 @@ export default function TenantDashboard() {
                             alignItems: 'center',
                             gap: '6px'
                           }}>
-                            <MapPin className="w-3 h-3" style={{ color: 'var(--bw-muted)' }} />
+                            <MapPin size={12} style={{ color: 'var(--bw-muted)' }} />
                             Dropoff Location
                           </div>
                           <div style={{
@@ -5469,7 +5913,7 @@ export default function TenantDashboard() {
                             }}
                             title="Assign Driver"
                           >
-                            <Edit className="w-3 h-3" />
+                            <Pencil size={12} />
                           </button>
                         </div>
                       </div>
@@ -5589,7 +6033,7 @@ export default function TenantDashboard() {
                 }}
                 disabled={assigningDriver}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -5841,7 +6285,7 @@ export default function TenantDashboard() {
                 }}
                 disabled={isDeleting}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -5859,7 +6303,7 @@ export default function TenantDashboard() {
                   borderRadius: '6px',
                   border: '1px solid var(--bw-border)'
                 }}>
-                  <AlertCircle className="w-5 h-5" style={{ color: 'var(--bw-error, #C5483D)', flexShrink: 0 }} />
+                  <WarningCircle size={20} style={{ color: 'var(--bw-error, #C5483D)', flexShrink: 0 }} />
                   <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
                     Are you sure you want to delete this vehicle? This action cannot be undone.
                   </div>
@@ -5997,7 +6441,7 @@ export default function TenantDashboard() {
                 }}
                 disabled={isUnassigning}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -6015,7 +6459,7 @@ export default function TenantDashboard() {
                   borderRadius: '6px',
                   border: '1px solid var(--bw-border)'
                 }}>
-                  <AlertCircle className="w-5 h-5" style={{ color: '#ef4444', flexShrink: 0 }} />
+                  <WarningCircle size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
                   <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
                     Are you sure you want to unassign the driver from this vehicle?
                   </div>
@@ -6178,7 +6622,7 @@ export default function TenantDashboard() {
                 }}
                 disabled={isAssigning}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{
@@ -6196,7 +6640,7 @@ export default function TenantDashboard() {
                   borderRadius: '6px',
                   border: '1px solid var(--bw-border)'
                 }}>
-                  <AlertCircle className="w-5 h-5" style={{ color: '#10b981', flexShrink: 0 }} />
+                  <WarningCircle size={20} style={{ color: '#10b981', flexShrink: 0 }} />
                   <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
                     Select a driver to assign to this vehicle.
                   </div>
@@ -6363,7 +6807,7 @@ export default function TenantDashboard() {
                   minHeight: '32px'
                 }}
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle size={20} />
               </button>
             </div>
             <div className="bw-modal-body" style={{

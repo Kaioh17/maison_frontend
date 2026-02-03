@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { type BookingResponse } from '@api/bookings'
-import { CheckCircle, MapPin, Calendar, Clock, DollarSign } from 'lucide-react'
+import { CheckCircle, MapPin, Calendar, Clock, CurrencyDollar } from '@phosphor-icons/react'
 
 export default function BookingSuccess() {
   const navigate = useNavigate()
@@ -117,7 +117,7 @@ export default function BookingSuccess() {
               paddingBottom: 'clamp(16px, 3vw, 20px)',
               borderBottom: '1px solid var(--bw-border)'
             }}>
-              <DollarSign size={20} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
+              <CurrencyDollar size={20} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: 'clamp(12px, 2vw, 14px)',

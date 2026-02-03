@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Eye, EyeSlash, Envelope, Lock, ArrowRight } from '@phosphor-icons/react'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
@@ -262,7 +262,7 @@ export default function RiderLogin() {
             <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
               <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
               <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Mail size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
                 <input 
                   id="email" 
                   name="email" 
@@ -296,7 +296,7 @@ export default function RiderLogin() {
                   onClick={() => setShowPassword(!showPassword)} 
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 

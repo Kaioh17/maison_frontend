@@ -17,6 +17,7 @@ export type BookingResponse = {
   customer_name: string
   vehicle: string
   driver_name: string
+  deposit?: number | null
   // Optional fields that may still be present in some responses
   vehicle_id?: number
   id?: number
@@ -47,7 +48,7 @@ export async function createBooking(payload: CreateBooking) {
   return data
 }
 
-export async function getBookings(params?: { page?: number; limit?: number; offset?: number }) {
+export async function getBookings(params?: { page?: number; limit?: number; offset?: number; booking_status?: string; service_type?: string }) {
   const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/bookings/', { params })
   return data
 }
@@ -83,5 +84,18 @@ export async function approveBooking(
       payment_method: paymentMethod,
     }
   )
+  return data
+}
+
+export type BookingAnalyticsResponse = {
+  confirmed: number
+  completed: number
+  cancelled: number
+  pending: number
+  total: number
+}
+
+export async function getBookingAnalytics() {
+  const { data } = await http.get<StandardResponse<BookingAnalyticsResponse>>('/v1/users/booking/analytics')
   return data
 } 

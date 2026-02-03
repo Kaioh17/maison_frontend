@@ -214,12 +214,29 @@ export function formatSuggestion(suggestion: MapboxSuggestion): string {
 }
 
 /**
- * Format location details for display (prefers name_preferred)
+ * Format location details for display
+ * For airports, prioritizes name (full airport name) over name_preferred (airport code)
+ * For other locations, prioritizes name (location name like "5120 S Hydepark Boulevard Aprtments") 
+ * over name_preferred or place_formatted (which may be full address)
  */
-export function formatLocationDetails(details: MapboxLocationDetails): string {
+export function formatLocationDetails(details: MapboxLocationDetails, isAirport: boolean = false): string {
   if (details.features && details.features.length > 0) {
     const properties = details.features[0].properties
-    return properties.name_preferred || properties.place_formatted || properties.full_address || properties.name || ''
+    
+    // Check if it's an airport by feature_type or name
+    const isAirportLocation = isAirport || 
+      properties.feature_type === 'poi' && 
+      (properties.name?.toLowerCase().includes('airport') || 
+       properties.name?.toLowerCase().includes('international') ||
+       properties.full_address?.toLowerCase().includes('airport'))
+    
+    if (isAirportLocation) {
+      // For airports, prioritize name (full name) over name_preferred (code)
+      return properties.name || properties.name_preferred || properties.place_formatted || properties.full_address || ''
+    } else {
+      // For other locations (pickup/dropoff), prioritize name (location name) over name_preferred/place_formatted
+      return properties.name || properties.name_preferred || properties.place_formatted || properties.full_address || ''
+    }
   }
   return ''
 }

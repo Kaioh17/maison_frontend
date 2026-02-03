@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight, Car } from 'lucide-react'
+import { Eye, EyeSlash, Envelope, Lock, User, Phone, MapPin, ArrowRight, Car } from '@phosphor-icons/react'
 import { registerDriver } from '@api/driver'
 import { getVehicleCategoriesByTenant } from '@api/vehicles'
 import type { VehicleCategoryResponse } from '@api/vehicles'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
+import StateAutocomplete from '@components/StateAutocomplete'
 
 export default function DriverRegistration() {
   useFavicon()
@@ -489,7 +490,7 @@ export default function DriverRegistration() {
 
               <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
               <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Mail size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
                 <input 
                   id="email" 
                   name="email" 
@@ -525,16 +526,12 @@ export default function DriverRegistration() {
                 <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code</label>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <input 
-                  id="state" 
-                  name="state" 
-                  type="text" 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="NY" 
+                <StateAutocomplete
                   value={formData.state}
-                  onChange={handleInputChange}
-                  maxLength={2}
+                  onChange={(value) => setFormData({ ...formData, state: value })}
+                  placeholder="NY"
+                  className="bw-input"
+                  style={{ padding: '16px 18px', borderRadius: 0 }}
                 />
                 <input 
                   id="postal_code" 
@@ -545,7 +542,7 @@ export default function DriverRegistration() {
                   placeholder="10001" 
                   value={formData.postal_code}
                   onChange={handleInputChange}
-                  maxLength={10}
+                  maxLength={5}
                 />
               </div>
 
@@ -726,7 +723,7 @@ export default function DriverRegistration() {
                   onClick={() => setShowPassword(!showPassword)} 
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 

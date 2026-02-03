@@ -35,20 +35,42 @@ export function useTenantInfo() {
         const cached = getCachedSlugVerification(slug)
         if (cached && !isCacheExpired(cached) && cached.data) {
           // Use cached data if available
+          // Note: tenant_id is not cached, so we'll need to fetch it if needed
           const transformedInfo: TenantInfo = {
             company_name: cached.data.profile.company_name,
             slug: cached.data.branding.slug || cached.data.settings.slug || slug,
             logo_url: cached.data.branding.logo_url || null,
             favicon_url: cached.data.branding.favicon_url || null,
+            // tenant_id not available from cache, will need to fetch if required
           }
           setTenantInfo(transformedInfo)
           setIsLoading(false)
+          // If tenant_id is needed, we might need to make an API call anyway
+          // For now, return and let the component handle the missing tenant_id
           return
         }
 
         // Only make API call if cache miss or expired
         const response = await getTenantBySlug(slug)
         if (response.success && response.data) {
+          // Extract tenant_id from meta if available, or try to get it from response data
+          let tenantId: number | undefined = undefined
+          
+          // Check meta first
+          if (response.meta?.tenant_id) {
+            tenantId = typeof response.meta.tenant_id === 'number' 
+              ? response.meta.tenant_id 
+              : parseInt(String(response.meta.tenant_id))
+          }
+          
+          // If not in meta, check if it's in the data structure itself
+          // (some API responses might include it directly)
+          if (!tenantId && (response.data as any).tenant_id) {
+            tenantId = typeof (response.data as any).tenant_id === 'number'
+              ? (response.data as any).tenant_id
+              : parseInt(String((response.data as any).tenant_id))
+          }
+          
           // Transform the new API response structure to match expected format
           // Extract company_name from profile, logo_url and favicon_url from branding
           const transformedInfo: TenantInfo = {
@@ -56,7 +78,7 @@ export function useTenantInfo() {
             slug: response.data.branding.slug || response.data.settings.slug || slug,
             logo_url: response.data.branding.logo_url || null,
             favicon_url: response.data.branding.favicon_url || null,
-            // tenant_id may not be in the new response, but we'll keep it optional
+            tenant_id: tenantId,
             // Do NOT implement color theming yet (skip primary_color, secondary_color, etc.)
           }
           setTenantInfo(transformedInfo)

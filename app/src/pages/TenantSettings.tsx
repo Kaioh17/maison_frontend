@@ -18,7 +18,7 @@ import {
 import { upgradeSubscription } from '@api/subscription'
 import { useAuthStore } from '@store/auth'
 import { useNavigate } from 'react-router-dom'
-import { Settings, User, Building, MapPin, Phone, Mail, Shield, CreditCard, DollarSign, Clock, Car, Palette, Save, Edit, ChevronDown, ChevronUp, XCircle, ArrowUp } from 'lucide-react'
+import { Gear, User, Building, MapPin, Phone, Envelope, Shield, CreditCard, CurrencyDollar, Clock, Car, Palette, FloppyDisk, Pencil, CaretDown, CaretUp, XCircle, ArrowUp } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
@@ -64,6 +64,22 @@ export default function TenantSettings() {
   const [isSaveLogoHovered, setIsSaveLogoHovered] = useState(false)
   const [isEditFareHovered, setIsEditFareHovered] = useState(false)
   const [isEditRiderHovered, setIsEditRiderHovered] = useState(false)
+  const [isEditBookingConfigHovered, setIsEditBookingConfigHovered] = useState(false)
+  const [isEditRiderTiersHovered, setIsEditRiderTiersHovered] = useState(false)
+  const [isSaveBookingConfigHovered, setIsSaveBookingConfigHovered] = useState(false)
+  const [isSaveRiderTiersHovered, setIsSaveRiderTiersHovered] = useState(false)
+  const [isCancelBookingConfigHovered, setIsCancelBookingConfigHovered] = useState(false)
+  const [isCancelRiderTiersHovered, setIsCancelRiderTiersHovered] = useState(false)
+  
+  // Separate editing states for booking config and rider tiers
+  const [editingBookingConfig, setEditingBookingConfig] = useState(false)
+  const [editingRiderTiers, setEditingRiderTiers] = useState(false)
+  const [savingBookingConfig, setSavingBookingConfig] = useState(false)
+  const [savingRiderTiers, setSavingRiderTiers] = useState(false)
+  
+  // State for adding new service
+  const [newServiceName, setNewServiceName] = useState('')
+  const [showAddServiceInput, setShowAddServiceInput] = useState(false)
   
   // Upgrade subscription state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -85,6 +101,62 @@ export default function TenantSettings() {
     }))
   }
 
+  // Helper function to format service type names (e.g., "event_dropoff" -> "Event Dropoff")
+  const formatServiceTypeName = (typeName: string): string => {
+    return typeName
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  // Helper function to convert service name to key format (e.g., "Event Dropoff" -> "event_dropoff")
+  const convertToServiceKey = (serviceName: string): string => {
+    return serviceName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_')
+  }
+
+  // Handler to add new service
+  const handleAddNewService = () => {
+    if (!newServiceName.trim()) {
+      alert('Please enter a service name')
+      return
+    }
+
+    const serviceKey = convertToServiceKey(newServiceName.trim())
+    
+    // Check if service already exists
+    if (editedSettings?.config?.booking?.types?.[serviceKey]) {
+      alert('This service already exists')
+      setNewServiceName('')
+      return
+    }
+
+    if (editedSettings && editedSettings.config && editedSettings.config.booking) {
+      const updatedTypes = {
+        ...editedSettings.config.booking.types,
+        [serviceKey]: {
+          is_deposit_required: true
+        }
+      }
+
+      setEditedSettings({
+        ...editedSettings,
+        config: {
+          ...editedSettings.config,
+          booking: {
+            ...editedSettings.config.booking,
+            types: updatedTypes
+          }
+        }
+      })
+
+      setNewServiceName('')
+      setShowAddServiceInput(false)
+    }
+  }
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -96,23 +168,24 @@ export default function TenantSettings() {
         setTenantConfig(config)
         // Initialize edited state from config with defaults if missing
         if (config.settings) {
+          // Preserve all existing service types dynamically
+          const existingTypes = config.settings.config?.booking?.types || {}
+          const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+          
+          // Preserve all types from the config
+          Object.keys(existingTypes).forEach(typeKey => {
+            typesWithDefaults[typeKey] = {
+              is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+            }
+          })
+          
           const settingsWithDefaults = {
             ...config.settings,
             config: {
               booking: {
                 allow_guest_bookings: config.settings.config?.booking?.allow_guest_bookings ?? true,
                 show_vehicle_images: config.settings.config?.booking?.show_vehicle_images ?? true,
-                types: {
-                  airport: {
-                    is_deposit_required: config.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
-                  },
-                  dropoff: {
-                    is_deposit_required: config.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
-                  },
-                  hourly: {
-                    is_deposit_required: config.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
-                  }
-                }
+                types: typesWithDefaults
               },
               branding: {
                 button_radius: config.settings.config?.branding?.button_radius ?? 0,
@@ -253,6 +326,16 @@ export default function TenantSettings() {
           JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
         
         if (settingsChanged) {
+          // Preserve all existing service types dynamically
+          const existingTypes = editedSettings.config?.booking?.types || {}
+          const typesToSave: Record<string, { is_deposit_required: boolean }> = {}
+          
+          Object.keys(existingTypes).forEach(typeKey => {
+            typesToSave[typeKey] = {
+              is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+            }
+          })
+          
           // Send complete config object with all fields (JSONB requirement)
           const completeConfig = {
             rider_tiers_enabled: editedSettings.rider_tiers_enabled,
@@ -260,17 +343,7 @@ export default function TenantSettings() {
               booking: {
                 allow_guest_bookings: editedSettings.config?.booking?.allow_guest_bookings ?? true,
                 show_vehicle_images: editedSettings.config?.booking?.show_vehicle_images ?? true,
-                types: {
-                  airport: {
-                    is_deposit_required: editedSettings.config?.booking?.types?.airport?.is_deposit_required ?? true
-                  },
-                  dropoff: {
-                    is_deposit_required: editedSettings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
-                  },
-                  hourly: {
-                    is_deposit_required: editedSettings.config?.booking?.types?.hourly?.is_deposit_required ?? true
-                  }
-                }
+                types: typesToSave
               },
               branding: {
                 button_radius: editedSettings.config?.branding?.button_radius ?? 0,
@@ -356,23 +429,23 @@ export default function TenantSettings() {
       const refreshedConfig = await getTenantConfig('all')
       setTenantConfig(refreshedConfig)
       if (refreshedConfig.settings) {
+        // Preserve all types dynamically
+        const refreshedTypes = refreshedConfig.settings.config?.booking?.types || {}
+        const refreshedTypesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+        
+        Object.keys(refreshedTypes).forEach(typeKey => {
+          refreshedTypesWithDefaults[typeKey] = {
+            is_deposit_required: refreshedTypes[typeKey]?.is_deposit_required ?? true
+          }
+        })
+        
         const settingsWithDefaults = {
           ...refreshedConfig.settings,
           config: {
             booking: {
               allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
               show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
-              types: {
-                airport: {
-                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
-                },
-                dropoff: {
-                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
-                },
-                hourly: {
-                  is_deposit_required: refreshedConfig.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
-                }
-              }
+              types: refreshedTypesWithDefaults
             },
             branding: {
               button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
@@ -403,23 +476,23 @@ export default function TenantSettings() {
   const handleCancelEdit = () => {
     if (tenantConfig) {
       if (tenantConfig.settings) {
+        // Preserve all types dynamically
+        const existingTypes = tenantConfig.settings.config?.booking?.types || {}
+        const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+        
+        Object.keys(existingTypes).forEach(typeKey => {
+          typesWithDefaults[typeKey] = {
+            is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+          }
+        })
+        
         const settingsWithDefaults = {
           ...tenantConfig.settings,
           config: {
             booking: {
               allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
               show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
-              types: {
-                airport: {
-                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.airport?.is_deposit_required ?? true
-                },
-                dropoff: {
-                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.dropoff?.is_deposit_required ?? true
-                },
-                hourly: {
-                  is_deposit_required: tenantConfig.settings.config?.booking?.types?.hourly?.is_deposit_required ?? true
-                }
-              }
+              types: typesWithDefaults
             },
             branding: {
               button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
@@ -442,6 +515,247 @@ export default function TenantSettings() {
   const handleCancelLogo = () => {
     setLogoFile(null)
     setLogoPreview(null)
+  }
+
+  const handleSaveBookingConfig = async () => {
+    if (!editedSettings || !tenantConfig?.settings) return
+    
+    try {
+      setSavingBookingConfig(true)
+      
+      // Preserve all existing service types dynamically
+      const existingTypes = editedSettings.config?.booking?.types || {}
+      const typesToSave: Record<string, { is_deposit_required: boolean }> = {}
+      
+      // Preserve all types from edited settings
+      Object.keys(existingTypes).forEach(typeKey => {
+        typesToSave[typeKey] = {
+          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+        }
+      })
+      
+      const completeConfig = {
+        rider_tiers_enabled: tenantConfig.settings.rider_tiers_enabled,
+        config: {
+          booking: {
+            allow_guest_bookings: editedSettings.config?.booking?.allow_guest_bookings ?? true,
+            show_vehicle_images: editedSettings.config?.booking?.show_vehicle_images ?? true,
+            types: typesToSave
+          },
+          branding: {
+            button_radius: editedSettings.config?.branding?.button_radius ?? tenantConfig.settings.config?.branding?.button_radius ?? 0,
+            font_family: editedSettings.config?.branding?.font_family ?? tenantConfig.settings.config?.branding?.font_family ?? 'string'
+          },
+          features: {
+            vip_profiles: editedSettings.config?.features?.vip_profiles ?? tenantConfig.settings.config?.features?.vip_profiles ?? true,
+            show_loyalty_banner: editedSettings.config?.features?.show_loyalty_banner ?? tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
+          }
+        }
+      }
+      
+      await updateTenantSettings(completeConfig)
+      
+      // Refresh config
+      const refreshedConfig = await getTenantConfig('all')
+      setTenantConfig(refreshedConfig)
+      if (refreshedConfig.settings) {
+        // Preserve all types dynamically after refresh
+        const refreshedTypes = refreshedConfig.settings.config?.booking?.types || {}
+        const refreshedTypesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+        
+        Object.keys(refreshedTypes).forEach(typeKey => {
+          refreshedTypesWithDefaults[typeKey] = {
+            is_deposit_required: refreshedTypes[typeKey]?.is_deposit_required ?? true
+          }
+        })
+        
+        const settingsWithDefaults = {
+          ...refreshedConfig.settings,
+          config: {
+            booking: {
+              allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+              show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
+              types: refreshedTypesWithDefaults
+            },
+            branding: {
+              button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
+              font_family: refreshedConfig.settings.config?.branding?.font_family ?? 'string'
+            },
+            features: {
+              vip_profiles: refreshedConfig.settings.config?.features?.vip_profiles ?? true,
+              show_loyalty_banner: refreshedConfig.settings.config?.features?.show_loyalty_banner ?? true
+            }
+          }
+        }
+        setEditedSettings(settingsWithDefaults)
+      }
+      
+      setEditingBookingConfig(false)
+      alert('Booking configuration updated successfully!')
+    } catch (error) {
+      console.error('Failed to update booking configuration:', error)
+      alert('Failed to update booking configuration. Please try again.')
+    } finally {
+      setSavingBookingConfig(false)
+    }
+  }
+
+  const handleSaveRiderTiers = async () => {
+    if (!editedSettings || !tenantConfig?.settings) return
+    
+    try {
+      setSavingRiderTiers(true)
+      
+      // Preserve all existing service types dynamically
+      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
+      const typesToPreserve: Record<string, { is_deposit_required: boolean }> = {}
+      
+      Object.keys(existingTypes).forEach(typeKey => {
+        typesToPreserve[typeKey] = {
+          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+        }
+      })
+      
+      const completeConfig = {
+        rider_tiers_enabled: editedSettings.rider_tiers_enabled,
+        config: tenantConfig.settings.config ? {
+          ...tenantConfig.settings.config,
+          booking: {
+            ...tenantConfig.settings.config.booking,
+            types: typesToPreserve
+          }
+        } : {
+          booking: {
+            allow_guest_bookings: true,
+            show_vehicle_images: true,
+            types: typesToPreserve
+          },
+          branding: {
+            button_radius: 0,
+            font_family: 'string'
+          },
+          features: {
+            vip_profiles: true,
+            show_loyalty_banner: true
+          }
+        }
+      }
+      
+      await updateTenantSettings(completeConfig)
+      
+      // Refresh config
+      const refreshedConfig = await getTenantConfig('all')
+      setTenantConfig(refreshedConfig)
+      if (refreshedConfig.settings) {
+        // Preserve all types dynamically
+        const refreshedTypes = refreshedConfig.settings.config?.booking?.types || {}
+        const refreshedTypesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+        
+        Object.keys(refreshedTypes).forEach(typeKey => {
+          refreshedTypesWithDefaults[typeKey] = {
+            is_deposit_required: refreshedTypes[typeKey]?.is_deposit_required ?? true
+          }
+        })
+        
+        const settingsWithDefaults = {
+          ...refreshedConfig.settings,
+          config: {
+            booking: {
+              allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+              show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
+              types: refreshedTypesWithDefaults
+            },
+            branding: {
+              button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
+              font_family: refreshedConfig.settings.config?.branding?.font_family ?? 'string'
+            },
+            features: {
+              vip_profiles: refreshedConfig.settings.config?.features?.vip_profiles ?? true,
+              show_loyalty_banner: refreshedConfig.settings.config?.features?.show_loyalty_banner ?? true
+            }
+          }
+        }
+        setEditedSettings(settingsWithDefaults)
+      }
+      
+      setEditingRiderTiers(false)
+      alert('Rider tiers updated successfully!')
+    } catch (error) {
+      console.error('Failed to update rider tiers:', error)
+      alert('Failed to update rider tiers. Please try again.')
+    } finally {
+      setSavingRiderTiers(false)
+    }
+  }
+
+  const handleCancelBookingConfig = () => {
+    if (tenantConfig?.settings) {
+      // Preserve all existing service types dynamically
+      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
+      const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+      
+      Object.keys(existingTypes).forEach(typeKey => {
+        typesWithDefaults[typeKey] = {
+          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+        }
+      })
+      
+      const settingsWithDefaults = {
+        ...tenantConfig.settings,
+        config: {
+          booking: {
+            allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+            show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
+            types: typesWithDefaults
+          },
+          branding: {
+            button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
+            font_family: tenantConfig.settings.config?.branding?.font_family ?? 'string'
+          },
+          features: {
+            vip_profiles: tenantConfig.settings.config?.features?.vip_profiles ?? true,
+            show_loyalty_banner: tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
+          }
+        }
+      }
+      setEditedSettings(settingsWithDefaults)
+    }
+    setEditingBookingConfig(false)
+  }
+
+  const handleCancelRiderTiers = () => {
+    if (tenantConfig?.settings) {
+      // Preserve all types dynamically
+      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
+      const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
+      
+      Object.keys(existingTypes).forEach(typeKey => {
+        typesWithDefaults[typeKey] = {
+          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
+        }
+      })
+      
+      const settingsWithDefaults = {
+        ...tenantConfig.settings,
+        config: {
+          booking: {
+            allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
+            show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
+            types: typesWithDefaults
+          },
+          branding: {
+            button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
+            font_family: tenantConfig.settings.config?.branding?.font_family ?? 'string'
+          },
+          features: {
+            vip_profiles: tenantConfig.settings.config?.features?.vip_profiles ?? true,
+            show_loyalty_banner: tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
+          }
+        }
+      }
+      setEditedSettings(settingsWithDefaults)
+    }
+    setEditingRiderTiers(false)
   }
 
   const handleTestLogoEndpoint = async () => {
@@ -652,7 +966,7 @@ export default function TenantSettings() {
                       <span>Saving...</span>
                     ) : (
                       <>
-                        <Save className="w-4 h-4" style={{ 
+                        <FloppyDisk size={16} style={{ 
                           width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
                           height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
                         }} />
@@ -694,9 +1008,9 @@ export default function TenantSettings() {
               )}
               {isMobile && (
                 openSections.tenantSettings ? (
-                  <ChevronUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+                  <CaretUp size={20} style={{ color: 'var(--bw-text)' }} />
                 ) : (
-                  <ChevronDown className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+                  <CaretDown size={20} style={{ color: 'var(--bw-text)' }} />
                 )
               )}
             </div>
@@ -704,7 +1018,7 @@ export default function TenantSettings() {
           {openSections.tenantSettings && (
           <>
           {/* Branding & Theme Settings */}
-          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)', paddingTop: 'clamp(24px, 4vw, 32px)' }}>
             <div 
               style={{ 
                 margin: '0 0 clamp(12px, 2vw, 16px) 0', 
@@ -726,14 +1040,14 @@ export default function TenantSettings() {
                 fontWeight: 300,
                 color: 'var(--bw-text)'
               }}>
-                <Palette className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                <Palette size={16} style={{ color: 'var(--bw-text)' }} />
                 Branding & Theme
               </h4>
               {isMobile && (
                 openSections.branding ? (
-                  <ChevronUp className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                  <CaretUp size={16} style={{ color: 'var(--bw-text)' }} />
                 ) : (
-                  <ChevronDown className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                  <CaretDown size={16} style={{ color: 'var(--bw-text)' }} />
                 )
               )}
               {!isMobile && (
@@ -952,7 +1266,7 @@ export default function TenantSettings() {
                           <span>Saving...</span>
                         ) : (
                           <>
-                            <Save className="w-4 h-4" style={{ 
+                            <FloppyDisk size={16} style={{ 
                               width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
                               height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
                             }} />
@@ -1062,7 +1376,7 @@ export default function TenantSettings() {
           </div>
 
           {/* Fare Settings */}
-          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)', paddingTop: 'clamp(24px, 4vw, 32px)' }}>
             <div 
               style={{ 
                 margin: '0 0 clamp(12px, 2vw, 16px) 0', 
@@ -1084,14 +1398,14 @@ export default function TenantSettings() {
                 fontWeight: 300,
                 color: 'var(--bw-text)'
               }}>
-                <DollarSign className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                <CurrencyDollar size={16} style={{ color: 'var(--bw-text)' }} />
                 Fare Configuration
               </h4>
               {isMobile && (
                 openSections.fare ? (
-                  <ChevronUp className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                  <CaretUp size={16} style={{ color: 'var(--bw-text)' }} />
                 ) : (
-                  <ChevronDown className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                  <CaretDown size={16} style={{ color: 'var(--bw-text)' }} />
                 )
               )}
               {!isMobile && (
@@ -1190,7 +1504,7 @@ export default function TenantSettings() {
           </div>
 
           {/* Rider Tiers */}
-          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)', paddingTop: 'clamp(24px, 4vw, 32px)' }}>
             <div 
               style={{ 
                 margin: '0 0 clamp(12px, 2vw, 16px) 0', 
@@ -1198,7 +1512,8 @@ export default function TenantSettings() {
                 alignItems: 'center', 
                 justifyContent: 'space-between',
                 cursor: isMobile ? 'pointer' : 'default',
-                userSelect: 'none'
+                userSelect: 'none',
+                gap: 'clamp(8px, 1.5vw, 12px)'
               }}
               onClick={() => isMobile && toggleSection('rider')}
             >
@@ -1212,16 +1527,114 @@ export default function TenantSettings() {
                 fontWeight: 300,
                 color: 'var(--bw-text)'
               }}>
-                <User className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+                <User size={16} style={{ color: 'var(--bw-text)' }} />
                 Rider Tiers
               </h4>
-              {isMobile && (
-                openSections.rider ? (
-                  <ChevronUp className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+                {editingRiderTiers ? (
+                  <>
+                    <button 
+                      className={`bw-btn-outline ${isCancelRiderTiersHovered ? 'custom-hover-border' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleCancelRiderTiers(); }}
+                      onMouseEnter={() => !savingRiderTiers && setIsCancelRiderTiersHovered(true)}
+                      onMouseLeave={() => setIsCancelRiderTiersHovered(false)}
+                      disabled={savingRiderTiers}
+                      style={{
+                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 300,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                        justifyContent: 'center',
+                        borderRadius: 7,
+                        color: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
+                        border: isCancelRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
+                        borderColor: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                        backgroundColor: isCancelRiderTiersHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease'
+                      } as React.CSSProperties}
+                    >
+                      <span style={{ color: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                        Cancel
+                      </span>
+                    </button>
+                    <button 
+                      className={`bw-btn bw-btn-action ${isSaveRiderTiersHovered ? 'custom-hover-border' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleSaveRiderTiers(); }}
+                      onMouseEnter={() => !savingRiderTiers && setIsSaveRiderTiersHovered(true)}
+                      onMouseLeave={() => setIsSaveRiderTiersHovered(false)}
+                      disabled={savingRiderTiers}
+                      style={{
+                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                        justifyContent: 'center',
+                        borderRadius: 7,
+                        backgroundColor: isSaveRiderTiersHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
+                        color: isSaveRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
+                        border: isSaveRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
+                        borderColor: isSaveRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease'
+                      } as React.CSSProperties}
+                    >
+                      {savingRiderTiers ? (
+                        <span>Saving...</span>
+                      ) : (
+                        <>
+                          <FloppyDisk size={16} style={{ 
+                            width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                            height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
+                          }} />
+                          <span>Save</span>
+                        </>
+                      )}
+                    </button>
+                  </>
                 ) : (
-                  <ChevronDown className="w-4 h-4" style={{ color: 'var(--bw-text)' }} />
-                )
-              )}
+                  <button 
+                    className={`bw-btn-outline ${isEditRiderTiersHovered ? 'custom-hover-border' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setEditingRiderTiers(true); }}
+                    onMouseEnter={() => setIsEditRiderTiersHovered(true)}
+                    onMouseLeave={() => setIsEditRiderTiersHovered(false)}
+                    style={{
+                      padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontWeight: 300,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                      justifyContent: 'center',
+                      borderRadius: 7,
+                      color: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
+                      border: isEditRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
+                      borderColor: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                      backgroundColor: isEditRiderTiersHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease'
+                    } as React.CSSProperties}
+                  >
+                    <span style={{ color: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                      Edit
+                    </span>
+                  </button>
+                )}
+                {isMobile && (
+                  openSections.rider ? (
+                    <CaretUp size={16} style={{ color: 'var(--bw-text)' }} />
+                  ) : (
+                    <CaretDown size={16} style={{ color: 'var(--bw-text)' }} />
+                  )
+                )}
+              </div>
             </div>
             {openSections.rider && (
             <div className="bw-form-grid" style={{ 
@@ -1241,7 +1654,7 @@ export default function TenantSettings() {
                 }}>
                   Rider Tiers Enabled
                 </label>
-                {editingSettings ? (
+                {editingRiderTiers ? (
                   <select 
                     className="bw-input" 
                     value={editedSettings?.rider_tiers_enabled ? 'true' : 'false'} 
@@ -1278,16 +1691,149 @@ export default function TenantSettings() {
           </div>
 
           {/* Booking Configuration */}
-          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
-            <h4 style={{ 
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)', paddingTop: 'clamp(24px, 4vw, 32px)' }}>
+            <div style={{ 
               margin: '0 0 clamp(12px, 2vw, 16px) 0', 
-              fontSize: 'clamp(14px, 2vw, 16px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300,
-              color: 'var(--bw-text)'
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              gap: 'clamp(8px, 1.5vw, 12px)'
             }}>
-              Booking Configuration
-            </h4>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ 
+                  margin: 0, 
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-text)',
+                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                }}>
+                  Booking Configuration
+                </h4>
+                <p style={{
+                  margin: 0,
+                  fontSize: 'clamp(11px, 1.3vw, 13px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  lineHeight: 1.4
+                }}>
+                  You can manipulate the price in{' '}
+                  <a
+                    href="/tenant/settings/pricing"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate('/tenant/settings/pricing')
+                    }}
+                    style={{
+                      color: 'rgba(155, 97, 209, 0.81)',
+                      textDecoration: 'underline',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Pricing Settings
+                  </a>
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+                {editingBookingConfig ? (
+                  <>
+                    <button 
+                      className={`bw-btn-outline ${isCancelBookingConfigHovered ? 'custom-hover-border' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleCancelBookingConfig(); }}
+                      onMouseEnter={() => !savingBookingConfig && setIsCancelBookingConfigHovered(true)}
+                      onMouseLeave={() => setIsCancelBookingConfigHovered(false)}
+                      disabled={savingBookingConfig}
+                      style={{
+                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 300,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                        justifyContent: 'center',
+                        borderRadius: 7,
+                        color: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
+                        border: isCancelBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
+                        borderColor: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                        backgroundColor: isCancelBookingConfigHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease'
+                      } as React.CSSProperties}
+                    >
+                      <span style={{ color: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                        Cancel
+                      </span>
+                    </button>
+                    <button 
+                      className={`bw-btn bw-btn-action ${isSaveBookingConfigHovered ? 'custom-hover-border' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); handleSaveBookingConfig(); }}
+                      onMouseEnter={() => !savingBookingConfig && setIsSaveBookingConfigHovered(true)}
+                      onMouseLeave={() => setIsSaveBookingConfigHovered(false)}
+                      disabled={savingBookingConfig}
+                      style={{
+                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                        justifyContent: 'center',
+                        borderRadius: 7,
+                        backgroundColor: isSaveBookingConfigHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
+                        color: isSaveBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
+                        border: isSaveBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
+                        borderColor: isSaveBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                        boxSizing: 'border-box',
+                        transition: 'all 0.2s ease'
+                      } as React.CSSProperties}
+                    >
+                      {savingBookingConfig ? (
+                        <span>Saving...</span>
+                      ) : (
+                        <>
+                          <FloppyDisk size={16} style={{ 
+                            width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                            height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
+                          }} />
+                          <span>Save</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    className={`bw-btn-outline ${isEditBookingConfigHovered ? 'custom-hover-border' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setEditingBookingConfig(true); }}
+                    onMouseEnter={() => setIsEditBookingConfigHovered(true)}
+                    onMouseLeave={() => setIsEditBookingConfigHovered(false)}
+                    style={{
+                      padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
+                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontWeight: 300,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                      justifyContent: 'center',
+                      borderRadius: 7,
+                      color: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
+                      border: isEditBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
+                      borderColor: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                      backgroundColor: isEditBookingConfigHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease'
+                    } as React.CSSProperties}
+                  >
+                    <span style={{ color: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                      Edit
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="bw-form-grid" style={{ 
               display: 'grid', 
               gap: 'clamp(12px, 2vw, 16px)', 
@@ -1305,7 +1851,7 @@ export default function TenantSettings() {
                 }}>
                   Allow Guest Bookings
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <select 
                     className="bw-input" 
                     value={editedSettings?.config?.booking?.allow_guest_bookings ? 'true' : 'false'} 
@@ -1347,7 +1893,7 @@ export default function TenantSettings() {
                 }}>
                   Show Vehicle Images
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <select 
                     className="bw-input" 
                     value={editedSettings?.config?.booking?.show_vehicle_images ? 'true' : 'false'} 
@@ -1379,132 +1925,200 @@ export default function TenantSettings() {
                   </span>
                 )}
               </div>
-              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
-                }}>
-                  Airport - Deposit Required
-                </label>
-                {editingSettings ? (
-                  <select 
-                    className="bw-input" 
-                    value={editedSettings?.config?.booking?.types?.airport?.is_deposit_required ? 'true' : 'false'} 
-                    onChange={(e) => handleConfigChange(['booking', 'types', 'airport', 'is_deposit_required'], e.target.value === 'true')}
-                    style={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box',
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      borderRadius: 0,
-                      color: 'var(--bw-text)',
-                      backgroundColor: 'var(--bw-bg)',
-                      border: '1px solid var(--bw-border)'
-                    }}
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                ) : (
-                  <span className="bw-info-value" style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
+              {/* Dynamically render all service types */}
+              {Object.keys(editedSettings?.config?.booking?.types || tenantConfig.settings?.config?.booking?.types || {}).map((typeKey) => (
+                <div key={typeKey} className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
+                  <label className="bw-form-label small-muted" style={{
+                    fontSize: 'clamp(11px, 1.3vw, 13px)',
                     fontFamily: '"Work Sans", sans-serif',
                     fontWeight: 300,
-                    color: 'var(--bw-text)'
+                    color: 'var(--bw-muted)',
+                    marginBottom: 'clamp(4px, 0.8vw, 6px)'
                   }}>
-                    {tenantConfig.settings?.config?.booking?.types?.airport?.is_deposit_required ? 'Yes' : 'No'}
-                  </span>
-                )}
-              </div>
-              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
-                }}>
-                  Dropoff - Deposit Required
-                </label>
-                {editingSettings ? (
-                  <select 
-                    className="bw-input" 
-                    value={editedSettings?.config?.booking?.types?.dropoff?.is_deposit_required ? 'true' : 'false'} 
-                    onChange={(e) => handleConfigChange(['booking', 'types', 'dropoff', 'is_deposit_required'], e.target.value === 'true')}
-                    style={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box',
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                    {formatServiceTypeName(typeKey)} - Deposit Required
+                  </label>
+                  {editingBookingConfig ? (
+                    <select 
+                      className="bw-input" 
+                      value={editedSettings?.config?.booking?.types?.[typeKey]?.is_deposit_required ? 'true' : 'false'} 
+                      onChange={(e) => handleConfigChange(['booking', 'types', typeKey, 'is_deposit_required'], e.target.value === 'true')}
+                      style={{
+                        width: '100%',
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                        fontSize: 'clamp(12px, 1.5vw, 14px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        borderRadius: 0,
+                        color: 'var(--bw-text)',
+                        backgroundColor: 'var(--bw-bg)',
+                        border: '1px solid var(--bw-border)'
+                      }}
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  ) : (
+                    <span className="bw-info-value" style={{
                       fontSize: 'clamp(12px, 1.5vw, 14px)',
                       fontFamily: '"Work Sans", sans-serif',
-                      borderRadius: 0,
-                      color: 'var(--bw-text)',
-                      backgroundColor: 'var(--bw-bg)',
-                      border: '1px solid var(--bw-border)'
-                    }}
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                ) : (
-                  <span className="bw-info-value" style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-text)'
-                  }}>
-                    {tenantConfig.settings?.config?.booking?.types?.dropoff?.is_deposit_required ? 'Yes' : 'No'}
-                  </span>
-                )}
-              </div>
-              <div className="bw-form-group" style={{ width: '100%', minWidth: 0 }}>
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                      fontWeight: 300,
+                      color: 'var(--bw-text)'
+                    }}>
+                      {tenantConfig.settings?.config?.booking?.types?.[typeKey]?.is_deposit_required ? 'Yes' : 'No'}
+                    </span>
+                  )}
+                </div>
+              ))}
+              
+              {/* Add Service Button - Only show when editing */}
+              {editingBookingConfig && (
+                <div className="bw-form-group" style={{ 
+                  width: '100%', 
+                  minWidth: 0,
+                  gridColumn: isMobile ? 'span 1' : 'span 2'
                 }}>
-                  Hourly - Deposit Required
-                </label>
-                {editingSettings ? (
-                  <select 
-                    className="bw-input" 
-                    value={editedSettings?.config?.booking?.types?.hourly?.is_deposit_required ? 'true' : 'false'} 
-                    onChange={(e) => handleConfigChange(['booking', 'types', 'hourly', 'is_deposit_required'], e.target.value === 'true')}
-                    style={{
-                      width: '100%',
-                      maxWidth: '100%',
-                      boxSizing: 'border-box',
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      borderRadius: 0,
-                      color: 'var(--bw-text)',
-                      backgroundColor: 'var(--bw-bg)',
-                      border: '1px solid var(--bw-border)'
-                    }}
-                  >
-                    <option value="true">Yes</option>
-                    <option value="false">No</option>
-                  </select>
-                ) : (
-                  <span className="bw-info-value" style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-text)'
-                  }}>
-                    {tenantConfig.settings?.config?.booking?.types?.hourly?.is_deposit_required ? 'Yes' : 'No'}
-                  </span>
-                )}
-              </div>
+                  {!showAddServiceInput ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddServiceInput(true)}
+                        style={{
+                          padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                          fontSize: 'clamp(12px, 1.5vw, 14px)',
+                          fontFamily: '"Work Sans", sans-serif',
+                          fontWeight: 400,
+                          borderRadius: 7,
+                          border: '1px dashed var(--bw-border)',
+                          backgroundColor: 'var(--bw-bg)',
+                          color: 'var(--bw-text)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 'clamp(6px, 1vw, 8px)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(155, 97, 209, 0.81)'
+                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--bw-border)'
+                          e.currentTarget.style.backgroundColor = 'var(--bw-bg)'
+                        }}
+                      >
+                        <span style={{ fontSize: 'clamp(16px, 2vw, 18px)' }}>+</span>
+                        <span>Add Service</span>
+                      </button>
+                      <span style={{
+                        fontSize: 'clamp(10px, 1.2vw, 12px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 300,
+                        color: 'var(--bw-muted)',
+                        fontStyle: 'italic'
+                      }}>
+                        Add a new service type to your booking configuration
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: 'clamp(8px, 1.5vw, 12px)',
+                      padding: 'clamp(12px, 2vw, 16px)',
+                      border: '1px solid var(--bw-border)',
+                      borderRadius: 7,
+                      backgroundColor: 'var(--bw-bg-secondary)'
+                    }}>
+                      <label className="bw-form-label small-muted" style={{
+                        fontSize: 'clamp(11px, 1.3vw, 13px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 300,
+                        color: 'var(--bw-muted)',
+                        marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                      }}>
+                        Service Name
+                      </label>
+                      <input
+                        type="text"
+                        className="bw-input"
+                        value={newServiceName}
+                        onChange={(e) => setNewServiceName(e.target.value)}
+                        placeholder="e.g., Event Dropoff, Point to Point"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddNewService()
+                          } else if (e.key === 'Escape') {
+                            setShowAddServiceInput(false)
+                            setNewServiceName('')
+                          }
+                        }}
+                        autoFocus
+                        style={{
+                          width: '100%',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
+                          padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                          fontSize: 'clamp(12px, 1.5vw, 14px)',
+                          fontFamily: '"Work Sans", sans-serif',
+                          borderRadius: 0,
+                          color: 'var(--bw-text)',
+                          backgroundColor: 'var(--bw-bg)',
+                          border: '1px solid var(--bw-border)'
+                        }}
+                      />
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: 'clamp(8px, 1.5vw, 12px)',
+                        alignItems: 'center'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={handleAddNewService}
+                          disabled={!newServiceName.trim()}
+                          style={{
+                            padding: 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)',
+                            fontSize: 'clamp(12px, 1.5vw, 14px)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 600,
+                            borderRadius: 7,
+                            border: 'none',
+                            backgroundColor: !newServiceName.trim() ? 'var(--bw-muted)' : 'var(--bw-accent)',
+                            color: '#ffffff',
+                            cursor: !newServiceName.trim() ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s ease',
+                            opacity: !newServiceName.trim() ? 0.6 : 1
+                          }}
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddServiceInput(false)
+                            setNewServiceName('')
+                          }}
+                          style={{
+                            padding: 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)',
+                            fontSize: 'clamp(12px, 1.5vw, 14px)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 300,
+                            borderRadius: 7,
+                            border: '1px solid var(--bw-border)',
+                            backgroundColor: 'var(--bw-bg)',
+                            color: 'var(--bw-text)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1536,7 +2150,7 @@ export default function TenantSettings() {
                 }}>
                   Button Radius
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <input 
                     className="bw-input" 
                     type="number" 
@@ -1578,7 +2192,7 @@ export default function TenantSettings() {
                 }}>
                   Font Family
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <input 
                     className="bw-input" 
                     type="text" 
@@ -1640,7 +2254,7 @@ export default function TenantSettings() {
                 }}>
                   VIP Profiles
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <select 
                     className="bw-input" 
                     value={editedSettings?.config?.features?.vip_profiles ? 'true' : 'false'} 
@@ -1682,7 +2296,7 @@ export default function TenantSettings() {
                 }}>
                   Show Loyalty Banner
                 </label>
-                {editingSettings ? (
+                {editingBookingConfig ? (
                   <select 
                     className="bw-input" 
                     value={editedSettings?.config?.features?.show_loyalty_banner ? 'true' : 'false'} 
@@ -1734,7 +2348,7 @@ export default function TenantSettings() {
               fontFamily: '"Work Sans", sans-serif',
               fontWeight: 300
             }}>
-              <Clock className="w-4 h-4" style={{ color: 'var(--bw-muted)' }} />
+              <Clock size={16} style={{ color: 'var(--bw-muted)' }} />
               Last updated: Never
             </div>
           </div>

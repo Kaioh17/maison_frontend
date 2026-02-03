@@ -13,14 +13,19 @@ export async function getDriverInfo() {
   return data
 }
 
-export async function getAvailableRides(params?: { country?: string; service_type?: string }) {
+export async function getAvailableRides(params?: { country?: string; service_type?: string; limit?: number; booking_status?: string }) {
   const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/bookings/', {
     params,
   })
   return data
 }
 
-export async function respondToRide(bookingId: number, action: 'confirm' | 'cancelled' | 'completed', approveAction: boolean = true) {
+export async function getUpcomingRides() {
+  const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/driver/upcoming/rides')
+  return data
+}
+
+export async function respondToRide(bookingId: number, action: 'confirmed' | 'cancelled' | 'completed', approveAction: boolean = true) {
   const { data } = await http.patch<StandardResponse<RideDecisionResponse>>(`/v1/driver/ride/${bookingId}/decision`, null, {
     params: { action, approve_action: approveAction },
   })
@@ -44,6 +49,19 @@ export async function updateDriverStatus(isActive: boolean) {
   const { data } = await http.patch<StandardResponse<{ is_active: boolean }>>('/v1/driver/status', null, {
     params: { is_active: isActive },
   })
+  return data
+}
+
+export type BookingAnalytics = {
+  confirmed: number
+  completed: number
+  cancelled: number
+  pending: number
+  total: number
+}
+
+export async function getBookingAnalytics() {
+  const { data } = await http.get<StandardResponse<BookingAnalytics>>('/v1/driver/booking/analytics')
   return data
 }
 
@@ -73,7 +91,7 @@ export type RiderDriverResponse = {
 
 export type RideDecisionResponse = {
   booking_id: number
-  ride_status: 'confirm' | 'cancelled'
+  ride_status: 'confirmed' | 'cancelled'
 }
 
 export type DriverCreate = {

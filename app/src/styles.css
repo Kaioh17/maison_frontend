@@ -1,3 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Global base */
 html, body { height: 100%; }
 body { 
@@ -69,17 +77,17 @@ body {
 
 /* Light Theme */
 [data-theme="light"] {
-  --bw-bg: #ffffff;
-  --bw-fg: #1f2937;
-  --bw-text: #1f2937;
-  --bw-muted: #6b7280;
-  --bw-border: rgba(0,0,0,0.12);
-  --bw-border-strong: rgba(0,0,0,0.2);
+  --bw-bg: #f8fafc; /* slate-50 */
+  --bw-fg: #0f172a; /* slate-900 */
+  --bw-text: #0f172a; /* slate-900 */
+  --bw-muted: #64748b; /* slate-500 */
+  --bw-border: #e2e8f0; /* slate-200 */
+  --bw-border-strong: #cbd5e1; /* slate-300 */
   --bw-focus: #3b82f6;
-  --bw-shadow: 0 6px 24px rgba(0,0,0,0.1);
+  --bw-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
   --bw-bg-hover: rgba(0,0,0,0.02);
   --bw-bg-hover-strong: rgba(0,0,0,0.05);
-  --bw-bg-secondary: #f9fafb;
+  --bw-bg-secondary: #ffffff; /* white */
   --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
   --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
 }
@@ -87,17 +95,17 @@ body {
 /* Auto Theme - Follows system preference */
 @media (prefers-color-scheme: light) {
   [data-theme="auto"] {
-    --bw-bg: #ffffff;
-    --bw-fg: #1f2937;
-    --bw-text: #1f2937;
-    --bw-muted: #6b7280;
-    --bw-border: rgba(0,0,0,0.12);
-    --bw-border-strong: rgba(0,0,0,0.2);
+    --bw-bg: #f8fafc; /* slate-50 */
+    --bw-fg: #0f172a; /* slate-900 */
+    --bw-text: #0f172a; /* slate-900 */
+    --bw-muted: #64748b; /* slate-500 */
+    --bw-border: #e2e8f0; /* slate-200 */
+    --bw-border-strong: #cbd5e1; /* slate-300 */
     --bw-focus: #3b82f6;
-    --bw-shadow: 0 6px 24px rgba(0,0,0,0.1);
+    --bw-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
     --bw-bg-hover: rgba(0,0,0,0.02);
     --bw-bg-hover-strong: rgba(0,0,0,0.05);
-    --bw-bg-secondary: #f9fafb;
+    --bw-bg-secondary: #ffffff; /* white */
     --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
     --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
   }
@@ -865,4 +873,132 @@ body[data-theme="dark"] {
 /* Keep company name at weight 200 */
 .bw h1[style*="DM Sans"] {
   font-weight: 200 !important;
+}
+
+/* Booking Filters Responsive Styles */
+.booking-filters-container {
+  display: flex;
+  gap: clamp(6px, 1vw, 12px);
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Ensure dropdown menus don't overflow viewport */
+.booking-filter-select {
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Mobile: Keep in one line with flexible sizing (< 640px) */
+@media (max-width: 639px) {
+  .booking-filters-container {
+    gap: 8px;
+  }
+  
+  .booking-filter-select {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: clamp(11px, 2vw, 13px);
+    padding: clamp(6px, 1.5vw, 10px) !important;
+  }
+  
+  .booking-filter-vehicle {
+    flex: 1.5 1 0;
+    min-width: 0;
+  }
+}
+
+/* Tablet: Keep in one line with balanced sizing (640px - 767px) */
+@media (min-width: 640px) and (max-width: 767px) {
+  .booking-filters-container {
+    gap: 10px;
+  }
+  
+  .booking-filter-select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  
+  .booking-filter-vehicle {
+    flex: 1.3 1 0;
+    min-width: 0;
+  }
+}
+
+/* Desktop: Keep single line horizontal layout (>= 768px) */
+@media (min-width: 768px) {
+  .booking-filters-container {
+    flex-wrap: nowrap;
+    gap: clamp(8px, 1.5vw, 12px);
+    margin-left: auto;
+    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+  }
+  
+  .booking-filter-select {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  
+  .booking-filter-vehicle {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+/* Large screens: Search bar 45% width, filters aligned right */
+@media (min-width: 1024px) {
+  .booking-search-filters-wrapper {
+    justify-content: flex-start;
+    overflow: hidden;
+    max-width: 100%;
+  }
+  
+  .booking-search-container {
+    max-width: 45% !important;
+    flex: 0 0 45% !important;
+    width: 45% !important;
+    min-width: 0;
+  }
+  
+  .booking-filters-container {
+    margin-left: auto;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(55% - 12px);
+    overflow: hidden;
+    gap: 8px;
+  }
+  
+  .booking-filter-select {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .booking-filter-vehicle {
+    flex: 0 1 auto !important;
+    min-width: 120px !important;
+    max-width: 180px !important;
+  }
+}
+
+/* Truncate long vehicle names in dropdown options */
+.booking-filter-select option {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 90vw;
 } 

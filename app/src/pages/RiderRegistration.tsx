@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight } from 'lucide-react'
+import { Eye, EyeSlash, Envelope, Lock, User, Phone, MapPin, ArrowRight } from '@phosphor-icons/react'
 import { createUser } from '@api/user'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
@@ -7,6 +7,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
+import StateAutocomplete from '@components/StateAutocomplete'
+import CityAutocomplete from '@components/CityAutocomplete'
 
 export default function RiderRegistration() {
   useFavicon()
@@ -29,8 +31,7 @@ export default function RiderRegistration() {
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const [searchParams] = useSearchParams()
-  const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
-  const tenantId = searchParams.get('tenant_id') || tenantInfo?.tenant_id?.toString() || ''
+  const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
   
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
@@ -130,7 +131,21 @@ export default function RiderRegistration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tenantId) {
+    
+    // Wait for tenant info to load
+    if (tenantLoading) {
+      setError('Loading tenant information...')
+      return
+    }
+    
+    // Check if we have tenant info but no slug
+    if (tenantInfo && !slug) {
+      console.error('Tenant info loaded but slug is missing:', { tenantInfo })
+      setError('Unable to determine tenant slug. Please refresh the page or contact support.')
+      return
+    }
+    
+    if (!slug) {
       setError('Tenant information is required. Please access this page with a valid tenant slug.')
       return
     }
@@ -143,7 +158,7 @@ export default function RiderRegistration() {
       const phoneDigits = formData.phone_no.replace(/\D/g, '')
       
       // Create user
-      await createUser(tenantId, {
+      await createUser(slug, {
         email: formData.email,
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -194,8 +209,8 @@ export default function RiderRegistration() {
     )
   }
 
-  // Show error if tenant not found
-  if (!tenantInfo && !tenantId) {
+  // Show error if tenant not found (after loading completes)
+  if (!tenantLoading && !tenantInfo && !slug) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -399,7 +414,7 @@ export default function RiderRegistration() {
 
             <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
             <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-              <Mail size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+              <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
               <input 
                 id="email" 
                 name="email" 
@@ -451,28 +466,22 @@ export default function RiderRegistration() {
               <label className="small-muted" htmlFor="state" style={{ fontFamily: 'Work Sans, sans-serif' }}>State</label>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <input 
-                id="city" 
-                name="city" 
-                type="text" 
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="New York" 
+              <CityAutocomplete
                 value={formData.city}
-                onChange={handleInputChange} 
+                onChange={(value) => setFormData({ ...formData, city: value })}
+                selectedState={formData.state}
+                placeholder="New York"
+                className="bw-input"
+                style={{ padding: '16px 18px', borderRadius: 0 }}
+                required
               />
-              <input 
-                id="state" 
-                name="state" 
-                type="text" 
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="NY" 
+              <StateAutocomplete
                 value={formData.state}
-                onChange={handleInputChange}
-                maxLength={2}
+                onChange={(value) => setFormData({ ...formData, state: value, city: '' })}
+                placeholder="NY"
+                className="bw-input"
+                style={{ padding: '16px 18px', borderRadius: 0 }}
+                required
               />
             </div>
 
@@ -499,7 +508,7 @@ export default function RiderRegistration() {
                 placeholder="10001" 
                 value={formData.postal_code}
                 onChange={handleInputChange}
-                maxLength={10}
+                maxLength={5}
               />
             </div>
 
@@ -523,7 +532,7 @@ export default function RiderRegistration() {
                 onClick={() => setShowPassword(!showPassword)} 
                 style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
 

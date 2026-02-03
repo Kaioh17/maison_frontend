@@ -1,466 +1,395 @@
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
-import './landing.css'
+import { motion } from 'framer-motion'
+import { 
+  FileText, 
+  Car, 
+  CurrencyDollar, 
+  Link as LinkIcon, 
+  DeviceMobile, 
+  NavigationArrow, 
+  Star, 
+  CheckCircle, 
+  XCircle 
+} from '@phosphor-icons/react'
+import driverDashboardImage from '../images/driver_dashboard(!).jpg'
+import laptopDashboardImage from '../images/laptop_dashboard.png'
 
+// Animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 30 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, ease: 'easeOut' }
+}
+
+const fadeIn = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  transition: { duration: 0.8, ease: 'easeOut' }
+}
+
+const staggerChildren = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+// Header Component
 function Header() {
   return (
-    <header className="bw-topnav" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, background: 'transparent', borderBottom: 'none' }}>
-      <div className="bw-container bw-topnav-inner" role="navigation" aria-label="Main" style={{ padding: `clamp(12px, 2vw, 16px) clamp(8px, 1.5vw, 16px) clamp(16px, 3vw, 24px)` }}>
-        <div className="bw-brand" style={{ 
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 'clamp(24px, 3vw, 32px)',
-          color: 'var(--bw-text)',
-          marginLeft: 0,
-          paddingLeft: 0
-        }}>Maison</div>
-        <nav className="bw-nav" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-          <a href="#product" style={{ color: 'var(--bw-text)' }}>Product</a>
-          <a href="#pricing" style={{ color: 'var(--bw-text)' }}>Pricing</a>
-          <a href="#docs" style={{ color: 'var(--bw-text)' }}>Docs</a>
+    <motion.header
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="fixed top-0 left-0 right-0 z-50"
+    >
+      <div className="max-w-7xl mx-auto px-19 py-4 flex items-center justify-between">
+        <div className="text-2xl font-medium text-white" style={{ fontFamily: "'Bodoni Moda', serif" }}>
+          Maison
+        </div>
+        <nav className="hidden md:flex items-center gap-8" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+          <a href="#platform" className="text-gray-300 hover:text-white transition-colors">Product</a>
+          <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
+          <a href="#mission" className="text-gray-300 hover:text-white transition-colors">About</a>
+          <a href="#footer" className="text-gray-300 hover:text-white transition-colors">Company</a>
         </nav>
-        <div className="bw-cta">
-          <Link to="/tenant/login" className="bw-btn-outline" aria-label="Login">Login</Link>
-          <Link to="/signup" className="bw-btn" aria-label="Get started">Get started</Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/tenant/login"
+            className="text-gray-300 hover:text-white transition-colors"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Login
+          </Link>
+          <Link
+            to="/signup"
+            className="px-6 py-2 bg-[#8b5cf6] text-white rounded-lg font-semibold hover:bg-[#7c3aed] transition-colors"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Get Started
+          </Link>
         </div>
-        <button className="bw-menu" aria-label="Open menu" style={{ color: 'var(--bw-text)', borderColor: 'var(--bw-border-strong)' }}>≡</button>
       </div>
-    </header>
+    </motion.header>
   )
 }
 
-function FullScreenHero() {
+// Placeholder Component for Videos/Dashboards
+function Placeholder({ label, type = 'video' }: { label: string; type?: 'video' | 'dashboard' }) {
   return (
-    <section className="landing-hero-fullscreen" aria-labelledby="hero-title">
-      <img 
-        src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
-        alt="Luxury black sedan on elegant road" 
-        className="landing-hero-image"
-      />
-      <div className="landing-hero-overlay"></div>
-      <div className="landing-hero-content">
-        <h1 id="hero-title">Run Your Fleet. Your Brand. Your Way.</h1>
-        <p>Run your limo business your way — bookings, drivers, payments, and branding all in one simple, scalable platform.</p>
-        <div className="landing-hero-buttons">
-          <Link to="/signup" className="bw-btn" aria-label="Get started">Get started</Link>
-          <a href="#demo" className="bw-btn-outline" aria-label="See demo">See demo</a>
+    <div className="relative w-full h-full bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-lg overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#8b5cf6] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400 text-sm font-medium" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+            {type === 'video' ? 'Demo Video:' : 'Dashboard:'}
+          </p>
+          <p className="text-gray-500 text-xs mt-1" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+            {label}
+          </p>
         </div>
       </div>
-    </section>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+    </div>
   )
 }
 
-
-function Features() {
-  const items = [
-    { title: 'Easy company registration', desc: 'Get your ride-sharing business up and running quickly with streamlined onboarding.', link: '#', icon: '🏢' },
-    { title: 'Register vehicles & drivers', desc: 'Add your fleet and team members with just one click for efficient management.', link: '#', icon: '🚗' },
-    { title: 'Flexible pricing setup', desc: 'Configure pricing models including per hour, per mile, base fares, and more.', link: '#', icon: '💰' },
-    { title: 'Custom branded experience', desc: 'Configure your own branded site and booking flow to match your brand.', link: '#', icon: '🎨' },
-    { title: 'Scalable growth plans', desc: 'Upgrade plans as your team grows, from solo driver to growing fleet.', link: '#', icon: '📈' },
-  ]
+// Slide 1: Hero
+function HeroSlide() {
   return (
-    <section id="product" className="section bw-container" aria-label="Key features" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 4vw, 32px)' }}>
-        <h2 style={{ 
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 'clamp(28px, 4vw, 40px)',
-          fontWeight: 200,
-          color: 'var(--bw-text)',
-          marginBottom: 'clamp(12px, 2vw, 16px)'
-        }}>Everything You Need. Nothing You Don't</h2>
-        <p className="small-muted" style={{ 
-          textAlign: 'center', 
-          marginBottom: 'clamp(16px, 3vw, 24px)', 
-          fontSize: 'clamp(14px, 2vw, 16px)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>
-          Maison scales with you — from solo driver to growing fleet.
-        </p>
+    <section className="h-screen flex items-center justify-center relative snap-start overflow-hidden">
+      {/* Deep slate-to-black radial gradient background */}
+      <div className="absolute inset-0 bg-black">
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse at top left, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
+              radial-gradient(ellipse at top right, rgba(15, 23, 42, 0.3) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, rgba(30, 41, 59, 0.2) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom left, rgba(15, 23, 42, 0.3) 0%, transparent 50%),
+              #000000
+            `
+          }}
+        ></div>
       </div>
-      <div className="bw-grid-3" style={{ gap: 'clamp(16px, 3vw, 24px)' }}>
-        {items.map((it) => (
-          <article key={it.title} className="bw-card" role="article" style={{ 
-            padding: 'clamp(16px, 3vw, 24px)',
-            borderRadius: 0
-          }}>
-            <div style={{ 
-              width: 'clamp(28px, 3vw, 32px)', 
-              height: 'clamp(28px, 3vw, 32px)', 
-              marginBottom: 'clamp(12px, 2vw, 16px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--bw-accent)'
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                {it.title === 'Easy company registration' && (
-                  <path d="M3 21h18M9 7h6M9 11h6M9 15h6M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
-                )}
-                {it.title === 'Register vehicles & drivers' && (
-                  <>
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="9" cy="10" r="2"/>
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                  </>
-                )}
-                {it.title === 'Flexible pricing setup' && (
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                )}
-                {it.title === 'Custom branded experience' && (
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                )}
-                {it.title === 'Scalable growth plans' && (
-                  <path d="M3 3v18h18M8 12l3 3 5-5"/>
-                )}
-              </svg>
+      
+      <div className="relative z-10 w-full px-8">
+        <div className="max-w-[1280px] mx-auto grid md:grid-cols-2 gap-12 items-center">
+          {/* Left half: Text */}
+          <motion.div
+            initial="initial"
+            animate="animate"
+            variants={staggerChildren}
+            className="text-left"
+          >
+            <motion.h1
+              {...fadeInUp}
+              className="text-[72px] font-light text-white mb-4 leading-tight"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Run Your Fleet. Own The Experience.
+            </motion.h1>
+            <motion.p
+              {...fadeInUp}
+              className="text-[16px] text-[#8b5cf6] uppercase tracking-wider mb-6 font-medium"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Modern limo software for operators who think like brands.
+            </motion.p>
+            <motion.p
+              {...fadeInUp}
+              className="text-[18px] text-gray-300 mb-8 leading-relaxed"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Maison centralizes bookings, drivers, payments, and branding into one clean platform built for black car and limo businesses. Launch fast, operate with confidence, and deliver a level of service that looks and feels as premium as the rides you provide.
+            </motion.p>
+            <motion.div
+              {...fadeInUp}
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <Link
+                to="/signup"
+                className="px-8 py-4 bg-[#8b5cf6] text-white rounded-lg font-semibold text-lg hover:bg-[#7c3aed] transition-all transform hover:scale-105 text-center"
+                style={{ fontFamily: "'Work Sans', sans-serif" }}
+              >
+                Get Started
+              </Link>
+              <a
+                href="#platform"
+                className="px-8 py-4 border-2 border-gray-700 text-white rounded-lg font-semibold text-lg hover:border-[#8b5cf6] hover:text-[#8b5cf6] transition-all text-center"
+                style={{ fontFamily: "'Work Sans', sans-serif" }}
+              >
+                See Demo
+              </a>
+            </motion.div>
+          </motion.div>
+
+          {/* Right half: Glassmorphism Dashboard Preview */}
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true }}
+            variants={fadeIn}
+            className="hidden md:block"
+          >
+            <div className="relative">
+              {/* Glassmorphism card */}
+              <div 
+                className="rounded-2xl p-6 backdrop-blur-xl border border-white/10 shadow-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                }}
+              >
+                <div className="text-white mb-4 text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                  Main Dashboard Preview
+                </div>
+                
+                {/* Revenue Chart */}
+                <div className="bg-black/40 rounded-lg p-4 mb-4 border border-white/5">
+                  <div className="text-gray-400 text-xs mb-3" style={{ fontFamily: "'Work Sans', sans-serif" }}>Revenue (Last 7 Days)</div>
+                  <div className="flex items-end gap-2 h-24">
+                    {[65, 45, 80, 55, 90, 70, 85].map((height, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center">
+                        <div 
+                          className="w-full bg-gradient-to-t from-[#8b5cf6] to-[#7c3aed] rounded-t"
+                          style={{ height: `${height}%` }}
+                        ></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recent Bookings List */}
+                <div className="bg-black/40 rounded-lg p-4 border border-white/5">
+                  <div className="text-gray-400 text-xs mb-3" style={{ fontFamily: "'Work Sans', sans-serif" }}>Recent Bookings</div>
+                  <div className="space-y-2">
+                    {['Airport Transfer', 'Corporate Event', 'Wedding Service'].map((booking, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm text-gray-300 py-2 border-b border-white/5 last:border-0" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                        <span>{booking}</span>
+                        <span className="text-[#8b5cf6]">${(i + 1) * 150}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 style={{ 
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 'clamp(18px, 2.5vw, 22px)',
-              fontWeight: 400,
-              color: 'var(--bw-text)',
-              marginBottom: 'clamp(8px, 1.5vw, 12px)'
-            }}>{it.title}</h3>
-            <p className="small-muted" style={{ 
-              marginTop: 'clamp(6px, 1vw, 8px)',
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: 'clamp(13px, 1.8vw, 15px)'
-            }}>{it.desc}</p>
-            <a href={it.link} className="small-muted" style={{ 
-              marginTop: 'clamp(10px, 2vw, 12px)', 
-              display: 'inline-block',
-              fontFamily: "'Work Sans', sans-serif"
-            }} aria-label={`${it.title} — learn more`}>
-              Learn more
-            </a>
-          </article>
-        ))}
+          </motion.div>
+        </div>
       </div>
     </section>
   )
 }
 
-function DriverFeatures() {
-  const driverFeatures = [
-    { 
-      title: 'Self-service onboarding', 
-      desc: 'Drivers can join via secure links without complex paperwork or waiting for admin approval.',
-      icon: 'link'
-    },
-    { 
-      title: 'Flexible documentation', 
-      desc: 'Upload vehicle & document info for outsourced drivers or personal details for in-house teams.',
-      icon: 'document'
-    },
-    { 
-      title: 'Real-time tracking', 
-      desc: 'Track jobs, pay, and tips in real time for complete transparency and better driver satisfaction.',
-      icon: 'tracking'
-    },
-    { 
-      title: 'Mobile-first design', 
-      desc: 'Mobile-friendly access without clunky dispatcher systems - drivers stay connected on the go.',
-      icon: 'mobile'
-    },
+// Slide 2: Scalability & Onboarding
+function PlatformSlide() {
+  const actionItems = [
+    'Launch in one day.',
+    'Invite with secure links.',
+    'Configure rates instantly.',
+    'Scale without migration.'
   ]
-  
-  const getIcon = (iconType: string) => {
-    switch (iconType) {
-      case 'link':
-        return <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>;
-      case 'document':
-        return <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>;
-      case 'tracking':
-        return <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>;
-      case 'mobile':
-        return <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>;
-      default:
-        return <circle cx="12" cy="12" r="10"/>;
-    }
-  };
 
   return (
-    <section className="section bw-container" aria-label="Driver-friendly features" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 4vw, 32px)' }}>
-        <h2 style={{ 
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 'clamp(28px, 4vw, 40px)',
-          fontWeight: 200,
-          color: 'var(--bw-text)',
-          marginBottom: 'clamp(12px, 2vw, 16px)'
-        }}>Driver-Friendly From Day One</h2>
-        <p className="small-muted" style={{ 
-          fontSize: 'clamp(14px, 2vw, 16px)', 
-          marginTop: 'clamp(8px, 1.5vw, 12px)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>
-          Your drivers aren't "assets" — they're users.
-        </p>
-      </div>
-      <div className="driver-features-grid" style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr',
-        gap: 'clamp(32px, 5vw, 64px)', 
-        alignItems: 'center', 
-        marginBottom: 'clamp(32px, 4vw, 48px)',
-        padding: 'clamp(24px, 3vw, 32px) 0'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'center',
-          gap: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <h3 style={{ 
-            fontSize: 'clamp(20px, 3vw, 24px)', 
-            marginBottom: 'clamp(12px, 2vw, 16px)', 
-            color: 'var(--bw-text)',
-            fontWeight: 400,
-            fontFamily: "'DM Sans', sans-serif"
-          }}>
-            Built for Professional Excellence
-          </h3>
-          <p style={{ 
-            fontSize: 'clamp(16px, 2.2vw, 18px)', 
-            lineHeight: '1.7', 
-            color: 'var(--bw-fg)',
-            marginBottom: 'clamp(12px, 2vw, 16px)',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>
-            Experience the difference of a platform designed specifically for luxury transportation professionals. 
-            Our driver-focused approach ensures your team has everything they need to deliver exceptional service.
-          </p>
-          <p style={{ 
-            fontSize: 'clamp(14px, 2vw, 16px)', 
-            lineHeight: '1.6', 
-            color: 'var(--bw-muted)',
-            fontStyle: 'italic',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>
-            From seamless onboarding to real-time operations, every feature is crafted with your drivers' success in mind.
-          </p>
-        </div>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <img 
-            src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-            alt="Gloved hand opening luxury car door - representing premium service" 
-            style={{ 
-              width: '100%', 
-              maxWidth: 'clamp(300px, 40vw, 500px)', 
-              borderRadius: 0,
-              boxShadow: 'var(--bw-shadow)'
-            }}
-          />
-        </div>
-      </div>
-      <div className="bw-grid-3" style={{ gap: 'clamp(16px, 3vw, 24px)' }}>
-        {driverFeatures.map((feature) => (
-          <article key={feature.title} className="bw-card" role="article" style={{ 
-            padding: 'clamp(16px, 3vw, 24px)',
-            borderRadius: 0
-          }}>
-            <div style={{ 
-              width: 'clamp(28px, 3vw, 32px)', 
-              height: 'clamp(28px, 3vw, 32px)', 
-              marginBottom: 'clamp(12px, 2vw, 16px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--bw-accent)'
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                {getIcon(feature.icon)}
-              </svg>
-            </div>
-            <h3 style={{ 
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 'clamp(18px, 2.5vw, 22px)',
-              fontWeight: 400,
-              color: 'var(--bw-text)',
-              marginBottom: 'clamp(8px, 1.5vw, 12px)'
-            }}>{feature.title}</h3>
-            <p className="small-muted" style={{ 
-              marginTop: 'clamp(6px, 1vw, 8px)',
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: 'clamp(13px, 1.8vw, 15px)'
-            }}>{feature.desc}</p>
-          </article>
-        ))}
+    <section id="platform" className="h-screen flex items-center justify-center bg-black snap-start">
+      <div className="max-w-[1280px] mx-auto px-8 w-full">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={staggerChildren}
+          className="text-left"
+        >
+          <motion.h2
+            variants={fadeInUp}
+            className="text-[48px] font-light text-white mb-4 leading-tight"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            From Solo Operator To Growing Fleet.
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-[16px] text-gray-400 mb-8"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Onboard in days, not months.
+          </motion.p>
+          <motion.ul
+            variants={staggerChildren}
+            className="space-y-4"
+          >
+            {actionItems.map((item, index) => (
+              <motion.li
+                key={index}
+                variants={fadeInUp}
+                className="flex items-start gap-3 text-[18px] text-slate-400"
+                style={{ fontFamily: "'Work Sans', sans-serif", lineHeight: '1.5' }}
+              >
+                <CheckCircle className="w-5 h-5 text-[#8b5cf6] flex-shrink-0 mt-1" weight="fill" />
+                <span>{item}</span>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
       </div>
     </section>
   )
 }
 
-function BookingExperience() {
-  const bookingFeatures = [
-    { 
-      title: 'Unique booking link', 
-      desc: 'Riders book through your branded page — not ours. Unique URL: maison.com/ride/{yourcompany}',
-      icon: 'link'
-    },
-    { 
-      title: 'Your brand, your way', 
-      desc: 'See your logo, your prices, your services. Complete white-label experience for your business.',
-      icon: 'brand'
-    },
-    { 
-      title: 'Simple 4-step process', 
-      desc: 'Select vehicle, set service type, choose pickup/drop-off, confirm & pay. Streamlined for riders.',
-      icon: 'process'
-    },
-    { 
-      title: 'Secure payments', 
-      desc: 'Cash or card payments with Stripe-secured transactions. Multiple payment options for convenience.',
-      icon: 'payment'
-    },
-    { 
-      title: 'Automated confirmations & reminders', 
-      desc: 'Keep riders informed with automatic booking confirmations, pickup reminders, and status updates.',
-      icon: 'notification'
-    },
+// Slide 3: Driver Experience
+function DriverExperienceSlide() {
+  const actionItems = [
+    'Mobile view of today\'s rides and pickups.',
+    'Live earnings and tips always visible.',
+    'Real-time status updates for everyone.',
+    'Transparent payouts reduce churn.'
   ]
-  
-  const getIcon = (iconType: string) => {
-    switch (iconType) {
-      case 'link':
-        return <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>;
-      case 'brand':
-        return <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>;
-      case 'process':
-        return <path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>;
-      case 'payment':
-        return <><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></>;
-      case 'notification':
-        return <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></>;
-      default:
-        return <circle cx="12" cy="12" r="10"/>;
-    }
-  };
 
   return (
-    <section className="section bw-container" aria-label="Smooth booking experience" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 4vw, 32px)' }}>
-        <h2 style={{ 
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 'clamp(28px, 4vw, 40px)',
-          fontWeight: 200,
-          color: 'var(--bw-text)',
-          marginBottom: 'clamp(12px, 2vw, 16px)'
-        }}>A Smooth Booking Experience</h2>
-        <p className="small-muted" style={{ 
-          fontSize: 'clamp(14px, 2vw, 16px)', 
-          marginTop: 'clamp(8px, 1.5vw, 12px)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>
-          Riders book through your branded page — not ours.
-        </p>
-      </div>
-      <div className="booking-features-grid" style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1fr',
-        gap: 'clamp(32px, 5vw, 64px)', 
-        alignItems: 'center', 
-        marginBottom: 'clamp(32px, 4vw, 48px)',
-        padding: 'clamp(24px, 3vw, 32px) 0'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <img 
-            src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
-            alt="Professional chauffeur holding car door open for passenger with suitcase" 
-            style={{ 
-              width: '100%', 
-              maxWidth: 'clamp(300px, 40vw, 400px)', 
-              maxHeight: 'clamp(300px, 40vw, 400px)', 
-              borderRadius: 0,
-              boxShadow: 'var(--bw-shadow)'
-            }}
-          />
-        </div>
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'center',
-          gap: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <h3 style={{ 
-            fontSize: 'clamp(20px, 3vw, 24px)', 
-            marginBottom: 'clamp(12px, 2vw, 16px)', 
-            color: 'var(--bw-text)',
-            fontWeight: 400,
-            fontFamily: "'DM Sans', sans-serif"
-          }}>
-            Seamless Rider Experience
-          </h3>
-          <p style={{ 
-            fontSize: 'clamp(16px, 2.2vw, 18px)', 
-            lineHeight: '1.7', 
-            color: 'var(--bw-fg)',
-            marginBottom: 'clamp(12px, 2vw, 16px)',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>
-            Create a booking experience that reflects your brand's excellence. Every touchpoint is designed to 
-            make riders feel confident and comfortable choosing your service.
-          </p>
-          <p style={{ 
-            fontSize: 'clamp(14px, 2vw, 16px)', 
-            lineHeight: '1.6', 
-            color: 'var(--bw-muted)',
-            fontStyle: 'italic',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>
-            From the first click to the final ride, your riders enjoy a premium, branded experience that builds loyalty.
-          </p>
-        </div>
-      </div>
-      <div className="bw-grid-3" style={{ gap: 'clamp(16px, 3vw, 24px)' }}>
-        {bookingFeatures.map((feature) => (
-          <article key={feature.title} className="bw-card" role="article" style={{ 
-            padding: 'clamp(16px, 3vw, 24px)',
-            borderRadius: 0
-          }}>
-            <div style={{ 
-              width: 'clamp(28px, 3vw, 32px)', 
-              height: 'clamp(28px, 3vw, 32px)', 
-              marginBottom: 'clamp(12px, 2vw, 16px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--bw-accent)'
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                {getIcon(feature.icon)}
-              </svg>
-            </div>
-            <h3 style={{ 
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 'clamp(18px, 2.5vw, 22px)',
-              fontWeight: 400,
-              color: 'var(--bw-text)',
-              marginBottom: 'clamp(8px, 1.5vw, 12px)'
-            }}>{feature.title}</h3>
-            <p className="small-muted" style={{ 
-              marginTop: 'clamp(6px, 1vw, 8px)',
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: 'clamp(13px, 1.8vw, 15px)'
-            }}>{feature.desc}</p>
-          </article>
-        ))}
+    <section className="h-screen flex items-center justify-center bg-gradient-to-b from-black via-gray-900 to-black snap-start">
+      <div className="max-w-[1280px] mx-auto px-8 w-full">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={staggerChildren}
+          className="text-left"
+        >
+          <motion.h2
+            variants={fadeInUp}
+            className="text-[48px] font-light text-white mb-4 leading-tight"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Give Drivers A Platform They Actually Like.
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-[16px] text-gray-400 mb-8"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Transparent, mobile-first, and built for trust.
+          </motion.p>
+          <motion.ul
+            variants={staggerChildren}
+            className="space-y-4"
+          >
+            {actionItems.map((item, index) => (
+              <motion.li
+                key={index}
+                variants={fadeInUp}
+                className="flex items-start gap-3 text-[18px] text-slate-400"
+                style={{ fontFamily: "'Work Sans', sans-serif", lineHeight: '1.5' }}
+              >
+                <CheckCircle className="w-5 h-5 text-[#8b5cf6] flex-shrink-0 mt-1" weight="fill" />
+                <span>{item}</span>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
       </div>
     </section>
   )
 }
 
-function Pricing() {
-  const [showPlans, setShowPlans] = useState(false)
+// Slide 4: Rider Experience / White-Label
+function RiderBookingSlide() {
+  const actionItems = [
+    'Single branded link for all services.',
+    'Choose vehicle class and add VIP notes.',
+    'Secure payment details for repeat bookings.',
+    'Your brand on every confirmation.'
+  ]
 
+  return (
+    <section className="h-screen flex items-center justify-center bg-black snap-start">
+      <div className="max-w-[1280px] mx-auto px-8 w-full">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={staggerChildren}
+          className="text-left"
+        >
+          <motion.h2
+            variants={fadeInUp}
+            className="text-[48px] font-light text-white mb-4 leading-tight"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Your Brand At Every Touchpoint.
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-[16px] text-gray-400 mb-8"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Riders see your name, your logo, your standards.
+          </motion.p>
+          <motion.ul
+            variants={staggerChildren}
+            className="space-y-4"
+          >
+            {actionItems.map((item, index) => (
+              <motion.li
+                key={index}
+                variants={fadeInUp}
+                className="flex items-start gap-3 text-[18px] text-slate-400"
+                style={{ fontFamily: "'Work Sans', sans-serif", lineHeight: '1.5' }}
+              >
+                <CheckCircle className="w-5 h-5 text-[#8b5cf6] flex-shrink-0 mt-1" weight="fill" />
+                <span>{item}</span>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// Slide 5: Pricing
+function PricingSlide() {
   const pricingPlans = [
     {
       name: 'Starter',
@@ -475,13 +404,10 @@ function Pricing() {
         { text: 'Custom branding', included: false },
         { text: 'Advanced analytics', included: false },
         { text: 'API access', included: false },
-        { text: 'Priority support', included: false },
-        { text: 'SMS notifications', included: false },
-        { text: 'Multi-language support', included: false },
       ]
     },
     {
-      name: 'Premium',
+      name: 'Growth',
       price: '$100',
       period: '/month',
       description: 'Ideal for growing businesses',
@@ -494,13 +420,10 @@ function Pricing() {
         { text: 'Custom branding', included: true },
         { text: 'Advanced analytics', included: true },
         { text: 'API access', included: true },
-        { text: 'Priority support', included: false },
-        { text: 'SMS notifications', included: true },
-        { text: 'Multi-language support', included: false },
       ]
     },
     {
-      name: 'Diamond',
+      name: 'Fleet',
       price: '$300',
       period: '/month',
       description: 'For large fleets and enterprises',
@@ -512,400 +435,328 @@ function Pricing() {
         { text: 'Custom branding', included: true },
         { text: 'Advanced analytics', included: true },
         { text: 'API access', included: true },
-        { text: 'Priority support', included: true },
-        { text: 'SMS notifications', included: true },
-        { text: 'Multi-language support', included: true },
       ]
     }
   ]
 
-  const CheckIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--bw-success)' }}>
-      <path d="M20 6L9 17l-5-5"/>
-    </svg>
-  )
-
-  const XIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--bw-muted)' }}>
-      <path d="M18 6L6 18M6 6l12 12"/>
-    </svg>
-  )
-
   return (
-    <section id="pricing" className="section bw-container" aria-label="Pricing" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 4vw, 32px)' }}>
-        <h2 style={{ 
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: 'clamp(28px, 4vw, 40px)',
-          fontWeight: 200,
-          color: 'var(--bw-text)',
-          marginBottom: 'clamp(12px, 2vw, 16px)'
-        }}>Fair, Transparent Pricing</h2>
-        <p className="small-muted" style={{ 
-          fontSize: 'clamp(14px, 2vw, 16px)', 
-          marginTop: 'clamp(8px, 1.5vw, 12px)',
-          marginBottom: 'clamp(24px, 4vw, 32px)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>
-          No contracts. No mystery fees.
-        </p>
-        {!showPlans && (
-          <button 
-            className="bw-btn" 
-            onClick={() => setShowPlans(true)}
-            style={{
-              fontSize: 'clamp(14px, 2vw, 16px)',
-              padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px)'
-            }}
+    <section id="pricing" className="h-screen flex items-center justify-center bg-gradient-to-b from-black via-gray-900 to-black snap-start overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-8 w-full py-20">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={staggerChildren}
+          className="text-center mb-16"
+        >
+          {/* Trust Bar */}
+          {/* <motion.p
+            variants={fadeInUp}
+            className="text-sm text-slate-500 mb-6"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
-            View Subscription Plans
-          </button>
-        )}
-      </div>
+            Enterprise-grade security. No long-term contracts. Cancel anytime.
+          </motion.p> */}
+          
+          <motion.h2
+            variants={fadeInUp}
+            className="text-4xl md:text-6xl font-light text-white mb-4"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Fair, Transparent Pricing.
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-sm text-slate-500 mb-6"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Enterprise-grade security. No long-term contracts. Cancel anytime.
+          </motion.p>
+        </motion.div>
 
-      {showPlans && (
-        <div className="pricing-plans-grid" style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1fr',
-          gap: 'clamp(24px, 4vw, 32px)',
-          marginTop: 'clamp(32px, 5vw, 48px)'
-        }}>
-            {pricingPlans.map((plan, index) => (
-              <div 
-                key={plan.name} 
-                className="bw-card" 
-                style={{ 
-                  padding: 'clamp(24px, 4vw, 32px)',
-                  borderRadius: 0,
-                  border: plan.popular ? '2px solid var(--bw-accent)' : '1px solid var(--bw-border)',
-                  position: 'relative'
-                }}
-              >
-                {plan.popular && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-12px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--bw-accent)',
-                    color: '#ffffff',
-                    padding: '4px 16px',
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontWeight: 600
-                  }}>
-                    Most Popular
-                  </div>
-                )}
-                <div style={{ textAlign: 'center', marginBottom: 'clamp(24px, 3vw, 32px)' }}>
-                  <h3 style={{ 
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 'clamp(24px, 3.5vw, 32px)',
-                    fontWeight: 400,
-                    color: 'var(--bw-text)',
-                    marginBottom: 'clamp(8px, 1.5vw, 12px)'
-                  }}>{plan.name}</h3>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'baseline', 
-                    justifyContent: 'center',
-                    gap: 'clamp(4px, 1vw, 8px)',
-                    marginBottom: 'clamp(8px, 1.5vw, 12px)'
-                  }}>
-                    <span style={{ 
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: 'clamp(36px, 5vw, 48px)',
-                      fontWeight: 200,
-                      color: 'var(--bw-text)'
-                    }}>{plan.price}</span>
-                    <span style={{ 
-                      fontFamily: "'Work Sans', sans-serif",
-                      fontSize: 'clamp(14px, 2vw, 16px)',
-                      color: 'var(--bw-muted)'
-                    }}>{plan.period}</span>
-                  </div>
-                  <p style={{ 
-                    fontFamily: "'Work Sans', sans-serif",
-                    fontSize: 'clamp(14px, 2vw, 16px)',
-                    color: 'var(--bw-muted)',
-                    marginBottom: 'clamp(16px, 2.5vw, 24px)'
-                  }}>{plan.description}</p>
-                  <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                    <Link 
-                      to="/signup" 
-                      className={plan.popular ? "bw-btn" : "bw-btn-outline"}
-                      style={{
-                        fontSize: 'clamp(14px, 2vw, 16px)',
-                        padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px)',
-                        width: '100%',
-                        maxWidth: '300px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      Get Started
-                    </Link>
-                  </div>
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={staggerChildren}
+          className="grid md:grid-cols-3 gap-8"
+        >
+          {pricingPlans.map((plan, index) => (
+            <motion.div
+              key={plan.name}
+              variants={fadeInUp}
+              transition={{ delay: index * 0.1 }}
+              className={`bg-gray-900 border rounded-lg p-8 relative ${
+                plan.popular ? 'border-[#8b5cf6] scale-105' : 'border-gray-800'
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-[#8b5cf6] text-white px-4 py-1 rounded-full text-sm font-semibold">
+                  Most Popular
                 </div>
-                <div style={{ 
-                  borderTop: '1px solid var(--bw-border)',
-                  paddingTop: 'clamp(20px, 3vw, 24px)',
-                  marginTop: 'clamp(20px, 3vw, 24px)'
-                }}>
-                  <ul style={{ 
-                    listStyle: 'none', 
-                    padding: 0, 
-                    margin: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 'clamp(12px, 2vw, 16px)'
-                  }}>
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 'clamp(12px, 2vw, 16px)'
-                      }}>
-                        <div style={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          {feature.included ? <CheckIcon /> : <XIcon />}
-                        </div>
-                        <span style={{ 
-                          fontFamily: "'Work Sans', sans-serif",
-                          fontSize: 'clamp(14px, 2vw, 16px)',
-                          color: feature.included ? 'var(--bw-fg)' : 'var(--bw-muted)',
-                          textDecoration: feature.included ? 'none' : 'none'
-                        }}>{feature.text}</span>
-                      </li>
-                    ))}
-                  </ul>
+              )}
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-semibold text-white mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {plan.name}
+                </h3>
+                <div className="flex items-baseline justify-center gap-2 mb-4">
+                  <span className="text-5xl font-light text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                    {plan.price}
+                  </span>
+                  <span className="text-gray-400" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                    {plan.period}
+                  </span>
                 </div>
+                <p className="text-gray-400 mb-6 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                  {plan.description}
+                </p>
+                <Link
+                  to="/signup"
+                  className={`block w-full py-3 rounded-lg font-semibold transition-all ${
+                    plan.popular
+                      ? 'bg-[#8b5cf6] text-white hover:bg-[#7c3aed]'
+                      : 'border-2 border-gray-700 text-white hover:border-[#8b5cf6]'
+                  }`}
+                  style={{ fontFamily: "'Work Sans', sans-serif" }}
+                >
+                  Get Started
+                </Link>
               </div>
-            ))}
-        </div>
-      )}
-
-      {showPlans && (
-        <div style={{ textAlign: 'center', marginTop: 'clamp(32px, 4vw, 48px)' }}>
-          <button 
-            className="bw-btn-outline" 
-            onClick={() => setShowPlans(false)}
-            style={{
-              fontSize: 'clamp(14px, 2vw, 16px)',
-              padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px)'
-            }}
-          >
-            Hide Plans
-          </button>
-        </div>
-      )}
+              <div className="border-t border-gray-800 pt-6">
+                <ul className="space-y-3">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-3">
+                      {feature.included ? (
+                        <CheckCircle className="w-5 h-5 text-[#8b5cf6] flex-shrink-0" weight="fill" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-gray-600 flex-shrink-0" weight="fill" />
+                      )}
+                      <span
+                        className={`text-sm ${feature.included ? 'text-gray-300' : 'text-gray-600'}`}
+                        style={{ fontFamily: "'Work Sans', sans-serif" }}
+                      >
+                        {feature.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
     </section>
   )
 }
 
-function Steps() {
-  const steps = [
-    { n: 1, t: 'Plan', d: 'Outline scope and invite your team.' },
-    { n: 2, t: 'Build', d: 'Track progress with structured reviews.' },
-    { n: 3, t: 'Ship', d: 'Publish confidently with audit trails.' },
+// Slide 6: Mission & Values
+function MissionValuesSlide() {
+  const coreValues = [
+    {
+      title: 'Developer-First Architecture',
+      signal: 'Modular, API-first logic.'
+    },
+    {
+      title: 'Brand Autonomy',
+      signal: 'White-label primitives.'
+    },
+    {
+      title: 'Transparent Operations',
+      signal: 'Real-time data integrity.'
+    }
   ]
+
   return (
-    <section className="section bw-container" aria-label="How it works" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <h2 style={{ 
-        fontFamily: "'DM Sans', sans-serif",
-        fontSize: 'clamp(28px, 4vw, 40px)',
-        fontWeight: 200,
-        color: 'var(--bw-text)',
-        marginBottom: 'clamp(24px, 4vw, 32px)'
-      }}>How it works</h2>
-      <div className="bw-grid-3" style={{ gap: 'clamp(16px, 3vw, 24px)' }}>
-        {steps.map((s) => (
-          <div key={s.n} className="bw-card" role="group" aria-label={`Step ${s.n}`} style={{ 
-            padding: 'clamp(16px, 3vw, 24px)',
-            borderRadius: 0
-          }}>
-            <div className="small-muted" style={{ 
-              marginBottom: 'clamp(8px, 1.5vw, 12px)',
-              fontFamily: "'Work Sans', sans-serif"
-            }}>Step {s.n}</div>
-            <h3 style={{ 
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 'clamp(18px, 2.5vw, 22px)',
-              fontWeight: 400,
-              color: 'var(--bw-text)',
-              marginBottom: 'clamp(8px, 1.5vw, 12px)'
-            }}>{s.t}</h3>
-            <p className="small-muted" style={{ 
-              marginTop: 'clamp(6px, 1vw, 8px)',
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: 'clamp(13px, 1.8vw, 15px)'
-            }}>{s.d}</p>
+    <section id="mission" className="h-screen flex items-center justify-center bg-black snap-start">
+      <div className="max-w-[1280px] mx-auto px-8 w-full">
+        <div className="grid md:grid-cols-2 gap-12 items-center">
+          {/* Left Column: Strategic Vision */}
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={staggerChildren}
+            className="text-left"
+          >
+            <motion.h2
+              variants={fadeInUp}
+              className="text-[48px] font-light text-white mb-6 leading-tight"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              The Infrastructure of Independence.
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="text-[18px] text-gray-300 leading-relaxed mb-8"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Maison is a modular platform designed to help local operators reclaim their brand from marketplace "taxes." We believe that independent limo and black car businesses shouldn't have to surrender their identity, customer relationships, or pricing control to third-party platforms that extract value without adding it. Our architecture gives you the tools to build, scale, and operate your business on your terms—with your branding, your pricing, and your operational standards front and center.
+            </motion.p>
+            <motion.div variants={fadeInUp}>
+              <Link
+                to="/about"
+                className="inline-block px-6 py-3 border-2 border-gray-700 text-white rounded-lg font-semibold hover:border-[#8b5cf6] hover:text-[#8b5cf6] transition-all"
+                style={{ fontFamily: "'Work Sans', sans-serif" }}
+              >
+                Read the full founder's vision and engineering roadmap
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* Right Column: Technical Core Values */}
+          <motion.div
+            initial="initial"
+            whileInView="animate"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={staggerChildren}
+            className="space-y-6"
+          >
+            {coreValues.map((value, index) => (
+              <motion.div
+                key={value.title}
+                variants={fadeInUp}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gray-900 border border-gray-800 p-6 rounded-lg"
+              >
+                <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {value.title}
+                </h3>
+                <p className="text-gray-400 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                  Signal: {value.signal}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Slide 7: Conclusion & Footer
+function ConclusionSlide() {
+  return (
+    <section id="footer" className="min-h-screen flex flex-col bg-black snap-start">
+      {/* Final CTA */}
+      <div className="flex-1 flex items-center justify-center">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+          variants={staggerChildren}
+          className="w-full px-20 text-center"
+        >
+          <motion.h2
+            variants={fadeInUp}
+            className="text-4xl md:text-6xl font-light text-white mb-6"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Maison is the Next Generation<br />
+            of Limo Software.
+          </motion.h2>
+          <motion.p
+            variants={fadeInUp}
+            className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            Stop fighting with outdated systems. Start running your business on a platform built for you — operators, drivers, and riders.
+          </motion.p>
+          <motion.div variants={fadeInUp}>
+            <Link
+              to="/signup"
+              className="inline-block px-8 py-4 bg-[#8b5cf6] text-white rounded-lg font-semibold text-lg hover:bg-[#7c3aed] transition-all transform hover:scale-105"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Start Free Today
+            </Link>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Footer */}
+      <motion.footer
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        variants={fadeIn}
+        className="border-t border-gray-800 py-12"
+      >
+        <div className="w-full px-20">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="text-2xl font-bold text-white mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                Maison
+              </div>
+              <p className="text-gray-400 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+                Minimal platform to build, ship and iterate faster.
+              </p>
+            </div>
+            <nav>
+              <h3 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                Product
+              </h3>
+              <ul className="space-y-2">
+                <li><a href="#platform" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>Overview</a></li>
+                <li><a href="#pricing" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>Pricing</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>Docs</a></li>
+              </ul>
+            </nav>
+            <nav>
+              <h3 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                Company
+              </h3>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>About</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>Blog</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white transition-colors text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>Contact</a></li>
+              </ul>
+            </nav>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                Newsletter
+              </h3>
+              <form onSubmit={(e) => e.preventDefault()} className="space-y-3">
+                <input
+                  type="email"
+                  placeholder="you@email.com"
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                  style={{ fontFamily: "'Work Sans', sans-serif" }}
+                />
+                <button
+                  type="submit"
+                  className="w-full px-4 py-2 bg-[#8b5cf6] text-white rounded-lg font-semibold hover:bg-[#7c3aed] transition-colors"
+                  style={{ fontFamily: "'Work Sans', sans-serif" }}
+                >
+                  Subscribe
+                </button>
+              </form>
+            </div>
           </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function Testimonial() {
-  return (
-    <section className="section bw-container" aria-label="Testimonial" style={{ padding: `clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)` }}>
-      <blockquote className="bw-card" style={{ 
-        textAlign: 'center',
-        padding: 'clamp(24px, 4vw, 32px)',
-        borderRadius: 0
-      }}>
-        <p style={{ 
-          margin: 0,
-          fontSize: 'clamp(16px, 2.5vw, 20px)',
-          fontFamily: "'Work Sans', sans-serif",
-          color: 'var(--bw-fg)',
-          lineHeight: 1.6
-        }}>
-          "Clean, focused and predictable. We move from idea to release without distractions."
-        </p>
-        <footer className="small-muted" style={{ 
-          marginTop: 'clamp(12px, 2vw, 16px)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>Alex M. · Product Lead</footer>
-      </blockquote>
-    </section>
-  )
-}
-
-function FinalCTA() {
-  return (
-    <section className="section bw-container" aria-label="Final call to action" style={{
-      backgroundColor: 'var(--bw-bg-secondary)',
-      color: 'var(--bw-fg)',
-      position: 'relative',
-      borderRadius: 0,
-      margin: 'clamp(32px, 4vw, 48px) auto',
-      padding: 'clamp(32px, 5vw, 48px) clamp(24px, 4vw, 32px)',
-      maxWidth: '1000px',
-      textAlign: 'center',
-      border: '1px solid var(--bw-border)'
-    }}>
-      <div style={{ 
-        position: 'relative',
-        zIndex: 2
-      }}>
-        <h2 style={{ 
-          fontSize: 'clamp(28px, 4vw, 40px)', 
-          marginBottom: 'clamp(16px, 2.5vw, 24px)', 
-          color: 'var(--bw-text)',
-          fontFamily: "'DM Sans', sans-serif",
-          fontWeight: 200
-        }}>Maison is the Next Generation of Limo Software.</h2>
-        <p className="bw-sub" style={{ 
-          fontSize: 'clamp(16px, 2.5vw, 20px)', 
-          marginBottom: 'clamp(24px, 4vw, 32px)', 
-          lineHeight: 1.6, 
-          color: 'var(--bw-muted)',
-          fontFamily: "'Work Sans', sans-serif"
-        }}>
-          Stop fighting with outdated systems. Start running your business on a platform built for you — operators, drivers, and riders.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(12px, 2vw, 16px)' }}>
-          <Link to="/signup" className="bw-btn" style={{ 
-            fontSize: 'clamp(14px, 2vw, 18px)', 
-            padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px)'
-          }}>
-            Start Free Today
-          </Link>
+          <div className="border-t border-gray-800 pt-8 text-center">
+            <p className="text-gray-400 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
+              © {new Date().getFullYear()} Maison. All rights reserved.
+            </p>
+          </div>
         </div>
-      </div>
+      </motion.footer>
     </section>
   )
 }
 
-function Footer() {
-  return (
-    <footer className="bw-footer" role="contentinfo" style={{ padding: `clamp(32px, 4vw, 48px) clamp(16px, 3vw, 24px)` }}>
-      <div className="bw-container bw-footer-grid" style={{ gap: 'clamp(24px, 4vw, 32px)' }}>
-        <div>
-          <div className="bw-brand" style={{ 
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 'clamp(24px, 3vw, 32px)',
-            color: 'var(--bw-text)'
-          }}>Maison</div>
-          <p className="small-muted" style={{ 
-            marginTop: 'clamp(8px, 1.5vw, 12px)',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>Minimal platform to build, ship and iterate faster.</p>
-        </div>
-        <nav aria-label="Footer Product">
-          <h3 style={{ 
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 'clamp(16px, 2.2vw, 18px)',
-            fontWeight: 400,
-            color: 'var(--bw-text)',
-            marginBottom: 'clamp(8px, 1.5vw, 12px)'
-          }}>Product</h3>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 'clamp(8px, 1.5vw, 12px) 0 0 0' }}>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#product" style={{ fontFamily: "'Work Sans', sans-serif" }}>Overview</a></li>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#docs" style={{ fontFamily: "'Work Sans', sans-serif" }}>Docs</a></li>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#pricing" style={{ fontFamily: "'Work Sans', sans-serif" }}>Pricing</a></li>
-          </ul>
-        </nav>
-        <nav aria-label="Footer Company">
-          <h3 style={{ 
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 'clamp(16px, 2.2vw, 18px)',
-            fontWeight: 400,
-            color: 'var(--bw-text)',
-            marginBottom: 'clamp(8px, 1.5vw, 12px)'
-          }}>Company</h3>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 'clamp(8px, 1.5vw, 12px) 0 0 0' }}>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#about" style={{ fontFamily: "'Work Sans', sans-serif" }}>About</a></li>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#blog" style={{ fontFamily: "'Work Sans', sans-serif" }}>Blog</a></li>
-            <li style={{ marginBottom: 'clamp(6px, 1vw, 8px)' }}><a href="#contact" style={{ fontFamily: "'Work Sans', sans-serif" }}>Contact</a></li>
-          </ul>
-        </nav>
-        <form aria-label="Newsletter signup" onSubmit={(e) => e.preventDefault()}>
-          <h3 style={{ 
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 'clamp(16px, 2.2vw, 18px)',
-            fontWeight: 400,
-            color: 'var(--bw-text)',
-            marginBottom: 'clamp(8px, 1.5vw, 12px)'
-          }}>Newsletter</h3>
-          <label className="small-muted" htmlFor="email" style={{ 
-            display: 'block', 
-            marginTop: 'clamp(8px, 1.5vw, 12px)',
-            fontFamily: "'Work Sans', sans-serif"
-          }}>Email</label>
-          <input id="email" className="bw-input" type="email" placeholder="you@email" aria-required="true" style={{ marginTop: 'clamp(6px, 1vw, 8px)' }} />
-          <button className="bw-btn" style={{ marginTop: 'clamp(8px, 1.5vw, 12px)' }}>Subscribe</button>
-        </form>
-      </div>
-      <div className="bw-container" style={{ marginTop: 'clamp(16px, 2.5vw, 24px)' }}>
-        <div className="small-muted" style={{ fontFamily: "'Work Sans', sans-serif" }}>© {new Date().getFullYear()} Maison. All rights reserved.</div>
-      </div>
-    </footer>
-  )
-}
-
+// Main Landing Component
 export default function Landing() {
   return (
-    <main className="bw landing-page" aria-label="Landing">
-      <FullScreenHero />
-      <Header />
-      <Features />
-      <DriverFeatures />
-      <BookingExperience />
-      <Pricing />
-      <Steps />
-      <Testimonial />
-      <FinalCTA />
-      <Footer />
+    <main className="relative bg-black text-white overflow-x-hidden" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
+      <div className="snap-y snap-mandatory h-screen overflow-y-scroll scroll-smooth">
+        <Header />
+        <HeroSlide />
+        <PlatformSlide />
+        <DriverExperienceSlide />
+        <RiderBookingSlide />
+        <PricingSlide />
+        <MissionValuesSlide />
+        <ConclusionSlide />
+      </div>
     </main>
   )
 }

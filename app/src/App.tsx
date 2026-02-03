@@ -36,6 +36,7 @@ import StripeReauth from '@pages/StripeReauth'
 import ProtectedRoute from '@components/ProtectedRoute'
 import SlugVerification from '@components/SlugVerification'
 import SubdomainBlock from '@components/SubdomainBlock'
+import TenantRouteBlock from '@components/TenantRouteBlock'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 
 export default function App() {
@@ -48,180 +49,226 @@ export default function App() {
 
       <Route
         path="/tenant/login"
-        element={<Login />}
+        element={<TenantRouteBlock><Login /></TenantRouteBlock>}
       />
       <Route
         path="/subscription"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <SubscriptionSelection />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <SubscriptionSelection />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route path="/success" element={<SubdomainBlock><Success /></SubdomainBlock>} />
       {/* Redirect /tenant to /tenant/overview */}
       <Route
         path="/tenant"
-        element={<Navigate to="/tenant/overview" replace />}
+        element={
+          <TenantRouteBlock>
+            <Navigate to="/tenant/overview" replace />
+          </TenantRouteBlock>
+        }
       />
       <Route
         path="/tenant/overview"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantDashboard />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantDashboard />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/drivers"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantDashboard />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantDashboard />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/bookings"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantDashboard />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantDashboard />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/vehicles"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantDashboard />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantDashboard />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/rates"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <VehicleRates />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <VehicleRates />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantSettings />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/general"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <GeneralView />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <GeneralView />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/account"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <AccountInformation />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <AccountInformation />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/company"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <CompanyInformation />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <CompanyInformation />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/tenant-settings"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantSettings />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/branding"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <BrandingSettings />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <BrandingSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/pricing"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <PricingSettings />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <PricingSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/vehicle-config"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <VehicleConfiguration />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <VehicleConfiguration />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/plans"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <Plans />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <Plans />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/help"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <Help />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <Help />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/settings/help/stripe"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <StripeDocs />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <StripeDocs />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/return"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <StripeReturn />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <StripeReturn />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant/reauth"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <StripeReauth />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <StripeReauth />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/tenant_settings"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <TenantSettings />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <TenantSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
       <Route
         path="/vehicles/add"
         element={
-          <ProtectedRoute allowRoles={["tenant"]}>
-            <AddVehicle />
-          </ProtectedRoute>
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <AddVehicle />
+            </ProtectedRoute>
+          </TenantRouteBlock>
         }
       />
 
@@ -414,7 +461,37 @@ export default function App() {
       />
 
       <Route
-        path="/driver/rides"
+        path="/driver/bookings"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["driver"]}>
+              <DriverDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/driver/bookings/upcoming"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["driver"]}>
+              <DriverDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/driver/bookings/new-requests"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["driver"]}>
+              <DriverDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/driver/bookings/all"
         element={
           <SlugVerification>
             <ProtectedRoute allowRoles={["driver"]}>
