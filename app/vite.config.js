@@ -40,6 +40,7 @@ export default defineConfig({
     },
     server: {
         host: '0.0.0.0', // Allow external connections
+    	allowedHosts: ['usemaison.io'],
         port: 3000,
         // Dev-only: set VITE_API_PROXY in .env (see env.example) for local API proxy; production build does not use this.
         proxy: process.env.VITE_API_PROXY ? { '/api': process.env.VITE_API_PROXY } : {},
