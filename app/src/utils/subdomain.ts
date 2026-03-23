@@ -5,6 +5,17 @@
 
 import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain } from '@config/host'
 
+/** First labels that are infrastructure / marketing, not tenant slugs (e.g. api.*, www.*). */
+const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www'])
+
+function isReservedSubdomainLabel(label: string): boolean {
+  return RESERVED_SUBDOMAIN_LABELS.has(label.toLowerCase())
+}
+
+function isWwwMainHost(hostnameWithoutPort: string, mainDomain: string): boolean {
+  return hostnameWithoutPort === `www.${mainDomain}`
+}
+
 /**
  * Checks if a hostname is a dev host (e.g. localhost, 127.0.0.1).
  */
@@ -72,6 +83,10 @@ export function isMainDomain(): boolean {
     return true
   }
 
+  if (isWwwMainHost(hostnameWithoutPort, mainDomain)) {
+    return true
+  }
+
   const parts = hostnameWithoutPort.split('.')
   const mainParts = mainDomain.split('.')
 
@@ -96,6 +111,10 @@ export function isMainDomainHost(hostname: string): boolean {
   const hostnameWithoutPort = hostname.split(':')[0]
 
   if (hostnameWithoutPort === mainDomain) {
+    return true
+  }
+
+  if (isWwwMainHost(hostnameWithoutPort, mainDomain)) {
     return true
   }
 
@@ -128,13 +147,15 @@ export function extractSubdomain(hostname: string): string | null {
   const isExactDevHost = hostnameWithoutPort === MAIN_DOMAIN || DEV_HOSTS.includes(hostnameWithoutPort)
   if (lastPartIsMainDomain || isExactDevHost) {
     if (parts.length >= 2 && parts[0] !== MAIN_DOMAIN && parts[parts.length - 1] === MAIN_DOMAIN) {
-      return parts[0]
+      const label = parts[0]
+      return isReservedSubdomainLabel(label) ? null : label
     }
     return null
   }
 
   if (parts.length >= 3) {
-    return parts[0]
+    const label = parts[0]
+    return isReservedSubdomainLabel(label) ? null : label
   }
 
   const mainDomain = getMainDomain()
@@ -143,7 +164,8 @@ export function extractSubdomain(hostname: string): string | null {
   if (parts.length === mainDomainParts.length + 1) {
     const domainMatch = parts.slice(1).join('.') === mainDomain
     if (domainMatch) {
-      return parts[0]
+      const label = parts[0]
+      return isReservedSubdomainLabel(label) ? null : label
     }
   }
 

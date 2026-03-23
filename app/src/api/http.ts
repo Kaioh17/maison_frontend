@@ -21,6 +21,11 @@ function resolveApiBase(): string {
 
 const RESOLVED_BASE = resolveApiBase()
 
+/** True when API lives on an absolute URL (e.g. prod `https://api.example.com/api`). */
+function isAbsoluteApiBase(): boolean {
+	return RESOLVED_BASE.startsWith('http://') || RESOLVED_BASE.startsWith('https://')
+}
+
 /** Paths under axios `baseURL` that map to backend `/api/v1/auth/**`. */
 function isV1AuthRequestPath(url: string | undefined): boolean {
 	if (!url) return false
@@ -45,14 +50,13 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 		config.headers['X-API-Key'] = AUTH_API_KEY
 	}
 	
-	// For subdomain requests, ensure baseURL is relative to go through Vite proxy
-	// and add tenant slug header for rider requests
+	// Dev: tenant subdomains use relative `/api` so the Vite dev server can proxy.
+	// Prod: absolute `VITE_API_BASE` must stay (API on api.*); do not force same-origin `/api`.
 	if (typeof window !== 'undefined') {
 		const hostname = window.location.hostname
 		const isSubdomain = !isMainDomainHost(hostname)
 		
-		if (isSubdomain) {
-			// Force baseURL to be relative - ensures requests go through Vite proxy
+		if (isSubdomain && !isAbsoluteApiBase()) {
 			config.baseURL = '/api'
 		}
 		
