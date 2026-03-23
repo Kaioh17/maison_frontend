@@ -114,3 +114,145 @@
     display: none;
   }
 }
+
+.landing-pricing .old{
+  position: relative;
+  display: inline-block;
+}
+
+.landing-pricing .old::after{
+  content: "";
+  position: absolute;
+  left: -10%;
+  top: 50%;
+  width: 120%;
+  height: 2px;
+  /* background: currentColor;  */
+  transform: rotate(0deg);
+  background: rgba(255, 255, 255, 0.8);
+}
+.landing-pricing .old{
+  color: #7c5cfc;
+  font-weight: 700;
+  font-size: 0.5em; /* because .price-amount is huge */
+  margin-left: 0.25em;
+  opacity: 0.45;
+}
+.landing-pricing .new{
+  color: currentColor;
+  
+  font-weight: 700;
+  /* font-size: 0.5em; because .price-amount is huge */
+  margin-left: 0.05em;
+}
+.landing-pricing .cent{
+  color: currentColor;
+  font-weight: 700;
+  font-size: 0.5em; /* because .price-amount is huge */
+  margin-left: 0.25em;
+  opacity: currentColor;
+}
+
+.landing-hero-art {
+  position: relative;
+  width: min(100%, 560px);
+  aspect-ratio: 1 / 1;
+  margin-left: auto;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(124, 92, 252, 0.15) 0%, transparent 48%),
+    radial-gradient(circle at 84% 78%, rgba(59, 130, 246, 0.12) 0%, transparent 52%),
+    #0a0a0f;
+  box-shadow: none;
+}
+
+.landing-hero-art__noise {
+  position: absolute;
+  inset: -30%;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.05) 0.8px, transparent 0.8px);
+  background-size: 4px 4px;
+  opacity: 0.16;
+  transform: rotate(10deg);
+}
+
+.landing-hero-art__orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(0.5px);
+  mix-blend-mode: screen;
+}
+
+.landing-hero-art__orb--main {
+  width: 72%;
+  height: 72%;
+  left: -8%;
+  top: -4%;
+  background: radial-gradient(circle at 35% 35%, rgba(147, 121, 255, 0.95) 0%, rgba(98, 70, 232, 0.65) 40%, rgba(22, 16, 42, 0.04) 84%);
+  animation: heroOrbFloat 11s ease-in-out infinite alternate;
+}
+
+.landing-hero-art__orb--accent {
+  width: 46%;
+  height: 46%;
+  right: 10%;
+  top: 16%;
+  background: radial-gradient(circle at 30% 30%, rgba(118, 95, 255, 0.8) 0%, rgba(54, 26, 137, 0.52) 58%, transparent 82%);
+  animation: heroOrbFloat 8.5s ease-in-out infinite alternate-reverse;
+}
+
+.landing-hero-art__orb--deep {
+  width: 56%;
+  height: 56%;
+  right: -14%;
+  bottom: -8%;
+  background: radial-gradient(circle at 28% 28%, rgba(73, 45, 196, 0.56) 0%, rgba(15, 8, 39, 0.2) 68%, transparent 86%);
+  animation: heroOrbPulse 9s ease-in-out infinite;
+}
+
+.landing-hero-art__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.88) 48%, transparent 88%);
+  opacity: 0.28;
+  animation: heroGridShift 18s linear infinite;
+}
+
+@keyframes heroOrbFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(14px, -12px, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-10px, 14px, 0) scale(0.96);
+  }
+}
+
+@keyframes heroOrbPulse {
+  0%,
+  100% {
+    transform: scale(0.98);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.95;
+  }
+}
+
+@keyframes heroGridShift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(-20px, 14px, 0) rotate(0.6deg);
+  }
+}

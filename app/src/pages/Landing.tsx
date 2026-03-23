@@ -3,21 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
-import {
-  FileText,
-  Car,
-  CurrencyDollar,
-  Link as LinkIcon,
-  DeviceMobile,
-  NavigationArrow,
-  Star,
-  CheckCircle,
-  XCircle,
-  List,
-  X,
-} from '@phosphor-icons/react'
-import driverDashboardImage from '../images/driver_dashboard(!).jpg'
-import laptopDashboardImage from '../images/laptop_dashboard.png'
+import { CheckCircle, XCircle, List, X } from '@phosphor-icons/react'
 
 // Animation variants
 const fadeInUp = {
@@ -51,26 +37,6 @@ const SNAP_SECTION_LABELS = [
 ] as const
 
 const PRICING_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Pricing')
-
-// Placeholder Component for Videos/Dashboards
-function Placeholder({ label, type = 'video' }: { label: string; type?: 'video' | 'dashboard' }) {
-  return (
-    <div className="relative w-full h-full bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-lg overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-[#7c5cfc] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400 text-sm font-medium" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-            {type === 'video' ? 'Demo Video:' : 'Dashboard:'}
-          </p>
-          <p className="text-gray-500 text-xs mt-1" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-            {label}
-          </p>
-        </div>
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-    </div>
-  )
-}
 
 // Slide 1: Hero
 function HeroSlide() {
@@ -149,7 +115,7 @@ function HeroSlide() {
             </motion.div>
           </motion.div>
 
-          {/* Right half: Glassmorphism Dashboard Preview */}
+          {/* Right half: Abstract animated brand shape */}
           <motion.div
             initial="initial"
             whileInView="animate"
@@ -157,47 +123,12 @@ function HeroSlide() {
             variants={fadeIn}
             className="hidden md:block"
           >
-            <div className="relative">
-              {/* Glassmorphism card */}
-              <div 
-                className="rounded-2xl p-6 backdrop-blur-xl border border-white/10 shadow-2xl"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
-                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
-                }}
-              >
-                <div className="text-white mb-4 text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                  Main Dashboard Preview
-                </div>
-                
-                {/* Revenue Chart */}
-                <div className="bg-black/40 rounded-lg p-4 mb-4 border border-white/5">
-                  <div className="text-gray-400 text-xs mb-3" style={{ fontFamily: "'Work Sans', sans-serif" }}>Revenue (Last 7 Days)</div>
-                  <div className="flex items-end gap-2 h-24">
-                    {[65, 45, 80, 55, 90, 70, 85].map((height, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center">
-                        <div 
-                          className="w-full bg-gradient-to-t from-[#7c5cfc] to-[#7c3aed] rounded-t"
-                          style={{ height: `${height}%` }}
-                        ></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Recent Bookings List */}
-                <div className="bg-black/40 rounded-lg p-4 border border-white/5">
-                  <div className="text-gray-400 text-xs mb-3" style={{ fontFamily: "'Work Sans', sans-serif" }}>Recent Bookings</div>
-                  <div className="space-y-2">
-                    {['Airport Transfer', 'Corporate Event', 'Wedding Service'].map((booking, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm text-gray-300 py-2 border-b border-white/5 last:border-0" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                        <span>{booking}</span>
-                        <span className="text-[#7c5cfc]">${(i + 1) * 150}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="landing-hero-art" aria-hidden="true">
+              <div className="landing-hero-art__noise"></div>
+              <div className="landing-hero-art__orb landing-hero-art__orb--main"></div>
+              <div className="landing-hero-art__orb landing-hero-art__orb--accent"></div>
+              <div className="landing-hero-art__orb landing-hero-art__orb--deep"></div>
+              <div className="landing-hero-art__grid"></div>
             </div>
           </motion.div>
         </div>
@@ -376,36 +307,40 @@ const PRICING_PLANS = [
     name: 'Starter',
     price: '$0.00',
     period: '/month',
-    description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $100.',
+    description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $50.',
     features: [
-      { text: 'Up to 5 vehicles', included: true },
-      { text: 'Up to 10 drivers', included: true },
+      { text: 'Up to 1 vehicle', included: true },
+      { text: 'Up to 1 driver', included: true },
       { text: 'Basic booking system', included: true },
       { text: 'Email support', included: true },
-      { text: 'Custom branding', included: false },
-      { text: 'Advanced analytics', included: false },
-      { text: 'API access', included: false },
+      // { text: 'Custom branding', included: false },
+      // { text: 'Advanced analytics', included: false },
+      // { text: 'API access', included: false },
     ],
   },
   {
     name: 'Growth',
-    price: '$100',
+    price: ( <>
+    <span className="old">299.<span className="cent">99</span></span> 
+    <span className="new">99.<span className="cent">99</span></span></>),
     period: '/month',
     description: 'Ideal for growing businesses',
     popular: true,
     features: [
-      { text: 'Up to 25 vehicles', included: true },
-      { text: 'Up to 50 drivers', included: true },
+      { text: 'Up to 5 vehicles', included: true },
+      { text: 'Up to 7 drivers', included: true },
       { text: 'Advanced booking system', included: true },
       { text: 'Email & phone support', included: true },
-      { text: 'Custom branding', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'API access', included: true },
+      // { text: 'Custom branding', included: true },
+      // { text: 'Advanced analytics', included: true },
+      // { text: 'API access', included: true },
     ],
   },
   {
     name: 'Fleet',
-    price: '$300',
+    price: ( <>
+      <span className="old">399.<span className="cent">99</span></span> 
+      <span className="new">299.<span className="cent">99</span></span></>),
     period: '/month',
     description: 'For large fleets and enterprises',
     features: [
@@ -413,9 +348,9 @@ const PRICING_PLANS = [
       { text: 'Unlimited drivers', included: true },
       { text: 'Enterprise booking system', included: true },
       { text: '24/7 dedicated support', included: true },
-      { text: 'Custom branding', included: true },
-      { text: 'Advanced analytics', included: true },
-      { text: 'API access', included: true },
+      // { text: 'Custom branding', included: true },
+      // { text: 'Advanced analytics', included: true },
+      // { text: 'API access', included: true },
     ],
   },
 ]

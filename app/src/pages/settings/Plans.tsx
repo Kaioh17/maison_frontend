@@ -88,11 +88,11 @@ export default function Plans() {
       product_type: 'starter',
       price: '$0.00',
       period: '/month',
-      description: 'Perfect for solo drivers and small fleets.',
+      description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $50.',
       price_id: getStripeSubscriptionPriceId('starter'),
       features: [
-        { text: 'Up to 5 vehicles', included: true },
-        { text: 'Up to 10 drivers', included: true },
+        { text: 'Up to 1 vehicle', included: true },
+        { text: 'Up to 1 driver', included: true },
         { text: 'Basic booking system', included: true },
         { text: 'Email support', included: true }
       ]
@@ -100,14 +100,23 @@ export default function Plans() {
     {
       name: 'Growth',
       product_type: 'growth',
-      price: '$100',
+      price: (
+        <>
+          <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: '0.35em' }}>
+            $299.<span style={{ fontSize: '0.58em' }}>99</span>
+          </span>
+          <span style={{ color: 'var(--bw-accent)' }}>
+            $99.<span style={{ fontSize: '0.58em' }}>99</span>
+          </span>
+        </>
+      ),
       period: '/month',
       description: 'Ideal for growing businesses',
       popular: true,
       price_id: getStripeSubscriptionPriceId('growth'),
       features: [
-        { text: 'Up to 25 vehicles', included: true },
-        { text: 'Up to 50 drivers', included: true },
+        { text: 'Up to 5 vehicles', included: true },
+        { text: 'Up to 7 drivers', included: true },
         { text: 'Advanced booking system', included: true },
         { text: 'Email & phone support', included: true },
         { text: 'Custom branding', included: true },
@@ -117,7 +126,16 @@ export default function Plans() {
     {
       name: 'Fleet',
       product_type: 'fleet',
-      price: '$300',
+      price: (
+        <>
+          <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: '0.35em' }}>
+            $399.<span style={{ fontSize: '0.58em' }}>99</span>
+          </span>
+          <span style={{ color: 'var(--bw-accent)' }}>
+            $299.<span style={{ fontSize: '0.58em' }}>99</span>
+          </span>
+        </>
+      ),
       period: '/month',
       description: 'For large fleets and enterprises',
       price_id: getStripeSubscriptionPriceId('fleet'),
