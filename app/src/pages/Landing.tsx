@@ -38,6 +38,10 @@ const SNAP_SECTION_LABELS = [
 
 const PRICING_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Pricing')
 
+const smoothScrollToSection = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 // Slide 1: Hero
 function HeroSlide() {
   return (
@@ -107,6 +111,10 @@ function HeroSlide() {
               </Link>
               <a
                 href="#platform"
+                onClick={(e) => {
+                  e.preventDefault()
+                  smoothScrollToSection('platform')
+                }}
                 className="inline-flex items-center justify-center w-full sm:flex-1 sm:min-w-0 py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-gray-700 text-white hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors"
                 style={{ fontFamily: "'Work Sans', sans-serif" }}
               >
@@ -716,6 +724,10 @@ function ConclusionSlide() {
                 <li>
                   <a
                     href="#platform"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      smoothScrollToSection('platform')
+                    }}
                     className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
                     style={{ fontFamily: "'Work Sans', sans-serif" }}
                   >
@@ -725,6 +737,10 @@ function ConclusionSlide() {
                 <li>
                   <a
                     href="#pricing"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      smoothScrollToSection('pricing')
+                    }}
                     className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
                     style={{ fontFamily: "'Work Sans', sans-serif" }}
                   >
@@ -833,7 +849,7 @@ export default function Landing() {
   }, [])
 
   const scrollToSectionById = useCallback((id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    smoothScrollToSection(id)
     setMenuOpen(false)
   }, [])
 
