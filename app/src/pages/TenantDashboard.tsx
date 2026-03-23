@@ -1682,26 +1682,12 @@ export default function TenantDashboard() {
               const totalDrivers = analysis?.total_drivers ?? drivers.length
               const offlineDrivers = totalDrivers - availableDrivers
               
-              // Helper function to get trend metric (mock data for now)
-              const getTrendMetric = (label: string): string => {
-                // Mock trend data - in production, this would come from API
-                const mockTrends: { [key: string]: number | null } = {
-                  'Active Rides': 12,
-                  'Pending': -5,
-                  'Available Drivers': null,
-                  'Offline Drivers': 3,
-                  "Today's Revenue": 8
-                }
-                const trend = mockTrends[label]
-                return trend !== null && trend !== undefined ? (trend > 0 ? `+${trend}%` : `${trend}%`) : '--'
-              }
-              
               const kpiCards = [
-                { value: activeRidesToday, label: 'Active Rides', isCurrency: false, icon: Car, trend: getTrendMetric('Active Rides') },
-                { value: pendingBookings, label: 'Pending', isCurrency: false, icon: Clock, trend: getTrendMetric('Pending') },
-                { value: availableDrivers, label: 'Available Drivers', isCurrency: false, icon: Users, trend: getTrendMetric('Available Drivers') },
-                { value: offlineDrivers, label: 'Offline Drivers', isCurrency: false, icon: Users, trend: getTrendMetric('Offline Drivers') },
-                { value: todaysRevenue.toFixed(0), label: "Today's Revenue", isCurrency: true, icon: Wallet, trend: getTrendMetric("Today's Revenue") }
+                { value: activeRidesToday, label: 'Active Rides', isCurrency: false, icon: Car },
+                { value: pendingBookings, label: 'Pending', isCurrency: false, icon: Clock },
+                { value: availableDrivers, label: 'Available Drivers', isCurrency: false, icon: Users },
+                { value: offlineDrivers, label: 'Offline Drivers', isCurrency: false, icon: Users },
+                { value: todaysRevenue.toFixed(0), label: "Today's Revenue", isCurrency: true, icon: Wallet }
               ]
               
               const totalKpis = kpiCards.length
@@ -1747,28 +1733,6 @@ export default function TenantDashboard() {
                               <IconComponent size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                             </div>
                           ) : null
-                        })()}
-                        
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = kpiCards[currentKpiIndex].trend
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
                         })()}
                         
                         <div style={{
@@ -1909,27 +1873,6 @@ export default function TenantDashboard() {
                         }}>
                           <Car size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                         </div>
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = getTrendMetric('Active Rides')
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
-                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
@@ -1970,27 +1913,6 @@ export default function TenantDashboard() {
                         }}>
                           <Clock size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                         </div>
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = getTrendMetric('Pending')
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
-                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
@@ -2031,27 +1953,6 @@ export default function TenantDashboard() {
                         }}>
                           <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                         </div>
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = getTrendMetric('Available Drivers')
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
-                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
@@ -2092,27 +1993,6 @@ export default function TenantDashboard() {
                         }}>
                           <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                         </div>
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = getTrendMetric('Offline Drivers')
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
-                        })()}
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
                           fontWeight: 700,
@@ -2153,27 +2033,6 @@ export default function TenantDashboard() {
                         }}>
                           <Wallet size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
                         </div>
-                        {/* Trend metric in bottom-right */}
-                        {(() => {
-                          const trend = getTrendMetric("Today's Revenue")
-                          const isPositive = trend?.startsWith('+')
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              fontSize: 'clamp(10px, 1.2vw, 12px)',
-                              fontWeight: 500,
-                              color: isPositive ? '#059669' : trend?.startsWith('-') ? '#dc2626' : (lightMode ? '#64748b' : '#9ca3af'),
-                              backgroundColor: lightMode && isPositive ? '#ecfdf5' : lightMode && trend?.startsWith('-') ? '#fef2f2' : (isPositive ? 'rgba(5, 150, 105, 0.2)' : trend?.startsWith('-') ? 'rgba(220, 38, 38, 0.2)' : 'transparent'),
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {trend}
-                            </div>
-                          )
-                        })()}
                         <div style={{
                           fontSize: 'clamp(28px, 5vw, 48px)',
                           fontWeight: 700,

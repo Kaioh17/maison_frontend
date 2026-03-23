@@ -28,6 +28,22 @@ export default function Signup() {
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const [signupStep, setSignupStep] = useState<1 | 2>(1)
+  const [isMobileSignup, setIsMobileSignup] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const apply = () => {
+      setIsMobileSignup(mq.matches)
+      if (!mq.matches) setSignupStep(1)
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  const canContinueStep1 =
+    email.includes('@') && password.length >= 8
 
   // Determine current theme and set appropriate logo
   const getCurrentTheme = () => {
@@ -205,6 +221,15 @@ export default function Signup() {
     }
   }
 
+  const handleFormSubmit = (e: FormEvent) => {
+    if (isMobileSignup && signupStep === 1) {
+      e.preventDefault()
+      if (canContinueStep1) setSignupStep(2)
+      return
+    }
+    void submit(e)
+  }
+
   return (
     <main className="bw" aria-label="Create account" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
       <style>{`
@@ -303,6 +328,65 @@ export default function Signup() {
           .signup-modal-code {
             font-size: 12px !important;
           }
+          .signup-mobile-progress-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 15;
+            width: 100%;
+            flex-shrink: 0;
+            margin: 0 -24px 0 -24px;
+            padding: 8px 24px 12px;
+            box-sizing: border-box;
+            background: var(--bw-bg);
+          }
+          .signup-mobile-progress-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .signup-mobile-progress-track {
+            flex: 1;
+            height: 3px;
+            background: var(--bw-border);
+            overflow: hidden;
+          }
+          .signup-mobile-progress-fill {
+            height: 100%;
+            background: var(--bw-accent);
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .signup-mobile-step-label {
+            font-size: 12px;
+            font-family: 'Work Sans', sans-serif;
+            color: var(--bw-muted);
+            white-space: nowrap;
+          }
+          .signup-mobile-logo-flow {
+            position: static !important;
+            top: auto !important;
+            left: auto !important;
+            margin-bottom: 1.5rem !important;
+          }
+          .signup-mobile-form-container-inner {
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            padding-top: 0 !important;
+          }
+          .signup-mobile-logo-dropzone {
+            border: 1px dashed var(--bw-border-strong);
+            border-radius: 0;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            font-family: 'Work Sans', sans-serif;
+            font-size: 14px;
+            color: var(--bw-muted);
+            background: transparent;
+          }
+          .signup-mobile-logo-dropzone:focus-visible {
+            outline: 2px solid var(--bw-focus);
+            outline-offset: 2px;
+          }
         }
       `}</style>
       <div className="signup-main-container" style={{ display: 'flex', height: '100vh', width: '100%' }}>
@@ -357,7 +441,7 @@ export default function Signup() {
         <div 
           role="form" 
           aria-labelledby="signup-title"
-          className="signup-form-container"
+          className={`signup-form-container${isMobileSignup ? ' signup-mobile-form-container-inner' : ''}`}
           style={{ 
             width: '35%', 
             height: '100%', 
@@ -365,30 +449,367 @@ export default function Signup() {
             display: 'flex', 
             flexDirection: 'column',
             alignItems: 'center', 
-            justifyContent: 'center',
+            justifyContent: isMobileSignup ? 'flex-start' : 'center',
             padding: '24px',
             backgroundColor: 'var(--bw-bg)',
             overflowY: 'auto'
           }}
         >
-          <img 
-            src={currentLogo} 
-            alt="Maison Logo" 
-            className="signup-logo"
-            style={{ 
-              position: 'absolute',
-              top: '24px',
-              left: '24px',
-              height: '95px', 
-              width: 'auto', 
-              objectFit: 'contain',
-              zIndex: 10
-            }} 
-          />
-          <h1 id="signup-title" className="signup-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Create account</h1>
-          <p className="small-muted signup-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Set up your company profile in minutes.</p>
+          {isMobileSignup && (
+            <div className="signup-mobile-progress-wrap" aria-hidden>
+              <div className="signup-mobile-progress-row">
+                <div className="signup-mobile-progress-track">
+                  <div
+                    className="signup-mobile-progress-fill"
+                    style={{ width: signupStep === 1 ? '50%' : '100%' }}
+                  />
+                </div>
+                <span className="signup-mobile-step-label">
+                  Step {signupStep} of 2
+                </span>
+              </div>
+            </div>
+          )}
+          {!isMobileSignup && (
+            <img 
+              src={currentLogo} 
+              alt="Maison Logo" 
+              className="signup-logo"
+              style={{ 
+                position: 'absolute',
+                top: '24px',
+                left: '24px',
+                height: '95px', 
+                width: 'auto', 
+                objectFit: 'contain',
+                zIndex: 10
+              }} 
+            />
+          )}
+          {isMobileSignup && (
+            <img 
+              src={currentLogo} 
+              alt="Maison Logo" 
+              className="signup-logo signup-mobile-logo-flow"
+              style={{ 
+                height: '60px',
+                width: 'auto', 
+                objectFit: 'contain',
+                alignSelf: 'flex-start'
+              }} 
+            />
+          )}
+          <h1 id="signup-title" className="signup-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200, alignSelf: isMobileSignup ? 'flex-start' : undefined, width: isMobileSignup ? '100%' : undefined }}>Create account</h1>
+          <p className="small-muted signup-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300, alignSelf: isMobileSignup ? 'flex-start' : undefined, width: isMobileSignup ? '100%' : undefined }}>Set up your company profile in minutes.</p>
 
-          <form onSubmit={submit} className="vstack signup-form-grid signup-form" style={{ display: 'grid', gap: 12, marginTop: 16, width: '100%' }}>
+          {isMobileSignup ? (
+          <form onSubmit={handleFormSubmit} className="vstack signup-form-grid signup-form" style={{ display: 'flex', flexDirection: 'column', marginTop: 16, width: '100%', flex: 1, minHeight: 0 }}>
+            <div style={{ width: '100%', overflow: 'hidden' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  width: '200%',
+                  transform: signupStep === 1 ? 'translateX(0%)' : 'translateX(-50%)',
+                  transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ marginBottom: 6 }}>First name</span>
+                        <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                      </label>
+                      <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ marginBottom: 6 }}>Last name</span>
+                        <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                      </label>
+                    </div>
+                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ marginBottom: 6 }}>Email</span>
+                      <input className="bw-input signup-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                    </label>
+                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ marginBottom: 6 }}>Password</span>
+                      <div style={{ position: 'relative' }}>
+                        <input 
+                          className="bw-input signup-input signup-input-password" 
+                          type={showPassword ? 'text' : 'password'} 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          style={{ padding: '16px 18px 16px 18px', paddingRight: '44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                        />
+                        <button 
+                          type="button" 
+                          aria-label="Toggle password" 
+                          className="signup-toggle-btn"
+                          onClick={() => setShowPassword(!showPassword)} 
+                          style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff', cursor: 'pointer' }}
+                        >
+                          {showPassword ? <EyeOff className="signup-toggle-icon" size={16} /> : <Eye className="signup-toggle-icon" size={16} />}
+                        </button>
+                      </div>
+                    </label>
+                    <button
+                      type="button"
+                      className="bw-btn signup-button"
+                      disabled={!canContinueStep1}
+                      onClick={() => {
+                        if (canContinueStep1) setSignupStep(2)
+                      }}
+                      style={{ color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ marginBottom: 6 }}>Company</span>
+                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                    </label>
+                    <div style={{ fontFamily: 'Work Sans, sans-serif' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 6 }} className="small-muted">
+                        Slug
+                        <div 
+                          style={{ position: 'relative', display: 'inline-block' }}
+                          onMouseEnter={(e) => {
+                            if (!showSlugInfo) {
+                              e.currentTarget.setAttribute('data-hover', 'true')
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.removeAttribute('data-hover')
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowSlugInfo(true)
+                          }}
+                        >
+                          <Info 
+                            size={14} 
+                            style={{ 
+                              cursor: 'pointer', 
+                              color: 'var(--bw-muted)',
+                              opacity: 0.7
+                            }} 
+                          />
+                          <div 
+                            className="slug-info-preview"
+                            style={{
+                              position: 'absolute',
+                              bottom: '100%',
+                              left: '0',
+                              marginBottom: '8px',
+                              padding: '10px 14px',
+                              backgroundColor: 'var(--bw-bg-secondary)',
+                              border: '1px solid var(--bw-border)',
+                              borderRadius: '6px',
+                              color: 'var(--bw-text)',
+                              fontSize: '12px',
+                              zIndex: 1000,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                              width: '280px',
+                              textAlign: 'left',
+                              pointerEvents: 'none',
+                              opacity: 0,
+                              transition: 'opacity 0.2s ease',
+                              lineHeight: '1.5',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            Your slug creates unique branded URLs for your riders. Click to learn more about format requirements and how slugs work in the white-labeling system.
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: '20px',
+                              width: 0,
+                              height: 0,
+                              borderLeft: '6px solid transparent',
+                              borderRight: '6px solid transparent',
+                              borderTop: '6px solid var(--bw-border)'
+                            }}></div>
+                          </div>
+                        </div>
+                      </span>
+                      <div style={{ position: 'relative' }}>
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 18,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none',
+                            color: 'var(--bw-muted)',
+                            fontFamily: 'Work Sans, sans-serif',
+                            fontSize: 14,
+                            zIndex: 1,
+                          }}
+                        >
+                          maison.app/
+                        </span>
+                        <input 
+                          className="bw-input signup-input" 
+                          placeholder="my-company" 
+                          value={slug} 
+                          onChange={handleSlugChange}
+                          style={{ 
+                            padding: '16px 18px 16px 18px',
+                            paddingLeft: '6.75rem',
+                            borderRadius: 0, 
+                            fontFamily: 'Work Sans, sans-serif',
+                            borderColor: slugError ? '#ef4444' : undefined
+                          }} 
+                        />
+                      </div>
+                      {slugError && (
+                        <div style={{
+                          marginTop: '4px',
+                          fontSize: '12px',
+                          color: '#ef4444',
+                          fontFamily: 'Work Sans, sans-serif'
+                        }}>
+                          {slugError}
+                        </div>
+                      )}
+                    </div>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Work Sans, sans-serif' }}>
+                      <span style={{ marginBottom: 6 }}>Phone</span>
+                      <input 
+                        className="bw-input signup-input" 
+                        type="tel"
+                        placeholder="(555) 555-5555" 
+                        value={phone} 
+                        onChange={handlePhoneChange}
+                        maxLength={14}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                      />
+                    </label>
+                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ marginBottom: 6 }}>City</span>
+                      <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                    </label>
+                    <div className="bw-form-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span className="small-muted signup-label" style={{ marginBottom: 6, fontFamily: 'Work Sans, sans-serif', display: 'block' }}>Company Logo (optional)</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        style={{ display: 'none' }}
+                        id="logo-upload"
+                      />
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="signup-mobile-logo-dropzone"
+                        onClick={() => document.getElementById('logo-upload')?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            document.getElementById('logo-upload')?.click()
+                          }
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'copy'
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          const f = e.dataTransfer.files?.[0]
+                          if (f?.type.startsWith('image/')) {
+                            setLogoFile(f)
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              setLogoPreview(ev.target?.result as string)
+                            }
+                            reader.readAsDataURL(f)
+                          }
+                        }}
+                      >
+                        {logoFile ? 'Drop a new image or tap to change' : 'Drop logo here or tap to upload'}
+                      </div>
+                      {logoFile && (
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span className="small-muted" style={{ fontSize: '12px', fontFamily: 'Work Sans, sans-serif' }}>
+                            {logoFile.name}
+                          </span>
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleCancelLogo()
+                            }}
+                            style={{ 
+                              color: '#dc2626',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontFamily: 'Work Sans, sans-serif'
+                            }}
+                          >
+                            Remove
+                          </a>
+                        </div>
+                      )}
+                      {logoPreview && (
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo preview" 
+                            style={{ 
+                              maxWidth: '100px', 
+                              maxHeight: '100px', 
+                              objectFit: 'contain',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px'
+                            }} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                      <button
+                        type="button"
+                        className="bw-btn-outline signup-button"
+                        onClick={() => setSignupStep(1)}
+                        style={{ flex: 1, borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
+                      >
+                        ← Back
+                      </button>
+                      <button className="bw-btn signup-button" type="submit" style={{ flex: 1, color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}>Create account</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {error && <div className="small-muted signup-error" style={{ color: '#ffb3b3', fontFamily: 'Work Sans, sans-serif' }}>{error}</div>}
+            {message && <div className="small-muted signup-message" style={{ color: '#b3ffcb', fontFamily: 'Work Sans, sans-serif' }}>{message}</div>}
+
+            <div style={{ marginTop: 12, textAlign: 'center' }}>
+              <span className="small-muted signup-link-text" style={{ fontFamily: 'Work Sans, sans-serif' }}>Already have an account? </span>
+              <Link 
+                to="/tenant/login"
+                className="signup-link-text"
+                style={{ 
+                  marginLeft: 6,
+                  color: 'var(--bw-accent)',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  fontFamily: 'Work Sans, sans-serif'
+                }}
+              >
+                sign in
+              </Link>
+            </div>
+          </form>
+          ) : (
+          <form onSubmit={handleFormSubmit} className="vstack signup-form-grid signup-form" style={{ display: 'grid', gap: 12, marginTop: 16, width: '100%' }}>
             <div className="signup-form-grid" style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr 1fr' }}>
               <label className="small-muted" style={{ fontFamily: 'Work Sans, sans-serif' }}>First name
                 <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
@@ -653,6 +1074,7 @@ export default function Signup() {
               </Link>
             </div>
           </form>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
-import { API_BASE, REFRESH_ENDPOINT_BY_ROLE, UserRole } from '@config'
+import { API_BASE, AUTH_API_KEY, REFRESH_ENDPOINT_BY_ROLE, UserRole } from '@config'
 import { useAuthStore } from '@store/auth'
 import { extractSubdomain, isLocalhost, isMainDomainHost } from '@utils/subdomain'
 
@@ -21,6 +21,13 @@ function resolveApiBase(): string {
 
 const RESOLVED_BASE = resolveApiBase()
 
+/** Paths under axios `baseURL` that map to backend `/api/v1/auth/**`. */
+function isV1AuthRequestPath(url: string | undefined): boolean {
+	if (!url) return false
+	const path = url.split('?')[0]
+	return path === '/v1/auth' || path.startsWith('/v1/auth/')
+}
+
 export const http = axios.create({
 	baseURL: RESOLVED_BASE,
 	withCredentials: true,
@@ -32,6 +39,10 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 	if (token) {
 		config.headers = config.headers || {}
 		config.headers.Authorization = `Bearer ${token}`
+	}
+	if (AUTH_API_KEY && isV1AuthRequestPath(config.url)) {
+		config.headers = config.headers || {}
+		config.headers['X-API-Key'] = AUTH_API_KEY
 	}
 	
 	// For subdomain requests, ensure baseURL is relative to go through Vite proxy
@@ -83,6 +94,7 @@ async function performTokenRefresh(): Promise<string> {
 		credentials: 'include',
 		headers: {
 			'Content-Type': 'application/json',
+			...(AUTH_API_KEY && isV1AuthRequestPath(refreshPath) ? { 'X-API-Key': AUTH_API_KEY } : {}),
 		}
 	})
 	

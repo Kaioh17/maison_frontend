@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, X, List, Palette, CurrencyDollar, CaretRight } from '@phosphor-icons/react'
 import { getStripeLoginLink } from '@api/tenantSettings'
@@ -32,18 +32,31 @@ const menuItems: MenuItem[] = [
 interface SettingsMenuContextType {
   isOpen: boolean
   isMobile: boolean
+  toggleMenu: () => void
+  /** When true, the floating mobile menu button is hidden (page provides an inline header). */
+  suppressMobileFloatingMenu: boolean
+  setSuppressMobileFloatingMenu: (value: boolean) => void
 }
 
 const SettingsMenuContext = createContext<SettingsMenuContextType>({
   isOpen: false,
-  isMobile: false
+  isMobile: false,
+  toggleMenu: () => {},
+  suppressMobileFloatingMenu: false,
+  setSuppressMobileFloatingMenu: () => {}
 })
 
 export const useSettingsMenu = () => useContext(SettingsMenuContext)
 
-export default function SettingsMenuBar() {
+interface SettingsMenuBarProps {
+  /** Page content; must be nested inside so `useSettingsMenu()` receives the real context (e.g. suppress floating menu). */
+  children?: ReactNode
+}
+
+export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [suppressMobileFloatingMenu, setSuppressMobileFloatingMenu] = useState(false)
   const [loadingStripeLink, setLoadingStripeLink] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
@@ -121,8 +134,18 @@ export default function SettingsMenuBar() {
     }
   }
 
+  const toggleMenu = () => setIsOpen((o) => !o)
+
   return (
-    <SettingsMenuContext.Provider value={{ isOpen, isMobile }}>
+    <SettingsMenuContext.Provider
+      value={{
+        isOpen,
+        isMobile,
+        toggleMenu,
+        suppressMobileFloatingMenu,
+        setSuppressMobileFloatingMenu
+      }}
+    >
       {/* Overlay when menu is open on mobile */}
       {isOpen && isMobile && (
         <div
@@ -140,25 +163,27 @@ export default function SettingsMenuBar() {
         />
       )}
 
-      {/* Hamburger Button - Fixed position on mobile, inside header on desktop */}
-      {isMobile && (
+      {/* Hamburger Button - Fixed position on mobile (hidden when a page renders an inline header) */}
+      {isMobile && !suppressMobileFloatingMenu && (
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={toggleMenu}
           style={{
             position: 'fixed',
             top: 'clamp(16px, 3vw, 24px)',
             left: isOpen ? 'calc(80% + clamp(16px, 3vw, 24px))' : 'clamp(16px, 3vw, 24px)',
             zIndex: 1001,
             padding: 'clamp(8px, 1.5vw, 12px)',
-            backgroundColor: 'var(--bw-bg-secondary)',
-            border: '1px solid var(--bw-border)',
+            backgroundColor: 'transparent',
+            border: 'none',
+            outline: 'none',
+            boxShadow: 'none',
+            WebkitTapHighlightColor: 'transparent',
             borderRadius: 'clamp(4px, 0.8vw, 8px)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'left 0.3s ease',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+            transition: 'left 0.3s ease'
           }}
           aria-label="Toggle menu"
         >
@@ -509,6 +534,7 @@ export default function SettingsMenuBar() {
           transition: 'width 0.3s ease'
         }} />
       )}
+      {children}
     </SettingsMenuContext.Provider>
   )
 }

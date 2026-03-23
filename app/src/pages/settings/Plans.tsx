@@ -4,6 +4,7 @@ import { upgradeSubscription } from '@api/subscription'
 import { useNavigate } from 'react-router-dom'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { getStripeSubscriptionPriceId } from '@config'
 
 export default function Plans() {
   const [info, setInfo] = useState<any>(null)
@@ -88,7 +89,7 @@ export default function Plans() {
       price: '$0.00',
       period: '/month',
       description: 'Perfect for solo drivers and small fleets.',
-      price_id: 'price_1ShzxJQtWPwjkVcEAMWx8Sgq',
+      price_id: getStripeSubscriptionPriceId('starter'),
       features: [
         { text: 'Up to 5 vehicles', included: true },
         { text: 'Up to 10 drivers', included: true },
@@ -103,7 +104,7 @@ export default function Plans() {
       period: '/month',
       description: 'Ideal for growing businesses',
       popular: true,
-      price_id: 'price_1Si00KQtWPwjkVcEa7LKC5EM',
+      price_id: getStripeSubscriptionPriceId('growth'),
       features: [
         { text: 'Up to 25 vehicles', included: true },
         { text: 'Up to 50 drivers', included: true },
@@ -119,7 +120,7 @@ export default function Plans() {
       price: '$300',
       period: '/month',
       description: 'For large fleets and enterprises',
-      price_id: 'price_1Si01bQtWPwjkVcEMk6XJREA',
+      price_id: getStripeSubscriptionPriceId('fleet'),
       features: [
         { text: 'Unlimited vehicles', included: true },
         { text: 'Unlimited drivers', included: true },
@@ -142,8 +143,7 @@ export default function Plans() {
 
   return (
     <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar />
-      
+      <SettingsMenuBar>
       {/* Main Content */}
       <div style={{ 
         marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
@@ -358,6 +358,7 @@ export default function Plans() {
           isMobile={isMobile}
         />
       </div>
+      </SettingsMenuBar>
     </div>
   )
 }

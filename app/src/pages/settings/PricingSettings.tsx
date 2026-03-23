@@ -181,8 +181,7 @@ export default function PricingSettings() {
         display: 'flex',
         minHeight: '100vh'
       }}>
-        <SettingsMenuBar />
-        
+        <SettingsMenuBar>
         {/* Main Content */}
         <div style={{ 
           marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
@@ -706,6 +705,7 @@ export default function PricingSettings() {
         </div>
         </div>
         </div>
+      </SettingsMenuBar>
       </div>
 
       {/* Learn More Modal */}

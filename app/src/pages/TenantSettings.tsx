@@ -824,8 +824,7 @@ export default function TenantSettings() {
 
   return (
     <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar />
-      
+      <SettingsMenuBar>
       {/* Main Content */}
       <div style={{ 
         marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
@@ -2358,6 +2357,7 @@ export default function TenantSettings() {
       )}
       </div>
       </div>
+      </SettingsMenuBar>
     </div>
   )
 } 

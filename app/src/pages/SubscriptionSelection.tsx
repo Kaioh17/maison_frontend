@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createCheckoutSession } from '@api/subscription'
 import { useAuthStore } from '@store/auth'
+import { getStripeSubscriptionPriceId } from '@config'
 import './landing.css'
 
 export default function SubscriptionSelection() {
@@ -28,7 +29,7 @@ export default function SubscriptionSelection() {
       price: '$0.00',
       period: '/month',
       description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $100.',
-      price_id: 'price_1ShzxJQtWPwjkVcEAMWx8Sgq',
+      price_id: getStripeSubscriptionPriceId('starter'),
       features: [
         { text: 'Up to 5 vehicles', included: true },
         { text: 'Up to 10 drivers', included: true },
@@ -49,7 +50,7 @@ export default function SubscriptionSelection() {
       period: '/month',
       description: 'Ideal for growing businesses',
       popular: true,
-      price_id: 'price_1Si00KQtWPwjkVcEa7LKC5EM',
+      price_id: getStripeSubscriptionPriceId('growth'),
       features: [
         { text: 'Up to 25 vehicles', included: true },
         { text: 'Up to 50 drivers', included: true },
@@ -69,7 +70,7 @@ export default function SubscriptionSelection() {
       price: '$300',
       period: '/month',
       description: 'For large fleets and enterprises',
-      price_id: 'price_1Si01bQtWPwjkVcEMk6XJREA',
+      price_id: getStripeSubscriptionPriceId('fleet'),
       features: [
         { text: 'Unlimited vehicles', included: true },
         { text: 'Unlimited drivers', included: true },

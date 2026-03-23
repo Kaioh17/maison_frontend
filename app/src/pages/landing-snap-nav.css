@@ -1,0 +1,201 @@
+/* Full-page snap scroll root */
+.landing-snap-page {
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.landing-snap-section {
+  height: 100vh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-snap-section--scroll {
+  overflow-y: auto;
+}
+
+/* Brand row: hamburger + wordmark */
+.landing-snap-brand-row {
+  position: fixed;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.landing-snap-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  margin: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #fff;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+
+.landing-snap-brand-row[data-theme='light'] .landing-snap-menu-btn {
+  color: #0a0a0f;
+}
+
+.landing-snap-logo {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  transition:
+    color 0.3s ease,
+    opacity 0.3s ease;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.landing-snap-logo[data-theme='light'] {
+  color: #0a0a0f;
+}
+
+/* Fixed CTA */
+.landing-snap-cta {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 100;
+  background: #7c5cfc;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Work Sans', sans-serif;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.landing-snap-cta:hover {
+  background: #7c3aed;
+  color: #fff;
+}
+
+/* Section dot rail (not pricing carousel dots) — desktop only */
+.landing-snap-dot-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .landing-snap-dot-nav {
+    position: fixed;
+    right: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+}
+
+.landing-snap-dot-nav__btn {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    height 0.25s ease,
+    background 0.25s ease,
+    border-radius 0.25s ease;
+}
+
+.landing-snap-dot-nav__btn.active {
+  height: 20px;
+  border-radius: 999px;
+  background: #7c5cfc;
+}
+
+.landing-snap-dot-nav[data-theme='light'] .landing-snap-dot-nav__btn {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.landing-snap-dot-nav[data-theme='light'] .landing-snap-dot-nav__btn.active {
+  background: #7c5cfc;
+}
+
+/* Full-screen menu */
+.landing-snap-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(10, 10, 15, 0.97);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.5rem 2rem;
+  box-sizing: border-box;
+}
+
+.landing-snap-menu-overlay__top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 2rem;
+}
+
+.landing-snap-menu-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: none;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+
+.landing-snap-menu-overlay__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.landing-snap-menu-overlay__nav a {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.landing-snap-menu-overlay__nav a:hover {
+  color: #7c5cfc;
+}
+
+.landing-snap-menu-overlay__divider {
+  width: 100%;
+  max-width: 240px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0.5rem 0;
+}
+
