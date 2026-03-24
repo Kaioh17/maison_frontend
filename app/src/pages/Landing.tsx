@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
-import { CheckCircle, XCircle, List, X } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, List, X, SignIn } from '@phosphor-icons/react'
 
 // Animation variants
 const fadeInUp = {
@@ -224,7 +224,7 @@ function DriverExperienceSlide() {
             className="text-[48px] font-light text-white mb-4 leading-tight"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            Give Drivers A Platform They Actually Like.
+            Give Drivers A Platform Preferred
           </motion.h2>
           <motion.p
             variants={fadeInUp}
@@ -569,16 +569,16 @@ function PricingSlide() {
 function MissionValuesSlide() {
   const coreValues = [
     {
-      title: 'Developer-First Architecture',
-      signal: 'Modular, API-first logic.'
+      title: 'Your Brand, Your Subdomain',
+      signal: "Every account gets a dedicated space at tito.usemaison.io — your drivers and rider never see anyone else's name."
     },
     {
       title: 'Brand Autonomy',
-      signal: 'White-label primitives.'
+      signal: 'Upload your logo and set your company name across every rider and driver touchpoint from day one.'
     },
     {
-      title: 'Transparent Operations',
-      signal: 'Real-time data integrity.'
+      title: 'Operations That Run Themselves',
+      signal: 'Live driver and vehicle tracking on your dashboard. Automatic emails keep drivers and riders informed at every step, no manual follow-up needed. Assign a driver. They get notified. '
     }
   ]
 
@@ -608,15 +608,6 @@ function MissionValuesSlide() {
             >
               Maison is a modular platform designed to help local operators reclaim their brand from marketplace "taxes." We believe that independent limo and black car businesses shouldn't have to surrender their identity, customer relationships, or pricing control to third-party platforms that extract value without adding it. Our architecture gives you the tools to build, scale, and operate your business on your terms—with your branding, your pricing, and your operational standards front and center.
             </motion.p>
-            <motion.div variants={fadeInUp}>
-              <Link
-                to="/about"
-                className="inline-flex items-center justify-center w-full sm:w-auto py-3 px-4 md:py-[13px] md:px-5 border-2 border-gray-700 text-white rounded-[10px] text-[13px] md:text-[15px] font-semibold hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors text-center"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                Read the full founder's vision and engineering roadmap
-              </Link>
-            </motion.div>
           </motion.div>
 
           {/* Right Column: Technical Core Values (desktop only — keeps mobile to one viewport) */}
@@ -638,7 +629,7 @@ function MissionValuesSlide() {
                   {value.title}
                 </h3>
                 <p className="text-gray-400 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                  Signal: {value.signal}
+                  {value.signal}
                 </p>
               </motion.div>
             ))}
@@ -652,36 +643,39 @@ function MissionValuesSlide() {
 // Slide 7: Conclusion & Footer
 function ConclusionSlide() {
   return (
-    <section id="footer" className="landing-snap-section landing-snap-section--scroll flex flex-col bg-[#0a0a0f]" data-nav-theme="dark">
-      {/* Final CTA — fluid scale on small screens */}
-      <div className="flex-1 flex items-center justify-center max-md:py-5 md:py-0 min-h-0">
+    <section id="footer" className="landing-snap-section landing-snap-section--scroll flex flex-col bg-[#0d0c18]" data-nav-theme="dark">
+      <div className="flex-1 flex items-center justify-center py-10 md:py-14 min-h-0">
         <motion.div
           initial="initial"
           whileInView="animate"
           viewport={{ once: true }}
           variants={staggerChildren}
-          className="w-full box-border px-5 text-center max-w-[min(100%,42rem)] mx-auto"
+          className="w-full box-border px-5 text-center max-w-[min(100%,56rem)] mx-auto"
         >
           <motion.h2
             variants={fadeInUp}
-            className="font-light text-white mb-3 md:mb-6 leading-[1.12] text-[clamp(1.2rem,4.6vw,1.85rem)] sm:text-3xl md:text-5xl lg:text-6xl"
+            className="text-white mb-3 md:mb-5 leading-[1.12] text-[clamp(1.7rem,5vw,2.625rem)] font-semibold"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            Maison is the Next Generation
-            <br className="hidden sm:block" /> of Limo Software.
+            Built for Operators Who Don&apos;t Compromise.
           </motion.h2>
           <motion.p
             variants={fadeInUp}
-            className="text-gray-400 max-w-2xl mx-auto mb-6 md:mb-12 text-[13px] leading-snug sm:text-base md:text-xl md:leading-normal"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
+            className="max-w-3xl mx-auto mb-7 md:mb-10 text-[13px] leading-snug sm:text-base md:text-[18px] md:leading-normal"
+            style={{ color: '#8a87a8', fontFamily: "'Work Sans', sans-serif" }}
           >
-            Stop fighting with outdated systems. Start running your business on a platform built for you — operators, drivers, and riders.
+            Your brand. Your riders. Your drivers. All in one place - without giving up control.
           </motion.p>
           <motion.div variants={fadeInUp}>
             <Link
               to="/signup"
-              className="inline-flex items-center justify-center w-full max-w-xs mx-auto sm:w-auto sm:max-w-none py-3 px-5 md:py-[13px] bg-[#7c5cfc] text-white rounded-[10px] text-[13px] md:text-[15px] font-semibold hover:bg-[#7c3aed] transition-colors box-border border-2 border-transparent"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
+              className="inline-flex items-center justify-center text-white font-semibold transition-colors hover:bg-[#6d28d9]"
+              style={{
+                fontFamily: "'Work Sans', sans-serif",
+                background: '#7C3AED',
+                padding: '14px 32px',
+                borderRadius: 8,
+              }}
             >
               Start Free Today
             </Link>
@@ -689,38 +683,53 @@ function ConclusionSlide() {
         </motion.div>
       </div>
 
-      {/* Footer — compact on mobile */}
       <motion.footer
         initial="initial"
         whileInView="animate"
         viewport={{ once: true }}
         variants={fadeIn}
-        className="border-t border-gray-800 py-6 md:py-12 shrink-0"
+        className="shrink-0"
+        style={{ borderTop: '0.5px solid #1e1c30' }}
       >
-        <div className="w-full box-border px-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-5 md:gap-8 mb-5 md:mb-8 text-left">
-            <div className="col-span-2 md:col-span-1">
+        <div className="w-full box-border" style={{ padding: '52px 60px 32px' }}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-10 mb-6 text-left">
+            <div>
               <div
-                className="text-lg md:text-2xl font-bold text-white mb-2 md:mb-4"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
+                className="mb-3 text-white font-semibold"
+                style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18 }}
               >
                 Maison
               </div>
               <p
-                className="text-gray-400 text-xs md:text-sm leading-snug max-w-xs"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
+                className="leading-relaxed max-w-xs"
+                style={{ color: '#8a87a8', fontFamily: "'Work Sans', sans-serif", fontSize: 13 }}
               >
-                Minimal platform to build, ship and iterate faster.
+                Built for black car and limo operators who run their business like a brand.
               </p>
+              <span
+                className="inline-flex items-center mt-4 rounded-full"
+                style={{
+                  background: '#1e1640',
+                  border: '0.5px solid #3d2f7a',
+                  color: '#9d6fff',
+                  fontSize: 11,
+                  lineHeight: '16px',
+                  padding: '4px 10px',
+                  fontFamily: "'Work Sans', sans-serif",
+                }}
+              >
+                slug.usemaison.io
+              </span>
             </div>
+
             <nav>
               <h3
-                className="text-sm md:text-lg font-semibold text-white mb-2 md:mb-4"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
+                className="mb-3 uppercase tracking-[0.16em]"
+                style={{ color: '#4a4768', fontSize: 11, fontFamily: "'Work Sans', sans-serif" }}
               >
                 Product
               </h3>
-              <ul className="space-y-1 md:space-y-2">
+              <ul className="space-y-2">
                 <li>
                   <a
                     href="#platform"
@@ -728,8 +737,8 @@ function ConclusionSlide() {
                       e.preventDefault()
                       smoothScrollToSection('platform')
                     }}
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
                     Overview
                   </a>
@@ -741,87 +750,71 @@ function ConclusionSlide() {
                       e.preventDefault()
                       smoothScrollToSection('pricing')
                     }}
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
                     Pricing
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                  <Link
+                    to="/signup"
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
-                    Docs
-                  </a>
+                    Get Started
+                  </Link>
                 </li>
               </ul>
             </nav>
+
             <nav>
               <h3
-                className="text-sm md:text-lg font-semibold text-white mb-2 md:mb-4"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
+                className="mb-3 uppercase tracking-[0.16em]"
+                style={{ color: '#4a4768', fontSize: 11, fontFamily: "'Work Sans', sans-serif" }}
               >
                 Company
               </h3>
-              <ul className="space-y-1 md:space-y-2">
+              <ul className="space-y-2">
                 <li>
                   <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    href="/about"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
                     About
                   </a>
                 </li>
                 <li>
                   <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    href="/about#founders-vision"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
-                    Blog
+                    Founder&apos;s Vision
                   </a>
                 </li>
                 <li>
                   <a
-                    href="#"
-                    className="text-gray-400 hover:text-white transition-colors text-xs md:text-sm"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    href="mailto:hello@usemaison.io"
+                    className="transition-colors hover:text-[#a89fd4]"
+                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
                   >
                     Contact
                   </a>
                 </li>
               </ul>
             </nav>
-            <div className="col-span-2 md:col-span-1">
-              <h3
-                className="text-sm md:text-lg font-semibold text-white mb-2 md:mb-4"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                Newsletter
-              </h3>
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-2 md:space-y-3 max-w-md md:max-w-none">
-                <input
-                  type="email"
-                  placeholder="you@email.com"
-                  className="w-full px-3 py-1.5 md:px-4 md:py-2 bg-gray-900 border border-gray-800 rounded-lg text-white text-xs md:text-base placeholder-gray-500 focus:outline-none focus:border-[#7c5cfc] transition-colors"
-                  style={{ fontFamily: "'Work Sans', sans-serif" }}
-                />
-                <button
-                  type="submit"
-                  className="w-full py-2.5 md:py-[13px] px-4 md:px-5 bg-[#7c5cfc] text-white rounded-[10px] text-[13px] md:text-[15px] font-semibold hover:bg-[#7c3aed] transition-colors box-border"
-                  style={{ fontFamily: "'Work Sans', sans-serif" }}
-                >
-                  Subscribe
-                </button>
-              </form>
-            </div>
           </div>
-          <div className="border-t border-gray-800 pt-4 md:pt-8 text-center">
-            <p className="text-gray-400 text-xs md:text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-              © {new Date().getFullYear()} Maison. All rights reserved.
+          <div className="pt-4" style={{ borderTop: '0.5px solid #1e1c30' }}>
+            <p
+              style={{ color: '#3d3b54', fontSize: 12, fontFamily: "'Work Sans', sans-serif" }}
+            >
+              © 2026 Maison. All rights reserved.
             </p>
           </div>
         </div>
@@ -938,16 +931,66 @@ export default function Landing() {
         </button>
       </div>
 
-      <Link
-        to="/signup"
-        className="landing-snap-cta"
+      <div
+        className="landing-snap-actions"
         style={{
           opacity: ctaHidden ? 0 : 1,
           pointerEvents: ctaHidden ? 'none' : 'auto',
         }}
       >
-        Get Started
-      </Link>
+        <Link to="/tenant/login" className="landing-snap-login-cta" aria-label="Login">
+          <SignIn className="w-4 h-4" weight="bold" aria-hidden />
+        </Link>
+        <Link to="/signup" className="landing-snap-cta">
+          Get Started
+        </Link>
+      </div>
+
+      <nav
+        className="landing-snap-top-links"
+        aria-label="Primary"
+        style={{
+          opacity: hideFloatingChromeOnPricing ? 0 : 1,
+          pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
+        }}
+      >
+        <a
+          href="#platform"
+          onClick={(e) => {
+            e.preventDefault()
+            scrollToSectionById('platform')
+          }}
+        >
+          Product
+        </a>
+        <a
+          href="#pricing"
+          onClick={(e) => {
+            e.preventDefault()
+            scrollToSectionById('pricing')
+          }}
+        >
+          Pricing
+        </a>
+        <a
+          href="#mission"
+          onClick={(e) => {
+            e.preventDefault()
+            scrollToSectionById('mission')
+          }}
+        >
+          About
+        </a>
+        <a
+          href="#footer"
+          onClick={(e) => {
+            e.preventDefault()
+            scrollToSectionById('footer')
+          }}
+        >
+          Company
+        </a>
+      </nav>
 
       <nav className="landing-snap-dot-nav" aria-label="Section navigation" data-theme={navTheme}>
         {SNAP_SECTION_LABELS.map((label, i) => (

@@ -10,7 +10,7 @@ interface ImportMetaEnv {
   readonly VITE_DEV_DOMAIN?: string
   readonly VITE_API_PROXY?: string
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string
-  /** Optional override for subscription Price IDs (otherwise dev vs prod is chosen in code). */
+
   readonly VITE_STRIPE_PRICE_STARTER?: string
   readonly VITE_STRIPE_PRICE_GROWTH?: string
   readonly VITE_STRIPE_PRICE_FLEET?: string

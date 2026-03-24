@@ -1,5 +1,5 @@
-// Frontend logging utility that redirects all console logging to maison_frontend_log
-// This version works directly in the browser and stores logs locally
+// Frontend logging utility.
+// In production, console methods are disabled to avoid leaking debug data.
 
 // Store original console methods
 const originalConsoleLog = console.log
@@ -7,6 +7,7 @@ const originalConsoleError = console.error
 const originalConsoleWarn = console.warn
 const originalConsoleInfo = console.info
 const originalConsoleDebug = console.debug
+const isProd = import.meta.env.PROD
 
 // Log buffer to store logs
 let logBuffer: string[] = []
@@ -42,44 +43,61 @@ const saveLogs = (logEntry: string) => {
   }
 }
 
-// Override console.log
-console.log = (...args: any[]) => {
-  const message = args.join(' ')
-  const logEntry = formatLogMessage('LOG', message)
-  saveLogs(logEntry)
-  originalConsoleLog(...args)
-}
+if (isProd) {
+  // Disable console output entirely in production.
+  const noop = () => {}
+  console.log = noop
+  console.error = noop
+  console.warn = noop
+  console.info = noop
+  console.debug = noop
 
-// Override console.error
-console.error = (...args: any[]) => {
-  const message = args.join(' ')
-  const logEntry = formatLogMessage('ERROR', message)
-  saveLogs(logEntry)
-  originalConsoleError(...args)
-}
+  // Ensure no persisted log data remains in production runtime.
+  try {
+    localStorage.removeItem('maison_frontend_logs')
+  } catch {
+    // Ignore storage access errors.
+  }
+} else {
+  // Override console.log
+  console.log = (...args: any[]) => {
+    const message = args.join(' ')
+    const logEntry = formatLogMessage('LOG', message)
+    saveLogs(logEntry)
+    originalConsoleLog(...args)
+  }
 
-// Override console.warn
-console.warn = (...args: any[]) => {
-  const message = args.join(' ')
-  const logEntry = formatLogMessage('WARN', message)
-  saveLogs(logEntry)
-  originalConsoleWarn(...args)
-}
+  // Override console.error
+  console.error = (...args: any[]) => {
+    const message = args.join(' ')
+    const logEntry = formatLogMessage('ERROR', message)
+    saveLogs(logEntry)
+    originalConsoleError(...args)
+  }
 
-// Override console.info
-console.info = (...args: any[]) => {
-  const message = args.join(' ')
-  const logEntry = formatLogMessage('INFO', message)
-  saveLogs(logEntry)
-  originalConsoleInfo(...args)
-}
+  // Override console.warn
+  console.warn = (...args: any[]) => {
+    const message = args.join(' ')
+    const logEntry = formatLogMessage('WARN', message)
+    saveLogs(logEntry)
+    originalConsoleWarn(...args)
+  }
 
-// Override console.debug
-console.debug = (...args: any[]) => {
-  const message = args.join(' ')
-  const logEntry = formatLogMessage('DEBUG', message)
-  saveLogs(logEntry)
-  originalConsoleDebug(...args)
+  // Override console.info
+  console.info = (...args: any[]) => {
+    const message = args.join(' ')
+    const logEntry = formatLogMessage('INFO', message)
+    saveLogs(logEntry)
+    originalConsoleInfo(...args)
+  }
+
+  // Override console.debug
+  console.debug = (...args: any[]) => {
+    const message = args.join(' ')
+    const logEntry = formatLogMessage('DEBUG', message)
+    saveLogs(logEntry)
+    originalConsoleDebug(...args)
+  }
 }
 
 // Export the original console methods in case they're needed
@@ -141,15 +159,17 @@ export const getAllLogs = (): string[] => {
   return [...logBuffer]
 }
 
-// Load existing logs from localStorage on initialization
-try {
-  const existingLogs = localStorage.getItem('maison_frontend_logs')
-  if (existingLogs) {
-    logBuffer = JSON.parse(existingLogs)
-    originalConsole.log(`Loaded ${logBuffer.length} existing logs from localStorage`)
+// Load existing logs from localStorage only outside production.
+if (!isProd) {
+  try {
+    const existingLogs = localStorage.getItem('maison_frontend_logs')
+    if (existingLogs) {
+      logBuffer = JSON.parse(existingLogs)
+      originalConsole.log(`Loaded ${logBuffer.length} existing logs from localStorage`)
+    }
+  } catch (error) {
+    originalConsole.warn('Failed to load existing logs from localStorage:', error)
   }
-} catch (error) {
-  originalConsole.warn('Failed to load existing logs from localStorage:', error)
 }
 
 // Make logging functions available globally for easy access from browser console
@@ -164,13 +184,15 @@ declare global {
   }
 }
 
-window.maisonLogs = {
-  downloadLogs,
-  clearLogs,
-  getLogCount,
-  getAllLogs
-}
+if (!isProd) {
+  window.maisonLogs = {
+    downloadLogs,
+    clearLogs,
+    getLogCount,
+    getAllLogs
+  }
 
-// Initialize logging
-console.log('Frontend logging initialized - all console output will be saved locally and can be downloaded as maison_frontend_log')
-console.log('Use window.maisonLogs.downloadLogs() to download logs, or access other functions from window.maisonLogs') 
+  // Initialize logging
+  console.log('Frontend logging initialized - all console output will be saved locally and can be downloaded as maison_frontend_log')
+  console.log('Use window.maisonLogs.downloadLogs() to download logs, or access other functions from window.maisonLogs')
+}

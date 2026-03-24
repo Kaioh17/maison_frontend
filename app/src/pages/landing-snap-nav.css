@@ -67,12 +67,39 @@
   color: #0a0a0f;
 }
 
-/* Fixed CTA */
-.landing-snap-cta {
+/* Top-right actions */
+.landing-snap-actions {
   position: fixed;
   top: 1rem;
   right: 1.25rem;
   z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity 0.3s ease;
+}
+
+.landing-snap-login-cta {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(10, 10, 15, 0.55);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.landing-snap-login-cta:hover {
+  background: rgba(124, 92, 252, 0.22);
+  border-color: rgba(124, 92, 252, 0.55);
+}
+
+.landing-snap-cta {
   background: #7c5cfc;
   color: #fff;
   border: none;
@@ -82,7 +109,7 @@
   font-weight: 600;
   font-family: 'Work Sans', sans-serif;
   cursor: pointer;
-  transition: opacity 0.3s ease;
+  transition: background-color 0.2s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -95,12 +122,51 @@
   color: #fff;
 }
 
+.landing-snap-top-links {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+  display: none;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 92, 252, 0.25);
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.3s ease;
+}
+
+.landing-snap-top-links a {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  padding: 0.33rem 0.56rem;
+  border-radius: 999px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.landing-snap-top-links a:hover {
+  color: #fff;
+  background: rgba(124, 92, 252, 0.28);
+}
+
 /* Section dot rail (not pricing carousel dots) — desktop only */
 .landing-snap-dot-nav {
   display: none;
 }
 
 @media (min-width: 768px) {
+  .landing-snap-top-links {
+    display: flex;
+    top: 1.05rem;
+  }
+
   .landing-snap-dot-nav {
     position: fixed;
     right: 1.25rem;
