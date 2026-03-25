@@ -45,21 +45,21 @@ body {
 
 /* Theme System - CSS Variables */
 :root {
-  /* Dark Theme (Default) - Upgraded Palette */
-  --bw-bg: #121212; /* Charcoal almost-black background */
+  /* Dark Theme (Default) — command center palette */
+  --bw-bg: #0f0d1a; /* Near black page */
   --bw-fg: #E0E0E0; /* Soft light gray primary text */
   --bw-text: #E0E0E0; /* Primary text */
-  --bw-muted: #A0A3AA; /* Mid-gray secondary text */
-  --bw-disabled: #5A5D66; /* Disabled text / subtle icons */
-  --bw-border: #242424; /* Subtle borders/dividers */
-  --bw-border-strong: #242424; /* Stronger borders */
+  --bw-muted: #9b97ae; /* Secondary text */
+  --bw-disabled: #5c586f; /* Disabled text / subtle icons */
+  --bw-border: #2a2640; /* Subtle borders/dividers */
+  --bw-border-strong: #3d3854; /* Stronger borders */
   --bw-focus: #E0E0E0; /* Focus ring color */
   --bw-shadow: 0 6px 24px rgba(0,0,0,0.4);
   --bw-bg-hover: rgba(255,255,255,0.05);
   --bw-bg-hover-strong: rgba(255,255,255,0.1);
-  --bw-bg-secondary: #181818; /* Elevated surfaces / cards */
-  --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
-  --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
+  --bw-bg-secondary: #1a1727; /* Card / elevated surfaces */
+  --bw-accent: #6c63e8; /* Muted indigo accent */
+  --bw-accent-hover: #7068cc; /* Accent hover */
   --bw-success: #1E7F4A; /* Muted success color */
   --bw-warning: #B8871B; /* Muted warning color */
   --bw-error: #C5483D; /* Muted error color */
@@ -88,8 +88,8 @@ body {
   --bw-bg-hover: rgba(0,0,0,0.02);
   --bw-bg-hover-strong: rgba(0,0,0,0.05);
   --bw-bg-secondary: #ffffff; /* white */
-  --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
-  --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
+  --bw-accent: #6c63e8; /* Muted indigo accent */
+  --bw-accent-hover: #7068cc; /* Accent hover */
 }
 
 /* Auto Theme - Follows system preference */
@@ -106,27 +106,27 @@ body {
     --bw-bg-hover: rgba(0,0,0,0.02);
     --bw-bg-hover-strong: rgba(0,0,0,0.05);
     --bw-bg-secondary: #ffffff; /* white */
-    --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
-    --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
+    --bw-accent: #6c63e8; /* Muted indigo accent */
+    --bw-accent-hover: #7068cc; /* Accent hover */
   }
 }
 
 @media (prefers-color-scheme: dark) {
   [data-theme="auto"] {
-    --bw-bg: #121212; /* Charcoal almost-black background */
+    --bw-bg: #0f0d1a; /* Near black page */
     --bw-fg: #E0E0E0; /* Soft light gray primary text */
     --bw-text: #E0E0E0; /* Primary text */
-    --bw-muted: #A0A3AA; /* Mid-gray secondary text */
-    --bw-disabled: #5A5D66; /* Disabled text / subtle icons */
-    --bw-border: #242424; /* Subtle borders/dividers */
-    --bw-border-strong: #242424; /* Stronger borders */
+    --bw-muted: #9b97ae; /* Secondary text */
+    --bw-disabled: #5c586f; /* Disabled text / subtle icons */
+    --bw-border: #2a2640; /* Subtle borders */
+    --bw-border-strong: #3d3854; /* Stronger borders */
     --bw-focus: #E0E0E0; /* Focus ring color */
     --bw-shadow: 0 6px 24px rgba(0,0,0,0.4);
     --bw-bg-hover: rgba(255,255,255,0.05);
     --bw-bg-hover-strong: rgba(255,255,255,0.1);
-    --bw-bg-secondary: #181818; /* Elevated surfaces / cards */
-    --bw-accent: rgba(155, 97, 209, 0.81); /* Purple accent color */
-    --bw-accent-hover: rgba(135, 77, 189, 0.9); /* Accent hover state */
+    --bw-bg-secondary: #1a1727; /* Card / elevated surfaces */
+    --bw-accent: #6c63e8; /* Muted indigo accent */
+    --bw-accent-hover: #7068cc; /* Accent hover */
     --bw-success: #1E7F4A; /* Muted success color */
     --bw-warning: #B8871B; /* Muted warning color */
     --bw-error: #C5483D; /* Muted error color */
@@ -134,13 +134,13 @@ body {
   
   /* Dark scrollbar for auto theme in dark mode */
   [data-theme="auto"] ::-webkit-scrollbar-track {
-    background: #121212;
-    border-left: 1px solid #242424;
+    background: #0f0d1a;
+    border-left: 1px solid #2a2640;
   }
   
   [data-theme="auto"] ::-webkit-scrollbar-thumb {
-    background: #242424;
-    border: 2px solid #121212;
+    background: #2a2640;
+    border: 2px solid #0f0d1a;
   }
   
   [data-theme="auto"] ::-webkit-scrollbar-thumb:hover {

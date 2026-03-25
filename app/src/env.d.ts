@@ -2,7 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE?: string
-  /** Required by backend for all `/api/v1/auth/**` requests (sent as `X-API-Key`). */
+  /** Backend `X-API-Key`: `/api/v1/auth/**` and `GET /api/v1/driver/{slug}/verify`. */
   readonly VITE_API_KEY?: string
   readonly VITE_MAPBOX_TOKEN?: string
   readonly VITE_ENVIRONMENT?: string

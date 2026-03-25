@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeSlash, Envelope, Lock, User, Phone, MapPin, ArrowRight, Car } from '@phosphor-icons/react'
+import { Eye, EyeSlash, Envelope, Lock, User, Phone, ArrowRight, Car } from '@phosphor-icons/react'
 import { registerDriver } from '@api/driver'
 import { getVehicleCategoriesByTenant } from '@api/vehicles'
 import type { VehicleCategoryResponse } from '@api/vehicles'
@@ -31,6 +31,7 @@ export default function DriverRegistration() {
     }
   })
   const [includeVehicle, setIncludeVehicle] = useState(false)
+  const [step, setStep] = useState<1 | 2>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategoryResponse[]>([])
@@ -180,13 +181,42 @@ export default function DriverRegistration() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateDriverStep1 = (): boolean => {
+    if (!formData.first_name.trim() || !formData.last_name.trim()) {
+      setError('Please enter your first and last name.')
+      return false
+    }
+    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setError('Please enter a valid email address.')
+      return false
+    }
+    const digits = formData.phone_no.replace(/\D/g, '')
+    if (digits.length < 10) {
+      setError('Please enter a valid 10-digit phone number.')
+      return false
+    }
+    if (!formData.password.trim()) {
+      setError('Please choose a password.')
+      return false
+    }
+    return true
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (step === 1) {
+      setError('')
+      if (!validateDriverStep1()) return
+      setStep(2)
+      return
+    }
+
     if (!token) {
       setError('Verification token is required. Please use the verification link provided.')
       return
     }
-    
+
     if (!tenantId) {
       setError('Tenant ID is missing. Please verify your token again.')
       return
@@ -435,6 +465,9 @@ export default function DriverRegistration() {
             <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
               {tenantInfo ? `Sign up to drive for ${companyName}` : 'Sign up to get started'}
             </p>
+            <p className="small-muted" style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em' }}>
+              Step {step} of 2 — {step === 1 ? 'Account' : 'License & vehicle'}
+            </p>
 
             {error && (
               <div style={{ 
@@ -452,7 +485,8 @@ export default function DriverRegistration() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
+            <form onSubmit={handleFormSubmit} style={{ marginTop: 16, width: '100%' }}>
+              <div style={{ display: step === 1 ? 'block' : 'none' }} aria-hidden={step !== 1}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <label className="small-muted" htmlFor="first_name" style={{ fontFamily: 'Work Sans, sans-serif' }}>First name</label>
                 <label className="small-muted" htmlFor="last_name" style={{ fontFamily: 'Work Sans, sans-serif' }}>Last name</label>
@@ -464,6 +498,7 @@ export default function DriverRegistration() {
                     id="first_name" 
                     name="first_name" 
                     type="text" 
+                    autoComplete="given-name"
                     required 
                     className="bw-input" 
                     style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
@@ -478,6 +513,7 @@ export default function DriverRegistration() {
                     id="last_name" 
                     name="last_name" 
                     type="text" 
+                    autoComplete="family-name"
                     required 
                     className="bw-input" 
                     style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
@@ -495,6 +531,7 @@ export default function DriverRegistration() {
                   id="email" 
                   name="email" 
                   type="email" 
+                  autoComplete="email"
                   required 
                   className="bw-input" 
                   style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
@@ -511,6 +548,7 @@ export default function DriverRegistration() {
                   id="phone_no" 
                   name="phone_no" 
                   type="tel" 
+                  autoComplete="tel"
                   required 
                   className="bw-input" 
                   style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
@@ -521,6 +559,43 @@ export default function DriverRegistration() {
                 />
               </div>
 
+              <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
+              <div style={{ position: 'relative', marginTop: 6 }}>
+                <Lock size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                <input 
+                  id="password" 
+                  name="password" 
+                  type={showPassword ? 'text' : 'password'} 
+                  autoComplete="new-password"
+                  required 
+                  className="bw-input" 
+                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  placeholder="••••••••" 
+                  value={formData.password}
+                  onChange={handleInputChange} 
+                />
+                <button 
+                  type="button" 
+                  aria-label="Toggle password" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
+                >
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              <button 
+                className="bw-btn" 
+                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
+                disabled={isLoading}
+                type="submit"
+              >
+                <span>Continue</span>
+                <ArrowRight size={16} aria-hidden />
+              </button>
+              </div>
+
+              <div style={{ display: step === 2 ? 'block' : 'none' }} aria-hidden={step !== 2}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <label className="small-muted" htmlFor="state" style={{ fontFamily: 'Work Sans, sans-serif' }}>State</label>
                 <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code</label>
@@ -703,39 +778,27 @@ export default function DriverRegistration() {
                 )}
               </div>
 
-              <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
-              <div style={{ position: 'relative', marginTop: 6 }}>
-                <Lock size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="password" 
-                  name="password" 
-                  type={showPassword ? 'text' : 'password'} 
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="••••••••" 
-                  value={formData.password}
-                  onChange={handleInputChange} 
-                />
+              <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button 
-                  type="button" 
-                  aria-label="Toggle password" 
-                  onClick={() => setShowPassword(!showPassword)} 
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
+                  type="button"
+                  className="bw-btn"
+                  style={{ flex: 1, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, background: 'transparent', border: '1px solid var(--bw-border)', color: 'var(--bw-text)' }}
+                  disabled={isLoading}
+                  onClick={() => { setError(''); setStep(1) }}
                 >
-                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                  Back
+                </button>
+                <button 
+                  className="bw-btn" 
+                  style={{ flex: 2, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
+                  disabled={isLoading || !token}
+                  type="submit"
+                >
+                  <span>{isLoading ? 'Creating account...' : 'Create account'}</span>
+                  {!isLoading && <ArrowRight size={16} aria-hidden />}
                 </button>
               </div>
-
-              <button 
-                className="bw-btn" 
-                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-                disabled={isLoading || !token}
-                type="submit"
-              >
-                <span>{isLoading ? 'Creating account...' : 'Create account'}</span>
-                {!isLoading && <ArrowRight size={16} aria-hidden />}
-              </button>
+              </div>
 
               <div style={{ marginTop: 24, width: '100%' }}>
                 <div style={{ 

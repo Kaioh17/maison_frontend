@@ -109,17 +109,13 @@ function HeroSlide() {
               >
                 Get Started
               </Link>
-              <a
-                href="#platform"
-                onClick={(e) => {
-                  e.preventDefault()
-                  smoothScrollToSection('platform')
-                }}
+              <Link
+                to="/demo"
                 className="inline-flex items-center justify-center w-full sm:flex-1 sm:min-w-0 py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-gray-700 text-white hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors"
                 style={{ fontFamily: "'Work Sans', sans-serif" }}
               >
                 See Demo
-              </a>
+              </Link>
             </motion.div>
           </motion.div>
 
@@ -888,7 +884,9 @@ export default function Landing() {
   }, [activeSection, menuOpen])
 
   const hideFloatingChromeOnPricing = activeSection === PRICING_SECTION_INDEX
-  const ctaHidden = activeSection === 0 || hideFloatingChromeOnPricing
+  // On the first (Hero) slide, we want Login visible in the top-right,
+  // but keep the existing "Get Started" CTA out of the way (it's already in-page).
+  const ctaHidden = hideFloatingChromeOnPricing
 
   return (
     <main className="relative bg-[#0a0a0f] text-white overflow-x-hidden" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
@@ -941,9 +939,11 @@ export default function Landing() {
         <Link to="/tenant/login" className="landing-snap-login-cta" aria-label="Login">
           <SignIn className="w-4 h-4" weight="bold" aria-hidden />
         </Link>
-        <Link to="/signup" className="landing-snap-cta">
-          Get Started
-        </Link>
+        {activeSection !== 0 ? (
+          <Link to="/signup" className="landing-snap-cta">
+            Get Started
+          </Link>
+        ) : null}
       </div>
 
       <nav

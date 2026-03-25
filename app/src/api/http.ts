@@ -33,6 +33,13 @@ function isV1AuthRequestPath(url: string | undefined): boolean {
 	return path === '/v1/auth' || path.startsWith('/v1/auth/')
 }
 
+/** Pre-login driver onboarding: `GET /api/v1/driver/{slug}/verify` expects `X-API-Key`. */
+function isDriverVerifyRequestPath(url: string | undefined): boolean {
+	if (!url) return false
+	const path = url.split('?')[0]
+	return /^\/v1\/driver\/[^/]+\/verify$/.test(path)
+}
+
 export const http = axios.create({
 	baseURL: RESOLVED_BASE,
 	withCredentials: true,
@@ -45,7 +52,10 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 		config.headers = config.headers || {}
 		config.headers.Authorization = `Bearer ${token}`
 	}
-	if (AUTH_API_KEY && isV1AuthRequestPath(config.url)) {
+	if (
+		AUTH_API_KEY &&
+		(isV1AuthRequestPath(config.url) || isDriverVerifyRequestPath(config.url))
+	) {
 		config.headers = config.headers || {}
 		config.headers['X-API-Key'] = AUTH_API_KEY
 	}

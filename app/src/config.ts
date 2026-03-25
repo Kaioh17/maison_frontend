@@ -41,7 +41,7 @@ export function getStripeSubscriptionPriceId(plan: SubscriptionPlanKey): string 
   return ids[plan]
 }
 
-/** Shared secret for `/api/v1/auth/**` — set per environment; never commit production values. */
+/** Shared `X-API-Key` for `/api/v1/auth/**` and public `GET /api/v1/driver/{slug}/verify`. */
 export const AUTH_API_KEY = import.meta.env.VITE_API_KEY || '';
 
 export type UserRole = 'tenant' | 'driver' | 'rider' | 'admin';

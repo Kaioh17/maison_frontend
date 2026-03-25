@@ -10,7 +10,7 @@ import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -53,6 +53,106 @@ function VehicleImageCard({ imageUrl, make, model }: { imageUrl: string | null, 
       )}
     </div>
   )
+}
+
+function overviewDriverInitials(d: Pick<DriverResponse, 'first_name' | 'last_name'>): string {
+  const a = (d.first_name?.[0] || '').toUpperCase()
+  const b = (d.last_name?.[0] || '').toUpperCase()
+  return (a + b) || '?'
+}
+
+function overviewFormatDriverName(d: DriverResponse): string {
+  const lastInitial = d.last_name?.[0] ? `${d.last_name[0]}.` : ''
+  return `${d.first_name} ${lastInitial}`.trim()
+}
+
+function overviewBookingRefersToDriver(b: BookingResponse, d: DriverResponse): boolean {
+  const ref = (b.driver_name || '').toLowerCase().trim()
+  if (!ref) return false
+  const fn = d.first_name.toLowerCase()
+  const ln = d.last_name.toLowerCase()
+  if (!fn) return false
+  return ref === `${fn} ${ln}`
+    || (ref.startsWith(fn) && (ln ? ref.includes(ln) : true))
+    || (ref.includes(fn) && ref.includes(ln.slice(0, 1)))
+}
+
+function overviewVehicleLineForDriver(driverId: number, vehicles: VehicleResponse[]): string {
+  const v = vehicles.find(veh => veh.driver?.id === driverId || veh.driver_id === driverId)
+  if (!v) return 'Vehicle unassigned'
+  const plate = v.license_plate || '—'
+  return `${v.make} ${v.model} · ${plate}`
+}
+
+type OverviewDriverPresence = 'available' | 'on_ride' | 'offline'
+
+function overviewDriverPresence(d: DriverResponse, bookings: BookingResponse[]): OverviewDriverPresence {
+  if (!d.is_active) return 'offline'
+  const onRide = bookings.some(
+    b => b.booking_status?.toLowerCase() === 'active' && overviewBookingRefersToDriver(b, d)
+  )
+  return onRide ? 'on_ride' : 'available'
+}
+
+type OverviewDriverRow = {
+  key: string
+  initials: string
+  name: string
+  vehicleLine: string
+  presence: OverviewDriverPresence
+}
+
+function buildOverviewDriverRows(
+  drivers: DriverResponse[],
+  vehicles: VehicleResponse[],
+  bookings: BookingResponse[]
+): OverviewDriverRow[] {
+  return drivers.slice(0, 4).map((d) => ({
+    key: `driver-${d.id}`,
+    initials: overviewDriverInitials(d),
+    name: overviewFormatDriverName(d),
+    vehicleLine: overviewVehicleLineForDriver(d.id, vehicles),
+    presence: overviewDriverPresence(d, bookings),
+  }))
+}
+
+function bookingPickupToday(b: BookingResponse): boolean {
+  const t = new Date(b.pickup_time)
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const end = new Date()
+  end.setHours(23, 59, 59, 999)
+  return t >= start && t <= end
+}
+
+/** Today's and recent bookings from tenant `/bookings` payload only — no synthetic rows. */
+function buildOverviewBookingRows(bookings: BookingResponse[]): BookingResponse[] {
+  const byPickup = (a: BookingResponse, b: BookingResponse) =>
+    new Date(b.pickup_time).getTime() - new Date(a.pickup_time).getTime()
+
+  const todaySorted = [...bookings].filter(bookingPickupToday).sort(byPickup)
+  const rows: BookingResponse[] = todaySorted.slice(0, 4)
+
+  if (rows.length < 4) {
+    const rest = [...bookings].sort(byPickup).filter(b => !rows.some(r =>
+      r.id != null && b.id != null ? r.id === b.id : r === b
+    ))
+    for (const b of rest) {
+      if (rows.length >= 4) break
+      rows.push(b)
+    }
+  }
+
+  return rows
+}
+
+function overviewBookingStatusDisplay(status: string | undefined): { label: string; bg: string; color: string } {
+  const s = status?.toLowerCase() || ''
+  if (s === 'active') return { label: 'Active', bg: '#052e16', color: '#4ade80' }
+  if (s === 'pending') return { label: 'Pending', bg: '#451a03', color: '#fbbf24' }
+  if (s === 'completed' || s === 'done' || s === 'complete') return { label: 'Done', bg: '#27272a', color: '#a1a1aa' }
+  const cap = status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : '—'
+  return { label: cap, bg: '#27272a', color: '#a1a1aa' }
 }
 
 export default function TenantDashboard() {
@@ -149,13 +249,10 @@ export default function TenantDashboard() {
   
   // Settings submenu state
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
-  
-  // KPI Carousel state (for mobile)
+
+  // Overview KPI carousel (mobile)
   const [currentKpiIndex, setCurrentKpiIndex] = useState(0)
-
-  // Show more bookings in overview state
-  const [showMoreBookings, setShowMoreBookings] = useState(false)
-
+  
   // Add vehicle hover form state
   const [showAddVehicleForm, setShowAddVehicleForm] = useState(false)
   
@@ -169,6 +266,7 @@ export default function TenantDashboard() {
   const [isRetryHovered, setIsRetryHovered] = useState(false)
   const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
   const [isViewAllHovered, setIsViewAllHovered] = useState(false)
+  const [showMoreBookings, setShowMoreBookings] = useState(false)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
   const [isSaveRateHovered, setIsSaveRateHovered] = useState(false)
@@ -1351,10 +1449,10 @@ export default function TenantDashboard() {
                     gap: '12px',
                     padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
                     backgroundColor: isActive 
-                      ? (lightMode && tab.id === 'overview' ? 'rgba(155, 97, 209, 0.81)' : lightMode ? 'rgba(155, 97, 209, 0.1)' : 'var(--bw-bg-hover)')
+                      ? (lightMode && tab.id === 'overview' ? 'var(--bw-accent)' : lightMode ? 'rgba(108, 99, 232, 0.1)' : 'var(--bw-bg-hover)')
                       : 'transparent',
                     border: 'none',
-                    borderLeft: isActive ? (lightMode && tab.id === 'overview' ? '3px solid rgba(155, 97, 209, 0.81)' : '2px solid var(--bw-accent)') : '2px solid transparent',
+                    borderLeft: isActive ? (lightMode && tab.id === 'overview' ? '3px solid var(--bw-accent)' : '2px solid var(--bw-accent)') : '2px solid transparent',
                     color: isActive && lightMode && tab.id === 'overview' ? '#ffffff' : 'var(--bw-text)',
                     cursor: 'pointer',
                     fontSize: 'clamp(13px, 1.5vw, 15px)',
@@ -1363,7 +1461,7 @@ export default function TenantDashboard() {
                     textAlign: 'left',
                     transition: 'all 0.2s ease',
                     justifyContent: 'space-between',
-                    boxShadow: isActive && tab.id === 'overview' && !lightMode ? '0 0 12px rgba(155, 97, 209, 0.3)' : 'none',
+                    boxShadow: isActive && tab.id === 'overview' && !lightMode ? '0 0 12px rgba(108, 99, 232, 0.22)' : 'none',
                     position: 'relative'
                   }}
                   onMouseEnter={(e) => {
@@ -1491,7 +1589,7 @@ export default function TenantDashboard() {
               justifyContent: 'center',
               gap: '8px',
               padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
-              backgroundColor: 'rgba(155, 97, 209, 0.81)',
+              backgroundColor: 'var(--bw-accent)',
               border: 'none',
               color: '#ffffff',
               cursor: 'pointer',
@@ -1502,10 +1600,10 @@ export default function TenantDashboard() {
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+              e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
+              e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
             }}
           >
             Switch to Driver Mode
@@ -1561,10 +1659,10 @@ export default function TenantDashboard() {
             borderBottom: '1px solid var(--bw-border)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px'
+            alignItems: activeTab === 'overview' ? 'flex-start' : 'center',
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
-            {/* Hamburger Menu Button - Left Aligned */}
             <button
               className="bw-menu"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -1582,59 +1680,94 @@ export default function TenantDashboard() {
               <List size={20} />
             </button>
 
-            {/* Dynamic Page Title */}
-            <h3 style={{
-              margin: 0,
-              fontSize: 'clamp(20px, 3vw, 28px)',
-              fontWeight: 400,
-              fontFamily: '"Work Sans", sans-serif',
-              color: 'var(--bw-text)',
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              lineHeight: 1
-            }}>
-              {getPageTitle()}
-            </h3>
+            {activeTab === 'overview' ? (
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{
+                  margin: 0,
+                  fontSize: 'clamp(18px, 2.5vw, 22px)',
+                  fontWeight: 500,
+                  fontFamily: '"Work Sans", sans-serif',
+                  color: 'var(--bw-text)',
+                  lineHeight: 1.25
+                }}>
+                  {(() => {
+                    const h = new Date().getHours()
+                    const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+                    return `${g}, ${info?.first_name || 'there'}`
+                  })()}
+                </div>
+                <div style={{
+                  fontSize: 'clamp(11px, 1.2vw, 12px)',
+                  color: 'var(--bw-muted)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300
+                }}>
+                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+                  {info?.profile?.city ? ` · ${info.profile.city}` : ''}
+                </div>
+              </div>
+            ) : (
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(20px, 3vw, 28px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif',
+                color: 'var(--bw-text)',
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                lineHeight: 1
+              }}>
+                {getPageTitle()}
+              </h3>
+            )}
 
-            {/* Desktop Actions */}
             <div style={{ 
-              display: isMobile ? 'none' : 'flex',
+              display: 'flex',
               gap: '8px',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginLeft: activeTab === 'overview' ? 'auto' : undefined,
+              flexWrap: 'wrap',
+              justifyContent: 'flex-end'
             }}
             className="desktop-actions"
             >
-              <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowDriverModeConfirm(true)
-                }}
-                style={{ 
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                  fontWeight: 400,
-                  backgroundColor: 'rgba(155, 97, 209, 0.81)',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 7,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  height: 'fit-content',
-                  lineHeight: 1
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
-                }}
-              >
-                Switch to Driver Mode
-              </button>
+              {activeTab === 'overview' && (
+                <>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    border: '1px solid var(--bw-border)',
+                    backgroundColor: lightMode ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.12)',
+                    fontSize: 'clamp(11px, 1.2vw, 12px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 500,
+                    color: 'var(--bw-text)'
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
+                    Live
+                  </div>
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--bw-border)',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    fontSize: 'clamp(11px, 1.2vw, 12px)',
+                    fontFamily: '"Work Sans", sans-serif',
+                    fontWeight: 400,
+                    color: 'var(--bw-text)',
+                    maxWidth: 220,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }} title={info?.profile?.company_name || ''}>
+                    {info?.profile?.company_name || 'Company'}
+                  </div>
+                </>
+              )}
               <button 
                 className="bw-btn-outline" 
                 onClick={() => useAuthStore.getState().logout()}
@@ -1642,7 +1775,8 @@ export default function TenantDashboard() {
                   fontFamily: '"Work Sans", sans-serif',
                   fontSize: 'clamp(12px, 1.5vw, 14px)',
                   padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                  fontWeight: 300
+                  fontWeight: 300,
+                  display: isMobile ? 'none' : 'inline-flex'
                 }}
               >
                 Logout
@@ -1675,9 +1809,6 @@ export default function TenantDashboard() {
               
               const activeRidesToday = todayBookings.filter(b => b.booking_status?.toLowerCase() === 'active').length
               
-              // Calculate available vehicles (not provided by API)
-              const availableVehicles = vehicles.filter(v => v.status === 'active').length
-              
               // Calculate offline drivers (total - available)
               const totalDrivers = analysis?.total_drivers ?? drivers.length
               const offlineDrivers = totalDrivers - availableDrivers
@@ -1709,9 +1840,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         minHeight: 'clamp(120px, 20vw, 160px)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1727,10 +1858,9 @@ export default function TenantDashboard() {
                             <div style={{
                               position: 'absolute',
                               top: 'clamp(12px, 2vw, 16px)',
-                              right: 'clamp(12px, 2vw, 16px)',
-                              opacity: lightMode ? 0.2 : 0.3
+                              right: 'clamp(12px, 2vw, 16px)'
                             }}>
-                              <IconComponent size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                              <IconComponent size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                             </div>
                           ) : null
                         })()}
@@ -1747,7 +1877,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1857,9 +1987,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         position: 'relative',
                         overflow: 'hidden',
                         borderRadius: '12px'
@@ -1868,10 +1998,9 @@ export default function TenantDashboard() {
                         <div style={{
                           position: 'absolute',
                           top: 'clamp(12px, 2vw, 16px)',
-                          right: 'clamp(12px, 2vw, 16px)',
-                          opacity: lightMode ? 0.2 : 0.3
+                          right: 'clamp(12px, 2vw, 16px)'
                         }}>
-                          <Car size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                          <Car size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                         </div>
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
@@ -1885,7 +2014,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1897,9 +2026,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         position: 'relative',
                         overflow: 'hidden',
                         borderRadius: '12px'
@@ -1908,10 +2037,9 @@ export default function TenantDashboard() {
                         <div style={{
                           position: 'absolute',
                           top: 'clamp(12px, 2vw, 16px)',
-                          right: 'clamp(12px, 2vw, 16px)',
-                          opacity: lightMode ? 0.2 : 0.3
+                          right: 'clamp(12px, 2vw, 16px)'
                         }}>
-                          <Clock size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                          <Clock size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                         </div>
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
@@ -1925,7 +2053,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1937,9 +2065,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         position: 'relative',
                         overflow: 'hidden',
                         borderRadius: '12px'
@@ -1948,10 +2076,9 @@ export default function TenantDashboard() {
                         <div style={{
                           position: 'absolute',
                           top: 'clamp(12px, 2vw, 16px)',
-                          right: 'clamp(12px, 2vw, 16px)',
-                          opacity: lightMode ? 0.2 : 0.3
+                          right: 'clamp(12px, 2vw, 16px)'
                         }}>
-                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                         </div>
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
@@ -1965,7 +2092,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -1977,9 +2104,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         position: 'relative',
                         overflow: 'hidden',
                         borderRadius: '12px'
@@ -1988,10 +2115,9 @@ export default function TenantDashboard() {
                         <div style={{
                           position: 'absolute',
                           top: 'clamp(12px, 2vw, 16px)',
-                          right: 'clamp(12px, 2vw, 16px)',
-                          opacity: lightMode ? 0.2 : 0.3
+                          right: 'clamp(12px, 2vw, 16px)'
                         }}>
-                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                          <Users size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                         </div>
                         <div style={{
                           fontSize: 'clamp(32px, 6vw, 56px)',
@@ -2005,7 +2131,7 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
@@ -2017,9 +2143,9 @@ export default function TenantDashboard() {
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
                         textAlign: 'center',
-                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                        background: lightMode ? '#ffffff' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%)',
-                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                        backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                        boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
                         position: 'relative',
                         overflow: 'hidden',
                         borderRadius: '12px'
@@ -2028,10 +2154,9 @@ export default function TenantDashboard() {
                         <div style={{
                           position: 'absolute',
                           top: 'clamp(12px, 2vw, 16px)',
-                          right: 'clamp(12px, 2vw, 16px)',
-                          opacity: lightMode ? 0.2 : 0.3
+                          right: 'clamp(12px, 2vw, 16px)'
                         }}>
-                          <Wallet size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#f3f4f6' }} />
+                          <Wallet size="clamp(24px, 3vw, 32px)" style={{ color: lightMode ? '#64748b' : '#6b6885' }} />
                         </div>
                         <div style={{
                           fontSize: 'clamp(28px, 5vw, 48px)',
@@ -2045,377 +2170,597 @@ export default function TenantDashboard() {
                         </div>
                         <div style={{
                           fontSize: 'clamp(11px, 1.5vw, 14px)',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: lightMode ? '#64748b' : '#6b6885',
                           fontWeight: 300,
                           fontFamily: '"Work Sans", sans-serif'
                         }}>
                           Today's Revenue
                         </div>
                       </div>
-        </div>
-      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
-      {/* Switch to Driver Mode Confirmation Modal */}
-      {showDriverModeConfirm && (
-        <div className="bw-modal-overlay" onClick={() => setShowDriverModeConfirm(false)}>
-          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
-            maxWidth: '500px',
-            width: '90vw'
-          }}>
-            <div className="bw-modal-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 2.5vw, 24px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Switch to Driver Mode
-              </h3>
-              <button 
-                type="button"
-                className="bw-btn-icon" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowDriverModeConfirm(false)
-                }}
-                style={{
-                  padding: '8px',
-                  minWidth: '32px',
-                  minHeight: '32px'
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="bw-modal-body" style={{
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <p style={{
-                  margin: 0,
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1.6
-                }}>
-                  You are about to switch to Driver Mode. This will change your view to the driver interface where you can manage your driver profile, view assigned bookings, and access driver-specific features.
-                </p>
-                <p style={{
-                  margin: 0,
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1.6
-                }}>
-                  Do you want to continue?
-                </p>
-                {switchToDriverError && (
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: 'var(--bw-bg-secondary)',
-                    border: '1px solid var(--bw-border)',
-                    borderRadius: '7px',
-                    color: 'var(--bw-error, #ff4444)',
-                    fontSize: 'clamp(13px, 1.8vw, 15px)'
-                  }}>
-                    {switchToDriverError}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="bw-modal-footer" style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderTop: '1px solid var(--bw-border)'
-            }}>
-              <button
-                type="button"
-                className="bw-btn-outline"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowDriverModeConfirm(false)
-                }}
-                style={{
-                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  borderRadius: 7
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async (e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  try {
-                    setIsSwitchingToDriver(true)
-                    setSwitchToDriverError(null)
-                    
-                    const response = await becomeDriver()
-                    
-                    // Handle both StandardResponse format and direct access_token format
-                    const accessToken = response.data?.access_token || (response as any).access_token
-                    
-                    if (accessToken) {
-                      const hostname = window.location.hostname
-                      const slug = extractSubdomain(hostname) || 'ridez'
-                      const driverLoginUrl = getTenantAppUrl(slug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
-                      window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
-                      
-                      // Close modal on success
-                      setShowDriverModeConfirm(false)
-                    } else {
-                      setSwitchToDriverError(response.error || 'Failed to get driver access token')
-                    }
-                  } catch (err: any) {
-                    console.error('Failed to switch to driver mode:', err)
-                    setSwitchToDriverError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to switch to driver mode. Please try again.')
-                  } finally {
-                    setIsSwitchingToDriver(false)
-                  }
-                }}
-                disabled={isSwitchingToDriver}
-                style={{
-                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 400,
-                  borderRadius: 7,
-                  backgroundColor: isSwitchingToDriver ? 'rgba(155, 97, 209, 0.5)' : 'rgba(155, 97, 209, 0.81)',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: isSwitchingToDriver ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSwitchingToDriver ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSwitchingToDriver) {
-                    e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSwitchingToDriver) {
-                    e.currentTarget.style.backgroundColor = 'rgba(155, 97, 209, 0.81)'
-                  }
-                }}
-              >
-                {isSwitchingToDriver ? 'Switching...' : 'Continue'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-})()}
-
-            {/* Summary Stats Row */}
+            {/* Charts row — placeholders (coming soon) */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(120px, 15vw, 180px), 1fr))',
+              gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 13fr) minmax(0, 7fr)',
               gap: 'clamp(12px, 2vw, 20px)',
-              marginBottom: 'clamp(16px, 3vw, 24px)'
+              marginBottom: 'clamp(16px, 3vw, 24px)',
+              opacity: 0.56
             }}>
+              {/* Revenue — last 7 days */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                textAlign: 'center',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                borderRadius: '12px'
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                borderRadius: '12px',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 'clamp(220px, 28vw, 300px)'
               } as React.CSSProperties}>
                 <div style={{
-                  fontSize: 'clamp(24px, 4vw, 36px)',
-                  fontWeight: 600,
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  marginBottom: 'clamp(4px, 1vw, 6px)',
-                  fontFamily: '"Work Sans", sans-serif'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 'clamp(12px, 2vw, 16px)',
+                  flexWrap: 'wrap'
                 }}>
-                  {analysis?.total_drivers ?? drivers.length}
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: 'clamp(15px, 2vw, 18px)',
+                    fontWeight: 500,
+                    fontFamily: '"Work Sans", sans-serif',
+                    color: lightMode ? '#1a1a1a' : '#ffffff'
+                  }}>
+                    Revenue — last 7 days
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <Lock size={18} weight="duotone" style={{ color: lightMode ? '#94a3b8' : '#6b6885' }} aria-hidden />
+                    <span style={{
+                      fontSize: 'clamp(10px, 1.2vw, 11px)',
+                      fontWeight: 500,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase' as const,
+                      color: lightMode ? '#64748b' : '#6b6885',
+                      border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Coming soon
+                    </span>
+                  </div>
                 </div>
                 <div style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif'
+                  position: 'relative',
+                  flex: 1,
+                  minHeight: 'clamp(160px, 20vw, 220px)',
+                  borderRadius: 8,
+                  border: lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858',
+                  backgroundColor: lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)',
+                  padding: 'clamp(16px, 3vw, 24px)'
                 }}>
-                  Total Drivers
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    gap: 'clamp(6px, 1.5vw, 10px)',
+                    height: '100%',
+                    minHeight: 120,
+                    paddingBottom: 4
+                  }}>
+                    {[0.45, 0.72, 0.55, 0.88, 0.62, 0.95, 0.5].map((h, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          flex: 1,
+                          maxWidth: 44,
+                          height: `${Math.round(h * 100)}%`,
+                          borderRadius: 4,
+                          backgroundColor: lightMode ? 'rgba(15, 13, 26, 0.16)' : 'rgba(255, 255, 255, 0.16)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <span style={{
+                      fontSize: 'clamp(13px, 2vw, 15px)',
+                      fontWeight: 400,
+                      color: lightMode ? '#64748b' : '#6b6885',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Coming soon
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {/* Ride volume */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                textAlign: 'center',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                borderRadius: '12px'
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                borderRadius: '12px',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 'clamp(220px, 28vw, 300px)'
               } as React.CSSProperties}>
                 <div style={{
-                  fontSize: 'clamp(24px, 4vw, 36px)',
-                  fontWeight: 600,
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  marginBottom: 'clamp(4px, 1vw, 6px)',
-                  fontFamily: '"Work Sans", sans-serif'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 'clamp(12px, 2vw, 16px)',
+                  flexWrap: 'wrap'
                 }}>
-                  {analysis?.total_vehicles ?? vehicles.length}
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: 'clamp(15px, 2vw, 18px)',
+                    fontWeight: 500,
+                    fontFamily: '"Work Sans", sans-serif',
+                    color: lightMode ? '#1a1a1a' : '#ffffff'
+                  }}>
+                    Ride volume
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <Lock size={18} weight="duotone" style={{ color: lightMode ? '#94a3b8' : '#6b6885' }} aria-hidden />
+                    <span style={{
+                      fontSize: 'clamp(10px, 1.2vw, 11px)',
+                      fontWeight: 500,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase' as const,
+                      color: lightMode ? '#64748b' : '#6b6885',
+                      border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
+                      borderRadius: 6,
+                      padding: '4px 8px',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Coming soon
+                    </span>
+                  </div>
                 </div>
                 <div style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif'
+                  position: 'relative',
+                  flex: 1,
+                  minHeight: 'clamp(160px, 20vw, 220px)',
+                  borderRadius: 8,
+                  border: lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858',
+                  backgroundColor: lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)',
+                  padding: 'clamp(16px, 3vw, 24px)',
+                  overflow: 'hidden'
                 }}>
-                  Total Vehicles
-                </div>
-              </div>
-
-              <div className="bw-card" style={{
-                padding: 'clamp(16px, 2.5vw, 24px)',
-                textAlign: 'center',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #333',
-                background: lightMode ? '#ffffff !important' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.8) 0%, rgba(20, 20, 20, 0.9) 100%) !important',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                borderRadius: '12px'
-              } as React.CSSProperties}>
-                <div style={{
-                  fontSize: 'clamp(24px, 4vw, 36px)',
-                  fontWeight: 600,
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  marginBottom: 'clamp(4px, 1vw, 6px)',
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  {analysis?.total_bookings ?? bookings.length}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  color: lightMode ? '#1a1a1a' : '#ffffff',
-                  fontWeight: 300,
-                  fontFamily: '"Work Sans", sans-serif'
-                }}>
-                  Total Bookings
+                  <svg
+                    viewBox="0 0 120 48"
+                    preserveAspectRatio="none"
+                    style={{
+                      position: 'absolute',
+                      left: 'clamp(16px, 3vw, 24px)',
+                      right: 'clamp(16px, 3vw, 24px)',
+                      bottom: 'clamp(16px, 3vw, 24px)',
+                      height: 'clamp(72px, 12vw, 100px)',
+                      width: 'calc(100% - 2 * clamp(16px, 3vw, 24px))'
+                    }}
+                    aria-hidden
+                  >
+                    <polyline
+                      fill="none"
+                      stroke={lightMode ? '#0f0d1a' : '#ffffff'}
+                      strokeWidth="2"
+                      strokeOpacity={0.17}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                      points="0,38 18,32 34,36 48,24 60,28 74,18 88,22 102,12 120,16"
+                    />
+                    <line
+                      x1="0"
+                      y1="44"
+                      x2="120"
+                      y2="44"
+                      stroke={lightMode ? '#0f0d1a' : '#ffffff'}
+                      strokeWidth="1.5"
+                      strokeOpacity={0.12}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none'
+                  }}>
+                    <span style={{
+                      fontSize: 'clamp(13px, 2vw, 15px)',
+                      fontWeight: 400,
+                      color: lightMode ? '#64748b' : '#6b6885',
+                      fontFamily: '"Work Sans", sans-serif'
+                    }}>
+                      Coming soon
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Company Info and Recent Bookings Row */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(280px, 40vw, 500px), 1fr))',
-              gap: 'clamp(16px, 3vw, 24px)'
-            }}>
-              {/* Company Information */}
-              <div className="bw-card" style={{
-                padding: 'clamp(16px, 2.5vw, 24px)',
-                border: lightMode ? '1px solid #e2e8f0' : '1px solid var(--bw-border)',
-                backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg-secondary)',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
-                borderRadius: lightMode ? '12px' : undefined
-              }}>
-                <h3 style={{ 
-                  margin: '0 0 clamp(12px, 2vw, 16px) 0',
-                  fontSize: 'clamp(16px, 2.5vw, 20px)',
-                  fontWeight: 400,
-                  fontFamily: '"Work Sans", sans-serif'
+            {/* Overview: drivers, bookings, Maison AI */}
+            {(() => {
+              const overviewDriverRows = buildOverviewDriverRows(drivers, vehicles, bookings)
+              const overviewBookingRows = buildOverviewBookingRows(bookings)
+              const cardBase: React.CSSProperties = {
+                padding: 'clamp(14px, 2.2vw, 20px)',
+                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                borderRadius: '12px',
+                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 'clamp(260px, 32vw, 340px)'
+              }
+              const headerPill: React.CSSProperties = {
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase' as const,
+                padding: '4px 9px',
+                borderRadius: 6,
+                fontFamily: '"Work Sans", sans-serif',
+                backgroundColor: lightMode ? '#ede9fe' : 'rgba(139, 92, 246, 0.22)',
+                color: lightMode ? '#5b21b6' : '#c4b5fd',
+                border: lightMode ? '1px solid #ddd6fe' : '1px solid rgba(167, 139, 250, 0.35)'
+              }
+              const rowDivider: React.CSSProperties = {
+                borderBottom: lightMode ? '1px solid rgba(15, 13, 26, 0.07)' : '1px solid rgba(255, 255, 255, 0.07)'
+              }
+              return (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+                  gap: 'clamp(12px, 2vw, 20px)',
+                  marginBottom: 'clamp(16px, 3vw, 24px)'
                 }}>
-                  Company Information
-                </h3>
-                <div className="bw-info-grid" style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'clamp(8px, 1.5vw, 12px)'
-                }}>
-                  <div className="bw-info-item" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    paddingBottom: 'clamp(6px, 1vw, 8px)',
-                    borderBottom: '1px solid var(--bw-border)'
-                  }}>
-                    <span className="bw-info-label" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      color: 'var(--bw-muted)',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>Company Name:</span>
-                    <span className="bw-info-value" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>{info?.profile?.company_name}</span>
-                  </div>
-                  <div className="bw-info-item" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    paddingBottom: 'clamp(6px, 1vw, 8px)',
-                    borderBottom: '1px solid var(--bw-border)'
-                  }}>
-                    <span className="bw-info-label" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      color: 'var(--bw-muted)',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>City:</span>
-                    <span className="bw-info-value" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>{info?.profile?.city}</span>
-                  </div>
-                  <div className="bw-info-item" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    paddingBottom: 'clamp(6px, 1vw, 8px)',
-                    borderBottom: '1px solid var(--bw-border)'
-                  }}>
-                    <span className="bw-info-label" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      color: 'var(--bw-muted)',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>Status:</span>
-                    <span className={`bw-info-value ${info?.profile?.subscription_status === 'active' ? 'text-green-500' : 'text-yellow-500'}`} style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      fontFamily: '"Work Sans", sans-serif'
+                  {/* Column 1 — Drivers */}
+                  <div className="bw-card" style={cardBase}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      marginBottom: 12,
+                      flexShrink: 0
                     }}>
-                      {info?.profile?.subscription_status === 'active' ? 'Active' : info?.profile?.subscription_status || 'Free'}
-                    </span>
+                      <h3 style={{
+                        margin: 0,
+                        fontSize: 'clamp(15px, 2vw, 17px)',
+                        fontWeight: 600,
+                        fontFamily: '"Work Sans", sans-serif',
+                        color: lightMode ? '#1a1a1a' : '#ffffff'
+                      }}>
+                        Drivers
+                      </h3>
+                      <span style={headerPill}>Now</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      {overviewDriverRows.length === 0 ? (
+                        <div style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '16px 8px',
+                          fontSize: 12,
+                          fontWeight: 400,
+                          color: lightMode ? '#64748b' : '#7c7a92',
+                          fontFamily: '"Work Sans", sans-serif',
+                          textAlign: 'center'
+                        }}>
+                          No drivers onboarded yet.
+                        </div>
+                      ) : (
+                        overviewDriverRows.map((row, idx) => {
+                          const dotColor = row.presence === 'available'
+                            ? '#22c55e'
+                            : row.presence === 'on_ride'
+                              ? '#f59e0b'
+                              : '#4b5563'
+                          return (
+                            <div
+                              key={row.key}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: '10px 0',
+                                ...(idx < overviewDriverRows.length - 1 ? rowDivider : {})
+                              }}
+                            >
+                              <div style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                backgroundColor: '#261e3a',
+                                color: '#9b8fb8',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                fontFamily: '"Work Sans", sans-serif',
+                                flexShrink: 0
+                              }}>
+                                {row.initials}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  color: lightMode ? '#1a1a1a' : '#ffffff',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  lineHeight: 1.25
+                                }}>
+                                  {row.name}
+                                </div>
+                                <div style={{
+                                  fontSize: 10,
+                                  fontWeight: 400,
+                                  color: lightMode ? '#64748b' : '#7c7a92',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  marginTop: 2,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }} title={row.vehicleLine}>
+                                  {row.vehicleLine}
+                                </div>
+                              </div>
+                              <div
+                                title={row.presence === 'available' ? 'Available' : row.presence === 'on_ride' ? 'On a ride' : 'Offline'}
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  backgroundColor: dotColor,
+                                  flexShrink: 0,
+                                  boxShadow: row.presence === 'offline' ? 'inset 0 0 0 1px rgba(255,255,255,0.12)' : undefined
+                                }}
+                              />
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
-                  <div className="bw-info-item" style={{
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                  }}>
-                    <span className="bw-info-label" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      color: 'var(--bw-muted)',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>Member Since:</span>
-                    <span className="bw-info-value" style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontWeight: 300,
-                      fontFamily: '"Work Sans", sans-serif'
+
+                  {/* Column 2 — Recent bookings */}
+                  <div className="bw-card" style={cardBase}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      marginBottom: 12,
+                      flexShrink: 0
                     }}>
-                      {new Date(info?.created_on).toLocaleDateString()}
-                    </span>
+                      <h3 style={{
+                        margin: 0,
+                        fontSize: 'clamp(15px, 2vw, 17px)',
+                        fontWeight: 600,
+                        fontFamily: '"Work Sans", sans-serif',
+                        color: lightMode ? '#1a1a1a' : '#ffffff'
+                      }}>
+                        Recent bookings
+                      </h3>
+                      <span style={headerPill}>Today</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      {overviewBookingRows.length === 0 ? (
+                        <div style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '16px 8px',
+                          fontSize: 12,
+                          fontWeight: 400,
+                          color: lightMode ? '#64748b' : '#7c7a92',
+                          fontFamily: '"Work Sans", sans-serif',
+                          textAlign: 'center'
+                        }}>
+                          No bookings yet.
+                        </div>
+                      ) : (
+                        overviewBookingRows.map((booking, idx) => {
+                          const tag = overviewBookingStatusDisplay(booking.booking_status)
+                          const routeText = `${booking.pickup_location} → ${booking.dropoff_location}`
+                          return (
+                            <div
+                              key={booking.id ?? `overview-bk-${idx}-${booking.pickup_time}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 10,
+                                padding: '10px 0',
+                                ...(idx < overviewBookingRows.length - 1 ? rowDivider : {})
+                              }}
+                            >
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 6,
+                                backgroundColor: lightMode ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                border: lightMode ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.08)'
+                              }}>
+                                <MapPin size={16} weight="duotone" color={lightMode ? '#64748b' : '#9ca3af'} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  color: lightMode ? '#1a1a1a' : '#ffffff',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  lineHeight: 1.25
+                                }}>
+                                  {booking.customer_name || 'Customer'}
+                                </div>
+                                <div style={{
+                                  fontSize: 10,
+                                  fontWeight: 400,
+                                  color: lightMode ? '#64748b' : '#7c7a92',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  marginTop: 2,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }} title={routeText}>
+                                  {routeText}
+                                </div>
+                              </div>
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-end',
+                                gap: 6,
+                                flexShrink: 0
+                              }}>
+                                <span style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: lightMode ? '#6d28d9' : '#a78bfa',
+                                  fontFamily: '"Work Sans", sans-serif'
+                                }}>
+                                  ${Number(booking.estimated_price ?? 0).toFixed(0)}
+                                </span>
+                                <span style={{
+                                  fontSize: 10,
+                                  fontWeight: 600,
+                                  padding: '3px 8px',
+                                  borderRadius: 4,
+                                  backgroundColor: tag.bg,
+                                  color: tag.color,
+                                  fontFamily: '"Work Sans", sans-serif'
+                                }}>
+                                  {tag.label}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Column 3 — Maison AI */}
+                  <div className="bw-card" style={cardBase}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      marginBottom: 12,
+                      flexShrink: 0
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 6,
+                          backgroundColor: '#6d28d9',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Sparkle size={16} weight="fill" color="#ffffff" aria-hidden />
+                        </div>
+                        <h3 style={{
+                          margin: 0,
+                          fontSize: 'clamp(15px, 2vw, 17px)',
+                          fontWeight: 600,
+                          fontFamily: '"Work Sans", sans-serif',
+                          color: lightMode ? '#1a1a1a' : '#ffffff'
+                        }}>
+                          Maison AI
+                        </h3>
+                      </div>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: lightMode ? '#64748b' : '#6b6885',
+                        fontFamily: '"Work Sans", sans-serif',
+                        letterSpacing: '0.02em',
+                        flexShrink: 0
+                      }}>
+                        Coming soon
+                      </span>
+                    </div>
+                    <div style={{ opacity: 0.37, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <p style={{
+                        margin: '0 0 10px 0',
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0, 0, 0, 0.38)',
+                        borderLeft: '3px solid #7c3aed',
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        fontWeight: 400,
+                        color: lightMode ? '#334155' : '#e2e8f0',
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>
+                        Tuesday mornings are your peak demand window. You have unassigned bookings with limited driver availability.
+                      </p>
+                      <p style={{
+                        margin: '0 0 14px 0',
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0, 0, 0, 0.38)',
+                        borderLeft: '3px solid #7c3aed',
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        fontWeight: 400,
+                        color: lightMode ? '#334155' : '#e2e8f0',
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>
+                        Revenue is tracking above your daily average. At this pace you may hit your weekly goal ahead of schedule.
+                      </p>
+                      <span style={{
+                        marginTop: 'auto',
+                        fontSize: 12,
+                        fontWeight: 400,
+                        color: lightMode ? '#64748b' : '#6b6885',
+                        fontFamily: '"Work Sans", sans-serif',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 3,
+                        cursor: 'not-allowed',
+                        userSelect: 'none'
+                      }}>
+                        Ask Maison AI for a full breakdown
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
+            })()}
 
-              {/* Recent Bookings */}
+            {/* Recent Bookings — company profile is in Settings */}
+            <div>
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
                 border: lightMode ? '1px solid #e2e8f0' : '1px solid var(--bw-border)',
@@ -5210,6 +5555,167 @@ export default function TenantDashboard() {
         )}
         </div>
         </div>
+
+      {showDriverModeConfirm && (
+        <div className="bw-modal-overlay" onClick={() => setShowDriverModeConfirm(false)}>
+          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
+            maxWidth: '500px',
+            width: '90vw'
+          }}>
+            <div className="bw-modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderBottom: '1px solid var(--bw-border)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif'
+              }}>
+                Switch to Driver Mode
+              </h3>
+              <button 
+                type="button"
+                className="bw-btn-icon" 
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowDriverModeConfirm(false)
+                }}
+                style={{
+                  padding: '8px',
+                  minWidth: '32px',
+                  minHeight: '32px'
+                }}
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="bw-modal-body" style={{
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <p style={{
+                  margin: 0,
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  color: 'var(--bw-text)',
+                  lineHeight: 1.6
+                }}>
+                  You are about to switch to Driver Mode. This will change your view to the driver interface where you can manage your driver profile, view assigned bookings, and access driver-specific features.
+                </p>
+                <p style={{
+                  margin: 0,
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  color: 'var(--bw-text)',
+                  lineHeight: 1.6
+                }}>
+                  Do you want to continue?
+                </p>
+                {switchToDriverError && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '7px',
+                    color: 'var(--bw-error, #ff4444)',
+                    fontSize: 'clamp(13px, 1.8vw, 15px)'
+                  }}>
+                    {switchToDriverError}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bw-modal-footer" style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderTop: '1px solid var(--bw-border)'
+            }}>
+              <button
+                type="button"
+                className="bw-btn-outline"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setShowDriverModeConfirm(false)
+                }}
+                style={{
+                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  borderRadius: 7
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  try {
+                    setIsSwitchingToDriver(true)
+                    setSwitchToDriverError(null)
+                    
+                    const response = await becomeDriver()
+                    
+                    const accessToken = response.data?.access_token || (response as any).access_token
+                    
+                    if (accessToken) {
+                      const hostname = window.location.hostname
+                      const slug = extractSubdomain(hostname) || 'ridez'
+                      const driverLoginUrl = getTenantAppUrl(slug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
+                      window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
+                      
+                      setShowDriverModeConfirm(false)
+                    } else {
+                      setSwitchToDriverError(response.error || 'Failed to get driver access token')
+                    }
+                  } catch (err: any) {
+                    console.error('Failed to switch to driver mode:', err)
+                    setSwitchToDriverError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to switch to driver mode. Please try again.')
+                  } finally {
+                    setIsSwitchingToDriver(false)
+                  }
+                }}
+                disabled={isSwitchingToDriver}
+                style={{
+                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 400,
+                  borderRadius: 7,
+                  backgroundColor: isSwitchingToDriver ? 'rgba(108, 99, 232, 0.45)' : 'var(--bw-accent)',
+                  color: '#ffffff',
+                  border: 'none',
+                  cursor: isSwitchingToDriver ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: isSwitchingToDriver ? 0.6 : 1
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSwitchingToDriver) {
+                    e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSwitchingToDriver) {
+                    e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
+                  }
+                }}
+              >
+                {isSwitchingToDriver ? 'Switching...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* Add Driver Modal */}
       {showAddDriver && (

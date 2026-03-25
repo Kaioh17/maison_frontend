@@ -8,6 +8,8 @@ import AccountVerificationNotification from '@components/AccountVerificationNoti
 
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
+const DemoDashboard = lazy(() => import('@pages/demo/index'))
+const DemoStripeRedirect = lazy(() => import('@pages/demo/StripeRedirect'))
 const About = lazy(() => import('@pages/About'))
 const Login = lazy(() => import('@pages/Login'))
 const Signup = lazy(() => import('@pages/Signup'))
@@ -60,6 +62,8 @@ export default function App() {
       <Route path="/" element={<SubdomainBlock><Landing /></SubdomainBlock>} />
       <Route path="/about" element={<SubdomainBlock><About /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
+      <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />
+      <Route path="/demo/stripe-redirect" element={<SubdomainBlock><DemoStripeRedirect /></SubdomainBlock>} />
 
       <Route
         path="/tenant/login"

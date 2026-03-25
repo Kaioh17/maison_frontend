@@ -12,7 +12,6 @@ export function useTenantSlug(): string | null {
     const hostname = window.location.hostname
     const subdomain = extractSubdomain(hostname)
     const mainDomain = getMainDomain()
-    
     if (subdomain && subdomain !== 'www' && subdomain !== mainDomain) {
       return subdomain
     }
