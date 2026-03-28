@@ -5,6 +5,8 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
+import { getApiErrorMessage } from '@utils/apiError'
+import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
 
 export default function DriverLogin() {
   useFavicon()
@@ -108,19 +110,24 @@ export default function DriverLogin() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
+  const driverLoginEmailFormatError = getEmailFormatError(formData.email)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    if (!isValidEmail(formData.email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
     try {
       setIsLoading(true)
-      setError('')
-      
       const data = await loginDriver(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
       
       // Navigate to driver dashboard
       navigate('/driver/dashboard', { replace: true })
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'))
     } finally {
       setIsLoading(false)
     }
@@ -178,14 +185,14 @@ export default function DriverLogin() {
             paddingTop: '120px'
           }} 
         >
-          {/* Dark overlay covering entire image */}
+          {/* Tint: Maison page background at ~60% opacity (matches login/signup) */}
           <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
             zIndex: 1
           }}></div>
           <div style={{
@@ -281,20 +288,40 @@ export default function DriverLogin() {
             )}
 
             <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
-              <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-              <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="you@email.com" 
-                  value={formData.email}
-                  onChange={handleInputChange} 
-                />
+              <div style={{ marginBottom: 12 }}>
+                <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
+                <div style={{ position: 'relative', marginTop: 6 }}>
+                  <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                  <input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    autoComplete="email"
+                    required 
+                    className="bw-input" 
+                    aria-invalid={formData.email.length > 0 && !!driverLoginEmailFormatError}
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                    placeholder="you@email.com" 
+                    value={formData.email}
+                    onChange={handleInputChange} 
+                  />
+                </div>
+                <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                  {EMAIL_FORMAT_HINT}
+                </p>
+                {driverLoginEmailFormatError && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      fontFamily: 'Work Sans, sans-serif',
+                      color: 'var(--bw-error)',
+                    }}
+                  >
+                    {driverLoginEmailFormatError}
+                  </div>
+                )}
               </div>
 
               <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>

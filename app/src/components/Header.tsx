@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
+import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function Header() {
   const { accessToken, logout } = useAuthStore()
   return (
     <div className="header card">
-      <div className="brand">Maison</div>
+      <div className="brand">
+        <MaisonWordmark />
+      </div>
       <nav className="hstack">
         {!accessToken ? (
           <>

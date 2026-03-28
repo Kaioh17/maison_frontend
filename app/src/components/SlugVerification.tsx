@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { verifySlug } from '@api/tenant'
 import { useTenantSlug } from '@hooks/useTenantSlug'
-import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
+import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired, type SlugBlockReason } from '@utils/slugCache'
+import {
+  isGuestAccessDeniedAxiosError,
+  isGuestAccessDeniedPayload,
+  isGuestAccessDeniedSuccessEnvelope,
+} from '@utils/slugGuestAccess'
 import NotFound404 from './NotFound404'
+import SlugOwnerContactNotice from './SlugOwnerContactNotice'
 
 interface SlugVerificationProps {
   children: React.ReactNode
@@ -11,11 +17,13 @@ interface SlugVerificationProps {
 export default function SlugVerification({ children }: SlugVerificationProps) {
   const slug = useTenantSlug()
   const [isValid, setIsValid] = useState<boolean | null>(null)
+  const [blockReason, setBlockReason] = useState<SlugBlockReason | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (!slug) {
       setIsValid(false)
+      setBlockReason(null)
       setIsLoading(false)
       return
     }
@@ -25,6 +33,7 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
       const cached = getCachedSlugVerification(slug)
       if (cached && !isCacheExpired(cached)) {
         setIsValid(cached.isValid)
+        setBlockReason(cached.isValid ? null : cached.blockReason ?? null)
         setIsLoading(false)
         return // No API call needed
       }
@@ -33,21 +42,32 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
       try {
         setIsLoading(true)
         const response = await verifySlug(slug)
-        const isValidResult = !!(response.success && response.data)
-        setIsValid(isValidResult)
-        
-        // Cache the result
-        setCachedSlugVerification(slug, response.data || null, isValidResult)
+        const hasPayload = !!(response.success && response.data)
+
+        if (hasPayload && isGuestAccessDeniedPayload(response.data)) {
+          setIsValid(false)
+          setBlockReason('forbidden')
+          setCachedSlugVerification(slug, null, false, 'forbidden')
+        } else if (hasPayload) {
+          setIsValid(true)
+          setBlockReason(null)
+          setCachedSlugVerification(slug, response.data!, true)
+        } else {
+          const forbidden = isGuestAccessDeniedSuccessEnvelope(response)
+          setIsValid(false)
+          setBlockReason(forbidden ? 'forbidden' : null)
+          setCachedSlugVerification(slug, null, false, forbidden ? 'forbidden' : undefined)
+        }
       } catch (error: any) {
-        // Check if it's a 404 error
-        const isValidResult = false
-        setIsValid(isValidResult)
-        
+        const status = error.response?.status as number | undefined
+        const forbidden = isGuestAccessDeniedAxiosError(error)
+        setIsValid(false)
+        setBlockReason(forbidden ? 'forbidden' : null)
+
         // Cache the invalid result to avoid repeated failed calls
-        setCachedSlugVerification(slug, null, isValidResult)
-        
-        if (error.response?.status !== 404) {
-          // Log non-404 errors for debugging
+        setCachedSlugVerification(slug, null, false, forbidden ? 'forbidden' : undefined)
+
+        if (status !== 404 && status !== 403 && !forbidden) {
           console.error('Slug verification error:', error)
         }
       } finally {
@@ -73,6 +93,9 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
   }
 
   if (!isValid) {
+    if (blockReason === 'forbidden') {
+      return <SlugOwnerContactNotice />
+    }
     return <NotFound404 />
   }
 

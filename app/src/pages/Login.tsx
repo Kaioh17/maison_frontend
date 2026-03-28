@@ -3,8 +3,9 @@ import { Eye, EyeOff, Mail, Lock, Car, ArrowRight } from 'lucide-react'
 import { loginTenant } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import whiteLogo from '../images/white_logo.png'
-import darkLogo from '../images/dark_logo(c).png'
+import { getApiErrorMessage } from '@utils/apiError'
+import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -12,7 +13,6 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
-  const [currentLogo, setCurrentLogo] = useState<string>(whiteLogo)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
   
@@ -20,7 +20,6 @@ export default function AuthPage() {
   const location = useLocation()
   const { isAuthenticated, role } = useAuthStore()
 
-  // Determine current theme and set appropriate logo
   const getCurrentTheme = () => {
     if (typeof window === 'undefined') return 'dark'
     const theme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
@@ -31,26 +30,22 @@ export default function AuthPage() {
   }
 
   useEffect(() => {
-    const updateLogo = () => {
-      const theme = getCurrentTheme()
-      setCurrentTheme(theme)
-      setCurrentLogo(theme === 'dark' ? darkLogo : whiteLogo)
+    const updateTheme = () => {
+      setCurrentTheme(getCurrentTheme())
     }
 
-    updateLogo()
+    updateTheme()
 
-    // Listen for theme changes
-    const observer = new MutationObserver(updateLogo)
+    const observer = new MutationObserver(updateTheme)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
 
-    // Listen for system theme changes (for auto mode)
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', updateLogo)
+    mediaQuery.addEventListener('change', updateTheme)
 
     return () => {
       observer.disconnect()
-      mediaQuery.removeEventListener('change', updateLogo)
+      mediaQuery.removeEventListener('change', updateTheme)
     }
   }, [])
 
@@ -98,19 +93,25 @@ export default function AuthPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
+  const loginEmailFormatError = getEmailFormatError(formData.email)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    if (!isValidEmail(formData.email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
     try {
       setIsLoading(true)
-      setError('')
       // Tenant login only
       const data = await loginTenant(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
       // Navigate to tenant dashboard after successful login
       const from = location.state?.from?.pathname || '/tenant/overview'
       navigate(from, { replace: true })
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.')
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'))
     } finally {
       setIsLoading(false)
     }
@@ -149,7 +150,7 @@ export default function AuthPage() {
             padding: 16px !important;
           }
           .login-logo {
-            height: 60px !important;
+            font-size: 30px !important;
             top: 16px !important;
             left: 16px !important;
           }
@@ -218,14 +219,14 @@ export default function AuthPage() {
               paddingTop: '120px'
             }} 
           >
-            {/* Dark overlay covering entire image */}
+            {/* Tint: Maison page background at ~60% opacity (replaces former rgba(0,0,0,0.6)) */}
             <div style={{
               position: 'absolute',
               top: 0,
               left: 0,
               width: '100%',
               height: '100%',
-              backgroundColor: 'rgba(0, 0, 0, 0.6)',
+              backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
               zIndex: 1
             }}></div>
             <div style={{
@@ -267,20 +268,19 @@ export default function AuthPage() {
               overflowY: 'auto'
             }}
           >
-            <img 
-              src={currentLogo} 
-              alt="Logo" 
+            <div
               className="login-logo"
-              style={{ 
+              style={{
                 position: 'absolute',
                 top: '24px',
                 left: '24px',
-                height: '95px', 
-                width: 'auto', 
-                objectFit: 'contain',
-                zIndex: 10
-              }} 
-            />
+                zIndex: 10,
+                fontSize: 40,
+                lineHeight: 1,
+              }}
+            >
+              <MaisonWordmark />
+            </div>
             <h2 className="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Welcome back</h2>
             <p className="small-muted login-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Sign in to continue</p>
 
@@ -301,15 +301,45 @@ export default function AuthPage() {
 
             <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
               <label className="small-muted login-label" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-              <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Mail className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
-                <input id="email" name="email" type="email" required className="bw-input login-input" style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="you@email" onChange={handleInputChange} />
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ position: 'relative', marginTop: 6 }}>
+                  <Mail className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="bw-input login-input"
+                    value={formData.email}
+                    aria-invalid={formData.email.length > 0 && !!loginEmailFormatError}
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                    placeholder="you@email.com"
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                  {EMAIL_FORMAT_HINT}
+                </p>
+                {loginEmailFormatError && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      fontFamily: 'Work Sans, sans-serif',
+                      color: '#dc2626',
+                    }}
+                  >
+                    {loginEmailFormatError}
+                  </div>
+                )}
               </div>
 
               <label className="small-muted login-label" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
               <div style={{ position: 'relative', marginTop: 6 }}>
                 <Lock className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
-                <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
+                <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
                 <button type="button" aria-label="Toggle password" className="login-toggle-btn" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff' }}>
                   {showPassword ? <EyeOff className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
                 </button>

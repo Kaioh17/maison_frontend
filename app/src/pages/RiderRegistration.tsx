@@ -9,6 +9,13 @@ import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 import StateAutocomplete from '@components/StateAutocomplete'
 import CityAutocomplete from '@components/CityAutocomplete'
+import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import { getApiErrorMessage } from '@utils/apiError'
+import {
+  formatPasswordPolicySentence,
+  getPasswordPolicyFailures,
+  PASSWORD_POLICY_HINT,
+} from '@utils/passwordPolicy'
 
 export default function RiderRegistration() {
   useFavicon()
@@ -134,7 +141,7 @@ export default function RiderRegistration() {
       setError('Please enter your first and last name.')
       return false
     }
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    if (!isValidEmail(formData.email)) {
       setError('Please enter a valid email address.')
       return false
     }
@@ -145,6 +152,11 @@ export default function RiderRegistration() {
     }
     if (!formData.password.trim()) {
       setError('Please choose a password.')
+      return false
+    }
+    const pwdFailures = getPasswordPolicyFailures(formData.password)
+    if (pwdFailures.length > 0) {
+      setError(formatPasswordPolicySentence(pwdFailures))
       return false
     }
     return true
@@ -198,8 +210,8 @@ export default function RiderRegistration() {
       const data = await loginRider(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
       navigate('/riders/profile', { replace: true })
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Registration failed. Please try again.')
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setIsLoading(false)
     }
@@ -270,6 +282,8 @@ export default function RiderRegistration() {
   }
 
   const companyName = tenantInfo?.company_name || 'Our Service'
+  const riderPasswordFailures = getPasswordPolicyFailures(formData.password)
+  const riderEmailFormatError = getEmailFormatError(formData.email)
 
   return (
     <main className="bw" aria-label="Rider Registration" style={{ margin: 0, padding: 0, minHeight: '100vh', overflow: 'auto' }}>
@@ -295,14 +309,14 @@ export default function RiderRegistration() {
             paddingTop: '120px'
           }} 
         >
-          {/* Dark overlay covering entire image */}
+          {/* Tint: Maison page background at ~60% opacity (matches login/signup) */}
           <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
             zIndex: 1
           }}></div>
           <div style={{
@@ -381,8 +395,15 @@ export default function RiderRegistration() {
           <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
             {tenantInfo ? `Sign up for ${companyName}` : 'Sign up to get started'}
           </p>
-          <p className="small-muted" style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em' }}>
-            Step {step} of 2 — {step === 1 ? 'Account' : 'Where we pick you up'}
+          <p
+            className="small-muted"
+            aria-live="polite"
+            style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em', lineHeight: 1.45 }}
+          >
+            Step {step} of 2 — {step === 1 ? 'Account' : 'Where we pick you up'}.{' '}
+            {step === 1
+              ? 'You are entering your profile and password.'
+              : 'You are entering your pickup address.'}
           </p>
 
           {error && (
@@ -440,21 +461,40 @@ export default function RiderRegistration() {
               </div>
             </div>
 
-            <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-            <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-              <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-              <input 
-                id="email" 
-                name="email" 
-                type="email" 
-                autoComplete="email"
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="you@email.com" 
-                value={formData.email}
-                onChange={handleInputChange} 
-              />
+            <div style={{ marginBottom: 12 }}>
+              <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
+              <div style={{ position: 'relative', marginTop: 6 }}>
+                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                <input 
+                  id="email" 
+                  name="email" 
+                  type="email" 
+                  autoComplete="email"
+                  required 
+                  className="bw-input" 
+                  aria-invalid={formData.email.length > 0 && !!riderEmailFormatError}
+                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  placeholder="you@email.com" 
+                  value={formData.email}
+                  onChange={handleInputChange} 
+                />
+              </div>
+              <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                {EMAIL_FORMAT_HINT}
+              </p>
+              {riderEmailFormatError && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    fontFamily: 'Work Sans, sans-serif',
+                    color: 'var(--bw-error)',
+                  }}
+                >
+                  {riderEmailFormatError}
+                </div>
+              )}
             </div>
 
             <label className="small-muted" htmlFor="phone_no" style={{ fontFamily: 'Work Sans, sans-serif' }}>Phone number</label>
@@ -499,6 +539,22 @@ export default function RiderRegistration() {
                 {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+              {PASSWORD_POLICY_HINT}
+            </p>
+            {formData.password.length > 0 && riderPasswordFailures.length > 0 && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 6,
+                  fontSize: 13,
+                  fontFamily: 'Work Sans, sans-serif',
+                  color: 'var(--bw-error)',
+                }}
+              >
+                {formatPasswordPolicySentence(riderPasswordFailures)}
+              </div>
+            )}
 
             <button 
               className="bw-btn" 

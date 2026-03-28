@@ -6,6 +6,7 @@ import { STRIPE_PUBLISHABLE_KEY } from '@config'
 import { type BookingResponse } from '@api/bookings'
 import { useFavicon } from '@hooks/useFavicon'
 import { Spinner, ArrowLeft, CreditCard } from '@phosphor-icons/react'
+import MaisonWordmark from '@components/MaisonWordmark'
 
 // Function to initialize Stripe with optional connected account
 const getStripePromise = (tenantAcctId?: string) => {
@@ -443,7 +444,11 @@ export default function PaymentPage() {
             margin: 0,
             fontFamily: 'Work Sans, sans-serif'
           }}>
-            Powered by Maison
+            Powered by{' '}
+            <MaisonWordmark
+              color="var(--bw-text)"
+              style={{ fontSize: 'inherit', display: 'inline', verticalAlign: 'baseline' }}
+            />
           </p>
         </div>
       </div>

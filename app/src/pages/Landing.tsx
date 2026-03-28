@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import MaisonWordmark from '@components/MaisonWordmark'
+import { LANDING_PRICING_PLANS, isPopularPlan } from '@data/landingPricingPlans'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
 import { CheckCircle, XCircle, List, X, SignIn } from '@phosphor-icons/react'
@@ -31,8 +33,8 @@ const SNAP_SECTION_LABELS = [
   'Platform',
   'Drivers',
   'Rider experience',
-  'Pricing',
   'Mission',
+  'Pricing',
   'Get started',
 ] as const
 
@@ -225,6 +227,7 @@ function DriverExperienceSlide() {
           <motion.p
             variants={fadeInUp}
             className="text-[16px] text-gray-400 mb-8"
+            
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
             Transparent, mobile-first, and built for trust.
@@ -306,69 +309,10 @@ function RiderBookingSlide() {
   )
 }
 
-const PRICING_PLANS = [
-  {
-    name: 'Starter',
-    price: '$0.00',
-    period: '/month',
-    description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $50.',
-    features: [
-      { text: 'Up to 1 vehicle', included: true },
-      { text: 'Up to 1 driver', included: true },
-      { text: 'Basic booking system', included: true },
-      { text: 'Email support', included: true },
-      // { text: 'Custom branding', included: false },
-      // { text: 'Advanced analytics', included: false },
-      // { text: 'API access', included: false },
-    ],
-  },
-  {
-    name: 'Growth',
-    price: ( <>
-    <span className="old">299.<span className="cent">99</span></span> 
-    <span className="new">99.<span className="cent">99</span></span></>),
-    period: '/month',
-    description: 'Ideal for growing businesses',
-    popular: true,
-    features: [
-      { text: 'Up to 5 vehicles', included: true },
-      { text: 'Up to 7 drivers', included: true },
-      { text: 'Advanced booking system', included: true },
-      { text: 'Email & phone support', included: true },
-      // { text: 'Custom branding', included: true },
-      // { text: 'Advanced analytics', included: true },
-      // { text: 'API access', included: true },
-    ],
-  },
-  {
-    name: 'Fleet',
-    price: ( <>
-      <span className="old">399.<span className="cent">99</span></span> 
-      <span className="new">299.<span className="cent">99</span></span></>),
-    period: '/month',
-    description: 'For large fleets and enterprises',
-    features: [
-      { text: 'Unlimited vehicles', included: true },
-      { text: 'Unlimited drivers', included: true },
-      { text: 'Enterprise booking system', included: true },
-      { text: '24/7 dedicated support', included: true },
-      // { text: 'Custom branding', included: true },
-      // { text: 'Advanced analytics', included: true },
-      // { text: 'API access', included: true },
-    ],
-  },
-]
-
-type LandingPricingPlan = (typeof PRICING_PLANS)[number]
-
-function isPopularPlan(plan: LandingPricingPlan): plan is LandingPricingPlan & { popular: true } {
-  return 'popular' in plan && plan.popular === true
-}
-
-// Slide 5: Pricing
+// Slide 6: Pricing
 function PricingSlide() {
   const carouselRef = useRef<HTMLDivElement>(null)
-  const featuredIndex = PRICING_PLANS.findIndex(isPopularPlan)
+  const featuredIndex = LANDING_PRICING_PLANS.findIndex(isPopularPlan)
   const [activeIndex, setActiveIndex] = useState(featuredIndex >= 0 ? featuredIndex : 0)
 
   useEffect(() => {
@@ -479,7 +423,7 @@ function PricingSlide() {
           transition={{ duration: 0.45 }}
         >
           <div ref={carouselRef} className="pricing-carousel -mx-5 md:mx-0">
-            {PRICING_PLANS.map((plan, index) => (
+            {LANDING_PRICING_PLANS.map((plan, index) => (
               <div
                 key={plan.name}
                 data-index={index}
@@ -543,13 +487,13 @@ function PricingSlide() {
           </div>
 
           <div className="dots" role="tablist" aria-label="Pricing plans">
-            {PRICING_PLANS.map((_, i) => (
+            {LANDING_PRICING_PLANS.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 role="tab"
                 aria-selected={i === activeIndex}
-                aria-label={`${PRICING_PLANS[i].name} plan`}
+                aria-label={`${LANDING_PRICING_PLANS[i].name} plan`}
                 className={`dot${i === activeIndex ? ' active' : ''}`}
                 onClick={() => scrollToPlan(i)}
               />
@@ -561,7 +505,7 @@ function PricingSlide() {
   )
 }
 
-// Slide 6: Mission & Values
+// Slide 5: Mission & Values
 function MissionValuesSlide() {
   const coreValues = [
     {
@@ -690,11 +634,8 @@ function ConclusionSlide() {
         <div className="w-full box-border" style={{ padding: '52px 60px 32px' }}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-10 mb-6 text-left">
             <div>
-              <div
-                className="mb-3 text-white font-semibold"
-                style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 18 }}
-              >
-                Maison
+              <div className="mb-3">
+                <MaisonWordmark color="#ffffff" style={{ fontSize: 18 }} />
               </div>
               <p
                 className="leading-relaxed max-w-xs"
@@ -810,7 +751,12 @@ function ConclusionSlide() {
             <p
               style={{ color: '#3d3b54', fontSize: 12, fontFamily: "'Work Sans', sans-serif" }}
             >
-              © 2026 Maison. All rights reserved.
+              © 2026{' '}
+              <MaisonWordmark
+                color="#3d3b54"
+                style={{ fontSize: 12, display: 'inline', verticalAlign: 'baseline' }}
+              />
+              . All rights reserved.
             </p>
           </div>
         </div>
@@ -895,8 +841,8 @@ export default function Landing() {
         <PlatformSlide />
         <DriverExperienceSlide />
         <RiderBookingSlide />
-        <PricingSlide />
         <MissionValuesSlide />
+        <PricingSlide />
         <ConclusionSlide />
       </div>
 
@@ -925,7 +871,7 @@ export default function Landing() {
             pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
           }}
         >
-          Maison
+          <MaisonWordmark color={null} style={{ fontSize: 'inherit' }} />
         </button>
       </div>
 

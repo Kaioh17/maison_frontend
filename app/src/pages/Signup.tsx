@@ -2,10 +2,22 @@ import { FormEvent, useState, useEffect, useRef } from 'react'
 import { Info, Eye, EyeOff } from 'lucide-react'
 import { createTenant } from '@api/tenant'
 import { loginTenant } from '@api/auth'
+import { createCheckoutSession } from '@api/subscription'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, Link } from 'react-router-dom'
-import whiteLogo from '../images/white_logo.png'
-import darkLogo from '../images/dark_logo(c).png'
+import { Link } from 'react-router-dom'
+import { getStripeSubscriptionPriceId } from '@config'
+import { MAIN_DOMAIN, getTenantAppUrl } from '@config/host'
+import type { LandingPricingPlanDisplay } from '@data/landingPricingPlans'
+import { getApiErrorMessage } from '@utils/apiError'
+import SignupPlanSelection from '@components/SignupPlanSelection'
+import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import {
+  formatPasswordPolicySentence,
+  getPasswordPolicyFailures,
+  isPasswordPolicyValid,
+  PASSWORD_POLICY_HINT,
+} from '@utils/passwordPolicy'
+import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -24,12 +36,13 @@ export default function Signup() {
   const [showSlugInfo, setShowSlugInfo] = useState(false)
   const [slugError, setSlugError] = useState<string | null>(null)
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
-  const [currentLogo, setCurrentLogo] = useState<string>(whiteLogo)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
-  const [signupStep, setSignupStep] = useState<1 | 2>(1)
+  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1)
   const [isMobileSignup, setIsMobileSignup] = useState(false)
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false)
+  const [planCheckoutLoading, setPlanCheckoutLoading] = useState<string | null>(null)
+  const [planCheckoutError, setPlanCheckoutError] = useState<string | null>(null)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)')
@@ -39,10 +52,10 @@ export default function Signup() {
     return () => mq.removeEventListener('change', apply)
   }, [])
 
-  const canContinueStep1 =
-    email.includes('@') && password.length >= 8
+  const canContinueStep1 = isValidEmail(email) && isPasswordPolicyValid(password)
+  const emailFormatError = getEmailFormatError(email)
+  const passwordPolicyFailures = getPasswordPolicyFailures(password)
 
-  // Determine current theme and set appropriate logo
   const getCurrentTheme = () => {
     if (typeof window === 'undefined') return 'dark'
     const theme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
@@ -53,26 +66,22 @@ export default function Signup() {
   }
 
   useEffect(() => {
-    const updateLogo = () => {
-      const theme = getCurrentTheme()
-      setCurrentTheme(theme)
-      setCurrentLogo(theme === 'dark' ? darkLogo : whiteLogo)
+    const updateTheme = () => {
+      setCurrentTheme(getCurrentTheme())
     }
 
-    updateLogo()
+    updateTheme()
 
-    // Listen for theme changes
-    const observer = new MutationObserver(updateLogo)
+    const observer = new MutationObserver(updateTheme)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
 
-    // Listen for system theme changes (for auto mode)
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', updateLogo)
+    mediaQuery.addEventListener('change', updateTheme)
 
     return () => {
       observer.disconnect()
-      mediaQuery.removeEventListener('change', updateLogo)
+      mediaQuery.removeEventListener('change', updateTheme)
     }
   }, [])
 
@@ -193,7 +202,12 @@ export default function Signup() {
       setError('Please fix the slug format before submitting')
       return
     }
-    
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+
+    setIsCreatingAccount(true)
     try {
       // Strip formatting from phone number (remove all non-digits)
       const phoneDigits = phone.replace(/\D/g, '')
@@ -209,12 +223,33 @@ export default function Signup() {
         city,
         logo_url: logoFile,
       })
-      // Auto-login then go to subscription selection
       const data = await loginTenant(email, password)
       useAuthStore.getState().login({ token: data.access_token })
-      navigate('/subscription')
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || 'Failed to create account')
+      setSignupStep(3)
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to create account'))
+    } finally {
+      setIsCreatingAccount(false)
+    }
+  }
+
+  const handleSelectPlan = async (plan: LandingPricingPlanDisplay) => {
+    setPlanCheckoutLoading(plan.product_type)
+    setPlanCheckoutError(null)
+    try {
+      const response = await createCheckoutSession({
+        price_id: getStripeSubscriptionPriceId(plan.product_type),
+        product_type: plan.product_type,
+      })
+      if (response.success && response.data.Checkout_session_url) {
+        window.location.href = response.data.Checkout_session_url
+      } else {
+        setPlanCheckoutError(response.error || 'Failed to create checkout session')
+        setPlanCheckoutLoading(null)
+      }
+    } catch (err: unknown) {
+      setPlanCheckoutError(getApiErrorMessage(err, 'Failed to create checkout session'))
+      setPlanCheckoutLoading(null)
     }
   }
 
@@ -224,11 +259,19 @@ export default function Signup() {
       if (canContinueStep1) setSignupStep(2)
       return
     }
-    void submit(e)
+    if (signupStep === 2) {
+      void submit(e)
+      return
+    }
+    e.preventDefault()
   }
 
   return (
-    <main className="bw" aria-label="Create account" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
+    <main
+      className="bw"
+      aria-label="Create account"
+      style={{ margin: 0, padding: 0, height: '100vh', overflow: signupStep === 3 ? 'auto' : 'hidden' }}
+    >
       <style>{`
         @media (max-width: 768px) {
           .signup-image-container {
@@ -251,7 +294,7 @@ export default function Signup() {
             flex-direction: column !important;
           }
           .signup-logo {
-            height: 60px !important;
+            font-size: 30px !important;
             top: 16px !important;
             left: 16px !important;
           }
@@ -261,6 +304,10 @@ export default function Signup() {
           .signup-subtitle {
             font-size: 14px !important;
             margin-top: 4px !important;
+          }
+          .signup-current-step-hint {
+            font-size: 13px !important;
+            margin-top: 8px !important;
           }
           .signup-label {
             font-size: 12px !important;
@@ -326,9 +373,6 @@ export default function Signup() {
             font-size: 12px !important;
           }
           .signup-mobile-progress-wrap {
-            position: sticky;
-            top: 0;
-            z-index: 15;
             width: 100%;
             flex-shrink: 0;
             margin: 0 -24px 0 -24px;
@@ -362,14 +406,27 @@ export default function Signup() {
             outline: 2px solid var(--bw-focus);
             outline-offset: 2px;
           }
+          .signup-main-container--plan-step .signup-mobile-progress-wrap {
+            background: transparent !important;
+          }
+          .signup-form-container--plan-step .signup-mobile-step-label {
+            color: rgba(255, 255, 255, 0.88);
+          }
+          .signup-form-container--plan-step .signup-mobile-progress-track {
+            background: rgba(255, 255, 255, 0.12);
+          }
         }
       `}</style>
-      <div className="signup-main-container" style={{ display: 'flex', height: '100vh', width: '100%' }}>
+      <div
+        className={`signup-main-container${signupStep === 3 ? ' signup-main-container--plan-step' : ''}`}
+        style={{ display: 'flex', height: '100vh', width: '100%', minHeight: signupStep === 3 ? '100vh' : undefined }}
+      >
         {/* Left side - Image (65%) */}
         <div 
           ref={imageContainerRef}
           className="signup-image-container"
           style={{ 
+            display: signupStep === 3 ? 'none' : 'flex',
             width: '65%', 
             height: '100%', 
             position: 'relative',
@@ -379,17 +436,29 @@ export default function Signup() {
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             transition: 'background-image 0.3s ease',
-            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '48px'
           }} 
         >
+          {/* Tint: same as login — Maison page background at ~60% opacity */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
+              zIndex: 1,
+            }}
+          />
           <div style={{
             color: 'white',
             textAlign: 'center',
             maxWidth: '600px',
             zIndex: 2,
+            position: 'relative',
             padding: '32px'
           }}>
             <h1 style={{
@@ -412,65 +481,83 @@ export default function Signup() {
           </div>
         </div>
 
-        {/* Right side - Signup Form (35%) */}
+        {/* Right side — signup form (35%) or full viewport for plan step */}
         <div 
-          role="form" 
+          role={signupStep === 3 ? 'region' : 'form'}
           aria-labelledby="signup-title"
-          className={`signup-form-container${isMobileSignup ? ' signup-mobile-form-container-inner' : ''}`}
+          className={`signup-form-container${isMobileSignup ? ' signup-mobile-form-container-inner' : ''}${signupStep === 3 ? ' signup-form-container--plan-step' : ''}`}
           style={{ 
-            width: '35%', 
+            width: signupStep === 3 ? '100%' : '35%', 
             height: '100%', 
+            minHeight: signupStep === 3 ? '100vh' : undefined,
+            flex: signupStep === 3 ? '1 1 auto' : undefined,
             position: 'relative',
             display: 'flex', 
             flexDirection: 'column',
-            alignItems: 'center', 
-            justifyContent: isMobileSignup ? 'flex-start' : 'center',
-            padding: '24px',
-            backgroundColor: 'var(--bw-bg)',
-            overflowY: 'auto'
+            alignItems: 'stretch', 
+            justifyContent: signupStep === 3 ? 'flex-start' : isMobileSignup ? 'flex-start' : 'center',
+            padding: signupStep === 3 ? 'clamp(24px, 4vw, 48px) clamp(20px, 4vw, 40px)' : '24px',
+            paddingTop: signupStep === 3 ? 'clamp(72px, 10vw, 88px)' : undefined,
+            backgroundColor: signupStep === 3 ? undefined : 'var(--bw-bg)',
+            background: signupStep === 3
+              ? 'linear-gradient(to bottom, #0a0a0f 0%, rgb(17 24 39) 50%, #0a0a0f 100%)'
+              : undefined,
+            overflowY: 'auto',
+            boxSizing: 'border-box',
           }}
         >
           {!isMobileSignup && (
-            <img 
-              src={currentLogo} 
-              alt="Maison Logo" 
+            <div
               className="signup-logo"
-              style={{ 
+              style={{
                 position: 'absolute',
                 top: '24px',
                 left: '24px',
-                height: '95px', 
-                width: 'auto', 
-                objectFit: 'contain',
-                zIndex: 10
-              }} 
-            />
+                zIndex: 10,
+                fontSize: 40,
+                lineHeight: 1,
+              }}
+            >
+              <MaisonWordmark />
+            </div>
           )}
+          <div
+            style={{
+              width: '100%',
+              maxWidth: signupStep === 3 ? 1280 : undefined,
+              marginLeft: signupStep === 3 ? 'auto' : undefined,
+              marginRight: signupStep === 3 ? 'auto' : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              flex: signupStep === 3 ? 1 : undefined,
+              minHeight: signupStep === 3 ? 0 : undefined,
+              alignItems: signupStep === 3 ? 'stretch' : 'center',
+            }}
+          >
           <div className="signup-mobile-progress-wrap" aria-hidden>
             <div className="signup-mobile-progress-row">
               <div className="signup-mobile-progress-track">
                 <div
                   className="signup-mobile-progress-fill"
-                  style={{ width: signupStep === 1 ? '50%' : '100%' }}
+                  style={{ width: `${(signupStep / 3) * 100}%` }}
                 />
               </div>
               <span className="signup-mobile-step-label">
-                Step {signupStep} of 2
+                Step {signupStep} of 3
               </span>
             </div>
           </div>
           {isMobileSignup && (
-            <img 
-              src={currentLogo} 
-              alt="Maison Logo" 
+            <div
               className="signup-logo signup-mobile-logo-flow"
-              style={{ 
-                height: '60px',
-                width: 'auto', 
-                objectFit: 'contain',
-                alignSelf: 'flex-start'
-              }} 
-            />
+              style={{
+                fontSize: 36,
+                lineHeight: 1,
+                alignSelf: 'flex-start',
+              }}
+            >
+              <MaisonWordmark />
+            </div>
           )}
           <h1
             id="signup-title"
@@ -483,9 +570,10 @@ export default function Signup() {
               alignSelf: isMobileSignup ? 'flex-start' : 'center',
               width: '100%',
               textAlign: isMobileSignup ? 'left' : 'center',
+              color: signupStep === 3 ? '#ffffff' : undefined,
             }}
           >
-            Create account
+            {signupStep === 3 ? 'Choose your plan' : 'Create account'}
           </h1>
           <p
             className="small-muted signup-subtitle"
@@ -497,11 +585,68 @@ export default function Signup() {
               alignSelf: isMobileSignup ? 'flex-start' : 'center',
               width: '100%',
               textAlign: isMobileSignup ? 'left' : 'center',
+              color: signupStep === 3 ? '#94a3b8' : undefined,
             }}
           >
-            Set up your company profile in minutes.
+            {signupStep === 3
+              ? 'Fair, transparent pricing — same plans as on our homepage.'
+              : 'Set up your company profile in minutes.'}
+          </p>
+          <p
+            className="small-muted signup-current-step-hint"
+            aria-live="polite"
+            style={{
+              marginTop: 10,
+              fontSize: 14,
+              fontFamily: 'Work Sans, sans-serif',
+              fontWeight: 400,
+              lineHeight: 1.45,
+              alignSelf: isMobileSignup ? 'flex-start' : 'center',
+              width: '100%',
+              textAlign: isMobileSignup ? 'left' : 'center',
+              color: signupStep === 3 ? '#64748b' : undefined,
+            }}
+          >
+            {signupStep === 1
+              ? 'Step 1 of 3 — You are entering your name, email, and password.'
+              : signupStep === 2
+                ? `Step 2 of 3 — Add your company name, subdomain (your-company.${MAIN_DOMAIN}), city, and optional logo.`
+                : 'Step 3 of 3 — Pick a subscription plan. You can change it later from settings.'}
           </p>
 
+          {signupStep === 3 ? (
+            <div
+              className="signup-plan-step landing-pricing"
+              style={{
+                width: '100%',
+                marginTop: 16,
+                flex: isMobileSignup ? 1 : undefined,
+                minHeight: 0,
+                overflowY: 'auto',
+              }}
+            >
+              {planCheckoutError && (
+                <div
+                  role="alert"
+                  className="small-muted signup-error"
+                  style={{
+                    color: '#ffb3b3',
+                    fontFamily: 'Work Sans, sans-serif',
+                    marginBottom: 12,
+                  }}
+                >
+                  {planCheckoutError}
+                </div>
+              )}
+              <SignupPlanSelection
+                onSelectPlan={handleSelectPlan}
+                loadingProductType={planCheckoutLoading}
+                disabled={planCheckoutLoading !== null}
+              />
+            </div>
+          ) : null}
+
+          {signupStep < 3 ? (
           <form
             onSubmit={handleFormSubmit}
             className="vstack signup-form-grid signup-form"
@@ -536,7 +681,39 @@ export default function Signup() {
                     </div>
                     <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Email</span>
-                      <input className="bw-input signup-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                      <input
+                        className="bw-input signup-input"
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        aria-invalid={email.length > 0 && !!emailFormatError}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                      />
+                      <span
+                        className="small-muted"
+                        style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          fontFamily: 'Work Sans, sans-serif',
+                          opacity: 0.85,
+                        }}
+                      >
+                        {EMAIL_FORMAT_HINT}
+                      </span>
+                      {emailFormatError && (
+                        <div
+                          role="alert"
+                          style={{
+                            marginTop: 6,
+                            fontSize: 13,
+                            fontFamily: 'Work Sans, sans-serif',
+                            color: '#ffb3b3',
+                          }}
+                        >
+                          {emailFormatError}
+                        </div>
+                      )}
                     </label>
                     <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Password</span>
@@ -558,6 +735,30 @@ export default function Signup() {
                           {showPassword ? <EyeOff className="signup-toggle-icon" size={16} /> : <Eye className="signup-toggle-icon" size={16} />}
                         </button>
                       </div>
+                      <span
+                        className="small-muted"
+                        style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          fontFamily: 'Work Sans, sans-serif',
+                          opacity: 0.85,
+                        }}
+                      >
+                        {PASSWORD_POLICY_HINT}
+                      </span>
+                      {password.length > 0 && passwordPolicyFailures.length > 0 && (
+                        <div
+                          role="alert"
+                          style={{
+                            marginTop: 6,
+                            fontSize: 13,
+                            fontFamily: 'Work Sans, sans-serif',
+                            color: '#ffb3b3',
+                          }}
+                        >
+                          {formatPasswordPolicySentence(passwordPolicyFailures)}
+                        </div>
+                      )}
                     </label>
                     <button
                       type="button"
@@ -632,7 +833,7 @@ export default function Signup() {
                               textOverflow: 'ellipsis',
                             }}
                           >
-                            Your slug creates unique branded URLs for your riders. Click to learn more about format requirements and how slugs work in the white-labeling system.
+                            Your slug becomes your subdomain (for example, my-company.{MAIN_DOMAIN}) and branded URLs for your riders. Click to learn more about format requirements and how slugs work in the white-labeling system.
                             <div style={{
                               position: 'absolute',
                               top: '100%',
@@ -646,35 +847,39 @@ export default function Signup() {
                           </div>
                         </div>
                       </span>
-                      <div style={{ position: 'relative' }}>
-                        <span
-                          style={{
-                            position: 'absolute',
-                            left: 18,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            pointerEvents: 'none',
-                            color: 'var(--bw-muted)',
-                            fontFamily: 'Work Sans, sans-serif',
-                            fontSize: 14,
-                            zIndex: 1,
-                          }}
-                        >
-                          maison.app/
-                        </span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          width: '100%',
+                        }}
+                      >
                         <input 
                           className="bw-input signup-input" 
                           placeholder="my-company" 
                           value={slug} 
                           onChange={handleSlugChange}
+                          aria-label={`Subdomain before .${MAIN_DOMAIN}`}
                           style={{ 
-                            padding: '16px 18px 16px 18px',
-                            paddingLeft: '6.75rem',
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '16px 18px',
                             borderRadius: 0, 
                             fontFamily: 'Work Sans, sans-serif',
                             borderColor: slugError ? '#ef4444' : undefined
                           }} 
                         />
+                        <span
+                          style={{
+                            color: 'var(--bw-muted)',
+                            fontFamily: 'Work Sans, sans-serif',
+                            fontSize: 14,
+                            flexShrink: 0,
+                          }}
+                        >
+                          .{MAIN_DOMAIN}
+                        </span>
                       </div>
                       {slugError && (
                         <div style={{
@@ -790,7 +995,14 @@ export default function Signup() {
                       >
                         ← Back
                       </button>
-                      <button className="bw-btn signup-button" type="submit" style={{ flex: 1, color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}>Create account</button>
+                      <button
+                        className="bw-btn signup-button"
+                        type="submit"
+                        disabled={isCreatingAccount}
+                        style={{ flex: 1, color: currentTheme === 'dark' ? '#000000' : '#ffffffff', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
+                      >
+                        {isCreatingAccount ? 'Creating account…' : 'Create account'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -817,6 +1029,8 @@ export default function Signup() {
               </Link>
             </div>
           </form>
+          ) : null}
+          </div>
         </div>
       </div>
 
@@ -877,7 +1091,7 @@ export default function Signup() {
             <h2 className="signup-modal-title" style={{
               margin: '0 0 20px 0',
               fontSize: '24px',
-              fontWeight: 600,
+              fontWeight: 500,
               fontFamily: 'DM Sans, sans-serif',
               color: 'var(--bw-text)'
             }}>
@@ -895,7 +1109,7 @@ export default function Signup() {
                 <h3 className="signup-modal-heading" style={{
                   margin: '0 0 8px 0',
                   fontSize: '16px',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   color: 'var(--bw-text)'
                 }}>
                   What is a Slug?
@@ -907,8 +1121,11 @@ export default function Signup() {
                   color: 'var(--bw-text)',
                   opacity: 0.9
                 }}>
-                  A slug is a URL-friendly identifier that creates a unique path for your company's white-labeled pages. 
-                  It's used to create tenant-specific URLs for your riders.
+                  A slug is a URL-friendly label that becomes your company&apos;s subdomain. For example,{' '}
+                  <code style={{ backgroundColor: 'var(--bw-bg-secondary)', padding: '2px 6px', borderRadius: '3px' }}>
+                    acme.{MAIN_DOMAIN}
+                  </code>
+                  . Riders open that hostname to reach your branded pages.
                 </p>
               </div>
 
@@ -916,7 +1133,7 @@ export default function Signup() {
                 <h3 className="signup-modal-heading" style={{
                   margin: '0 0 8px 0',
                   fontSize: '16px',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   color: 'var(--bw-text)'
                 }}>
                   How It Works
@@ -928,7 +1145,7 @@ export default function Signup() {
                   color: 'var(--bw-text)',
                   opacity: 0.9
                 }}>
-                  Once you set your slug, your riders will access your branded pages through URLs like:
+                  Once you set your slug, your riders will use full URLs on your subdomain, for example:
                 </p>
                 <div className="signup-modal-code" style={{
                   padding: '12px',
@@ -937,11 +1154,12 @@ export default function Signup() {
                   borderRadius: '6px',
                   fontFamily: 'monospace',
                   fontSize: '13px',
-                  color: 'var(--bw-accent)'
+                  color: 'var(--bw-accent)',
+                  wordBreak: 'break-all',
                 }}>
-                  <div style={{ marginBottom: '4px' }}>• <strong>Login:</strong> /{slug || 'your-slug'}/riders/login</div>
-                  <div style={{ marginBottom: '4px' }}>• <strong>Registration:</strong> /{slug || 'your-slug'}/riders/register</div>
-                  <div>• <strong>Dashboard:</strong> /{slug || 'your-slug'}/rider/dashboard</div>
+                  <div style={{ marginBottom: '4px' }}>• <strong>Login:</strong> {getTenantAppUrl(slug.trim() || 'your-slug', '/riders/login')}</div>
+                  <div style={{ marginBottom: '4px' }}>• <strong>Registration:</strong> {getTenantAppUrl(slug.trim() || 'your-slug', '/riders/register')}</div>
+                  <div>• <strong>Dashboard:</strong> {getTenantAppUrl(slug.trim() || 'your-slug', '/rider/dashboard')}</div>
                 </div>
               </div>
 
@@ -949,7 +1167,7 @@ export default function Signup() {
                 <h3 className="signup-modal-heading" style={{
                   margin: '0 0 8px 0',
                   fontSize: '16px',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   color: 'var(--bw-text)'
                 }}>
                   Format Requirements

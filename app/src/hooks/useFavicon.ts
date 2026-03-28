@@ -55,8 +55,11 @@ export function useFavicon() {
             existingLink.href = '/favicon.png'
           }
         }
-      } catch (error) {
-        console.error('Failed to update favicon:', error)
+      } catch (error: unknown) {
+        const status = (error as { response?: { status?: number } })?.response?.status
+        if (status !== 403) {
+          console.error('Failed to update favicon:', error)
+        }
         // Fallback to default favicon on error
         const existingLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
         if (existingLink) {

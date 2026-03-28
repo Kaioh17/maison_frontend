@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom'
+import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function About() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
       <section className="mx-auto max-w-4xl px-6 py-12 md:py-16">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <Link
-            to="/"
-            className="text-2xl font-bold tracking-tight text-white"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Maison
+          <Link to="/" className="text-2xl tracking-tight text-white">
+            <MaisonWordmark color="#ffffff" style={{ fontSize: '1.5rem' }} />
           </Link>
           <Link
             to="/signup"

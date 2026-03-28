@@ -8,6 +8,13 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import StateAutocomplete from '@components/StateAutocomplete'
+import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import { getApiErrorMessage } from '@utils/apiError'
+import {
+  formatPasswordPolicySentence,
+  getPasswordPolicyFailures,
+  PASSWORD_POLICY_HINT,
+} from '@utils/passwordPolicy'
 
 export default function DriverRegistration() {
   useFavicon()
@@ -186,7 +193,7 @@ export default function DriverRegistration() {
       setError('Please enter your first and last name.')
       return false
     }
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    if (!isValidEmail(formData.email)) {
       setError('Please enter a valid email address.')
       return false
     }
@@ -197,6 +204,11 @@ export default function DriverRegistration() {
     }
     if (!formData.password.trim()) {
       setError('Please choose a password.')
+      return false
+    }
+    const pwdFailures = getPasswordPolicyFailures(formData.password)
+    if (pwdFailures.length > 0) {
+      setError(formatPasswordPolicySentence(pwdFailures))
       return false
     }
     return true
@@ -298,32 +310,9 @@ export default function DriverRegistration() {
 
       // Redirect to login page after successful registration
       navigate('/driver/login', { replace: true })
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration error:', err)
-      
-      // Better error handling to show validation errors
-      if (err.response?.data) {
-        const errorData = err.response.data
-        if (errorData.detail) {
-          // Handle both string and array of errors
-          if (Array.isArray(errorData.detail)) {
-            const errorMessages = errorData.detail.map((e: any) => {
-              if (typeof e === 'string') return e
-              if (e.msg) return `${e.loc?.join('.') || 'Field'}: ${e.msg}`
-              return JSON.stringify(e)
-            }).join('\n')
-            setError(errorMessages)
-          } else {
-            setError(errorData.detail)
-          }
-        } else if (errorData.message) {
-          setError(errorData.message)
-        } else {
-          setError(`Registration failed: ${JSON.stringify(errorData)}`)
-        }
-      } else {
-        setError(err.message || 'Registration failed. Please try again.')
-      }
+      setError(getApiErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setIsLoading(false)
     }
@@ -356,6 +345,8 @@ export default function DriverRegistration() {
   }
 
   const companyName = tenantInfo?.company_name || 'Our Service'
+  const driverPasswordFailures = getPasswordPolicyFailures(formData.password)
+  const driverEmailFormatError = getEmailFormatError(formData.email)
 
   return (
     <main className="bw" aria-label="Driver Registration" style={{ margin: 0, padding: 0, minHeight: '100vh', overflow: 'auto' }}>
@@ -381,13 +372,14 @@ export default function DriverRegistration() {
             paddingTop: '120px'
           }} 
         >
+          {/* Tint: Maison page background at ~60% opacity (matches login/signup) */}
           <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
             zIndex: 1
           }}></div>
           <div style={{
@@ -465,8 +457,15 @@ export default function DriverRegistration() {
             <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
               {tenantInfo ? `Sign up to drive for ${companyName}` : 'Sign up to get started'}
             </p>
-            <p className="small-muted" style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em' }}>
-              Step {step} of 2 — {step === 1 ? 'Account' : 'License & vehicle'}
+            <p
+              className="small-muted"
+              aria-live="polite"
+              style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em', lineHeight: 1.45 }}
+            >
+              Step {step} of 2 — {step === 1 ? 'Account' : 'License & vehicle'}.{' '}
+              {step === 1
+                ? 'You are entering your driver account details.'
+                : 'You are adding license and vehicle information.'}
             </p>
 
             {error && (
@@ -524,21 +523,40 @@ export default function DriverRegistration() {
                 </div>
               </div>
 
-              <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-              <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  autoComplete="email"
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="you@email.com" 
-                  value={formData.email}
-                  onChange={handleInputChange} 
-                />
+              <div style={{ marginBottom: 12 }}>
+                <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
+                <div style={{ position: 'relative', marginTop: 6 }}>
+                  <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                  <input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    autoComplete="email"
+                    required 
+                    className="bw-input" 
+                    aria-invalid={formData.email.length > 0 && !!driverEmailFormatError}
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                    placeholder="you@email.com" 
+                    value={formData.email}
+                    onChange={handleInputChange} 
+                  />
+                </div>
+                <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                  {EMAIL_FORMAT_HINT}
+                </p>
+                {driverEmailFormatError && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      fontFamily: 'Work Sans, sans-serif',
+                      color: 'var(--bw-error)',
+                    }}
+                  >
+                    {driverEmailFormatError}
+                  </div>
+                )}
               </div>
 
               <label className="small-muted" htmlFor="phone_no" style={{ fontFamily: 'Work Sans, sans-serif' }}>Phone number</label>
@@ -583,6 +601,22 @@ export default function DriverRegistration() {
                   {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                {PASSWORD_POLICY_HINT}
+              </p>
+              {formData.password.length > 0 && driverPasswordFailures.length > 0 && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: 6,
+                    fontSize: 13,
+                    fontFamily: 'Work Sans, sans-serif',
+                    color: 'var(--bw-error)',
+                  }}
+                >
+                  {formatPasswordPolicySentence(driverPasswordFailures)}
+                </div>
+              )}
 
               <button 
                 className="bw-btn" 

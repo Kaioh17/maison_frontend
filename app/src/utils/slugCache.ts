@@ -1,13 +1,20 @@
 import type { SlugVerificationResponse } from '@api/tenant'
 
+export type SlugBlockReason = 'forbidden'
+
 export interface SlugCacheEntry {
   slug: string
   isValid: boolean
   data?: SlugVerificationResponse
+  /** When invalid: guest site not open (HTTP 403, API codes, or flags on payload). */
+  blockReason?: SlugBlockReason
   timestamp: number
 }
 
-const CACHE_PREFIX = 'slug_verification_'
+/** Bumped when cache semantics change so stale “invalid without blockReason” entries are not reused. */
+const CACHE_PREFIX = 'slug_verification_v2_'
+/** Legacy prefix (pre-v2): still cleared when clearing by slug so users aren’t stuck on old 404. */
+const CACHE_PREFIX_LEGACY = 'slug_verification_'
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes in milliseconds
 
 /**
@@ -18,9 +25,14 @@ export function getCachedSlugVerification(slug: string): SlugCacheEntry | null {
 
   try {
     const cacheKey = `${CACHE_PREFIX}${slug}`
-    const cached = sessionStorage.getItem(cacheKey)
-    
-    if (!cached) return null
+    let cached = sessionStorage.getItem(cacheKey)
+    if (!cached) {
+      const legacy = sessionStorage.getItem(`${CACHE_PREFIX_LEGACY}${slug}`)
+      if (legacy) {
+        sessionStorage.removeItem(`${CACHE_PREFIX_LEGACY}${slug}`)
+      }
+      return null
+    }
 
     const entry: SlugCacheEntry = JSON.parse(cached)
     
@@ -43,7 +55,8 @@ export function getCachedSlugVerification(slug: string): SlugCacheEntry | null {
 export function setCachedSlugVerification(
   slug: string,
   data: SlugVerificationResponse | null,
-  isValid: boolean
+  isValid: boolean,
+  blockReason?: SlugBlockReason
 ): void {
   if (typeof window === 'undefined') return
 
@@ -53,7 +66,8 @@ export function setCachedSlugVerification(
       slug,
       isValid,
       data: data || undefined,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      ...(isValid ? {} : blockReason ? { blockReason } : {})
     }
     
     sessionStorage.setItem(cacheKey, JSON.stringify(entry))
@@ -79,13 +93,12 @@ export function clearSlugCache(slug?: string): void {
 
   try {
     if (slug) {
-      const cacheKey = `${CACHE_PREFIX}${slug}`
-      sessionStorage.removeItem(cacheKey)
+      sessionStorage.removeItem(`${CACHE_PREFIX}${slug}`)
+      sessionStorage.removeItem(`${CACHE_PREFIX_LEGACY}${slug}`)
     } else {
-      // Clear all slug verification caches
       const keys = Object.keys(sessionStorage)
       keys.forEach(key => {
-        if (key.startsWith(CACHE_PREFIX)) {
+        if (key.startsWith(CACHE_PREFIX) || key.startsWith(CACHE_PREFIX_LEGACY)) {
           sessionStorage.removeItem(key)
         }
       })

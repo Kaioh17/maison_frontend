@@ -6,6 +6,9 @@ export type StandardResponse<T> = {
   meta?: Record<string, unknown> | null
   success?: boolean
   error?: string | null
+  /** Optional machine-readable code (e.g. guest access denied on slug verify). */
+  error_code?: string
+  code?: string
 }
 
 export async function getTenantInfo() {
@@ -68,6 +71,10 @@ export type SlugVerificationResponse = {
   settings: TenantSettingsResponse
   profile: TenantProfileBasic
   branding: TenantBranding
+  /** When false, treat like HTTP 403 for guest-facing routes. */
+  guest_site_enabled?: boolean
+  /** Alias some backends may use instead of guest_site_enabled. */
+  public_guest_access?: boolean
 }
 
 export async function verifySlug(slug: string) {
