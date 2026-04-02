@@ -51,7 +51,7 @@ Note:
 - GET `/api/v1/tenant/` - Company info
 - GET `/api/v1/tenant/drivers` - Driver list
 - POST `/api/v1/tenant/onboard` - Onboard driver
-- GET `/api/v1/vehicles/` - Vehicle list
+- GET `/api/v1/vehicles` - Vehicle list
 - POST `/api/v1/vehicles/add `- Add vehicle
 - More endpoints will be added over time....
 

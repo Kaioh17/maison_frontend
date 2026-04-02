@@ -575,7 +575,7 @@ export default function RiderRegistration() {
                 id="address" 
                 name="address" 
                 type="text" 
-                required 
+                required={step === 2}
                 className="bw-input" 
                 style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
                 placeholder="123 Main St" 
@@ -596,7 +596,7 @@ export default function RiderRegistration() {
                 placeholder="New York"
                 className="bw-input"
                 style={{ padding: '16px 18px', borderRadius: 0 }}
-                required
+                required={step === 2}
               />
               <StateAutocomplete
                 value={formData.state}
@@ -604,7 +604,7 @@ export default function RiderRegistration() {
                 placeholder="NY"
                 className="bw-input"
                 style={{ padding: '16px 18px', borderRadius: 0 }}
-                required
+                required={step === 2}
               />
             </div>
 
@@ -619,13 +619,13 @@ export default function RiderRegistration() {
                 placeholder="USA"
                 className="bw-input"
                 style={{ padding: '16px 18px', borderRadius: 0 }}
-                required
+                required={step === 2}
               />
               <input 
                 id="postal_code" 
                 name="postal_code" 
                 type="text" 
-                required 
+                required={step === 2}
                 className="bw-input" 
                 style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
                 placeholder="10001" 

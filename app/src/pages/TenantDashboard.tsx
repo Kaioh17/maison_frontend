@@ -10,7 +10,7 @@ import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -267,6 +267,7 @@ export default function TenantDashboard() {
   const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
   const [isViewAllHovered, setIsViewAllHovered] = useState(false)
   const [showMoreBookings, setShowMoreBookings] = useState(false)
+  const [overviewCopiedLink, setOverviewCopiedLink] = useState<'rider' | 'driver' | null>(null)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
   const [isSaveRateHovered, setIsSaveRateHovered] = useState(false)
@@ -1187,6 +1188,17 @@ export default function TenantDashboard() {
     setSettingsMenuOpen(false)
     if (isMobile) {
       setIsMenuOpen(false)
+    }
+  }
+
+  const copyTenantOverviewLink = async (kind: 'rider' | 'driver', url: string) => {
+    if (!url) return
+    try {
+      await navigator.clipboard.writeText(url)
+      setOverviewCopiedLink(kind)
+      window.setTimeout(() => setOverviewCopiedLink(null), 2000)
+    } catch {
+      console.error('Clipboard copy failed')
     }
   }
 
@@ -2396,6 +2408,172 @@ export default function TenantDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Your links — tenant subdomain login URLs */}
+            {(() => {
+              const tenantSlug =
+                tenantConfig?.branding?.slug?.trim() ||
+                info?.profile?.slug?.trim() ||
+                extractSubdomain(window.location.hostname) ||
+                ''
+              const riderLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/riders/login') : ''
+              const driverLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/driver/login') : ''
+              const linkRowBorder: React.CSSProperties = {
+                borderBottom: lightMode ? '1px solid rgba(15, 13, 26, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+              }
+              const muted: React.CSSProperties = {
+                fontSize: 12,
+                color: lightMode ? '#64748b' : '#7c7a92',
+                fontFamily: '"Work Sans", sans-serif',
+              }
+              const labelStyle: React.CSSProperties = {
+                fontSize: 13,
+                fontWeight: 600,
+                color: lightMode ? '#1a1a1a' : '#ffffff',
+                fontFamily: '"Work Sans", sans-serif',
+                minWidth: isMobile ? undefined : 108,
+              }
+              const urlStyle: React.CSSProperties = {
+                flex: 1,
+                minWidth: 0,
+                fontSize: 12,
+                fontFamily: 'ui-monospace, monospace',
+                color: lightMode ? '#334155' : '#cbd5e1',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                padding: '8px 10px',
+                borderRadius: 8,
+                backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0,0,0,0.35)',
+                border: lightMode ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.08)',
+              }
+              const btnOutline: React.CSSProperties = {
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: '"Work Sans", sans-serif',
+                borderRadius: 8,
+                border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
+                background: lightMode ? '#ffffff' : 'transparent',
+                color: lightMode ? '#334155' : '#e2e8f0',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                flexShrink: 0,
+              }
+              return (
+                <div
+                  className="bw-card"
+                  style={{
+                    padding: 'clamp(16px, 2.5vw, 22px)',
+                    border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
+                    backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                    borderRadius: '12px',
+                    boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                    marginBottom: 'clamp(16px, 3vw, 24px)',
+                  }}
+                >
+                  <div style={{ marginBottom: 12 }}>
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 'clamp(16px, 2.2vw, 18px)',
+                        fontWeight: 600,
+                        fontFamily: '"Work Sans", sans-serif',
+                        color: lightMode ? '#1a1a1a' : '#ffffff',
+                      }}
+                    >
+                      Your links
+                    </h3>
+                    <p style={{ ...muted, margin: '8px 0 0 0', lineHeight: 1.45 }}>
+                      White-label URLs for your tenant slug{' '}
+                      <strong style={{ color: lightMode ? '#1a1a1a' : '#ffffff' }}>{tenantSlug || '—'}</strong>.
+                      Share rider and driver login pages with your team and customers.
+                    </p>
+                  </div>
+                  {!tenantSlug ? (
+                    <p style={{ ...muted, margin: 0 }}>
+                      No tenant slug found. Set your slug in{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleTabClick('settings')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          color: 'var(--bw-accent)',
+                          fontFamily: '"Work Sans", sans-serif',
+                          fontSize: 12,
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Settings
+                      </button>
+                      .
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {(
+                        [
+                          { key: 'rider' as const, label: 'Rider login', url: riderLoginUrl },
+                          { key: 'driver' as const, label: 'Driver login', url: driverLoginUrl },
+                        ] as const
+                      ).map((row, idx) => (
+                        <div
+                          key={row.key}
+                          style={{
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
+                            gap: 12,
+                            padding: '14px 0',
+                            ...(idx === 0 ? linkRowBorder : {}),
+                          }}
+                        >
+                          <div style={labelStyle}>{row.label}</div>
+                          <div style={urlStyle} title={row.url}>
+                            {row.url}
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 8,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <a
+                              href={row.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={btnOutline}
+                            >
+                              <ArrowSquareOut size={16} aria-hidden />
+                              Open
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyTenantOverviewLink(row.key, row.url)}
+                              style={{
+                                ...btnOutline,
+                                border: lightMode ? '1px solid #c4b5fd' : '1px solid rgba(167, 139, 250, 0.45)',
+                                color: lightMode ? '#5b21b6' : '#c4b5fd',
+                              }}
+                            >
+                              <Copy size={16} aria-hidden />
+                              {overviewCopiedLink === row.key ? 'Copied!' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Overview: drivers, bookings, Maison AI */}
             {(() => {

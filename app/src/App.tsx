@@ -3,11 +3,13 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import ProtectedRoute from '@components/ProtectedRoute'
 import SlugVerification from '@components/SlugVerification'
 import SubdomainBlock from '@components/SubdomainBlock'
+import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
+const TenantLanding = lazy(() => import('@pages/TenantLanding'))
 const DemoDashboard = lazy(() => import('@pages/demo/index'))
 const DemoStripeRedirect = lazy(() => import('@pages/demo/StripeRedirect'))
 const About = lazy(() => import('@pages/About'))
@@ -59,7 +61,10 @@ export default function App() {
       <AccountVerificationNotification />
       <Suspense fallback={<PageFallback />}>
         <Routes>
-      <Route path="/" element={<SubdomainBlock><Landing /></SubdomainBlock>} />
+      <Route
+        path="/"
+        element={<RootLanding MainLanding={Landing} TenantLanding={TenantLanding} />}
+      />
       <Route path="/about" element={<SubdomainBlock><About /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
       <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />

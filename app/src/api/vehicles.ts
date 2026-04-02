@@ -2,7 +2,7 @@ import { http } from './http'
 import type { StandardResponse } from './tenant'
 
 export async function getVehicles() {
-  const { data } = await http.get<StandardResponse<VehicleResponse[]>>('/v1/vehicles/')
+  const { data } = await http.get<StandardResponse<VehicleResponse[]>>('/v1/vehicles')
   return data
 }
 
