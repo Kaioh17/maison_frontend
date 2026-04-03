@@ -1,17 +1,20 @@
-import NotFound404 from './NotFound404'
-import { isAdminDeveloperSubdomain } from '@utils/subdomain'
-
-type AdminOpsGateProps = {
-  children: React.ReactNode
-}
+import { ReactNode } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@store/auth'
+import { isAdminAppSubdomain } from '@utils/subdomain'
 
 /**
- * Renders children only on `admin.localhost` (or other *.localhost admin host) in non-production.
- * Main-domain URLs to the same path are blocked — use the admin subdomain.
+ * Restricts admin UI to `admin.{MAIN_DOMAIN}` and a valid admin JWT.
  */
-export default function AdminOpsGate({ children }: AdminOpsGateProps) {
-  if (!isAdminDeveloperSubdomain()) {
-    return <NotFound404 />
+export default function AdminOpsGate({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const { isAuthenticated, role, accessToken } = useAuthStore()
+
+  if (!isAdminAppSubdomain()) {
+    return <Navigate to="/" replace />
+  }
+  if (!isAuthenticated || !accessToken || role !== 'admin') {
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
   return <>{children}</>
 }

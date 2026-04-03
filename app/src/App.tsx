@@ -48,6 +48,8 @@ const Success = lazy(() => import('@pages/Success'))
 const StripeReturn = lazy(() => import('@pages/StripeReturn'))
 const StripeReauth = lazy(() => import('@pages/StripeReauth'))
 const DeveloperOperations = lazy(() => import('@pages/DeveloperOperations'))
+const AdminLogin = lazy(() => import('@pages/AdminLogin'))
+const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
 
 function PageFallback() {
   return (
@@ -67,6 +69,8 @@ export default function App() {
         path="/"
         element={<RootLanding MainLanding={Landing} TenantLanding={TenantLanding} />}
       />
+      <Route path="/login" element={<AdminLogin />} />
+      <Route path="/path/to/glory" element={<AdminCreateAccount />} />
       <Route
         path="/operations"
         element={

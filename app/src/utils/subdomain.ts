@@ -3,7 +3,7 @@
  * Host/domain constants come from @config/host (single source of truth).
  */
 
-import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain, IS_PRODUCTION } from '@config/host'
+import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain } from '@config/host'
 
 /** First labels that are infrastructure / marketing, not tenant slugs (e.g. api.*, www.*). */
 const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin'])
@@ -150,16 +150,13 @@ export function isLocalDevelopmentHostname(hostname: string): boolean {
 }
 
 /**
- * Developer admin console: only `admin.{local-dev}` and never production.
- * Requires first DNS label `admin` and a local-development host pattern.
+ * Admin app host: `admin.{MAIN_DOMAIN}` in both production and dev
+ * (e.g. `admin.usemaison.io`, `admin.localhost`).
  */
-export function isAdminDeveloperSubdomain(): boolean {
-  if (IS_PRODUCTION) return false
+export function isAdminAppSubdomain(): boolean {
   if (typeof window === 'undefined') return false
-  const host = window.location.hostname.split(':')[0]
-  const first = host.split('.')[0]?.toLowerCase()
-  if (first !== 'admin') return false
-  return isLocalDevelopmentHostname(host)
+  const host = window.location.hostname.split(':')[0].toLowerCase()
+  return host === `admin.${MAIN_DOMAIN.toLowerCase()}`
 }
 
 export function extractSubdomain(hostname: string): string | null {

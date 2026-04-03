@@ -30,6 +30,16 @@ export async function loginRider(email: string, password: string) {
   return data as { access_token: string }
 }
 
+export async function loginAdmin(email: string, password: string) {
+  const form = new URLSearchParams()
+  form.append('username', email)
+  form.append('password', password)
+  const { data } = await http.post('/v1/auth/login/admin', form, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  })
+  return data as { access_token: string }
+}
+
 export async function refreshTenantToken() {
   try {
     const { data } = await http.post('/v1/auth/refresh/manual')

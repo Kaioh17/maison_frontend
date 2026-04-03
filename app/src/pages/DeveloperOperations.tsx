@@ -5,6 +5,7 @@ import {
   type AdminTenantRow,
 } from '@api/admin'
 import { AUTH_API_KEY } from '@config'
+import { MAIN_DOMAIN } from '@config/host'
 import {
   Activity,
   AlertTriangle,
@@ -119,7 +120,8 @@ export default function DeveloperOperations() {
   const sorted = useMemo(
     () =>
       [...rows].sort(
-        (a, b) => new Date(b.created_on).getTime() - new Date(a.created_on).getTime()
+        (a, b) =>
+          new Date(b.created_on).getTime() - new Date(a.created_on).getTime()
       ),
     [rows]
   )
@@ -152,8 +154,7 @@ export default function DeveloperOperations() {
   }
 
   const deleteReady =
-    deleteTarget &&
-    deleteConfirm.trim() === String(deleteTarget.id)
+    deleteTarget && deleteConfirm.trim() === String(deleteTarget.id)
 
   return (
     <div className="min-h-screen bg-[#0c0f14] text-slate-200">
@@ -189,7 +190,8 @@ export default function DeveloperOperations() {
           <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-100/90 space-y-1">
             <p className="font-medium text-amber-100">
-              Not secured for production — hosts under <code className="text-amber-200/95">admin.localhost</code> only.
+              Admin console on <code className="text-amber-200/95">admin.{MAIN_DOMAIN}</code>. Sign in at{' '}
+              <code className="text-amber-200/95">/login</code>.
             </p>
             <p className="text-amber-200/70">
               Deleting a tenant is irreversible. Ensure you are pointed at a safe backend.
@@ -260,7 +262,9 @@ export default function DeveloperOperations() {
                         {r.id}
                       </td>
                       <td className="px-4 py-3 text-white font-medium">
-                        {r.full_name || `${r.first_name} ${r.last_name}`.trim() || '—'}
+                        {r.full_name ||
+                          `${r.first_name} ${r.last_name}`.trim() ||
+                          '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-400">{r.email}</td>
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs">
@@ -354,7 +358,8 @@ export default function DeveloperOperations() {
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
-                Type the tenant id <span className="font-mono text-amber-200/80">{deleteTarget.id}</span> to confirm
+                Type the tenant id{' '}
+                <span className="font-mono text-amber-200/80">{deleteTarget.id}</span> to confirm
               </label>
               <input
                 type="text"

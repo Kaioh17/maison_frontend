@@ -50,7 +50,9 @@ export default function AdminTenants() {
                   <td>{t.full_name}</td>
                   <td>{t.email}</td>
                   <td>
-                    <button className="btn danger" onClick={() => del(t.id)}>Delete</button>
+                    <button className="btn danger" onClick={() => del(t.id)}>
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
