@@ -1,27 +1,27 @@
 import { useEffect, useState } from 'react'
-import { getTenants, deleteTenant } from '@api/admin'
+import { deleteAdminTenant, listAdminTenants, type AdminTenantRow } from '@api/admin'
 import { useAuthStore } from '@store/auth'
 
 export default function AdminTenants() {
-  const [tenants, setTenants] = useState<any[]>([])
+  const [tenants, setTenants] = useState<AdminTenantRow[]>([])
   const [loading, setLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const res = await getTenants()
-      setTenants(res.data)
+      const res = await listAdminTenants()
+      setTenants(res.data ?? [])
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    load()
+    void load()
   }, [])
 
   const del = async (id: number) => {
-    await deleteTenant(id)
+    await deleteAdminTenant(id)
     await load()
   }
 
@@ -38,7 +38,7 @@ export default function AdminTenants() {
             <thead>
               <tr>
                 <th style={{ textAlign: 'left' }}>ID</th>
-                <th style={{ textAlign: 'left' }}>Company</th>
+                <th style={{ textAlign: 'left' }}>Name</th>
                 <th style={{ textAlign: 'left' }}>Email</th>
                 <th></th>
               </tr>
@@ -47,7 +47,7 @@ export default function AdminTenants() {
               {tenants.map((t) => (
                 <tr key={t.id}>
                   <td>{t.id}</td>
-                  <td>{t.company_name}</td>
+                  <td>{t.full_name}</td>
                   <td>{t.email}</td>
                   <td>
                     <button className="btn danger" onClick={() => del(t.id)}>Delete</button>
