@@ -65,13 +65,13 @@ function HeroSlide() {
       </div>
       
       <div className="relative z-10 w-full box-border px-5">
-        <div className="max-w-[1280px] mx-auto grid md:grid-cols-2 gap-12 items-center">
-          {/* Left half: Text */}
+        <div className="max-w-[1280px] mx-auto">
+          {/* Hero orb column removed temporarily */}
           <motion.div
             initial="initial"
             animate="animate"
             variants={staggerChildren}
-            className="text-left"
+            className="text-center max-w-4xl mx-auto"
           >
             <motion.h1
               {...fadeInUp}
@@ -102,40 +102,23 @@ function HeroSlide() {
             </motion.p>
             <motion.div
               {...fadeInUp}
-              className="flex flex-col sm:flex-row gap-4"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
             >
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center w-full sm:flex-1 sm:min-w-0 py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-transparent bg-[#7c5cfc] text-white hover:bg-[#7c3aed] transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto sm:min-w-[168px] py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-transparent bg-[#7c5cfc] text-white hover:bg-[#7c3aed] transition-colors"
                 style={{ fontFamily: "'Work Sans', sans-serif" }}
               >
                 Get Started
               </Link>
               <Link
                 to="/demo"
-                className="inline-flex items-center justify-center w-full sm:flex-1 sm:min-w-0 py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-gray-700 text-white hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors"
+                className="inline-flex items-center justify-center w-full sm:w-auto sm:min-w-[168px] py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-gray-700 text-white hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors"
                 style={{ fontFamily: "'Work Sans', sans-serif" }}
               >
                 See Demo
               </Link>
             </motion.div>
-          </motion.div>
-
-          {/* Right half: Abstract animated brand shape */}
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-            variants={fadeIn}
-            className="hidden md:block"
-          >
-            <div className="landing-hero-art" aria-hidden="true">
-              <div className="landing-hero-art__noise"></div>
-              <div className="landing-hero-art__orb landing-hero-art__orb--main"></div>
-              <div className="landing-hero-art__orb landing-hero-art__orb--accent"></div>
-              <div className="landing-hero-art__orb landing-hero-art__orb--deep"></div>
-              <div className="landing-hero-art__grid"></div>
-            </div>
           </motion.div>
         </div>
       </div>
