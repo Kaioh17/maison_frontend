@@ -45,7 +45,7 @@ export default function Signup() {
   const [planCheckoutError, setPlanCheckoutError] = useState<string | null>(null)
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)')
+    const mq = window.matchMedia('(max-width: 1024px)')
     const apply = () => setIsMobileSignup(mq.matches)
     apply()
     mq.addEventListener('change', apply)
@@ -273,7 +273,7 @@ export default function Signup() {
       style={{ margin: 0, padding: 0, height: '100vh', overflow: signupStep === 3 ? 'auto' : 'hidden' }}
     >
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .signup-image-container {
             display: none !important;
           }

@@ -16,6 +16,72 @@ import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
 import { getTenantAppUrl } from '@config/host'
 
+/** Drawer vs fixed sidebar by viewport only; isMobile (768px) stays behavioral-only. */
+const TENANT_DASHBOARD_LAYOUT_CSS = `
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  z-index: 999;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-kpi-grid {
+  display: grid;
+  gap: clamp(12px, 2vw, 20px);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+@media (max-width: 1024px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
+    left: 0;
+    width: min(360px, 100vw);
+    transform: translateX(-100%);
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-main {
+    margin-left: 0;
+    width: 100%;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
+    display: flex !important;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
+    display: flex !important;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-charts-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (min-width: 1025px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
+    left: 0;
+    width: 20%;
+    transform: none !important;
+    box-shadow: none;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-main {
+    margin-left: 20%;
+    width: 80%;
+    box-sizing: border-box;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
+    display: none !important;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
+    display: none !important;
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-nav-overlay {
+    display: none !important;
+    pointer-events: none;
+  }
+}
+`.trim()
+
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 
 // Helper component for vehicle image with fallback
@@ -207,8 +273,8 @@ export default function TenantDashboard() {
   // Hamburger menu state
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   
-  // Mobile breakpoint state
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 844)
+  // Mobile breakpoint state (behavioral: KPI carousel, stacked controls, etc. — still ≤768px)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
   // Booking details modal state
   const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null)
@@ -267,7 +333,7 @@ export default function TenantDashboard() {
   const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
   const [isViewAllHovered, setIsViewAllHovered] = useState(false)
   const [showMoreBookings, setShowMoreBookings] = useState(false)
-  const [overviewCopiedLink, setOverviewCopiedLink] = useState<'rider' | 'driver' | null>(null)
+  const [overviewCopiedLink, setOverviewCopiedLink] = useState<'rider' | 'driver' | 'landing' | null>(null)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
   const [isSaveRateHovered, setIsSaveRateHovered] = useState(false)
@@ -448,8 +514,8 @@ export default function TenantDashboard() {
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768)
-      if (window.innerWidth > 768) {
-        setIsMenuOpen(false) // Close menu on desktop resize
+      if (window.innerWidth > 1024) {
+        setIsMenuOpen(false) // Close drawer when returning to fixed sidebar layout
       }
     }
     window.addEventListener('resize', handleResize)
@@ -1175,8 +1241,7 @@ export default function TenantDashboard() {
     } else {
       // Navigate to the tab's route
       navigate(`/tenant/${tabId}`)
-      // Close menu on mobile when section is clicked
-      if (isMobile) {
+      if (window.matchMedia('(max-width: 1024px)').matches) {
         setIsMenuOpen(false)
       }
     }
@@ -1186,12 +1251,12 @@ export default function TenantDashboard() {
   const handleSettingsSubmenuClick = (path: string) => {
     navigate(path)
     setSettingsMenuOpen(false)
-    if (isMobile) {
+    if (window.matchMedia('(max-width: 1024px)').matches) {
       setIsMenuOpen(false)
     }
   }
 
-  const copyTenantOverviewLink = async (kind: 'rider' | 'driver', url: string) => {
+  const copyTenantOverviewLink = async (kind: 'rider' | 'driver' | 'landing', url: string) => {
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -1327,18 +1392,20 @@ export default function TenantDashboard() {
   const lightMode = isLightMode()
   
   return (
-    <div className="bw" style={{ 
+    <div className="bw tenant-dashboard-layout" style={{ 
       position: 'relative', 
       minHeight: '100vh', 
       display: 'flex',
       backgroundColor: lightMode ? '#f8fafc' : 'var(--bw-bg)'
     }}>
+      <style>{TENANT_DASHBOARD_LAYOUT_CSS}</style>
       {/* Token Expiration Notification */}
       <TokenExpirationNotification />
       
       {/* Overlay when menu is open */}
       {isMenuOpen && (
         <div
+          className="tenant-dashboard-nav-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -1355,20 +1422,10 @@ export default function TenantDashboard() {
 
       {/* Sidebar Menu - Left Aligned */}
       <div
+        className={`tenant-dashboard-sidebar${isMenuOpen ? ' is-open' : ''}`}
         style={{
-          position: 'fixed',
-          top: 0,
-          left: isMobile ? (isMenuOpen ? '0' : '-100%') : (isMenuOpen ? '0' : '-20%'),
-          width: isMobile ? '100%' : '20%',
-          height: '100vh',
           backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg)',
-          borderRight: `1px solid ${lightMode ? '#e2e8f0' : 'var(--bw-border)'}`,
-          zIndex: 999,
-          transition: 'left 0.3s ease',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: isMenuOpen ? (lightMode ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'var(--bw-shadow)') : 'none'
+          borderRight: `1px solid ${lightMode ? '#e2e8f0' : 'var(--bw-border)'}`
         }}
       >
         {/* Company Name in Sidebar */}
@@ -1420,7 +1477,7 @@ export default function TenantDashboard() {
             </h1>
           </div>
           <button
-            className="bw-menu"
+            className="bw-menu tenant-dashboard-sidebar-close"
             onClick={() => setIsMenuOpen(false)}
             aria-label="Close menu"
             style={{
@@ -1655,9 +1712,9 @@ export default function TenantDashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div style={{
+      <div className="tenant-dashboard-main" style={{
         flex: 1,
-        width: '100%',
+        minWidth: 0,
         minHeight: '100vh'
       }}>
         <div className="bw-container" style={{ 
@@ -1676,7 +1733,7 @@ export default function TenantDashboard() {
             flexWrap: 'wrap'
           }}>
             <button
-              className="bw-menu"
+              className="bw-menu tenant-dashboard-menu-btn"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}
@@ -1989,12 +2046,8 @@ export default function TenantDashboard() {
                       </div>
                     </div>
                   ) : (
-                    /* Desktop Grid */
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(140px, 18vw, 200px), 1fr))',
-                      gap: 'clamp(12px, 2vw, 20px)'
-                    }}>
+                    /* Desktop / tablet grid (fluid columns; ≤768 still uses carousel above) */
+                    <div className="tenant-dashboard-kpi-grid">
                       {/* Active Rides Today */}
                       <div className="bw-card" style={{
                         padding: 'clamp(20px, 3vw, 32px)',
@@ -2196,13 +2249,16 @@ export default function TenantDashboard() {
             })()}
 
             {/* Charts row — placeholders (coming soon) */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 13fr) minmax(0, 7fr)',
-              gap: 'clamp(12px, 2vw, 20px)',
-              marginBottom: 'clamp(16px, 3vw, 24px)',
-              opacity: 0.56
-            }}>
+            <div
+              className="tenant-dashboard-charts-row"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 13fr) minmax(0, 7fr)',
+                gap: 'clamp(12px, 2vw, 20px)',
+                marginBottom: 'clamp(16px, 3vw, 24px)',
+                opacity: 0.56
+              }}
+            >
               {/* Revenue — last 7 days */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
@@ -2416,6 +2472,7 @@ export default function TenantDashboard() {
                 info?.profile?.slug?.trim() ||
                 extractSubdomain(window.location.hostname) ||
                 ''
+              const landingPageUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/') : ''
               const riderLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/riders/login') : ''
               const driverLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/driver/login') : ''
               const linkRowBorder: React.CSSProperties = {
@@ -2490,7 +2547,7 @@ export default function TenantDashboard() {
                     <p style={{ ...muted, margin: '8px 0 0 0', lineHeight: 1.45 }}>
                       White-label URLs for your tenant slug{' '}
                       <strong style={{ color: lightMode ? '#1a1a1a' : '#ffffff' }}>{tenantSlug || '—'}</strong>.
-                      Share rider and driver login pages with your team and customers.
+                      Open your public landing page and share rider and driver login URLs with your team and customers.
                     </p>
                   </div>
                   {!tenantSlug ? (
@@ -2518,10 +2575,11 @@ export default function TenantDashboard() {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {(
                         [
+                          { key: 'landing' as const, label: 'Landing page', url: landingPageUrl },
                           { key: 'rider' as const, label: 'Rider login', url: riderLoginUrl },
                           { key: 'driver' as const, label: 'Driver login', url: driverLoginUrl },
                         ] as const
-                      ).map((row, idx) => (
+                      ).map((row, idx, rows) => (
                         <div
                           key={row.key}
                           style={{
@@ -2530,7 +2588,7 @@ export default function TenantDashboard() {
                             alignItems: isMobile ? 'stretch' : 'center',
                             gap: 12,
                             padding: '14px 0',
-                            ...(idx === 0 ? linkRowBorder : {}),
+                            ...(idx < rows.length - 1 ? linkRowBorder : {}),
                           }}
                         >
                           <div style={labelStyle}>{row.label}</div>
@@ -2552,7 +2610,7 @@ export default function TenantDashboard() {
                               style={btnOutline}
                             >
                               <ArrowSquareOut size={16} aria-hidden />
-                              Open
+                              {row.key === 'landing' ? 'View landing page' : 'Open'}
                             </a>
                             <button
                               type="button"

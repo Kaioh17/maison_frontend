@@ -40,6 +40,13 @@ function isDriverVerifyRequestPath(url: string | undefined): boolean {
 	return /^\/v1\/driver\/[^/]+\/verify$/.test(path)
 }
 
+/** Local dev admin ops: `/api/v1/admin/**` uses shared `X-API-Key`. */
+function isV1AdminRequestPath(url: string | undefined): boolean {
+	if (!url) return false
+	const path = url.split('?')[0]
+	return path === '/v1/admin' || path.startsWith('/v1/admin/')
+}
+
 export const http = axios.create({
 	baseURL: RESOLVED_BASE,
 	withCredentials: true,
@@ -54,7 +61,9 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 	}
 	if (
 		AUTH_API_KEY &&
-		(isV1AuthRequestPath(config.url) || isDriverVerifyRequestPath(config.url))
+		(isV1AuthRequestPath(config.url) ||
+			isDriverVerifyRequestPath(config.url) ||
+			isV1AdminRequestPath(config.url))
 	) {
 		config.headers = config.headers || {}
 		config.headers['X-API-Key'] = AUTH_API_KEY

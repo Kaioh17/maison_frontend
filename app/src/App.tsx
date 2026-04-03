@@ -5,6 +5,7 @@ import SlugVerification from '@components/SlugVerification'
 import SubdomainBlock from '@components/SubdomainBlock'
 import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
+import AdminOpsGate from '@components/AdminOpsGate'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 
 // Route-level code splitting: pages load on demand
@@ -46,6 +47,7 @@ const SubscriptionSelection = lazy(() => import('@pages/SubscriptionSelection'))
 const Success = lazy(() => import('@pages/Success'))
 const StripeReturn = lazy(() => import('@pages/StripeReturn'))
 const StripeReauth = lazy(() => import('@pages/StripeReauth'))
+const DeveloperOperations = lazy(() => import('@pages/DeveloperOperations'))
 
 function PageFallback() {
   return (
@@ -64,6 +66,14 @@ export default function App() {
       <Route
         path="/"
         element={<RootLanding MainLanding={Landing} TenantLanding={TenantLanding} />}
+      />
+      <Route
+        path="/operations"
+        element={
+          <AdminOpsGate>
+            <DeveloperOperations />
+          </AdminOpsGate>
+        }
       />
       <Route path="/about" element={<SubdomainBlock><About /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />

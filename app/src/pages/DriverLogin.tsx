@@ -381,7 +381,7 @@ export default function DriverLogin() {
         </div>
       </div>
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .driver-login-image-container {
             display: none !important;
           }

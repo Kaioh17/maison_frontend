@@ -3,10 +3,10 @@
  * Host/domain constants come from @config/host (single source of truth).
  */
 
-import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain } from '@config/host'
+import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain, IS_PRODUCTION } from '@config/host'
 
 /** First labels that are infrastructure / marketing, not tenant slugs (e.g. api.*, www.*). */
-const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www'])
+const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin'])
 
 function isReservedSubdomainLabel(label: string): boolean {
   return RESERVED_SUBDOMAIN_LABELS.has(label.toLowerCase())
@@ -138,6 +138,30 @@ export function isMainDomainHost(hostname: string): boolean {
  * Extracts subdomain from hostname.
  * Examples: "tenant-slug.localhost" → "tenant-slug"; "localhost" → null; "tenant-slug.example.com" → "tenant-slug".
  */
+/**
+ * True when the host looks like local dev (plain localhost, 127.*, or *.localhost).
+ * Used to gate developer-only surfaces (e.g. admin ops console).
+ */
+export function isLocalDevelopmentHostname(hostname: string): boolean {
+  const h = hostname.split(':')[0]
+  if (DEV_HOSTS.includes(h) || h.startsWith('127.0.0.1')) return true
+  if (h.endsWith('.localhost')) return true
+  return false
+}
+
+/**
+ * Developer admin console: only `admin.{local-dev}` and never production.
+ * Requires first DNS label `admin` and a local-development host pattern.
+ */
+export function isAdminDeveloperSubdomain(): boolean {
+  if (IS_PRODUCTION) return false
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname.split(':')[0]
+  const first = host.split('.')[0]?.toLowerCase()
+  if (first !== 'admin') return false
+  return isLocalDevelopmentHostname(host)
+}
+
 export function extractSubdomain(hostname: string): string | null {
   const hostnameWithoutPort = hostname.split(':')[0]
   const parts = hostnameWithoutPort.split('.')

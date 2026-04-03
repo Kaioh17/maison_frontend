@@ -360,7 +360,7 @@ export default function RiderLogin() {
         </div>
       </div>
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .rider-login-image-container {
             display: none !important;
           }

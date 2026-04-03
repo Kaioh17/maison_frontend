@@ -1,5 +1,6 @@
 import SlugVerification from '@components/SlugVerification'
-import { isMainDomain } from '@utils/subdomain'
+import { isAdminDeveloperSubdomain, isMainDomain } from '@utils/subdomain'
+import { Navigate } from 'react-router-dom'
 import type { LazyExoticComponent } from 'react'
 import type { ComponentType } from 'react'
 
@@ -15,6 +16,9 @@ type RootLandingProps = {
 export default function RootLanding({ MainLanding, TenantLanding }: RootLandingProps) {
   if (isMainDomain()) {
     return <MainLanding />
+  }
+  if (isAdminDeveloperSubdomain()) {
+    return <Navigate to="/operations" replace />
   }
   return (
     <SlugVerification>

@@ -141,7 +141,7 @@ export default function AuthPage() {
   return (
     <>
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
           .login-image-container {
             display: none !important;
           }
