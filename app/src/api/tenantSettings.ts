@@ -187,12 +187,24 @@ export type BookingConfig = {
   deposit_type: 'percentage' | 'flat'
   service_type: 'airport' | 'hourly' | 'dropoff'
   updated_on: string | null
+  /** Airport only: STC as decimal rate (0.3 = 30%) */
+  stc_rate?: number | null
+  /** Airport only: gratuity as decimal rate (0.3 = 30%) */
+  gratuity_rate?: number | null
+  /** Airport only: flat gate fee */
+  airport_gate_fee?: number | null
+  /** Airport only: flat meet-and-greet fee */
+  meet_and_greet_fee?: number | null
 }
 
 // Update booking config payload
 export type UpdateBookingConfigPayload = {
   deposit_fee: number
   deposit_type: 'percentage' | 'flat'
+  stc_rate?: number
+  gratuity_rate?: number
+  airport_gate_fee?: number
+  meet_and_greet_fee?: number
 }
 
 // Get booking config response structure

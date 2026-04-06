@@ -82,7 +82,7 @@ export default function RiderRegistration() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !backgroundImage) {
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.jpg').then((module) => {
+            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp').then((module) => {
               setBackgroundImage(module.default)
             })
             observer.disconnect()
@@ -372,6 +372,10 @@ export default function RiderRegistration() {
                   <img 
                     src={tenantInfo.logo_url} 
                     alt={companyName}
+                    width={200}
+                    height={60}
+                    loading="eager"
+                    decoding="async"
                     style={{
                       maxHeight: '60px',
                       maxWidth: '200px',

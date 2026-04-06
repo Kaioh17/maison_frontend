@@ -56,7 +56,7 @@ export default function AuthPage() {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !backgroundImage) {
             // Load image when container is visible
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.jpg').then((module) => {
+            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp').then((module) => {
               setBackgroundImage(module.default)
             })
             observer.disconnect()

@@ -245,37 +245,46 @@ export default function RiderDashboard() {
   const book = async () => {
     // Dynamic validation based on service type
     let isValid = true
-    let errorMessage = 'Please fill in all required fields including vehicle selection'
+    let errorMessage = ''
 
-    if (!form.country || !form.pickup_time_local || !form.vehicle_id) {
+    if (!form.country) {
       isValid = false
+      errorMessage = 'Please select your country from the suggestions list—typing alone does not save it.'
+    } else if (!form.vehicle_id) {
+      isValid = false
+      errorMessage = 'Please select a vehicle from the Vehicle dropdown.'
+    } else if (!form.pickup_time_local) {
+      isValid = false
+      errorMessage = 'Pickup date and time is missing. Scroll to Pickup Time (calendar field above Notes), tap it, and choose your pickup slot.'
     }
 
-    if (form.service_type === 'airport') {
-      if (!form.airport_service) {
-        isValid = false
-        errorMessage = 'Please select airport service type (To Airport or From Airport)'
-      } else if (form.airport_service === 'to_airport') {
-        if (!form.pickup_location || !form.airport_location) {
+    if (isValid) {
+      if (form.service_type === 'airport') {
+        if (!form.airport_service) {
           isValid = false
-          errorMessage = 'Please fill in pickup location and airport location'
+          errorMessage = 'Please select airport service type (To Airport or From Airport)'
+        } else if (form.airport_service === 'to_airport') {
+          if (!form.pickup_location || !form.airport_location) {
+            isValid = false
+            errorMessage = 'Please fill in pickup location and airport location'
+          }
+        } else if (form.airport_service === 'from_airport') {
+          if (!form.airport_location || !form.dropoff_location) {
+            isValid = false
+            errorMessage = 'Please fill in airport location and dropoff location'
+          }
         }
-      } else if (form.airport_service === 'from_airport') {
-        if (!form.airport_location || !form.dropoff_location) {
+      } else if (form.service_type === 'hourly') {
+        if (!form.pickup_location || form.hours <= 0) {
           isValid = false
-          errorMessage = 'Please fill in airport location and dropoff location'
+          errorMessage = 'Please fill in pickup location and hours (must be greater than 0)'
         }
-      }
-    } else if (form.service_type === 'hourly') {
-      if (!form.pickup_location || form.hours <= 0) {
-        isValid = false
-        errorMessage = 'Please fill in pickup location and hours (must be greater than 0)'
-      }
-    } else {
-      // dropoff service
-      if (!form.pickup_location || !form.dropoff_location) {
-        isValid = false
-        errorMessage = 'Please fill in pickup and dropoff locations'
+      } else {
+        // dropoff service
+        if (!form.pickup_location || !form.dropoff_location) {
+          isValid = false
+          errorMessage = 'Please fill in pickup and dropoff locations'
+        }
       }
     }
 

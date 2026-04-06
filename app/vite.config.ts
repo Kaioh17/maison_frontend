@@ -23,38 +23,9 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (
-            id.includes('/node_modules/react/') ||
-            id.includes('/node_modules/react-dom/') ||
-            id.includes('/node_modules/scheduler/') ||
-            id.includes('/node_modules/react-is/') ||
-            id.includes('/node_modules/use-sync-external-store/') ||
-            id.includes('/node_modules/use-sync-external-store-shim/')
-          ) {
-            return 'react-vendor'
-          }
-          if (id.includes('/node_modules/react-router/') || id.includes('/node_modules/react-router-dom/')) {
-            return 'router'
-          }
-          if (id.includes('/node_modules/@stripe/')) return 'stripe'
-          if (id.includes('/node_modules/framer-motion/')) return 'framer-motion'
-          if (
-            id.includes('/node_modules/lucide-react/') ||
-            id.includes('/node_modules/@heroicons/') ||
-            id.includes('/node_modules/@phosphor-icons/')
-          ) {
-            return 'icons'
-          }
-          if (
-            id.includes('/node_modules/axios/') ||
-            id.includes('/node_modules/zustand/') ||
-            id.includes('/node_modules/jwt-decode/')
-          ) {
-            return 'utils'
-          }
-          return undefined
+        /** Fewer HTTP round-trips; app + router + other deps share the entry/async chunks except this vendor split. */
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
         },
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { getTenantConfig, updateTenantPricing, getBookingConfig, updateBookingConfig, type TenantPricingData, type BookingConfig } from '@api/tenantSettings'
+import { getTenantConfig, updateTenantPricing, getBookingConfig, updateBookingConfig, type TenantPricingData, type BookingConfig, type UpdateBookingConfigPayload } from '@api/tenantSettings'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, Save, Edit, X, Calendar } from 'lucide-react'
+import { DollarSign, Save, Edit, X, Calendar, ChevronDown } from 'lucide-react'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
 export default function PricingSettings() {
@@ -18,6 +18,8 @@ export default function PricingSettings() {
   const [isSaveHovered, setIsSaveHovered] = useState(false)
   const [isCancelHovered, setIsCancelHovered] = useState(false)
   const [showLearnMoreModal, setShowLearnMoreModal] = useState(false)
+  /** Airport card only: extra rates/fees collapsed so hourly/dropoff layout stays unchanged */
+  const [airportExtrasOpen, setAirportExtrasOpen] = useState(false)
   const navigate = useNavigate()
   
   const [editedBookingConfigs, setEditedBookingConfigs] = useState<{ [key: string]: BookingConfig }>({})
@@ -56,7 +58,16 @@ export default function PricingSettings() {
         if (bookingsArray.length > 0) {
           const initialEdited: { [key: string]: BookingConfig } = {}
           bookingsArray.forEach(booking => {
-            initialEdited[booking.service_type] = { ...booking }
+            initialEdited[booking.service_type] =
+              booking.service_type === 'airport'
+                ? {
+                    ...booking,
+                    stc_rate: booking.stc_rate ?? 0,
+                    gratuity_rate: booking.gratuity_rate ?? 0,
+                    airport_gate_fee: booking.airport_gate_fee ?? 0,
+                    meet_and_greet_fee: booking.meet_and_greet_fee ?? 0,
+                  }
+                : { ...booking }
           })
           setEditedBookingConfigs(initialEdited)
         }
@@ -105,7 +116,15 @@ export default function PricingSettings() {
     setIsEditing(false)
   }
 
-  const handleBookingInputChange = (serviceType: string, field: 'deposit_fee' | 'deposit_type', value: any) => {
+  type BookingPricingField =
+    | 'deposit_fee'
+    | 'deposit_type'
+    | 'stc_rate'
+    | 'gratuity_rate'
+    | 'airport_gate_fee'
+    | 'meet_and_greet_fee'
+
+  const handleBookingInputChange = (serviceType: string, field: BookingPricingField, value: string | number) => {
     setEditedBookingConfigs(prev => ({
       ...prev,
       [serviceType]: {
@@ -121,15 +140,33 @@ export default function PricingSettings() {
       const edited = editedBookingConfigs[serviceType]
       if (!edited) return
 
-      const updated = await updateBookingConfig(serviceType as 'airport' | 'hourly' | 'dropoff', {
+      const payload: UpdateBookingConfigPayload = {
         deposit_fee: edited.deposit_fee,
-        deposit_type: edited.deposit_type
-      })
-      
-      setBookingConfigs(prev => prev.map(b => b.service_type === serviceType ? updated : b))
+        deposit_type: edited.deposit_type,
+      }
+      if (serviceType === 'airport') {
+        payload.stc_rate = edited.stc_rate ?? 0
+        payload.gratuity_rate = edited.gratuity_rate ?? 0
+        payload.airport_gate_fee = edited.airport_gate_fee ?? 0
+        payload.meet_and_greet_fee = edited.meet_and_greet_fee ?? 0
+      }
+
+      const updated = await updateBookingConfig(serviceType as 'airport' | 'hourly' | 'dropoff', payload)
+
+      const merged: BookingConfig = {
+        ...edited,
+        ...(updated || {}),
+        service_type: edited.service_type,
+        stc_rate: updated?.stc_rate ?? edited.stc_rate,
+        gratuity_rate: updated?.gratuity_rate ?? edited.gratuity_rate,
+        airport_gate_fee: updated?.airport_gate_fee ?? edited.airport_gate_fee,
+        meet_and_greet_fee: updated?.meet_and_greet_fee ?? edited.meet_and_greet_fee,
+      }
+
+      setBookingConfigs(prev => prev.map(b => (b.service_type === serviceType ? merged : b)))
       setEditedBookingConfigs(prev => ({
         ...prev,
-        [serviceType]: updated
+        [serviceType]: merged,
       }))
       setIsEditingBookings(prev => ({ ...prev, [serviceType]: false }))
       alert(`Booking settings for ${serviceType} updated successfully!`)
@@ -144,9 +181,19 @@ export default function PricingSettings() {
   const handleBookingCancel = (serviceType: string) => {
     const original = bookingConfigs.find(b => b.service_type === serviceType)
     if (original) {
+      const reset =
+        serviceType === 'airport'
+          ? {
+              ...original,
+              stc_rate: original.stc_rate ?? 0,
+              gratuity_rate: original.gratuity_rate ?? 0,
+              airport_gate_fee: original.airport_gate_fee ?? 0,
+              meet_and_greet_fee: original.meet_and_greet_fee ?? 0,
+            }
+          : { ...original }
       setEditedBookingConfigs(prev => ({
         ...prev,
-        [serviceType]: { ...original }
+        [serviceType]: reset,
       }))
     }
     setIsEditingBookings(prev => ({ ...prev, [serviceType]: false }))
@@ -674,6 +721,272 @@ export default function PricingSettings() {
                       </div>
                     )}
                   </div>
+
+                  {serviceType === 'airport' && (
+                    <div
+                      style={{
+                        marginTop: 'clamp(12px, 2vw, 16px)',
+                        borderTop: '1px solid var(--bw-border)',
+                        paddingTop: 'clamp(10px, 1.5vw, 12px)',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setAirportExtrasOpen((o) => !o)}
+                        aria-expanded={airportExtrasOpen}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          padding: 'clamp(8px, 1.2vw, 10px) clamp(4px, 1vw, 6px)',
+                          margin: 0,
+                          border: 'none',
+                          borderRadius: '6px',
+                          backgroundColor: 'transparent',
+                          color: 'var(--bw-text)',
+                          cursor: 'pointer',
+                          fontFamily: '"Work Sans", sans-serif',
+                          fontSize: 'clamp(12px, 1.5vw, 13px)',
+                          fontWeight: 500,
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span>More airport charges</span>
+                        <ChevronDown
+                          size={18}
+                          aria-hidden
+                          style={{
+                            flexShrink: 0,
+                            transform: airportExtrasOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                            opacity: 0.85,
+                          }}
+                        />
+                      </button>
+                      {airportExtrasOpen && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 'clamp(12px, 2vw, 16px)',
+                            marginTop: 'clamp(8px, 1.5vw, 12px)',
+                            paddingTop: 'clamp(4px, 1vw, 6px)',
+                          }}
+                        >
+                          <div>
+                            <label
+                              className="bw-form-label small-muted"
+                              style={{
+                                fontSize: 'clamp(11px, 1.3vw, 13px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 300,
+                                color: 'var(--bw-muted)',
+                                display: 'block',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              STC rate
+                            </label>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                value={edited.stc_rate ?? 0}
+                                onChange={(e) =>
+                                  handleBookingInputChange(serviceType, 'stc_rate', parseFloat(e.target.value) || 0)
+                                }
+                                className="bw-input"
+                                style={{
+                                  width: '100%',
+                                  padding: 'clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 14px)',
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  borderRadius: 0,
+                                  color: 'var(--bw-text)',
+                                  backgroundColor: 'var(--bw-bg)',
+                                  border: '1px solid var(--bw-border)',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 300,
+                                  color: 'var(--bw-text)',
+                                  padding: 'clamp(10px, 1.5vw, 12px) 0',
+                                }}
+                              >
+                                {`${((edited.stc_rate ?? 0) * 100).toFixed(1)}%`}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label
+                              className="bw-form-label small-muted"
+                              style={{
+                                fontSize: 'clamp(11px, 1.3vw, 13px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 300,
+                                color: 'var(--bw-muted)',
+                                display: 'block',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              Gratuity rate
+                            </label>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                value={edited.gratuity_rate ?? 0}
+                                onChange={(e) =>
+                                  handleBookingInputChange(
+                                    serviceType,
+                                    'gratuity_rate',
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
+                                className="bw-input"
+                                style={{
+                                  width: '100%',
+                                  padding: 'clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 14px)',
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  borderRadius: 0,
+                                  color: 'var(--bw-text)',
+                                  backgroundColor: 'var(--bw-bg)',
+                                  border: '1px solid var(--bw-border)',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 300,
+                                  color: 'var(--bw-text)',
+                                  padding: 'clamp(10px, 1.5vw, 12px) 0',
+                                }}
+                              >
+                                {`${((edited.gratuity_rate ?? 0) * 100).toFixed(1)}%`}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label
+                              className="bw-form-label small-muted"
+                              style={{
+                                fontSize: 'clamp(11px, 1.3vw, 13px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 300,
+                                color: 'var(--bw-muted)',
+                                display: 'block',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              Airport gate fee
+                            </label>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={edited.airport_gate_fee ?? 0}
+                                onChange={(e) =>
+                                  handleBookingInputChange(
+                                    serviceType,
+                                    'airport_gate_fee',
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
+                                className="bw-input"
+                                style={{
+                                  width: '100%',
+                                  padding: 'clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 14px)',
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  borderRadius: 0,
+                                  color: 'var(--bw-text)',
+                                  backgroundColor: 'var(--bw-bg)',
+                                  border: '1px solid var(--bw-border)',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 300,
+                                  color: 'var(--bw-text)',
+                                  padding: 'clamp(10px, 1.5vw, 12px) 0',
+                                }}
+                              >
+                                ${(edited.airport_gate_fee ?? 0).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label
+                              className="bw-form-label small-muted"
+                              style={{
+                                fontSize: 'clamp(11px, 1.3vw, 13px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 300,
+                                color: 'var(--bw-muted)',
+                                display: 'block',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              Meet &amp; greet fee
+                            </label>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={edited.meet_and_greet_fee ?? 0}
+                                onChange={(e) =>
+                                  handleBookingInputChange(
+                                    serviceType,
+                                    'meet_and_greet_fee',
+                                    parseFloat(e.target.value) || 0,
+                                  )
+                                }
+                                className="bw-input"
+                                style={{
+                                  width: '100%',
+                                  padding: 'clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 14px)',
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  borderRadius: 0,
+                                  color: 'var(--bw-text)',
+                                  backgroundColor: 'var(--bw-bg)',
+                                  border: '1px solid var(--bw-border)',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontWeight: 300,
+                                  color: 'var(--bw-text)',
+                                  padding: 'clamp(10px, 1.5vw, 12px) 0',
+                                }}
+                              >
+                                ${(edited.meet_and_greet_fee ?? 0).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {booking.updated_on && (
                     <div style={{

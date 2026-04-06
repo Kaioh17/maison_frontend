@@ -93,7 +93,7 @@ export default function DriverRegistration() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !backgroundImage) {
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.jpg')
+            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp')
               .then((module) => {
                 setBackgroundImage(module.default)
               })
@@ -434,6 +434,10 @@ export default function DriverRegistration() {
                   <img 
                     src={tenantInfo.logo_url} 
                     alt={companyName}
+                    width={200}
+                    height={60}
+                    loading="eager"
+                    decoding="async"
                     style={{
                       maxHeight: '60px',
                       maxWidth: '200px',

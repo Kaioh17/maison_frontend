@@ -493,16 +493,6 @@ export default function RiderProfile() {
                 })}
               </span>
             </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Last Updated:</span>
-              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>
-                {new Date(userInfo.updated_on).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </span>
-            </div>
           </div>
         </div>
 

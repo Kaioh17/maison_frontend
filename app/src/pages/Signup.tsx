@@ -975,6 +975,10 @@ export default function Signup() {
                           <img 
                             src={logoPreview} 
                             alt="Logo preview" 
+                            width={100}
+                            height={100}
+                            loading="lazy"
+                            decoding="async"
                             style={{ 
                               maxWidth: '100px', 
                               maxHeight: '100px', 

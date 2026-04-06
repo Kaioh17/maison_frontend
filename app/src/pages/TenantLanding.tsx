@@ -85,6 +85,10 @@ export default function TenantLanding() {
             <img
               src={tenantInfo.logo_url}
               alt={companyName}
+              width={240}
+              height={72}
+              loading="eager"
+              decoding="async"
               style={{
                 maxHeight: '72px',
                 maxWidth: '240px',

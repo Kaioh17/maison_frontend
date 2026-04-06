@@ -80,7 +80,7 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
 
   return (
     <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-      {error && (
+      {(error || elementsError) && (
         <div style={{
           padding: 'clamp(12px, 2vw, 16px)',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -91,7 +91,7 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
           fontSize: 'clamp(13px, 2vw, 14px)',
           fontFamily: 'Work Sans, sans-serif'
         }}>
-          {error}
+          {error || elementsError}
         </div>
       )}
 
@@ -102,7 +102,13 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
         padding: 'clamp(20px, 4vw, 24px)',
         marginBottom: 'clamp(24px, 4vw, 32px)'
       }}>
-        <PaymentElement />
+        <PaymentElement
+          onLoadError={(event) => {
+            const msg = event.error?.message || 'Payment form failed to load.'
+            setElementsError(msg)
+            console.error('Payment Element load error', event)
+          }}
+        />
         <style>{`
           /* Reduce font size of Stripe terms text */
           .pii-consent-text,

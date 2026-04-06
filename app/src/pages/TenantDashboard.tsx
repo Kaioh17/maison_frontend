@@ -10,23 +10,41 @@ import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, CaretLeft, CaretRight, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
 import { getTenantAppUrl } from '@config/host'
 
-/** Drawer vs fixed sidebar by viewport only; isMobile (768px) stays behavioral-only. */
+/** Collapsible drawer nav (hamburger) on all viewports; isMobile (768px) is behavioral-only for KPI carousel, etc. */
 const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
   position: fixed;
   top: 0;
+  left: 0;
+  width: min(360px, 100vw);
   height: 100vh;
   z-index: 999;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease;
+  transform: translateX(-100%);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
+  transform: translateX(0);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-main {
+  margin-left: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
+  display: flex;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
+  display: flex;
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-kpi-grid {
   display: grid;
@@ -34,53 +52,25 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 @media (max-width: 1024px) {
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
-    left: 0;
-    width: min(360px, 100vw);
-    transform: translateX(-100%);
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
-    transform: translateX(0);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    margin-left: 0;
-    width: 100%;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
-    display: flex !important;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
-    display: flex !important;
-  }
   .bw.tenant-dashboard-layout .tenant-dashboard-charts-row {
     grid-template-columns: 1fr !important;
   }
 }
-@media (min-width: 1025px) {
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
-    left: 0;
-    width: 20%;
-    transform: none !important;
-    box-shadow: none;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    margin-left: 20%;
-    width: 80%;
-    box-sizing: border-box;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
-    display: none !important;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
-    display: none !important;
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-nav-overlay {
-    display: none !important;
-    pointer-events: none;
-  }
+.bw.tenant-dashboard-layout .tenant-overview-nav-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.bw.tenant-dashboard-layout .tenant-overview-nav-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.bw.tenant-dashboard-layout .tenant-overview-nav-card:focus-visible {
+  outline: 2px solid var(--bw-accent, #6c63e8);
+  outline-offset: 2px;
 }
 `.trim()
+
+/** Google Form: complaints, product feedback, and general questions for tenants */
+const TENANT_FEEDBACK_FORM_URL = 'https://forms.gle/521ZvKprmq1YxjMs8'
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 
@@ -331,8 +321,6 @@ export default function TenantDashboard() {
   // Button hover states
   const [isRetryHovered, setIsRetryHovered] = useState(false)
   const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
-  const [isViewAllHovered, setIsViewAllHovered] = useState(false)
-  const [showMoreBookings, setShowMoreBookings] = useState(false)
   const [overviewCopiedLink, setOverviewCopiedLink] = useState<'rider' | 'driver' | 'landing' | null>(null)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
@@ -510,13 +498,10 @@ export default function TenantDashboard() {
     load()
   }, [])
 
-  // Mobile breakpoint handler
+  // Mobile breakpoint handler (KPI carousel, stacked controls — not the nav drawer)
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768)
-      if (window.innerWidth > 1024) {
-        setIsMenuOpen(false) // Close drawer when returning to fixed sidebar layout
-      }
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
@@ -1241,9 +1226,7 @@ export default function TenantDashboard() {
     } else {
       // Navigate to the tab's route
       navigate(`/tenant/${tabId}`)
-      if (window.matchMedia('(max-width: 1024px)').matches) {
-        setIsMenuOpen(false)
-      }
+      setIsMenuOpen(false)
     }
   }
 
@@ -1251,9 +1234,7 @@ export default function TenantDashboard() {
   const handleSettingsSubmenuClick = (path: string) => {
     navigate(path)
     setSettingsMenuOpen(false)
-    if (window.matchMedia('(max-width: 1024px)').matches) {
-      setIsMenuOpen(false)
-    }
+    setIsMenuOpen(false)
   }
 
   const copyTenantOverviewLink = async (kind: 'rider' | 'driver' | 'landing', url: string) => {
@@ -1422,6 +1403,7 @@ export default function TenantDashboard() {
 
       {/* Sidebar Menu - Left Aligned */}
       <div
+        id="tenant-dashboard-nav"
         className={`tenant-dashboard-sidebar${isMenuOpen ? ' is-open' : ''}`}
         style={{
           backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg)',
@@ -1618,6 +1600,41 @@ export default function TenantDashboard() {
               </div>
             )
           })}
+          <a
+            href={TENANT_FEEDBACK_FORM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setIsMenuOpen(false)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderLeft: '2px solid transparent',
+              color: 'var(--bw-text)',
+              cursor: 'pointer',
+              fontSize: 'clamp(13px, 1.5vw, 15px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300,
+              textAlign: 'left',
+              textDecoration: 'none',
+              transition: 'all 0.2s ease',
+              boxSizing: 'border-box'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+            }}
+          >
+            <ChatCircleDots size={18} style={{ flexShrink: 0 }} aria-hidden />
+            <span style={{ flex: 1 }}>Feedback</span>
+            <ArrowSquareOut size={16} style={{ flexShrink: 0, opacity: 0.7 }} aria-hidden />
+          </a>
         </nav>
 
         {/* Footer Section in Sidebar */}
@@ -1733,20 +1750,27 @@ export default function TenantDashboard() {
             flexWrap: 'wrap'
           }}>
             <button
+              type="button"
               className="bw-menu tenant-dashboard-menu-btn"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle menu"
+              onClick={() => setIsMenuOpen((open) => !open)}
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={isMenuOpen}
+              aria-controls="tenant-dashboard-nav"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '8px',
                 minWidth: '40px',
-                minHeight: '40px'
+                minHeight: '40px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--bw-border)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: 'var(--bw-text)'
               }}
             >
-              <List size={20} />
+              <List size={20} weight="bold" aria-hidden />
             </button>
 
             {activeTab === 'overview' ? (
@@ -2670,7 +2694,20 @@ export default function TenantDashboard() {
                   marginBottom: 'clamp(16px, 3vw, 24px)'
                 }}>
                   {/* Column 1 — Drivers */}
-                  <div className="bw-card" style={cardBase}>
+                  <div
+                    className="bw-card tenant-overview-nav-card"
+                    style={cardBase}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Open Drivers"
+                    onClick={() => handleTabClick('drivers')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleTabClick('drivers')
+                      }
+                    }}
+                  >
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -2782,7 +2819,20 @@ export default function TenantDashboard() {
                   </div>
 
                   {/* Column 2 — Recent bookings */}
-                  <div className="bw-card" style={cardBase}>
+                  <div
+                    className="bw-card tenant-overview-nav-card"
+                    style={cardBase}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Open Bookings"
+                    onClick={() => handleTabClick('bookings')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleTabClick('bookings')
+                      }
+                    }}
+                  >
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -2995,399 +3045,6 @@ export default function TenantDashboard() {
               )
             })()}
 
-            {/* Recent Bookings — company profile is in Settings */}
-            <div>
-              <div className="bw-card" style={{
-                padding: 'clamp(16px, 2.5vw, 24px)',
-                border: lightMode ? '1px solid #e2e8f0' : '1px solid var(--bw-border)',
-                backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg-secondary)',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : '0 4px 12px rgba(0, 0, 0, 0.15)',
-                borderRadius: lightMode ? '12px' : undefined
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  marginBottom: 'clamp(12px, 2vw, 16px)' 
-                }}>
-                  <h3 style={{ 
-                    margin: 0,
-                    fontSize: 'clamp(16px, 2.5vw, 20px)',
-                    fontWeight: 400,
-                    fontFamily: '"Work Sans", sans-serif'
-                  }}>
-                    Recent Bookings
-                  </h3>
-                  <button 
-                    className={`bw-btn-outline ${isViewAllHovered ? 'custom-hover-border' : ''}`}
-                    onClick={() => handleTabClick('bookings')}
-                    onMouseEnter={() => setIsViewAllHovered(true)}
-                    onMouseLeave={() => setIsViewAllHovered(false)}
-                    style={{
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : 'clamp(10px, 1.2vw, 12px)',
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : 'clamp(4px, 0.8vw, 6px) clamp(8px, 1.5vw, 12px)',
-                      fontWeight: 600,
-                      fontFamily: '"Work Sans", sans-serif',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                      width: isMobile ? '100%' : 'auto',
-                      justifyContent: 'center',
-                      borderRadius: 7,
-                      border: isViewAllHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                      borderColor: isViewAllHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      color: isViewAllHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      transition: 'all 0.2s ease'
-                    } as React.CSSProperties}
-                  >
-                    <span style={{ color: isViewAllHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-                      View All
-                    </span>
-                  </button>
-                </div>
-              <div className="bw-recent-list" style={{
-                maxHeight: 'clamp(360px, 45vh, 450px)',
-                overflowY: showMoreBookings ? 'auto' : 'hidden',
-                overflowX: 'hidden',
-                paddingRight: showMoreBookings ? '8px' : '0'
-              }}>
-                {bookings.length === 0 ? (
-                  <div className="bw-empty-state" style={{ padding: '24px', textAlign: 'center' }}>
-                    <Calendar size={32} style={{ color: '#9ca3af', marginBottom: '8px' }} />
-                    <div style={{ color: '#6b7280', fontSize: '14px' }}>No bookings yet</div>
-                    <div style={{ color: '#9ca3af', fontSize: '12px' }}>Bookings will appear here</div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Show bookings - first 3 if collapsed, all if expanded */}
-                    {(showMoreBookings ? bookings : bookings.slice(0, 3)).map((booking, idx) => (
-                      <div 
-                        key={booking.id || `booking-${idx}`} 
-                        className="bw-recent-item" 
-                        onClick={() => booking.id && handleBookingClick(booking.id)}
-                        style={{ 
-                          border: '1px solid var(--bw-border)', 
-                          borderRadius: '8px', 
-                          padding: '12px', 
-                          marginBottom: '8px',
-                          backgroundColor: 'var(--bw-bg-secondary)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover-strong)'
-                          e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-                          e.currentTarget.style.borderColor = 'var(--bw-border)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
-                            {/* Route Visualization */}
-                            <div style={{ 
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: '4px',
-                              paddingTop: '2px'
-                            }}>
-                              {/* Start node */}
-                              <Circle size={8} weight="fill" style={{ color: '#10b981', flexShrink: 0 }} />
-                            {/* Dotted line */}
-                            <div style={{
-                              width: '2px',
-                              height: '24px',
-                              borderLeft: `2px dotted ${lightMode ? '#cbd5e1' : 'var(--bw-border)'}`,
-                              margin: '2px 0'
-                            }} />
-                              {/* End node */}
-                              <Circle size={8} weight="fill" style={{ color: '#ef4444', flexShrink: 0 }} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="bw-recent-title" style={{ 
-                                fontWeight: '600', 
-                                fontSize: '14px', 
-                                color: 'var(--bw-text)',
-                                marginBottom: '4px',
-                                lineHeight: 1.4
-                              }}>
-                                <div style={{ marginBottom: '2px' }}>{booking.pickup_location}</div>
-                                <div style={{ color: 'var(--bw-muted)', fontSize: '12px', fontWeight: 400 }}>↓</div>
-                                <div>{booking.dropoff_location}</div>
-                              </div>
-                              <div className="bw-recent-meta" style={{ 
-                                fontSize: '12px', 
-                                color: 'var(--bw-muted)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginTop: '4px'
-                              }}>
-                                <span>{new Date(booking.pickup_time).toLocaleDateString()}</span>
-                                <span>•</span>
-                                <span>{booking.service_type || 'Standard'}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="bw-recent-status">
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '12px',
-                              fontWeight: 500,
-                              color: (() => {
-                                const status = booking.booking_status?.toLowerCase();
-                                if (lightMode) {
-                                  if (status === 'completed' || status === 'active') {
-                                    return '#047857'; // dark green
-                                  } else if (status === 'pending') {
-                                    return '#d97706'; // dark amber
-                                  } else if (status === 'cancelled') {
-                                    return '#dc2626'; // dark red
-                                  }
-                                  return '#64748b'; // slate-500
-                                }
-                                return getStatusColorHex(booking.booking_status);
-                              })(),
-                              backgroundColor: (() => {
-                                const status = booking.booking_status?.toLowerCase();
-                                if (lightMode) {
-                                  if (status === 'completed' || status === 'active') {
-                                    return '#d1fae5'; // light mint-green
-                                  } else if (status === 'pending') {
-                                    return '#fef3c7'; // light amber
-                                  } else if (status === 'cancelled') {
-                                    return '#fee2e2'; // light red
-                                  }
-                                  return '#f1f5f9'; // slate-100
-                                }
-                                if (status === 'completed' || status === 'active') {
-                                  return 'rgba(16, 185, 129, 0.1)';
-                                } else if (status === 'pending') {
-                                  return 'rgba(245, 158, 11, 0.1)';
-                                } else if (status === 'cancelled') {
-                                  return 'rgba(239, 68, 68, 0.1)';
-                                }
-                                return 'rgba(107, 114, 128, 0.1)';
-                              })(),
-                              backdropFilter: lightMode ? 'none' : 'blur(4px)',
-                              WebkitBackdropFilter: lightMode ? 'none' : 'blur(4px)',
-                              border: lightMode ? 'none' : `1px solid ${(() => {
-                                const status = booking.booking_status?.toLowerCase();
-                                if (status === 'completed' || status === 'active') {
-                                  return 'rgba(16, 185, 129, 0.2)';
-                                } else if (status === 'pending') {
-                                  return 'rgba(245, 158, 11, 0.2)';
-                                } else if (status === 'cancelled') {
-                                  return 'rgba(239, 68, 68, 0.2)';
-                                }
-                                return 'rgba(107, 114, 128, 0.2)';
-                              })()}`,
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {getStatusIcon(booking.booking_status)}
-                              <span style={{ textTransform: 'capitalize' }}>
-                                {booking.booking_status || 'Unknown'}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Additional Booking Details */}
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
-                          gap: '8px', 
-                          fontSize: '12px',
-                          color: 'var(--bw-muted)',
-                          borderTop: '1px solid var(--bw-border)',
-                          paddingTop: '8px'
-                        }}>
-                          {!isMobile && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Customer:</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <div style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '50%',
-                                  backgroundColor: lightMode ? 'rgba(155, 97, 209, 0.1)' : 'rgba(155, 97, 209, 0.2)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '10px',
-                                  fontWeight: 600,
-                                  color: lightMode ? '#7c3aed' : 'rgba(155, 97, 209, 0.9)',
-                                  flexShrink: 0
-                                }}>
-                                  {getInitials(booking.customer_name)}
-                                </div>
-                                <span>{booking.customer_name || 'Anonymous Customer'}</span>
-                              </div>
-                            </div>
-                          )}
-                          {!isMobile && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Driver:</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {booking.driver_name && booking.driver_name !== 'None' ? (
-                                  <>
-                                    <div style={{
-                                      width: '24px',
-                                      height: '24px',
-                                      borderRadius: '50%',
-                                      backgroundColor: lightMode ? '#e2e8f0' : 'rgba(59, 130, 246, 0.2)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontSize: '10px',
-                                      fontWeight: 600,
-                                      color: lightMode ? '#475569' : 'rgba(59, 130, 246, 0.9)',
-                                      flexShrink: 0
-                                    }}>
-                                      {getInitials(booking.driver_name)}
-                                    </div>
-                                    <span>{booking.driver_name}</span>
-                                  </>
-                                ) : (
-                                  <span style={{ color: 'var(--bw-muted)' }}>No assigned driver</span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          <div>
-                            <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Vehicle:</span> {booking.vehicle || 'N/A'}
-                          </div>
-                          <div>
-                            <span style={{ fontWeight: '500', color: 'var(--bw-text)' }}>Fare:</span> ${booking.estimated_price || '0.00'}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Toggle button to show more/less bookings */}
-                    {bookings.length > 3 && (
-                      <div style={{ 
-                        border: '1px dashed #d1d5db', 
-                        borderRadius: '8px', 
-                        padding: '12px', 
-                        textAlign: 'center',
-                        backgroundColor: '#f9fafb',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onClick={() => setShowMoreBookings(!showMoreBookings)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6'
-                        e.currentTarget.style.borderColor = '#9ca3af'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb'
-                        e.currentTarget.style.borderColor = '#d1d5db'
-                      }}
-                      >
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          gap: '8px',
-                          color: '#6b7280',
-                          fontSize: '14px'
-                        }}>
-                          <Calendar size={16} />
-                          <span>
-                            {showMoreBookings 
-                              ? `Show Less` 
-                              : `View ${bookings.length - 3} more bookings`}
-                          </span>
-                          {showMoreBookings ? (
-                            <CaretUp size={16} />
-                          ) : (
-                            <span style={{ fontSize: '12px' }}>→</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-              
-              {/* Quick Stats Summary */}
-              {bookings.length > 0 && (
-                <div style={{ 
-                  marginTop: 'clamp(12px, 2vw, 16px)', 
-                  padding: 'clamp(10px, 1.5vw, 12px)', 
-                  backgroundColor: 'var(--bw-bg-secondary)', 
-                  borderRadius: '6px',
-                  border: '1px solid var(--bw-border)'
-                }}>
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(3, 1fr)', 
-                    gap: 'clamp(8px, 1.5vw, 12px)',
-                    fontSize: 'clamp(11px, 1.3vw, 12px)'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
-                        fontWeight: 400, 
-                        color: 'var(--bw-text)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        marginBottom: '4px'
-                      }}>
-                        {bookings.filter(b => b.booking_status === 'completed').length}
-                      </div>
-                      <div style={{ 
-                        color: 'var(--bw-muted)',
-                        fontWeight: 300,
-                        fontFamily: '"Work Sans", sans-serif'
-                      }}>
-                        Completed
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
-                        fontWeight: 400, 
-                        color: 'var(--bw-text)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        marginBottom: '4px'
-                      }}>
-                        {bookings.filter(b => b.booking_status === 'active').length}
-                      </div>
-                      <div style={{ 
-                        color: 'var(--bw-muted)',
-                        fontWeight: 300,
-                        fontFamily: '"Work Sans", sans-serif'
-                      }}>
-                        Active
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
-                        fontWeight: 400, 
-                        color: 'var(--bw-text)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        marginBottom: '4px'
-                      }}>
-                        {bookings.filter(b => b.booking_status === 'pending').length}
-                      </div>
-                      <div style={{ 
-                        color: 'var(--bw-muted)',
-                        fontWeight: 300,
-                        fontFamily: '"Work Sans", sans-serif'
-                      }}>
-                        Pending
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              </div>
-            </div>
           </div>
         )}
 
@@ -5905,9 +5562,16 @@ export default function TenantDashboard() {
                     const accessToken = response.data?.access_token || (response as any).access_token
                     
                     if (accessToken) {
-                      const hostname = window.location.hostname
-                      const slug = extractSubdomain(hostname) || 'ridez'
-                      const driverLoginUrl = getTenantAppUrl(slug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
+                      const tenantSlug =
+                        tenantConfig?.branding?.slug?.trim() ||
+                        info?.profile?.slug?.trim() ||
+                        extractSubdomain(window.location.hostname) ||
+                        ''
+                      if (!tenantSlug) {
+                        setSwitchToDriverError('Unable to determine your tenant slug. Set your slug in Settings or open the dashboard from your tenant subdomain, then try again.')
+                        return
+                      }
+                      const driverLoginUrl = getTenantAppUrl(tenantSlug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
                       window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
                       
                       setShowDriverModeConfirm(false)
