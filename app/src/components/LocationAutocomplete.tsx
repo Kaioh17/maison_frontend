@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react'
 import { MapPin, Loader2 } from 'lucide-react'
 import {
   getLocationSuggestions,
@@ -19,6 +19,8 @@ interface LocationAutocompleteProps {
   isAirportOnly?: boolean
   disabled?: boolean
   country?: string // Country code (e.g., 'us', 'gb') to filter search results
+  /** Merged into the text input style (e.g. borderless “depth” fields on rider booking). */
+  inputStyle?: CSSProperties
 }
 
 export default function LocationAutocomplete({
@@ -30,6 +32,7 @@ export default function LocationAutocomplete({
   isAirportOnly = false,
   disabled = false,
   country,
+  inputStyle,
 }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -248,6 +251,7 @@ export default function LocationAutocomplete({
             color: 'var(--bw-text)',
             fontFamily: 'Work Sans, sans-serif',
             fontSize: 'clamp(13px, 2vw, 14px)',
+            ...inputStyle,
           }}
         />
         {isLoading && (

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { approveBooking, type BookingResponse } from '@api/bookings'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { listAllowedRiderPaymentMethods, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check } from '@phosphor-icons/react'
+import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check, Info } from '@phosphor-icons/react'
+import ThemeToggle from '@components/ThemeToggle'
 
 // Stripe Logo SVG Component
 const StripeLogo = ({ size = 20 }: { size?: number }) => (
@@ -23,12 +25,23 @@ export default function BookingConfirmation() {
   useFavicon()
   const navigate = useNavigate()
   const location = useLocation()
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | 'zelle' | null>(null)
+  const { tenantInfo } = useTenantInfo()
+  const permittedPaymentMethods = useMemo(
+    () =>
+      listAllowedRiderPaymentMethods(
+        tenantInfo?.settings?.config?.booking?.allowed_payment_method
+      ),
+    [tenantInfo?.settings?.config?.booking?.allowed_payment_method]
+  )
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<RiderPaymentMethodId | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [booking, setBooking] = useState<BookingResponse | null>(null)
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [showDeclineWarning, setShowDeclineWarning] = useState(false)
+  const [showZelleInfoModal, setShowZelleInfoModal] = useState(false)
+
+  const zelleOffered = permittedPaymentMethods.includes('zelle')
 
   useEffect(() => {
     // Get booking data from navigation state
@@ -40,6 +53,23 @@ export default function BookingConfirmation() {
     }
     setBooking(bookingData)
   }, [location.state, navigate])
+
+  useEffect(() => {
+    setSelectedPaymentMethod((prev) => {
+      if (permittedPaymentMethods.length === 0) return null
+      if (permittedPaymentMethods.length === 1) return permittedPaymentMethods[0]
+      if (prev != null && !permittedPaymentMethods.includes(prev)) return null
+      return prev
+    })
+  }, [permittedPaymentMethods])
+
+  useEffect(() => {
+    if (selectedPaymentMethod === 'zelle' && zelleOffered) {
+      setShowZelleInfoModal(true)
+    } else {
+      setShowZelleInfoModal(false)
+    }
+  }, [selectedPaymentMethod, zelleOffered])
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A'
@@ -116,12 +146,12 @@ export default function BookingConfirmation() {
     }
   }
 
-  const handlePaymentMethodSelect = (method: 'cash' | 'card' | 'zelle') => {
+  const handlePaymentMethodSelect = (method: RiderPaymentMethodId) => {
     setSelectedPaymentMethod(method)
     setShowPaymentSheet(false)
   }
 
-  const getPaymentMethodDisplayName = (method: 'cash' | 'card' | 'zelle' | null) => {
+  const getPaymentMethodDisplayName = (method: RiderPaymentMethodId | null) => {
     if (!method) return 'Select Payment Method'
     return method.charAt(0).toUpperCase() + method.slice(1)
   }
@@ -206,6 +236,9 @@ export default function BookingConfirmation() {
           >
             <X size={24} />
           </button>
+          <div style={{ position: 'absolute', right: 0, top: 0, zIndex: 2 }}>
+            <ThemeToggle />
+          </div>
           <h1 style={{
             margin: '0 auto',
             fontSize: 'clamp(24px, 4vw, 32px)',
@@ -525,8 +558,24 @@ export default function BookingConfirmation() {
           }}>
             Payment Method
           </h2>
+          {permittedPaymentMethods.length === 0 && (
+            <div style={{
+              marginBottom: 'clamp(12px, 2vw, 16px)',
+              padding: 'clamp(12px, 2vw, 14px)',
+              borderRadius: '8px',
+              border: '1px solid var(--bw-border)',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              color: '#b91c1c',
+              fontSize: 'clamp(13px, 2vw, 14px)',
+              fontFamily: 'Work Sans, sans-serif',
+              lineHeight: 1.45
+            }}>
+              No payment methods are enabled for this company. Please contact support to complete your booking.
+            </div>
+          )}
           <button
-            onClick={() => setShowPaymentSheet(true)}
+            onClick={() => permittedPaymentMethods.length > 0 && setShowPaymentSheet(true)}
+            disabled={permittedPaymentMethods.length === 0}
             style={{
               width: '100%',
               padding: 'clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 20px)',
@@ -534,7 +583,7 @@ export default function BookingConfirmation() {
               border: '1px solid var(--bw-border)',
               backgroundColor: selectedPaymentMethod ? 'var(--bw-bg-secondary)' : 'var(--bw-bg)',
               color: 'var(--bw-text)',
-              cursor: 'pointer',
+              cursor: permittedPaymentMethods.length === 0 ? 'not-allowed' : 'pointer',
               fontFamily: 'Work Sans, sans-serif',
               fontSize: 'clamp(14px, 2.5vw, 16px)',
               fontWeight: 400,
@@ -546,12 +595,12 @@ export default function BookingConfirmation() {
               position: 'relative'
             }}
             onMouseEnter={(e) => {
-              if (!selectedPaymentMethod) {
+              if (permittedPaymentMethods.length > 0 && !selectedPaymentMethod) {
                 e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
               }
             }}
             onMouseLeave={(e) => {
-              if (!selectedPaymentMethod) {
+              if (permittedPaymentMethods.length > 0 && !selectedPaymentMethod) {
                 e.currentTarget.style.backgroundColor = 'var(--bw-bg)'
               }
             }}
@@ -575,7 +624,7 @@ export default function BookingConfirmation() {
                 lineHeight: 1.5
               }}>
                 {selectedPaymentMethod === 'card' && 'Card payments are powered by Stripe. Your payment information is secure and encrypted.'}
-                {selectedPaymentMethod === 'zelle' && 'Zelle payments are processed directly through your bank. Please have your Zelle account ready.'}
+                {selectedPaymentMethod === 'zelle' && "You'll see Zelle payment details on the next screen after you confirm your ride."}
                 {selectedPaymentMethod === 'cash' && 'Cash payments will be collected at the time of service. Please have exact change ready.'}
               </p>
             </div>
@@ -607,7 +656,7 @@ export default function BookingConfirmation() {
         }}>
           <button
             onClick={handleConfirm}
-            disabled={isLoading || !selectedPaymentMethod}
+            disabled={isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0}
             style={{
               width: '100%',
               padding: 'clamp(16px, 2.5vw, 20px) clamp(20px, 4vw, 24px)',
@@ -615,22 +664,22 @@ export default function BookingConfirmation() {
               backgroundColor: '#10b981',
               color: '#ffffff',
               border: 'none',
-              cursor: isLoading || !selectedPaymentMethod ? 'not-allowed' : 'pointer',
+              cursor: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 'not-allowed' : 'pointer',
               fontFamily: 'Work Sans, sans-serif',
               fontWeight: 600,
               fontSize: 'clamp(16px, 3vw, 18px)',
-              opacity: isLoading || !selectedPaymentMethod ? 0.6 : 1,
+              opacity: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 0.6 : 1,
               transition: 'all 0.2s ease',
-              boxShadow: isLoading || !selectedPaymentMethod ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)'
+              boxShadow: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)'
             }}
             onMouseEnter={(e) => {
-              if (!isLoading && selectedPaymentMethod) {
+              if (!isLoading && selectedPaymentMethod && permittedPaymentMethods.length > 0) {
                 e.currentTarget.style.transform = 'translateY(-1px)'
                 e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)'
               }
             }}
             onMouseLeave={(e) => {
-              if (!isLoading && selectedPaymentMethod) {
+              if (!isLoading && selectedPaymentMethod && permittedPaymentMethods.length > 0) {
                 e.currentTarget.style.transform = 'translateY(0)'
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'
               }
@@ -729,7 +778,7 @@ export default function BookingConfirmation() {
               flexDirection: 'column',
               gap: 'clamp(12px, 2.5vw, 16px)'
             }}>
-              {(['card', 'zelle', 'cash'] as const).map((method) => {
+              {permittedPaymentMethods.map((method) => {
                 const isSelected = selectedPaymentMethod === method
                 return (
                   <button
@@ -793,6 +842,107 @@ export default function BookingConfirmation() {
                 Your payment information is secure and encrypted. Select a payment method to continue.
               </p>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* Zelle instructions (when Zelle is offered and selected) */}
+      {showZelleInfoModal && zelleOffered && (
+        <>
+          <div
+            onClick={() => setShowZelleInfoModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+              zIndex: 2000,
+              animation: 'fadeIn 0.2s ease'
+            }}
+          />
+          <div
+            role="dialog"
+            aria-labelledby="zelle-info-title"
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
+              border: '1px solid var(--bw-border)',
+              borderRadius: '16px',
+              padding: 'clamp(24px, 4vw, 32px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              zIndex: 2001,
+              maxWidth: 'clamp(300px, 92vw, 420px)',
+              width: '100%',
+              animation: 'fadeIn 0.2s ease'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 'clamp(12px, 2vw, 16px)',
+              marginBottom: 'clamp(16px, 3vw, 20px)'
+            }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(109, 30, 212, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(109, 30, 212, 0.35)'
+              }}>
+                <Info size={28} style={{ color: '#6D1ED4' }} weight="fill" />
+              </div>
+              <h2 id="zelle-info-title" style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 3.5vw, 22px)',
+                fontWeight: 600,
+                fontFamily: 'DM Sans, sans-serif',
+                color: 'var(--bw-text)',
+                textAlign: 'center'
+              }}>
+                Zelle
+              </h2>
+              <p style={{
+                margin: 0,
+                fontSize: 'clamp(13px, 2.5vw, 15px)',
+                color: 'var(--bw-text)',
+                opacity: 0.85,
+                fontFamily: 'Work Sans, sans-serif',
+                textAlign: 'center',
+                lineHeight: 1.55
+              }}>
+                You&apos;ll see Zelle payment information after you confirm your ride. Complete payment from your banking app using the details shown on the next screen.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowZelleInfoModal(false)}
+              style={{
+                width: '100%',
+                padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                borderRadius: '12px',
+                backgroundColor: 'var(--bw-accent, #6D1ED4)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'Work Sans, sans-serif',
+                fontWeight: 600,
+                fontSize: 'clamp(15px, 2.5vw, 17px)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Got it
+            </button>
           </div>
         </>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTenantBySlug, type SlugVerificationResponse } from '@api/tenant'
+import { getTenantBySlug, type SlugVerificationResponse, type TenantSettingsResponse } from '@api/tenant'
 import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 
@@ -10,6 +10,13 @@ export type TenantInfo = {
   logo_url?: string | null
   favicon_url?: string | null
   tenant_id?: number // May not be available in new response
+  /**
+   * Best public email riders can use for this tenant.
+   * Comes from slug verify `branding.email_from_address` (not the tenant’s private login email unless operators set it there).
+   */
+  contact_email?: string | null
+  /** Core tenant settings from `/v1/slug/:slug` (same shape as config.settings PATCH/GET). */
+  settings?: TenantSettingsResponse
   [key: string]: any // Allow other fields for backward compatibility
 }
 
@@ -41,6 +48,8 @@ export function useTenantInfo() {
             slug: cached.data.branding.slug || slug,
             logo_url: cached.data.branding.logo_url || null,
             favicon_url: cached.data.branding.favicon_url || null,
+            contact_email: cached.data.branding.email_from_address?.trim() || null,
+            settings: cached.data.settings,
             // tenant_id not available from cache, will need to fetch if required
           }
           setTenantInfo(transformedInfo)
@@ -78,7 +87,9 @@ export function useTenantInfo() {
             slug: response.data.branding.slug || slug,
             logo_url: response.data.branding.logo_url || null,
             favicon_url: response.data.branding.favicon_url || null,
+            contact_email: response.data.branding.email_from_address?.trim() || null,
             tenant_id: tenantId,
+            settings: response.data.settings,
             // Do NOT implement color theming yet (skip primary_color, secondary_color, etc.)
           }
           setTenantInfo(transformedInfo)

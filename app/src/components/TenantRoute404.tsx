@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { Car, User } from '@phosphor-icons/react'
+import { TENANT_SUPPORT_EMAIL } from '@config'
 
 export default function TenantRoute404() {
   const navigate = useNavigate()
@@ -215,14 +216,18 @@ export default function TenantRoute404() {
           }}>
             Need help?
           </p>
-          <p style={{
-            fontSize: 'clamp(14px, 2vw, 16px)',
-            color: 'var(--bw-fg)',
-            margin: '0',
-            fontWeight: '500'
-          }}>
-            Contact Support
-          </p>
+          <a
+            href={`mailto:${TENANT_SUPPORT_EMAIL}?subject=Support%20request`}
+            style={{
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              color: 'var(--bw-accent)',
+              margin: '0',
+              fontWeight: '600',
+              textDecoration: 'none'
+            }}
+          >
+            {TENANT_SUPPORT_EMAIL}
+          </a>
         </div>
       </div>
     </div>

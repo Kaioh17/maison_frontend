@@ -7,6 +7,7 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import ThemeToggle from '@components/ThemeToggle'
 
 export default function RiderLogin() {
   useFavicon()
@@ -213,6 +214,9 @@ export default function RiderLogin() {
             overflowY: 'auto'
           }}
         >
+          <div style={{ position: 'absolute', top: 'clamp(16px, 3vw, 24px)', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
+            <ThemeToggle />
+          </div>
           <div style={{ width: '100%', maxWidth: '100%' }}>
             {/* Company Logo/Name */}
             {tenantInfo && (

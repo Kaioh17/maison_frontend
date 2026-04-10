@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, X, List, Palette, CurrencyDollar, CaretRight } from '@phosphor-icons/react'
+import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, X, List, Palette, CurrencyDollar, CaretRight, ChatCircle, BookOpen, WarningCircle } from '@phosphor-icons/react'
 import { getStripeLoginLink } from '@api/tenantSettings'
 
 interface MenuItem {
@@ -15,6 +15,7 @@ const menuItems: MenuItem[] = [
   { path: '/tenant/settings/account', label: 'Account Information', icon: User },
   { path: '/tenant/settings/company', label: 'Company Information', icon: Building },
   { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings', icon: Wrench },
+  { path: '/tenant/settings/feedback-forms', label: 'Feedback forms', icon: ChatCircle },
   { path: '/tenant/settings/branding', label: 'Branding Settings', icon: Palette },
   { path: '/tenant/settings/pricing', label: 'Pricing Settings', icon: CurrencyDollar },
   { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration', icon: Car },
@@ -24,7 +25,9 @@ const menuItems: MenuItem[] = [
     label: 'Help', 
     icon: Question,
     submenu: [
-      { path: '/tenant/settings/help/stripe', label: 'Stripe Integration', icon: CreditCard }
+      { path: '/tenant/settings/help/admin', label: 'Operator guide', icon: BookOpen },
+      { path: '/tenant/settings/help/troubleshooting', label: 'Common issues', icon: WarningCircle },
+      { path: '/tenant/settings/help/stripe', label: 'Stripe integration', icon: CreditCard }
     ]
   }
 ]

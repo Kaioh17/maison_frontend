@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import type React from 'react'
 import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
-import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData } from '@api/tenantSettings'
+import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useTenantTheme } from '@contexts/ThemeContext'
+import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
@@ -15,6 +15,15 @@ import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
 import { getTenantAppUrl } from '@config/host'
+import {
+  zelleNumberFromApi,
+  zelleEmailFromApi,
+  tenantZellePayload,
+  hasZelleRecipient,
+  zelleEmailDisplay,
+  isCompleteUsPhone,
+  zellePhoneValidationError
+} from '@utils/zelleContact'
 
 /** Collapsible drawer nav (hamburger) on all viewports; isMobile (768px) is behavioral-only for KPI carousel, etc. */
 const TENANT_DASHBOARD_LAYOUT_CSS = `
@@ -345,16 +354,6 @@ export default function TenantDashboard() {
   const [isConfirmAssignHovered, setIsConfirmAssignHovered] = useState(false)
   const [isCancelAssignHovered, setIsCancelAssignHovered] = useState(false)
   
-  // Helper to detect light mode
-  const isLightMode = () => {
-    if (typeof window === 'undefined') return false
-    const theme = tenantConfig?.branding?.theme || document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
-    if (theme === 'auto') {
-      return !window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-    return theme === 'light'
-  }
-  
   const [newVehicle, setNewVehicle] = useState({
     make: '',
     model: '',
@@ -372,6 +371,7 @@ export default function TenantDashboard() {
 
   // Sync theme with tenant settings
   useTenantTheme(tenantConfig?.branding?.theme)
+  const { isLight: lightMode } = useTheme()
 
   const load = async () => {
     setLoading(true)
@@ -454,7 +454,13 @@ export default function TenantDashboard() {
       // Handle tenant config
       if (tc) {
         setTenantConfig(tc)
-        if (tc.settings) setEditedSettings(tc.settings)
+        if (tc.settings) {
+          setEditedSettings({
+            ...tc.settings,
+            zelle_number: zelleNumberFromApi(tc.settings.zelle_number),
+            zelle_email: zelleEmailFromApi(tc.settings.zelle_email),
+          })
+        }
         if (tc.pricing) setEditedPricing(tc.pricing)
         if (tc.branding) setEditedBranding(tc.branding)
       } else {
@@ -860,12 +866,23 @@ export default function TenantDashboard() {
       if (editedSettings && tenantConfig?.settings) {
         const settingsChanged = 
           editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
+          zelleNumberFromApi(editedSettings.zelle_number) !== zelleNumberFromApi(tenantConfig.settings.zelle_number) ||
+          zelleEmailFromApi(editedSettings.zelle_email) !== zelleEmailFromApi(tenantConfig.settings.zelle_email) ||
           JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
         
         if (settingsChanged) {
+          const zelleErr = zellePhoneValidationError(editedSettings.zelle_number)
+          if (zelleErr) {
+            alert(zelleErr)
+            setSavingSettings(false)
+            return
+          }
           updatePromises.push(
             updateTenantSettings({
               rider_tiers_enabled: editedSettings.rider_tiers_enabled,
+              ...tenantZellePayload(editedSettings),
+              rider_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.rider_feedback_form),
+              driver_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.driver_feedback_form),
               config: editedSettings.config
             }).then(result => ({ type: 'settings', data: result }))
           )
@@ -940,7 +957,13 @@ export default function TenantDashboard() {
       // Refresh config to get latest data
       const refreshedConfig = await getTenantConfig('all')
       setTenantConfig(refreshedConfig)
-      if (refreshedConfig.settings) setEditedSettings(refreshedConfig.settings)
+      if (refreshedConfig.settings) {
+        setEditedSettings({
+          ...refreshedConfig.settings,
+          zelle_number: zelleNumberFromApi(refreshedConfig.settings.zelle_number),
+          zelle_email: zelleEmailFromApi(refreshedConfig.settings.zelle_email),
+        })
+      }
       if (refreshedConfig.pricing) setEditedPricing(refreshedConfig.pricing)
       if (refreshedConfig.branding) setEditedBranding(refreshedConfig.branding)
       
@@ -961,6 +984,8 @@ export default function TenantDashboard() {
     
     const settingsChanged = editedSettings && tenantConfig.settings && (
       editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
+      zelleNumberFromApi(editedSettings.zelle_number) !== zelleNumberFromApi(tenantConfig.settings.zelle_number) ||
+      zelleEmailFromApi(editedSettings.zelle_email) !== zelleEmailFromApi(tenantConfig.settings.zelle_email) ||
       JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
     )
     
@@ -987,7 +1012,13 @@ export default function TenantDashboard() {
 
   const handleCancelEdit = () => {
     if (tenantConfig) {
-      if (tenantConfig.settings) setEditedSettings(tenantConfig.settings)
+      if (tenantConfig.settings) {
+        setEditedSettings({
+          ...tenantConfig.settings,
+          zelle_number: zelleNumberFromApi(tenantConfig.settings.zelle_number),
+          zelle_email: zelleEmailFromApi(tenantConfig.settings.zelle_email),
+        })
+      }
       if (tenantConfig.pricing) setEditedPricing(tenantConfig.pricing)
       if (tenantConfig.branding) setEditedBranding(tenantConfig.branding)
     }
@@ -1296,13 +1327,13 @@ export default function TenantDashboard() {
               width: isMobile ? '100%' : 'auto',
               justifyContent: 'center',
               borderRadius: 7,
-              border: isRetryHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-              borderColor: isRetryHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-              color: isRetryHovered ? 'rgba(155, 97, 209, 0.81)' : '#000',
+              border: isRetryHovered ? '2px solid var(--bw-accent)' : undefined,
+              borderColor: isRetryHovered ? 'var(--bw-accent)' : undefined,
+              color: isRetryHovered ? 'var(--bw-accent)' : '#000',
               transition: 'all 0.2s ease'
             } as React.CSSProperties}
           >
-            <span style={{ color: isRetryHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+            <span style={{ color: isRetryHovered ? 'var(--bw-accent)' : 'inherit' }}>
               Retry
             </span>
           </button>
@@ -1355,13 +1386,13 @@ export default function TenantDashboard() {
               width: isMobile ? '100%' : 'auto',
               justifyContent: 'center',
               borderRadius: 7,
-              border: isTryAgainHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-              borderColor: isTryAgainHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-              color: isTryAgainHovered ? 'rgba(155, 97, 209, 0.81)' : '#000',
+              border: isTryAgainHovered ? '2px solid var(--bw-accent)' : undefined,
+              borderColor: isTryAgainHovered ? 'var(--bw-accent)' : undefined,
+              color: isTryAgainHovered ? 'var(--bw-accent)' : '#000',
               transition: 'all 0.2s ease'
             } as React.CSSProperties}
           >
-            <span style={{ color: isTryAgainHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+            <span style={{ color: isTryAgainHovered ? 'var(--bw-accent)' : 'inherit' }}>
               Try Again
             </span>
           </button>
@@ -1370,8 +1401,6 @@ export default function TenantDashboard() {
     )
   }
 
-  const lightMode = isLightMode()
-  
   return (
     <div className="bw tenant-dashboard-layout" style={{ 
       position: 'relative', 
@@ -1556,6 +1585,7 @@ export default function TenantDashboard() {
                       { path: '/tenant/settings/account', label: 'Account Information' },
                       { path: '/tenant/settings/company', label: 'Company Information' },
                       { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings' },
+                      { path: '/tenant/settings/feedback-forms', label: 'Feedback forms' },
                       { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration' },
                       { path: '/tenant/settings/plans', label: 'Plans' },
                       { path: '/tenant/settings/help', label: 'Help' }
@@ -2641,8 +2671,8 @@ export default function TenantDashboard() {
                               onClick={() => copyTenantOverviewLink(row.key, row.url)}
                               style={{
                                 ...btnOutline,
-                                border: lightMode ? '1px solid #c4b5fd' : '1px solid rgba(167, 139, 250, 0.45)',
-                                color: lightMode ? '#5b21b6' : '#c4b5fd',
+                                border: lightMode ? '1px solid rgba(108, 99, 232, 0.35)' : '1px solid rgba(108, 99, 232, 0.45)',
+                                color: 'var(--bw-accent)',
                               }}
                             >
                               <Copy size={16} aria-hidden />
@@ -2679,9 +2709,9 @@ export default function TenantDashboard() {
                 padding: '4px 9px',
                 borderRadius: 6,
                 fontFamily: '"Work Sans", sans-serif',
-                backgroundColor: lightMode ? '#ede9fe' : 'rgba(139, 92, 246, 0.22)',
-                color: lightMode ? '#5b21b6' : '#c4b5fd',
-                border: lightMode ? '1px solid #ddd6fe' : '1px solid rgba(167, 139, 250, 0.35)'
+                backgroundColor: lightMode ? 'rgba(108, 99, 232, 0.12)' : 'rgba(108, 99, 232, 0.22)',
+                color: 'var(--bw-accent)',
+                border: lightMode ? '1px solid rgba(108, 99, 232, 0.28)' : '1px solid rgba(108, 99, 232, 0.4)'
               }
               const rowDivider: React.CSSProperties = {
                 borderBottom: lightMode ? '1px solid rgba(15, 13, 26, 0.07)' : '1px solid rgba(255, 255, 255, 0.07)'
@@ -2765,8 +2795,8 @@ export default function TenantDashboard() {
                                 width: 36,
                                 height: 36,
                                 borderRadius: '50%',
-                                backgroundColor: '#261e3a',
-                                color: '#9b8fb8',
+                                backgroundColor: lightMode ? 'rgba(108, 99, 232, 0.12)' : '#261e3a',
+                                color: lightMode ? 'var(--bw-accent)' : '#9b8fb8',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -3074,19 +3104,19 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isAddDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isAddDriverHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isAddDriverHovered ? 'var(--bw-accent)' : undefined,
+                  color: isAddDriverHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
                 <Plus className="w-4 h-4" style={{ 
                   width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                   height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                  color: isAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit',
-                  fill: isAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'currentColor'
+                  color: isAddDriverHovered ? 'var(--bw-accent)' : 'inherit',
+                  fill: isAddDriverHovered ? 'var(--bw-accent)' : 'currentColor'
                 }} />
-                <span style={{ color: isAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isAddDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   Add Driver
                 </span>
               </button>
@@ -4120,19 +4150,19 @@ export default function TenantDashboard() {
                       width: isMobile ? '100%' : 'auto',
                       justifyContent: 'center',
                       borderRadius: 7,
-                      border: isAddVehicleHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                      borderColor: isAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      color: isAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                      border: isAddVehicleHovered ? '2px solid var(--bw-accent)' : undefined,
+                      borderColor: isAddVehicleHovered ? 'var(--bw-accent)' : undefined,
+                      color: isAddVehicleHovered ? 'var(--bw-accent)' : undefined,
                       transition: 'all 0.2s ease'
                     } as React.CSSProperties}
                   >
                     <Plus className="w-4 h-4" style={{ 
                       width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                       height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                      color: isAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit',
-                      fill: isAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'currentColor'
+                      color: isAddVehicleHovered ? 'var(--bw-accent)' : 'inherit',
+                      fill: isAddVehicleHovered ? 'var(--bw-accent)' : 'currentColor'
                     }} />
-                    <span style={{ color: isAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                    <span style={{ color: isAddVehicleHovered ? 'var(--bw-accent)' : 'inherit' }}>
                       Add Vehicle
                     </span>
                   </button>
@@ -4548,19 +4578,19 @@ export default function TenantDashboard() {
                                 fontWeight: 600,
                                 fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
                                 borderRadius: 7,
-                                border: isAddVehicleFormHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-                                borderColor: isAddVehicleFormHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                                border: isAddVehicleFormHovered ? '2px solid var(--bw-accent)' : 'none',
+                                borderColor: isAddVehicleFormHovered ? 'var(--bw-accent)' : undefined,
                                 cursor: addingVehicle ? 'not-allowed' : 'pointer',
                                 opacity: addingVehicle ? 0.6 : 1,
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
                                 justifyContent: 'center',
-                                color: isAddVehicleFormHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                                color: isAddVehicleFormHovered ? 'var(--bw-accent)' : undefined,
                                 transition: 'all 0.2s ease'
                               } as React.CSSProperties}
                             >
-                              <span style={{ color: isAddVehicleFormHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                              <span style={{ color: isAddVehicleFormHovered ? 'var(--bw-accent)' : 'inherit' }}>
                                 {addingVehicle ? 'Adding...' : 'Add Vehicle'}
                               </span>
                             </button>
@@ -4595,13 +4625,13 @@ export default function TenantDashboard() {
                                 alignItems: 'center',
                                 gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
                                 justifyContent: 'center',
-                                border: isCancelAddVehicleHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                                borderColor: isCancelAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                                color: isCancelAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                                border: isCancelAddVehicleHovered ? '2px solid var(--bw-accent)' : undefined,
+                                borderColor: isCancelAddVehicleHovered ? 'var(--bw-accent)' : undefined,
+                                color: isCancelAddVehicleHovered ? 'var(--bw-accent)' : undefined,
                                 transition: 'all 0.2s ease'
                               } as React.CSSProperties}
                             >
-                              <span style={{ color: isCancelAddVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                              <span style={{ color: isCancelAddVehicleHovered ? 'var(--bw-accent)' : 'inherit' }}>
                                 Cancel
                               </span>
                             </button>
@@ -5129,13 +5159,13 @@ export default function TenantDashboard() {
                         width: isMobile ? '100%' : 'auto',
                         justifyContent: 'center',
                         borderRadius: 7,
-                        border: isDownloadLogsHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                        borderColor: isDownloadLogsHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                        color: isDownloadLogsHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                        border: isDownloadLogsHovered ? '2px solid var(--bw-accent)' : undefined,
+                        borderColor: isDownloadLogsHovered ? 'var(--bw-accent)' : undefined,
+                        color: isDownloadLogsHovered ? 'var(--bw-accent)' : undefined,
                         transition: 'all 0.2s ease'
                       } as React.CSSProperties}
                     >
-                      <span style={{ color: isDownloadLogsHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                      <span style={{ color: isDownloadLogsHovered ? 'var(--bw-accent)' : 'inherit' }}>
                         Download Logs
                       </span>
                     </button>
@@ -5227,9 +5257,9 @@ export default function TenantDashboard() {
                                 width: isMobile ? '100%' : 'auto',
                                 justifyContent: 'center',
                                 borderRadius: 7,
-                                border: isSaveRateHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                                borderColor: isSaveRateHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                                color: isSaveRateHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                                border: isSaveRateHovered ? '2px solid var(--bw-accent)' : undefined,
+                                borderColor: isSaveRateHovered ? 'var(--bw-accent)' : undefined,
+                                color: isSaveRateHovered ? 'var(--bw-accent)' : undefined,
                                 transition: 'all 0.2s ease'
                               } as React.CSSProperties}
                               disabled={isSaving}
@@ -5250,7 +5280,7 @@ export default function TenantDashboard() {
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
                               ) : (
-                                <span style={{ color: isSaveRateHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                                <span style={{ color: isSaveRateHovered ? 'var(--bw-accent)' : 'inherit' }}>
                                   Save
                                 </span>
                               )}
@@ -5322,9 +5352,9 @@ export default function TenantDashboard() {
                           width: isMobile ? '100%' : 'auto',
                           justifyContent: 'center',
                           borderRadius: 7,
-                          border: isAddCategoryHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                          borderColor: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                          color: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                          border: isAddCategoryHovered ? '2px solid var(--bw-accent)' : undefined,
+                          borderColor: isAddCategoryHovered ? 'var(--bw-accent)' : undefined,
+                          color: isAddCategoryHovered ? 'var(--bw-accent)' : undefined,
                           transition: 'all 0.2s ease'
                         } as React.CSSProperties}
                         disabled={addingCategory}
@@ -5365,19 +5395,19 @@ export default function TenantDashboard() {
                         }}
                       >
                         {addingCategory ? (
-                          <svg className="animate-spin h-4 w-4" style={{ color: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : 'var(--bw-text)' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin h-4 w-4" style={{ color: isAddCategoryHovered ? 'var(--bw-accent)' : 'var(--bw-text)' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
                         ) : (
                           <Plus className="w-4 h-4" style={{ 
-                            color: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : 'var(--bw-text)',
+                            color: isAddCategoryHovered ? 'var(--bw-accent)' : 'var(--bw-text)',
                             width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
                             height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                            fill: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : 'currentColor'
+                            fill: isAddCategoryHovered ? 'var(--bw-accent)' : 'currentColor'
                           }} />
                         )}
-                        <span style={{ color: isAddCategoryHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                        <span style={{ color: isAddCategoryHovered ? 'var(--bw-accent)' : 'inherit' }}>
                           Add
                         </span>
                       </button>
@@ -5426,19 +5456,19 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   backgroundColor: '#ffffff',
-                  color: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  border: isMoreSettingsHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-                  borderColor: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  color: isMoreSettingsHovered ? 'var(--bw-accent)' : '#000000',
+                  border: isMoreSettingsHovered ? '2px solid var(--bw-accent)' : '1px solid var(--bw-border)',
+                  borderColor: isMoreSettingsHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
                 <Gear size={16} style={{ 
-                  color: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
+                  color: isMoreSettingsHovered ? 'var(--bw-accent)' : '#000000',
                   width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
                   height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                  fill: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : 'currentColor'
+                  fill: isMoreSettingsHovered ? 'var(--bw-accent)' : 'currentColor'
                 }} />
-                <span style={{ color: isMoreSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isMoreSettingsHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   More Settings
                 </span>
               </button>
@@ -5806,13 +5836,13 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCancelAddDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCancelAddDriverHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelAddDriverHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelAddDriverHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAddDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCancelAddDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   Cancel
                 </span>
               </button>
@@ -5833,15 +5863,15 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCreateDriverHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCreateDriverHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCreateDriverHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCreateDriverHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease',
                   opacity: isCreatingDriver ? 0.6 : 1,
                   cursor: isCreatingDriver ? 'not-allowed' : 'pointer'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCreateDriverHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCreateDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   {isCreatingDriver ? 'Adding...' : 'Create Driver'}
                 </span>
               </button>
@@ -6113,6 +6143,25 @@ export default function TenantDashboard() {
                         }}>
                           {selectedBooking.payment_method || 'N/A'}
                         </div>
+                        {selectedBooking.payment_method === 'zelle' && hasZelleRecipient(selectedBooking.zelle_number, selectedBooking.zelle_email) && (
+                          <div style={{
+                            marginTop: '10px',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: 'var(--bw-bg-secondary)',
+                            border: '1px solid var(--bw-border)',
+                            fontSize: 'clamp(12px, 1.5vw, 14px)',
+                            lineHeight: 1.45
+                          }}>
+                            <div style={{ fontWeight: 600, marginBottom: '6px' }}>Zelle recipient</div>
+                            {isCompleteUsPhone(selectedBooking.zelle_number) && (
+                              <div>Phone: {zelleNumberFromApi(selectedBooking.zelle_number)}</div>
+                            )}
+                            {zelleEmailFromApi(selectedBooking.zelle_email) != null && (
+                              <div style={{ wordBreak: 'break-all' }}>Email: {zelleEmailDisplay(selectedBooking.zelle_email)}</div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <div style={{
@@ -6401,13 +6450,13 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCancelAssignBookingHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelAssignBookingHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelAssignBookingHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCancelAssignBookingHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelAssignBookingHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelAssignBookingHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAssignBookingHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCancelAssignBookingHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   {showOverrideConfirm ? 'Cancel' : 'Close'}
                 </span>
               </button>
@@ -6430,13 +6479,13 @@ export default function TenantDashboard() {
                       width: isMobile ? '100%' : 'auto',
                       justifyContent: 'center',
                       borderRadius: 7,
-                      border: isBackOverrideHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                      borderColor: isBackOverrideHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      color: isBackOverrideHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                      border: isBackOverrideHovered ? '2px solid var(--bw-accent)' : undefined,
+                      borderColor: isBackOverrideHovered ? 'var(--bw-accent)' : undefined,
+                      color: isBackOverrideHovered ? 'var(--bw-accent)' : undefined,
                       transition: 'all 0.2s ease'
                     } as React.CSSProperties}
                   >
-                    <span style={{ color: isBackOverrideHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                    <span style={{ color: isBackOverrideHovered ? 'var(--bw-accent)' : 'inherit' }}>
                       Back
                     </span>
                   </button>
@@ -6457,13 +6506,13 @@ export default function TenantDashboard() {
                       width: isMobile ? '100%' : 'auto',
                       justifyContent: 'center',
                       borderRadius: 7,
-                      border: isOverrideConfirmHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                      borderColor: isOverrideConfirmHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                      color: isOverrideConfirmHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                      border: isOverrideConfirmHovered ? '2px solid var(--bw-accent)' : undefined,
+                      borderColor: isOverrideConfirmHovered ? 'var(--bw-accent)' : undefined,
+                      color: isOverrideConfirmHovered ? 'var(--bw-accent)' : undefined,
                       transition: 'all 0.2s ease'
                     } as React.CSSProperties}
                   >
-                    <span style={{ color: isOverrideConfirmHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                    <span style={{ color: isOverrideConfirmHovered ? 'var(--bw-accent)' : 'inherit' }}>
                       {assigningDriver ? 'Assigning...' : 'Yes, Override'}
                     </span>
                   </button>
@@ -6486,13 +6535,13 @@ export default function TenantDashboard() {
                     width: isMobile ? '100%' : 'auto',
                     justifyContent: 'center',
                     borderRadius: 7,
-                    border: isAssignDriverToBookingHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                    borderColor: isAssignDriverToBookingHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                    color: isAssignDriverToBookingHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                    border: isAssignDriverToBookingHovered ? '2px solid var(--bw-accent)' : undefined,
+                    borderColor: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : undefined,
+                    color: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : undefined,
                     transition: 'all 0.2s ease'
                   } as React.CSSProperties}
                 >
-                  <span style={{ color: isAssignDriverToBookingHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                  <span style={{ color: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : 'inherit' }}>
                     {assigningDriver ? 'Assigning...' : 'Assign Driver'}
                   </span>
                 </button>
@@ -6613,13 +6662,13 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCancelDeleteHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelDeleteHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelDeleteHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCancelDeleteHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelDeleteHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelDeleteHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCancelDeleteHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCancelDeleteHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   Cancel
                 </span>
               </button>
@@ -6640,10 +6689,10 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  backgroundColor: isDeleteVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'var(--bw-error, #C5483D)',
+                  backgroundColor: isDeleteVehicleHovered ? 'var(--bw-accent)' : 'var(--bw-error, #C5483D)',
                   color: '#ffffff',
-                  borderColor: isDeleteVehicleHovered ? 'rgba(155, 97, 209, 0.81)' : 'var(--bw-error, #C5483D)',
-                  border: isDeleteVehicleHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
+                  borderColor: isDeleteVehicleHovered ? 'var(--bw-accent)' : 'var(--bw-error, #C5483D)',
+                  border: isDeleteVehicleHovered ? '2px solid var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
@@ -6790,13 +6839,13 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCancelUnassignHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCancelUnassignHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelUnassignHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelUnassignHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCancelUnassignHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCancelUnassignHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   Cancel
                 </span>
               </button>
@@ -6981,13 +7030,13 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isCancelAssignHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
+                  border: isCancelAssignHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelAssignHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelAssignHovered ? 'var(--bw-accent)' : undefined,
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAssignHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
+                <span style={{ color: isCancelAssignHovered ? 'var(--bw-accent)' : 'inherit' }}>
                   Cancel
                 </span>
               </button>

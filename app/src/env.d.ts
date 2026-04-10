@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_PRICE_STARTER?: string
   readonly VITE_STRIPE_PRICE_GROWTH?: string
   readonly VITE_STRIPE_PRICE_FLEET?: string
+  /** Optional override for {@link TENANT_SUPPORT_EMAIL} (tenant dashboard / help). */
+  readonly VITE_TENANT_SUPPORT_EMAIL?: string
 }
 
 interface ImportMeta {

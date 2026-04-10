@@ -16,6 +16,7 @@ import {
   getPasswordPolicyFailures,
   PASSWORD_POLICY_HINT,
 } from '@utils/passwordPolicy'
+import ThemeToggle from '@components/ThemeToggle'
 
 export default function RiderRegistration() {
   useFavicon()
@@ -359,6 +360,9 @@ export default function RiderRegistration() {
             overflowY: 'auto'
           }}
         >
+          <div style={{ position: 'absolute', top: 'clamp(16px, 3vw, 24px)', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
+            <ThemeToggle />
+          </div>
           <div style={{ width: '100%', maxWidth: '100%' }}>
             {/* Company Logo/Name */}
             {tenantInfo && (

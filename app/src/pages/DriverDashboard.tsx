@@ -5,9 +5,10 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, CheckCircle, XCircle, Phone, WarningCircle, Clock, FileText, CaretLeft, CaretRight, NavigationArrow, ArrowRight, MapTrifold } from '@phosphor-icons/react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, CheckCircle, XCircle, Phone, WarningCircle, Clock, FileText, CaretLeft, CaretRight, NavigationArrow, ArrowRight, MapTrifold, Question } from '@phosphor-icons/react'
 import type { BookingResponse } from '@api/tenant'
 import { getBookings } from '@api/bookings'
+import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 
 type MenuSection = 'dashboard' | 'vehicles' | 'bookings'
 type BookingsSubSection = 'upcoming' | 'new-requests' | 'all'
@@ -802,6 +803,31 @@ export default function DriverDashboard() {
           flexDirection: 'column',
           gap: '12px'
         }}>
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/driver/help')
+              setIsMenuOpen(false)
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: 'clamp(10px, 1.5vw, 12px) clamp(16px, 3vw, 24px)',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--bw-border)',
+              borderRadius: '6px',
+              color: 'var(--bw-text)',
+              cursor: 'pointer',
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              fontFamily: 'Work Sans, sans-serif',
+              fontWeight: 300
+            }}
+          >
+            <Question size={18} />
+            Help &amp; tips
+          </button>
           <button
             onClick={() => {
               useAuthStore.getState().logout()
@@ -3117,6 +3143,27 @@ export default function DriverDashboard() {
                             opacity: 0.8
                           }}>
                             <strong>Notes:</strong> {booking.notes}
+                          </div>
+                        )}
+
+                        {booking.payment_method === 'zelle' && hasZelleRecipient(booking.zelle_number, booking.zelle_email) && (
+                          <div style={{
+                            marginTop: '8px',
+                            padding: 'clamp(8px, 1.5vw, 10px)',
+                            backgroundColor: 'var(--bw-bg)',
+                            borderRadius: '6px',
+                            fontSize: 'clamp(12px, 2vw, 14px)',
+                            color: 'var(--bw-text)',
+                            border: '1px solid var(--bw-border)',
+                            lineHeight: 1.45
+                          }}>
+                            <strong style={{ display: 'block', marginBottom: '6px' }}>Zelle</strong>
+                            {isCompleteUsPhone(booking.zelle_number) && (
+                              <div>Phone: {zelleNumberFromApi(booking.zelle_number)}</div>
+                            )}
+                            {zelleEmailFromApi(booking.zelle_email) != null && (
+                              <div style={{ wordBreak: 'break-all' }}>Email: {zelleEmailDisplay(booking.zelle_email)}</div>
+                            )}
                           </div>
                         )}
                       </div>

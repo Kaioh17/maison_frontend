@@ -18,6 +18,9 @@ export type BookingResponse = {
   vehicle: string
   driver_name: string
   deposit?: number | null
+  zelle_number?: string | null
+  zelle_email?: string | null
+  created_on?: string | null
   // Optional fields that may still be present in some responses
   vehicle_id?: number
   id?: number

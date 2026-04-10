@@ -1,4 +1,5 @@
 import { http } from './http'
+import type { AllowedPaymentMethodMap } from '@utils/allowedPaymentMethods'
 
 export type StandardResponse<T> = {
   success: boolean
@@ -15,6 +16,8 @@ export type SettingsConfig = {
   booking: {
     allow_guest_bookings: boolean
     show_vehicle_images: boolean
+    /** Keys e.g. card, zelle, cash — `is_allowed: false` hides from rider payment UI. */
+    allowed_payment_method?: AllowedPaymentMethodMap | Partial<Record<string, { is_allowed?: boolean }>>
     types: Record<string, { is_deposit_required: boolean }>
   }
   branding: {
@@ -30,6 +33,12 @@ export type SettingsConfig = {
 // Settings data structure
 export type TenantSettingsData = {
   rider_tiers_enabled: boolean
+  zelle_number?: string | null
+  zelle_email?: string | null
+  /** Published Google Form (or other) URL for rider feedback */
+  rider_feedback_form?: string | null
+  /** Published Google Form (or other) URL for driver feedback */
+  driver_feedback_form?: string | null
   config: SettingsConfig
 }
 
@@ -67,7 +76,18 @@ export type TenantConfigResponse = {
 // Update payload types
 export type UpdateTenantSettingsPayload = {
   rider_tiers_enabled?: boolean
+  zelle_number?: string | null
+  zelle_email?: string | null
+  rider_feedback_form?: string | null
+  driver_feedback_form?: string | null
   config?: SettingsConfig
+}
+
+/** Normalize feedback form URL for PATCH: trim; blank → null */
+export function feedbackFormUrlForPayload(v: unknown): string | null {
+  if (v == null) return null
+  const t = String(v).trim()
+  return t === '' ? null : t
 }
 
 export type UpdateTenantPricingPayload = {

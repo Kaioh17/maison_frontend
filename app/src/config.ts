@@ -44,6 +44,10 @@ export function getStripeSubscriptionPriceId(plan: SubscriptionPlanKey): string 
 /** Shared `X-API-Key` for `/api/v1/auth/**` and public `GET /api/v1/driver/{slug}/verify`. */
 export const AUTH_API_KEY = import.meta.env.VITE_API_KEY || '';
 
+/** Platform contact for tenant operators (bugs, billing, access). Override with `VITE_TENANT_SUPPORT_EMAIL`. */
+export const TENANT_SUPPORT_EMAIL =
+  import.meta.env.VITE_TENANT_SUPPORT_EMAIL?.trim() || 'mubskill@gmail.com';
+
 export type UserRole = 'tenant' | 'driver' | 'rider' | 'admin';
 
 export const REFRESH_ENDPOINT_BY_ROLE: Record<UserRole, string> = {

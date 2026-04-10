@@ -9,6 +9,7 @@ import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 import StateAutocomplete from '@components/StateAutocomplete'
 import CityAutocomplete from '@components/CityAutocomplete'
+import ThemeToggle from '@components/ThemeToggle'
 
 export default function RiderProfile() {
   useFavicon()
@@ -205,7 +206,7 @@ export default function RiderProfile() {
               {tenantInfo ? `${tenantInfo.company_name} - Manage your account information` : 'Manage your account information'}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap', alignItems: 'center' }}>
             {!isEditing ? (
               <button 
                 className="bw-btn" 
@@ -287,6 +288,7 @@ export default function RiderProfile() {
               <SignOut size={16} />
               Logout
             </button>
+            <ThemeToggle />
           </div>
         </div>
 

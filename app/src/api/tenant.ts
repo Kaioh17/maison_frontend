@@ -38,10 +38,15 @@ export type TenantProfileBasic = {
 
 export type TenantSettingsResponse = {
   rider_tiers_enabled: boolean
+  zelle_number?: string | null
+  zelle_email?: string | null
+  rider_feedback_form?: string | null
+  driver_feedback_form?: string | null
   config: {
     booking: {
       show_vehicle_images: boolean
       allow_guest_bookings: boolean
+      allowed_payment_method?: Partial<Record<string, { is_allowed?: boolean }>>
     }
     branding: {
       font_family: string
@@ -341,7 +346,11 @@ export type BookingResponse = {
   vehicle_id?: number
   id?: number
   updated_on?: string | null
+  created_on?: string | null
   estimated_duration?: number | null
+  zelle_number?: string | null
+  zelle_email?: string | null
+  deposit?: number | null
 }
 
 export type OnboardDriver = {

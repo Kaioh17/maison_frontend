@@ -7,6 +7,8 @@ import { type BookingResponse } from '@api/bookings'
 import { useFavicon } from '@hooks/useFavicon'
 import { Spinner, ArrowLeft, CreditCard } from '@phosphor-icons/react'
 import MaisonWordmark from '@components/MaisonWordmark'
+import ThemeToggle from '@components/ThemeToggle'
+import { useTheme } from '@contexts/ThemeContext'
 
 // Function to initialize Stripe with optional connected account
 const getStripePromise = (tenantAcctId?: string) => {
@@ -242,6 +244,7 @@ function PaymentForm({ booking, clientSecret }: { booking: BookingResponse; clie
 // Main Payment Page Component
 export default function PaymentPage() {
   useFavicon()
+  const { theme } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const [booking, setBooking] = useState<BookingResponse | null>(null)
@@ -355,8 +358,12 @@ export default function PaymentPage() {
         width: '100%',
         flex: 1,
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative'
       }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
+          <ThemeToggle />
+        </div>
         <h1 style={{
           margin: '0 0 clamp(24px, 4vw, 32px) 0',
           fontSize: 'clamp(24px, 4vw, 32px)',
@@ -416,7 +423,7 @@ export default function PaymentPage() {
         </div>
 
         {/* Stripe Elements */}
-        <Elements stripe={stripePromise} options={options}>
+        <Elements key={theme} stripe={stripePromise} options={options}>
           <PaymentForm booking={booking} clientSecret={clientSecret} />
         </Elements>
 

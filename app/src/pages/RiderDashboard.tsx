@@ -1,15 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { createBooking, getBookings, getBookingAnalytics, type BookingResponse, type BookingAnalyticsResponse } from '@api/bookings'
 import { getVehicles, type VehicleResponse } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle } from '@phosphor-icons/react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle, EnvelopeSimple } from '@phosphor-icons/react'
+import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
+import ThemeToggle from '@components/ThemeToggle'
 
 type MenuSection = 'dashboard' | 'book-ride' | 'all-bookings' | 'vehicles'
+
+const riderSurfaceShell: CSSProperties = {
+  backgroundColor: 'var(--rider-surface-elevated)',
+  border: 'none',
+  borderRadius: '12px',
+  boxShadow: 'var(--rider-shell-shadow)',
+}
+
+const riderFieldDepth: CSSProperties = {
+  border: 'none',
+  backgroundColor: 'var(--rider-surface-inset)',
+  boxShadow: 'var(--rider-field-inset-glow)',
+}
+
+const riderHairlineDivider: CSSProperties = {
+  borderTop: '1px solid var(--rider-hairline)',
+}
 
 export default function RiderDashboard() {
   useFavicon()
@@ -21,6 +40,7 @@ export default function RiderDashboard() {
     pickup_location: '',
     dropoff_location: '',
     airport_location: '',
+    pickup_date_local: '',
     pickup_time_local: '',
     hours: 0,
     notes: '',
@@ -253,9 +273,9 @@ export default function RiderDashboard() {
     } else if (!form.vehicle_id) {
       isValid = false
       errorMessage = 'Please select a vehicle from the Vehicle dropdown.'
-    } else if (!form.pickup_time_local) {
+    } else if (!form.pickup_date_local || !form.pickup_time_local) {
       isValid = false
-      errorMessage = 'Pickup date and time is missing. Scroll to Pickup Time (calendar field above Notes), tap it, and choose your pickup slot.'
+      errorMessage = 'Pickup date and time is missing. Use the Date field (calendar) and Time field (clock) above Notes.'
     }
 
     if (isValid) {
@@ -369,7 +389,7 @@ export default function RiderDashboard() {
         country: form.country,
         service_type: form.service_type,
         pickup_location: pickupLocation,
-        pickup_time: new Date(form.pickup_time_local).toISOString(),
+        pickup_time: new Date(`${form.pickup_date_local}T${form.pickup_time_local}`).toISOString(),
         dropoff_location: dropoffLocation,
         notes: form.notes || undefined,
         coordinates,
@@ -390,6 +410,7 @@ export default function RiderDashboard() {
           pickup_location: '', 
           dropoff_location: '',
           airport_location: '',
+          pickup_date_local: '',
           pickup_time_local: '',
           hours: 0,
           notes: '',
@@ -432,23 +453,22 @@ export default function RiderDashboard() {
     }
   }
 
-  const getStatusColorHex = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'active':
-      case 'confirmed':
-        return '#10b981'
-      case 'pending':
-        return '#f59e0b'
-      case 'cancelled':
-        return '#ef4444'
-      default:
-        return '#6b7280'
+  const dashboardBookingBadgeStyle = (status: string) => {
+    const s = status?.toLowerCase()
+    if (s === 'pending') {
+      return { backgroundColor: '#fed7aa', color: '#c2410c' }
     }
+    if (s === 'active') {
+      return { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }
+    }
+    if (s === 'completed' || s === 'confirmed') {
+      return { backgroundColor: 'rgba(124, 92, 252, 0.15)', color: '#a88eff' }
+    }
+    return { backgroundColor: getStatusColor(status) + '20', color: getStatusColor(status) }
   }
 
   const getStatusIcon = (status: string) => {
-    const color = getStatusColorHex(status)
+    const color = dashboardBookingBadgeStyle(status).color
     switch (status?.toLowerCase()) {
       case 'completed':
       case 'active':
@@ -718,6 +738,65 @@ export default function RiderDashboard() {
           })}
         </nav>
 
+        {/* Tenant contact (public slug: branding.email_from_address) */}
+        <div
+          style={{
+            padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
+            borderTop: '1px solid var(--bw-border)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--bw-text)',
+              opacity: 0.55,
+              fontFamily: 'Work Sans, sans-serif',
+            }}
+          >
+            <EnvelopeSimple size={14} style={{ flexShrink: 0, opacity: 0.85 }} aria-hidden />
+            Contact
+          </div>
+          {tenantInfo?.contact_email ? (
+            <a
+              href={`mailto:${encodeURIComponent(tenantInfo.contact_email)}`}
+              style={{
+                display: 'inline-block',
+                maxWidth: '100%',
+                wordBreak: 'break-word',
+                fontSize: 'clamp(13px, 2vw, 14px)',
+                fontWeight: 500,
+                color: 'var(--rider-primary)',
+                textDecoration: 'underline',
+                textUnderlineOffset: '3px',
+                fontFamily: 'Work Sans, sans-serif',
+              }}
+            >
+              {tenantInfo.contact_email}
+            </a>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 'clamp(12px, 1.8vw, 13px)',
+                lineHeight: 1.45,
+                color: 'var(--bw-text)',
+                opacity: 0.55,
+                fontFamily: 'Work Sans, sans-serif',
+                fontWeight: 300,
+              }}
+            >
+              No contact email listed for this operator yet.
+            </p>
+          )}
+        </div>
+
         {/* Footer Section */}
         <div style={{
           padding: 'clamp(12px, 2vw, 20px)',
@@ -726,6 +805,9 @@ export default function RiderDashboard() {
           flexDirection: 'column',
           gap: '12px'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ThemeToggle />
+          </div>
           <Link 
             to="/riders/profile" 
             style={{ textDecoration: 'none' }}
@@ -831,6 +913,7 @@ export default function RiderDashboard() {
           }}>
             {menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
           </h1>
+          <ThemeToggle />
         </div>
 
         {/* Error Message */}
@@ -863,18 +946,18 @@ export default function RiderDashboard() {
               </div>
             ) : (
               <>
-            {/* Stats Cards - 2x2 Grid on Mobile */}
+            {/* Stats Cards - three KPIs in one row */}
             <div 
               className="rider-stats-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: 'clamp(12px, 2vw, 16px)'
               }}
             >
               <div style={{
-                backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-                border: '1px solid var(--bw-border)',
+                backgroundColor: 'var(--rider-surface-elevated)',
+                border: 'none',
                 borderRadius: '12px',
                 padding: 'clamp(16px, 3vw, 24px)',
                 textAlign: 'center'
@@ -900,8 +983,8 @@ export default function RiderDashboard() {
               </div>
 
               <div style={{
-                backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-                border: '1px solid var(--bw-border)',
+                backgroundColor: 'var(--rider-surface-elevated)',
+                border: 'none',
                 borderRadius: '12px',
                 padding: 'clamp(16px, 3vw, 24px)',
                 textAlign: 'center'
@@ -927,8 +1010,8 @@ export default function RiderDashboard() {
               </div>
 
               <div style={{
-                backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-                border: '1px solid var(--bw-border)',
+                backgroundColor: 'var(--rider-surface-elevated)',
+                border: 'none',
                 borderRadius: '12px',
                 padding: 'clamp(16px, 3vw, 24px)',
                 textAlign: 'center'
@@ -964,8 +1047,8 @@ export default function RiderDashboard() {
                 onClick={() => handleMenuSelect('book-ride')}
                 style={{
                   padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                  backgroundColor: 'var(--bw-fg)',
-                  color: 'var(--bw-bg)',
+                  backgroundColor: 'var(--rider-primary)',
+                  color: 'var(--rider-on-primary)',
                   border: 'none',
                   borderRadius: 7,
                   cursor: 'pointer',
@@ -982,7 +1065,7 @@ export default function RiderDashboard() {
                   padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
                   backgroundColor: 'transparent',
                   color: 'var(--bw-text)',
-                  border: '1px solid var(--bw-border)',
+                  border: '1px solid var(--rider-primary)',
                   borderRadius: 7,
                   cursor: 'pointer',
                   fontSize: 'clamp(14px, 2.5vw, 16px)',
@@ -997,10 +1080,11 @@ export default function RiderDashboard() {
             {/* Recent Rides */}
             {recentBookings.length > 0 && (
               <div style={{
-                backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-                border: '1px solid var(--bw-border)',
+                backgroundColor: 'var(--rider-surface-elevated)',
+                border: 'none',
                 borderRadius: '12px',
-                padding: 'clamp(16px, 3vw, 20px)'
+                padding: 'clamp(16px, 3vw, 20px)',
+                boxShadow: 'var(--rider-shell-shadow)'
               }}>
                 <h2 style={{
                   margin: '0 0 clamp(16px, 3vw, 20px) 0',
@@ -1015,11 +1099,31 @@ export default function RiderDashboard() {
                   {recentBookings.map((booking) => (
                     <div
                       key={booking.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open See All Bookings — booking ${booking.id}`}
+                      title="View all bookings"
+                      onClick={() => handleMenuSelect('all-bookings')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleMenuSelect('all-bookings')
+                        }
+                      }}
                       style={{
-                        border: '1px solid var(--bw-border)',
+                        border: 'none',
                         borderRadius: '8px',
                         padding: 'clamp(12px, 2vw, 16px)',
-                        backgroundColor: 'var(--bw-bg)'
+                        backgroundColor: 'var(--rider-surface-inset)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease',
+                        boxShadow: 'var(--rider-field-inset-glow)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--rider-row-hover)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--rider-surface-inset)'
                       }}
                     >
                       <div style={{
@@ -1050,12 +1154,7 @@ export default function RiderDashboard() {
                         <div style={{
                           padding: '4px 12px',
                           borderRadius: '12px',
-                          backgroundColor: booking.booking_status?.toLowerCase() === 'pending' 
-                            ? '#fed7aa' 
-                            : getStatusColor(booking.booking_status) + '20',
-                          color: booking.booking_status?.toLowerCase() === 'pending'
-                            ? '#c2410c'
-                            : getStatusColor(booking.booking_status),
+                          ...dashboardBookingBadgeStyle(booking.booking_status),
                           fontSize: 'clamp(11px, 1.8vw, 12px)',
                           fontWeight: 500
                         }}>
@@ -1067,11 +1166,13 @@ export default function RiderDashboard() {
                         alignItems: 'center',
                         gap: '6px',
                         fontSize: 'clamp(13px, 2vw, 14px)',
-                        color: 'var(--bw-text)',
-                        opacity: 0.8
+                        color: 'var(--bw-text)'
                       }}>
                         <MapPin size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
-                        <span>{booking.pickup_location} → {booking.dropoff_location || 'N/A'}</span>
+                        <span>
+                          <span style={{ color: 'var(--bw-text)' }}>{booking.pickup_location}</span>
+                          <span style={{ color: 'var(--bw-text)', opacity: 0.45 }}>{' → '}{booking.dropoff_location || 'N/A'}</span>
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1082,10 +1183,11 @@ export default function RiderDashboard() {
             {/* Upcoming Rides */}
             {upcomingBookings.length > 0 && (
               <div style={{
-                backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-                border: '1px solid var(--bw-border)',
+                backgroundColor: 'var(--rider-surface-elevated)',
+                border: 'none',
                 borderRadius: '12px',
-                padding: 'clamp(16px, 3vw, 20px)'
+                padding: '28px clamp(16px, 3vw, 20px) clamp(16px, 3vw, 20px)',
+                boxShadow: 'var(--rider-shell-shadow)'
               }}>
                 <h2 style={{
                   margin: '0 0 clamp(16px, 3vw, 20px) 0',
@@ -1100,11 +1202,31 @@ export default function RiderDashboard() {
                   {upcomingBookings.map((booking) => (
                     <div
                       key={booking.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open See All Bookings — booking ${booking.id}`}
+                      title="View all bookings"
+                      onClick={() => handleMenuSelect('all-bookings')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleMenuSelect('all-bookings')
+                        }
+                      }}
                       style={{
-                        border: '1px solid var(--bw-border)',
+                        border: 'none',
                         borderRadius: '8px',
                         padding: 'clamp(12px, 2vw, 16px)',
-                        backgroundColor: 'var(--bw-bg)'
+                        backgroundColor: 'var(--rider-surface-inset)',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease',
+                        boxShadow: 'var(--rider-field-inset-glow)'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--rider-row-hover)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--rider-surface-inset)'
                       }}
                     >
                       <div style={{
@@ -1135,12 +1257,7 @@ export default function RiderDashboard() {
                         <div style={{
                           padding: '4px 12px',
                           borderRadius: '12px',
-                          backgroundColor: booking.booking_status?.toLowerCase() === 'pending' 
-                            ? '#fed7aa' 
-                            : getStatusColor(booking.booking_status) + '20',
-                          color: booking.booking_status?.toLowerCase() === 'pending'
-                            ? '#c2410c'
-                            : getStatusColor(booking.booking_status),
+                          ...dashboardBookingBadgeStyle(booking.booking_status),
                           fontSize: 'clamp(11px, 1.8vw, 12px)',
                           fontWeight: 500
                         }}>
@@ -1152,11 +1269,13 @@ export default function RiderDashboard() {
                         alignItems: 'center',
                         gap: '6px',
                         fontSize: 'clamp(13px, 2vw, 14px)',
-                        color: 'var(--bw-text)',
-                        opacity: 0.8
+                        color: 'var(--bw-text)'
                       }}>
                         <MapPin size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
-                        <span>{booking.pickup_location} → {booking.dropoff_location || 'N/A'}</span>
+                        <span>
+                          <span style={{ color: 'var(--bw-text)' }}>{booking.pickup_location}</span>
+                          <span style={{ color: 'var(--bw-text)', opacity: 0.45 }}>{' → '}{booking.dropoff_location || 'N/A'}</span>
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -1183,9 +1302,7 @@ export default function RiderDashboard() {
         {/* Book a Ride Section */}
         {activeSection === 'book-ride' && (
           <div style={{
-            backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-            border: '1px solid var(--bw-border)',
-            borderRadius: '12px',
+            ...riderSurfaceShell,
             padding: 'clamp(16px, 3vw, 20px)',
             position: 'relative',
             overflow: 'visible'
@@ -1236,11 +1353,10 @@ export default function RiderDashboard() {
                       width: '100%',
                       padding: 'clamp(10px, 2vw, 12px)',
                       borderRadius: '8px',
-                      border: '1px solid var(--bw-border)',
-                      backgroundColor: 'var(--bw-bg)',
                       color: 'var(--bw-text)',
                       fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)'
+                      fontSize: 'clamp(13px, 2vw, 14px)',
+                      ...riderFieldDepth
                     }}
                   >
                     <option value="dropoff">Dropoff</option>
@@ -1269,11 +1385,10 @@ export default function RiderDashboard() {
                         width: '100%',
                         padding: 'clamp(10px, 2vw, 12px)',
                         borderRadius: '8px',
-                        border: '1px solid var(--bw-border)',
-                        backgroundColor: 'var(--bw-bg)',
                         color: 'var(--bw-text)',
                         fontFamily: 'Work Sans, sans-serif',
-                        fontSize: 'clamp(13px, 2vw, 14px)'
+                        fontSize: 'clamp(13px, 2vw, 14px)',
+                        ...riderFieldDepth
                       }}
                     >
                       <option value="">Select airport service</option>
@@ -1304,8 +1419,6 @@ export default function RiderDashboard() {
                     width: '100%',
                     padding: 'clamp(10px, 2vw, 12px)',
                     borderRadius: '8px',
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     fontFamily: 'Work Sans, sans-serif',
                     fontSize: 'clamp(13px, 2vw, 14px)',
@@ -1314,7 +1427,8 @@ export default function RiderDashboard() {
                     WebkitAppearance: 'menulist',
                     appearance: 'menulist',
                     cursor: 'pointer',
-                    minHeight: '44px'
+                    minHeight: '44px',
+                    ...riderFieldDepth
                   }}
                 >
                   <option value="">Select a vehicle</option>
@@ -1335,6 +1449,7 @@ export default function RiderDashboard() {
                   label="Country"
                   required
                   disabled={isLoading || isLoadingVehicles}
+                  style={riderFieldDepth}
                 />
               </div>
 
@@ -1356,6 +1471,7 @@ export default function RiderDashboard() {
                     isAirportOnly={false}
                     disabled={isLoading || isLoadingVehicles}
                     country={form.country}
+                    inputStyle={riderFieldDepth}
                   />
                 </div>
               )}
@@ -1378,6 +1494,7 @@ export default function RiderDashboard() {
                     isAirportOnly={true}
                     disabled={isLoading || isLoadingVehicles}
                     country={form.country}
+                    inputStyle={riderFieldDepth}
                   />
                 </div>
               )}
@@ -1400,6 +1517,7 @@ export default function RiderDashboard() {
                     isAirportOnly={false}
                     disabled={isLoading || isLoadingVehicles}
                     country={form.country}
+                    inputStyle={riderFieldDepth}
                   />
                 </div>
               )}
@@ -1427,17 +1545,16 @@ export default function RiderDashboard() {
                       width: '100%',
                       padding: 'clamp(10px, 2vw, 12px)',
                       borderRadius: '8px',
-                      border: '1px solid var(--bw-border)',
-                      backgroundColor: 'var(--bw-bg)',
                       color: 'var(--bw-text)',
                       fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)'
+                      fontSize: 'clamp(13px, 2vw, 14px)',
+                      ...riderFieldDepth
                     }}
                   />
                 </div>
               )}
 
-              {/* Pickup Time */}
+              {/* Pickup date & time — separate inputs so calendar opens only for date and time picker only for time */}
               <div>
                 <label style={{
                   display: 'flex',
@@ -1449,41 +1566,101 @@ export default function RiderDashboard() {
                   color: 'var(--bw-text)'
                 }}>
                   <Calendar size={16} />
-                  Pickup Time *
+                  Pickup date & time *
                 </label>
-                <input 
-                  className="bw-input datetime-input" 
-                  type="datetime-local" 
-                  value={form.pickup_time_local} 
-                  onChange={(e) => setForm({ ...form, pickup_time_local: e.target.value })}
-                  onClick={(e) => {
-                    const input = e.currentTarget
-                    input.focus()
-                    // Try to show picker if available (modern browsers)
-                    if ('showPicker' in input && typeof (input as any).showPicker === 'function') {
-                      try {
-                        (input as any).showPicker()
-                      } catch (err) {
-                        // Fallback to focus if showPicker fails
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                  gap: 'clamp(10px, 2vw, 14px)'
+                }}>
+                  <div>
+                    <label htmlFor="rider-pickup-date" style={{
+                      display: 'block',
+                      marginBottom: '6px',
+                      fontSize: 'clamp(12px, 1.8vw, 13px)',
+                      fontWeight: 500,
+                      color: 'var(--bw-muted, #6b7280)'
+                    }}>
+                      Date
+                    </label>
+                    <input
+                      id="rider-pickup-date"
+                      className="bw-input"
+                      type="date"
+                      value={form.pickup_date_local}
+                      onChange={(e) => setForm({ ...form, pickup_date_local: e.target.value })}
+                      onClick={(e) => {
+                        const input = e.currentTarget
                         input.focus()
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: 'clamp(10px, 2vw, 12px)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg)',
-                    color: 'var(--bw-text)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontSize: 'clamp(13px, 2vw, 14px)',
-                    minHeight: '44px',
-                    WebkitAppearance: 'none',
-                    appearance: 'none',
-                    cursor: 'pointer'
-                  }}
-                />
+                        if ('showPicker' in input && typeof (input as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
+                          try {
+                            ;(input as HTMLInputElement & { showPicker: () => void }).showPicker()
+                          } catch {
+                            input.focus()
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: 'clamp(10px, 2vw, 12px)',
+                        borderRadius: '8px',
+                        color: 'var(--bw-text)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontSize: 'clamp(13px, 2vw, 14px)',
+                        minHeight: '44px',
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        ...riderFieldDepth
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="rider-pickup-time" style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      marginBottom: '6px',
+                      fontSize: 'clamp(12px, 1.8vw, 13px)',
+                      fontWeight: 500,
+                      color: 'var(--bw-muted, #6b7280)'
+                    }}>
+                      <Clock size={14} />
+                      Time
+                    </label>
+                    <input
+                      id="rider-pickup-time"
+                      className="bw-input"
+                      type="time"
+                      value={form.pickup_time_local}
+                      onChange={(e) => setForm({ ...form, pickup_time_local: e.target.value })}
+                      onClick={(e) => {
+                        const input = e.currentTarget
+                        input.focus()
+                        if ('showPicker' in input && typeof (input as HTMLInputElement & { showPicker?: () => void }).showPicker === 'function') {
+                          try {
+                            ;(input as HTMLInputElement & { showPicker: () => void }).showPicker()
+                          } catch {
+                            input.focus()
+                          }
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: 'clamp(10px, 2vw, 12px)',
+                        borderRadius: '8px',
+                        color: 'var(--bw-text)',
+                        fontFamily: 'Work Sans, sans-serif',
+                        fontSize: 'clamp(13px, 2vw, 14px)',
+                        minHeight: '44px',
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        ...riderFieldDepth
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Notes */}
@@ -1507,12 +1684,11 @@ export default function RiderDashboard() {
                     width: '100%',
                     padding: 'clamp(10px, 2vw, 12px)',
                     borderRadius: '8px',
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg)',
                     color: 'var(--bw-text)',
                     fontFamily: 'Work Sans, sans-serif',
                     fontSize: 'clamp(13px, 2vw, 14px)',
-                    resize: 'vertical'
+                    resize: 'vertical',
+                    ...riderFieldDepth
                   }}
                 />
               </div>
@@ -1526,8 +1702,8 @@ export default function RiderDashboard() {
                   width: '100%',
                   padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)',
                   borderRadius: 7,
-                  backgroundColor: 'var(--bw-fg)',
-                  color: 'var(--bw-bg)',
+                  backgroundColor: 'var(--rider-primary)',
+                  color: 'var(--rider-on-primary)',
                   border: 'none',
                   cursor: isLoading ? 'not-allowed' : 'pointer',
                   fontFamily: 'Work Sans, sans-serif',
@@ -1545,9 +1721,7 @@ export default function RiderDashboard() {
         {/* All Bookings Section */}
         {activeSection === 'all-bookings' && (
           <div style={{
-            backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-            border: '1px solid var(--bw-border)',
-            borderRadius: '12px',
+            ...riderSurfaceShell,
             padding: 'clamp(16px, 3vw, 20px)'
           }}>
             <div style={{
@@ -1591,16 +1765,15 @@ export default function RiderDashboard() {
                     disabled={isLoadingBookings}
                     style={{
                       padding: 'clamp(8px, 1.5vw, 10px) clamp(12px, 2vw, 16px)',
-                      border: '1px solid var(--bw-border)',
                       borderRadius: '6px',
-                      backgroundColor: 'var(--bw-bg)',
                       color: 'var(--bw-text)',
                       fontSize: 'clamp(13px, 2vw, 14px)',
                       fontFamily: 'Work Sans, sans-serif',
                       fontWeight: 300,
                       cursor: isLoadingBookings ? 'not-allowed' : 'pointer',
                       opacity: isLoadingBookings ? 0.6 : 1,
-                      minWidth: 'clamp(180px, 25vw, 220px)'
+                      minWidth: 'clamp(180px, 25vw, 220px)',
+                      ...riderFieldDepth
                     }}
                   >
                     <option value="" style={{ color: 'var(--bw-text)', opacity: 0.6, fontWeight: 300 }}>Select Filter</option>
@@ -1675,13 +1848,12 @@ export default function RiderDashboard() {
                         alignItems: 'center',
                         gap: '6px',
                         padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 12px)',
-                        backgroundColor: 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)',
                         borderRadius: '6px',
                         fontSize: 'clamp(12px, 1.8vw, 13px)',
                         fontFamily: 'Work Sans, sans-serif',
                         fontWeight: 300,
-                        color: 'var(--bw-text)'
+                        color: 'var(--bw-text)',
+                        ...riderFieldDepth
                       }}>
                         <span>Status: {bookingStatusFilter.charAt(0).toUpperCase() + bookingStatusFilter.slice(1)}</span>
                         <button
@@ -1709,13 +1881,12 @@ export default function RiderDashboard() {
                         alignItems: 'center',
                         gap: '6px',
                         padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 12px)',
-                        backgroundColor: 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)',
                         borderRadius: '6px',
                         fontSize: 'clamp(12px, 1.8vw, 13px)',
                         fontFamily: 'Work Sans, sans-serif',
                         fontWeight: 300,
-                        color: 'var(--bw-text)'
+                        color: 'var(--bw-text)',
+                        ...riderFieldDepth
                       }}>
                         <span>Service: {serviceTypeFilter === 'dropoff' ? 'Dropoff' : serviceTypeFilter.charAt(0).toUpperCase() + serviceTypeFilter.slice(1)}</span>
                         <button
@@ -1785,10 +1956,10 @@ export default function RiderDashboard() {
                   <div
                     key={booking.id}
                     style={{
-                      border: '1px solid var(--bw-border)',
+                      border: 'none',
                       borderRadius: '8px',
                       padding: 'clamp(12px, 2.5vw, 16px)',
-                      backgroundColor: 'var(--bw-bg)'
+                      ...riderFieldDepth
                     }}
                   >
                       <div style={{
@@ -1816,12 +1987,10 @@ export default function RiderDashboard() {
                             gap: '6px',
                             padding: '6px 12px',
                             borderRadius: '8px',
-                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
-                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
                             fontSize: 'clamp(11px, 1.8vw, 12px)',
                             fontFamily: 'Work Sans, sans-serif',
                             fontWeight: 500,
-                            color: getStatusColorHex(booking.booking_status)
+                            ...dashboardBookingBadgeStyle(booking.booking_status)
                           }}>
                             {getStatusIcon(booking.booking_status)}
                             <span style={{ textTransform: 'capitalize' }}>
@@ -1860,7 +2029,7 @@ export default function RiderDashboard() {
                           <MapPin size={16} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7 }} />
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Dropoff</div>
-                            <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>{booking.dropoff_location}</div>
+                            <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif', opacity: 0.45 }}>{booking.dropoff_location}</div>
                             {booking.dropoff_time && (
                               <div style={{ fontSize: 'clamp(10px, 1.5vw, 11px)', color: '#9ca3af', fontWeight: 300, marginTop: '4px' }}>
                                 {formatDate(booking.dropoff_time)}
@@ -1876,7 +2045,7 @@ export default function RiderDashboard() {
                         gap: 'clamp(10px, 2vw, 12px)',
                         marginTop: '8px',
                         paddingTop: '12px',
-                        borderTop: '1px solid var(--bw-border)'
+                        ...riderHairlineDivider
                       }}>
                         <div>
                           <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Service</div>
@@ -1916,13 +2085,35 @@ export default function RiderDashboard() {
                         <div style={{
                           marginTop: '8px',
                           padding: 'clamp(10px, 2vw, 12px)',
-                          backgroundColor: 'var(--bw-bg)',
                           borderRadius: '6px',
                           fontSize: 'clamp(12px, 2vw, 14px)',
                           color: 'var(--bw-text)',
-                          opacity: 0.8
+                          opacity: 0.8,
+                          backgroundColor: 'var(--rider-notes-bg)',
+                          boxShadow: 'var(--rider-field-inset-glow)'
                         }}>
                           <strong>Notes:</strong> {booking.notes}
+                        </div>
+                      )}
+
+                      {booking.payment_method === 'zelle' && hasZelleRecipient(booking.zelle_number, booking.zelle_email) && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: 'clamp(10px, 2vw, 12px)',
+                          borderRadius: '6px',
+                          fontSize: 'clamp(12px, 2vw, 14px)',
+                          color: 'var(--bw-text)',
+                          lineHeight: 1.45,
+                          backgroundColor: 'var(--rider-notes-bg)',
+                          boxShadow: 'var(--rider-field-inset-glow)'
+                        }}>
+                          <strong style={{ display: 'block', marginBottom: '6px' }}>Zelle</strong>
+                          {isCompleteUsPhone(booking.zelle_number) && (
+                            <div>Phone: {zelleNumberFromApi(booking.zelle_number)}</div>
+                          )}
+                          {zelleEmailFromApi(booking.zelle_email) != null && (
+                            <div style={{ wordBreak: 'break-all' }}>Email: {zelleEmailDisplay(booking.zelle_email)}</div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1954,8 +2145,8 @@ export default function RiderDashboard() {
                   disabled={isLoadingBookings || !hasMoreBookings}
                   style={{
                     padding: 'clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 32px)',
-                    backgroundColor: 'var(--bw-fg)',
-                    color: 'var(--bw-bg)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: (isLoadingBookings || !hasMoreBookings) ? 'not-allowed' : 'pointer',
@@ -1988,9 +2179,7 @@ export default function RiderDashboard() {
         {/* Vehicles Section */}
         {activeSection === 'vehicles' && (
           <div style={{
-            backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-            border: '1px solid var(--bw-border)',
-            borderRadius: '12px',
+            ...riderSurfaceShell,
             padding: 'clamp(16px, 3vw, 20px)'
           }}>
             <h2 style={{
@@ -2033,10 +2222,10 @@ export default function RiderDashboard() {
                   <div
                     key={vehicle.id}
                     style={{
-                      border: '1px solid var(--bw-border)',
+                      border: 'none',
                       borderRadius: '8px',
                       padding: 'clamp(12px, 2.5vw, 16px)',
-                      backgroundColor: 'var(--bw-bg)'
+                      ...riderFieldDepth
                     }}
                   >
                     {/* Vehicle Images */}
@@ -2066,8 +2255,9 @@ export default function RiderDashboard() {
                                 height: 'clamp(90px, 20vw, 135px)',
                                 objectFit: 'cover',
                                 borderRadius: '6px',
-                                border: '1px solid var(--bw-border)',
-                                flexShrink: 0
+                                border: 'none',
+                                flexShrink: 0,
+                                boxShadow: 'var(--rider-image-shadow)'
                               }}
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none'
@@ -2111,7 +2301,7 @@ export default function RiderDashboard() {
                       flexDirection: 'column',
                       gap: '8px',
                       paddingTop: '12px',
-                      borderTop: '1px solid var(--bw-border)'
+                      ...riderHairlineDivider
                     }}>
                       <div style={{
                         display: 'flex',
@@ -2182,20 +2372,10 @@ export default function RiderDashboard() {
 
       {/* Responsive Styles */}
       <style>{`
-        /* Stats Grid: 2x2 on mobile, 3 columns on desktop */
+        /* Stats Grid: three KPIs in one row */
         @media (max-width: 768px) {
-          .rider-stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          
           .datetime-inputs-container {
             grid-template-columns: 1fr !important;
-          }
-        }
-        
-        @media (min-width: 769px) {
-          .rider-stats-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
           }
         }
         

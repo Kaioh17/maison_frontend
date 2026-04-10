@@ -1,11 +1,53 @@
 import { useEffect } from 'react'
 import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
-import { verifySlug } from '@api/tenant'
+import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
+
+const DEFAULT_FAVICON = '/favicon.png'
+const DEFAULT_ACCENT = '#6c63e8'
+
+function escapeSvgText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function normalizePrimaryColorForFavicon(color: string | null | undefined): string {
+  if (!color || typeof color !== 'string') return DEFAULT_ACCENT
+  const c = color.trim()
+  if (/^#[0-9A-Fa-f]{6}$/.test(c)) return c
+  if (/^#[0-9A-Fa-f]{3}$/.test(c)) {
+    return `#${c[1]}${c[1]}${c[2]}${c[2]}${c[3]}${c[3]}`
+  }
+  return DEFAULT_ACCENT
+}
+
+/** First display character from company name, else first character of slug. */
+function tenantFaviconLetter(companyName: string | undefined, slug: string): string {
+  const trimmed = companyName?.trim()
+  const source = trimmed && trimmed.length > 0 ? trimmed : slug || '?'
+  const chars = [...source]
+  return chars[0] ?? '?'
+}
+
+function buildLetterFaviconDataUrl(letter: string, backgroundColor: string): string {
+  const ch = escapeSvgText(letter)
+  const bg = normalizePrimaryColorForFavicon(backgroundColor)
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${bg}"/><text x="32" y="32" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="32" font-weight="600" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${ch}</text></svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+function applyFaviconToDocument(href: string, mime: string) {
+  document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']").forEach((el) => el.remove())
+  const link = document.createElement('link')
+  link.rel = 'icon'
+  link.type = mime
+  link.href = href
+  document.head.appendChild(link)
+}
 
 /**
  * Hook to dynamically update the favicon based on tenant slug verification
- * Gets favicon_url from the branding object in SlugVerificationResponse
+ * Uses branding.favicon_url when set; otherwise an SVG generated from the first
+ * character of the tenant company name (tenant primary color as background).
  */
 export function useFavicon() {
   const slug = useTenantSlug()
@@ -13,62 +55,47 @@ export function useFavicon() {
   useEffect(() => {
     const updateFavicon = async () => {
       if (!slug) {
-        // Reset to default favicon if no slug
-        const existingLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
-        if (existingLink) {
-          existingLink.href = '/favicon.png'
-        }
+        applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
         return
       }
 
       try {
-        // Check cache first
-        const cached = getCachedSlugVerification(slug)
-        let faviconUrl: string | null = null
+        let verification: SlugVerificationResponse | null = null
 
+        const cached = getCachedSlugVerification(slug)
         if (cached && !isCacheExpired(cached) && cached.data) {
-          faviconUrl = cached.data.branding?.favicon_url || null
+          verification = cached.data
         } else {
-          // Fetch from API if not cached
           const response = await verifySlug(slug)
           if (response.success && response.data) {
-            faviconUrl = response.data.branding?.favicon_url || null
+            verification = response.data
           }
         }
 
-        // Update favicon in document head
+        if (!verification) {
+          applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
+          return
+        }
+
+        const faviconUrl = verification.branding?.favicon_url?.trim() || null
         if (faviconUrl) {
-          // Remove existing favicon links
-          const existingLinks = document.querySelectorAll("link[rel='icon'], link[rel='shortcut icon']")
-          existingLinks.forEach(link => link.remove())
-
-          // Create new favicon link
-          const link = document.createElement('link')
-          link.rel = 'icon'
-          link.type = 'image/png'
-          link.href = faviconUrl
-          document.head.appendChild(link)
-        } else {
-          // Reset to default if no favicon_url
-          const existingLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
-          if (existingLink) {
-            existingLink.href = '/favicon.png'
-          }
+          applyFaviconToDocument(faviconUrl, 'image/png')
+          return
         }
+
+        const letter = tenantFaviconLetter(verification.profile?.company_name, slug)
+        const primary = verification.branding?.primary_color
+        const dataUrl = buildLetterFaviconDataUrl(letter, primary)
+        applyFaviconToDocument(dataUrl, 'image/svg+xml')
       } catch (error: unknown) {
         const status = (error as { response?: { status?: number } })?.response?.status
         if (status !== 403) {
           console.error('Failed to update favicon:', error)
         }
-        // Fallback to default favicon on error
-        const existingLink = document.querySelector("link[rel='icon']") as HTMLLinkElement
-        if (existingLink) {
-          existingLink.href = '/favicon.png'
-        }
+        applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
       }
     }
 
     updateFavicon()
   }, [slug])
 }
-

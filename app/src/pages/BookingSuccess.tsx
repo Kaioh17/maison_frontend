@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { type BookingResponse } from '@api/bookings'
+import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import { CheckCircle, MapPin, Calendar, Clock, CurrencyDollar } from '@phosphor-icons/react'
+import ThemeToggle from '@components/ThemeToggle'
 
 export default function BookingSuccess() {
   const navigate = useNavigate()
@@ -62,8 +64,12 @@ export default function BookingSuccess() {
       <div style={{
         maxWidth: '600px',
         width: '100%',
-        textAlign: 'center'
+        textAlign: 'center',
+        position: 'relative'
       }}>
+        <div style={{ position: 'absolute', top: 0, right: 0 }}>
+          <ThemeToggle />
+        </div>
         {/* Success Icon */}
         <div style={{
           width: 'clamp(80px, 10vw, 120px)',
@@ -252,6 +258,42 @@ export default function BookingSuccess() {
                 }}>
                   {booking.payment_method}
                 </div>
+                {booking.payment_method === 'zelle' && hasZelleRecipient(booking.zelle_number, booking.zelle_email) && (
+                  <div style={{
+                    marginTop: 'clamp(12px, 2vw, 14px)',
+                    padding: 'clamp(12px, 2vw, 14px)',
+                    borderRadius: '10px',
+                    backgroundColor: 'var(--bw-bg)',
+                    border: '1px solid var(--bw-border)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(11px, 1.8vw, 12px)',
+                      color: 'var(--bw-text)',
+                      opacity: 0.75,
+                      marginBottom: '8px',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontWeight: 500
+                    }}>
+                      Zelle payment details
+                    </div>
+                    {isCompleteUsPhone(booking.zelle_number) && (
+                      <div style={{ marginBottom: zelleEmailFromApi(booking.zelle_email) != null ? '8px' : 0 }}>
+                        <span style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', opacity: 0.65 }}>Phone: </span>
+                        <span style={{ fontSize: 'clamp(13px, 2vw, 14px)', fontFamily: 'Work Sans, sans-serif' }}>
+                          {zelleNumberFromApi(booking.zelle_number)}
+                        </span>
+                      </div>
+                    )}
+                    {zelleEmailFromApi(booking.zelle_email) != null && (
+                      <div>
+                        <span style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', opacity: 0.65 }}>Email: </span>
+                        <span style={{ fontSize: 'clamp(13px, 2vw, 14px)', fontFamily: 'Work Sans, sans-serif', wordBreak: 'break-all' }}>
+                          {zelleEmailDisplay(booking.zelle_email)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

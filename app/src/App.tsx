@@ -39,8 +39,12 @@ const VehicleConfiguration = lazy(() => import('@pages/settings/VehicleConfigura
 const BrandingSettings = lazy(() => import('@pages/settings/BrandingSettings'))
 const PricingSettings = lazy(() => import('@pages/settings/PricingSettings'))
 const Plans = lazy(() => import('@pages/settings/Plans'))
+const FeedbackFormsSettings = lazy(() => import('@pages/settings/FeedbackFormsSettings'))
 const Help = lazy(() => import('@pages/settings/Help'))
+const HelpAdminGuide = lazy(() => import('@pages/settings/HelpAdminGuide'))
+const HelpTroubleshooting = lazy(() => import('@pages/settings/HelpTroubleshooting'))
 const StripeDocs = lazy(() => import('@pages/settings/StripeDocs'))
+const DriverHelp = lazy(() => import('@pages/DriverHelp'))
 const AddVehicle = lazy(() => import('@pages/AddVehicle'))
 const NotFound = lazy(() => import('@pages/NotFound'))
 const SubscriptionSelection = lazy(() => import('@pages/SubscriptionSelection'))
@@ -219,6 +223,16 @@ export default function App() {
         }
       />
       <Route
+        path="/tenant/settings/feedback-forms"
+        element={
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <FeedbackFormsSettings />
+            </ProtectedRoute>
+          </TenantRouteBlock>
+        }
+      />
+      <Route
         path="/tenant/settings/pricing"
         element={
           <TenantRouteBlock>
@@ -264,6 +278,26 @@ export default function App() {
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
               <StripeDocs />
+            </ProtectedRoute>
+          </TenantRouteBlock>
+        }
+      />
+      <Route
+        path="/tenant/settings/help/admin"
+        element={
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <HelpAdminGuide />
+            </ProtectedRoute>
+          </TenantRouteBlock>
+        }
+      />
+      <Route
+        path="/tenant/settings/help/troubleshooting"
+        element={
+          <TenantRouteBlock>
+            <ProtectedRoute allowRoles={["tenant"]}>
+              <HelpTroubleshooting />
             </ProtectedRoute>
           </TenantRouteBlock>
         }
@@ -544,6 +578,16 @@ export default function App() {
           <SlugVerification>
             <ProtectedRoute allowRoles={["driver"]}>
               <DriverDashboard />
+            </ProtectedRoute>
+          </SlugVerification>
+        }
+      />
+      <Route
+        path="/driver/help"
+        element={
+          <SlugVerification>
+            <ProtectedRoute allowRoles={["driver"]}>
+              <DriverHelp />
             </ProtectedRoute>
           </SlugVerification>
         }
