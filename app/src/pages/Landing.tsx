@@ -621,6 +621,19 @@ function RiderBookingSlide() {
   )
 }
 
+/** Scroll horizontal carousel only — never use scrollIntoView on cards or the page snap container will jump. */
+function scrollPricingCarouselToCard(
+  carousel: HTMLElement,
+  card: HTMLElement,
+  behavior: ScrollBehavior
+) {
+  const cr = carousel.getBoundingClientRect()
+  const rr = card.getBoundingClientRect()
+  const next =
+    carousel.scrollLeft + (rr.left - cr.left) - (cr.width / 2 - rr.width / 2)
+  carousel.scrollTo({ left: Math.max(0, next), behavior })
+}
+
 // Slide 6: Pricing
 function PricingSlide() {
   const carouselRef = useRef<HTMLDivElement>(null)
@@ -635,11 +648,8 @@ function PricingSlide() {
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         if (!window.matchMedia('(max-width: 767px)').matches) return
-        root.querySelector<HTMLElement>('.pricing-card.featured')?.scrollIntoView({
-          inline: 'center',
-          block: 'nearest',
-          behavior: 'auto',
-        })
+        const card = root.querySelector<HTMLElement>('.pricing-card.featured')
+        if (card) scrollPricingCarouselToCard(root, card, 'auto')
       })
     })
 
@@ -695,7 +705,7 @@ function PricingSlide() {
   const scrollToPlan = (index: number) => {
     const root = carouselRef.current
     const el = root?.querySelector<HTMLElement>(`.pricing-card[data-index="${index}"]`)
-    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    if (root && el) scrollPricingCarouselToCard(root, el, 'smooth')
   }
 
   return (
@@ -724,8 +734,7 @@ function PricingSlide() {
             className="text-sm text-slate-500 mb-6 max-w-2xl mx-auto"
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
-            Enterprise-grade security. No long-term contracts—cancel anytime. Starter stays at $0 with a small share on
-            in-app payments over $50; Growth and Fleet are simple monthly seats when you&apos;re ready for more volume.
+            Enterprise-grade security. No long-term contracts. Cancel anytime. 
           </motion.p>
         </motion.div>
 
