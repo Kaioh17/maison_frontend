@@ -15,6 +15,7 @@ import {
   Sparkle,
   CaretLeft,
   CaretRight,
+  CaretDown,
   XCircle,
   Copy,
   Check,
@@ -50,6 +51,7 @@ export default function DemoDashboard() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [currentKpiIndex, setCurrentKpiIndex] = useState(0)
   const [copiedLink, setCopiedLink] = useState<null | 'rider' | 'driver'>(null)
+  const [demoLinksOpen, setDemoLinksOpen] = useState(false)
   const [bookingFilter, setBookingFilter] = useState<'' | DemoBookingStatus>('')
 
   const demoKpisRef = useRef<HTMLDivElement>(null)
@@ -709,95 +711,128 @@ export default function DemoDashboard() {
                     marginBottom: 'clamp(16px, 3vw, 24px)',
                   }}
                 >
-                  <h3
+                  <button
+                    type="button"
+                    onClick={() => setDemoLinksOpen((o) => !o)}
+                    aria-expanded={demoLinksOpen}
                     style={{
-                      margin: '0 0 16px 0',
-                      fontSize: 'clamp(15px, 2vw, 18px)',
-                      fontWeight: 500,
-                      fontFamily: '"Work Sans", sans-serif',
-                      color: '#ffffff',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      margin: 0,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      color: 'inherit',
                     }}
                   >
-                    Your links
-                  </h3>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                      gap: 'clamp(12px, 2vw, 16px)',
-                    }}
-                  >
-                    {(
-                      [
-                        { label: 'Rider login', url: DEMO_RIDER_URL, key: 'rider' as const },
-                        { label: 'Driver login', url: DEMO_DRIVER_URL, key: 'driver' as const },
-                      ] as const
-                    ).map((row) => (
-                      <div
-                        key={row.key}
-                        style={{
-                          display: 'flex',
-                          flexDirection: isMobile ? 'column' : 'row',
-                          alignItems: isMobile ? 'stretch' : 'center',
-                          gap: 10,
-                          padding: '12px 14px',
-                          borderRadius: 8,
-                          border: '1px solid #2a2640',
-                          backgroundColor: '#1a1727',
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: '#9b97ae', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            {row.label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: '#E0E0E0',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={row.url}
-                          >
-                            {row.url}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => copyUrl(row.url, row.key)}
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 'clamp(15px, 2vw, 18px)',
+                        fontWeight: 500,
+                        fontFamily: '"Work Sans", sans-serif',
+                        color: '#ffffff',
+                      }}
+                    >
+                      Your links
+                    </h3>
+                    <CaretDown
+                      size={22}
+                      style={{
+                        flexShrink: 0,
+                        color: '#7c7a92',
+                        transform: demoLinksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease',
+                      }}
+                      aria-hidden
+                    />
+                  </button>
+                  {demoLinksOpen ? (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                        gap: 'clamp(12px, 2vw, 16px)',
+                        marginTop: 16,
+                      }}
+                    >
+                      {(
+                        [
+                          { label: 'Rider login', url: DEMO_RIDER_URL, key: 'rider' as const },
+                          { label: 'Driver login', url: DEMO_DRIVER_URL, key: 'driver' as const },
+                        ] as const
+                      ).map((row) => (
+                        <div
+                          key={row.key}
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                            padding: '8px 14px',
-                            borderRadius: 7,
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
+                            gap: 10,
+                            padding: '12px 14px',
+                            borderRadius: 8,
                             border: '1px solid #2a2640',
-                            backgroundColor: copiedLink === row.key ? 'rgba(108, 99, 232, 0.2)' : 'transparent',
-                            color: '#E0E0E0',
-                            cursor: 'pointer',
-                            fontFamily: '"Work Sans", sans-serif',
-                            fontSize: 12,
-                            fontWeight: 500,
-                            flexShrink: 0,
+                            backgroundColor: '#1a1727',
                           }}
                         >
-                          {copiedLink === row.key ? (
-                            <>
-                              <Check size={16} color="#4ade80" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={16} />
-                              Copy
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#9b97ae', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {row.label}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: '#E0E0E0',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={row.url}
+                            >
+                              {row.url}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyUrl(row.url, row.key)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              padding: '8px 14px',
+                              borderRadius: 7,
+                              border: '1px solid #2a2640',
+                              backgroundColor: copiedLink === row.key ? 'rgba(108, 99, 232, 0.2)' : 'transparent',
+                              color: '#E0E0E0',
+                              cursor: 'pointer',
+                              fontFamily: '"Work Sans", sans-serif',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {copiedLink === row.key ? (
+                              <>
+                                <Check size={16} color="#4ade80" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={16} />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

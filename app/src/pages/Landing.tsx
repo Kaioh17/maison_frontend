@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import MaisonWordmark from '@components/MaisonWordmark'
+import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan } from '@data/landingPricingPlans'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
@@ -64,112 +65,201 @@ const SNAP_SECTION_LABELS = [
 
 const PRICING_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Pricing')
 
+const QUESTIONS_FORM_URL = 'https://forms.gle/eJDkYht52iGe5dgm7'
+
+const footerLinkClass =
+  'transition-colors duration-200 hover:text-[#7c3aed] focus-visible:outline-none focus-visible:text-[#7c3aed]'
+
 const smoothScrollToSection = (id: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+/** iPhone-style frame with real overview screenshot + titanium bezel. */
+function HeroIPhoneMockup({ className }: { className?: string }) {
+  return (
+    <div
+      className={`relative mx-auto ${className ?? ''}`}
+      style={{
+        aspectRatio: '393 / 852',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        filter:
+          'drop-shadow(0 28px 56px rgba(0,0,0,0.42)) drop-shadow(0 14px 32px rgba(0,0,0,0.28)) drop-shadow(0 0 48px rgba(124,58,237,0.14))',
+      }}
+    >
+      {/* Side buttons (subtle, scaled with device) */}
+      <div
+        className="pointer-events-none absolute left-[-3px] top-[22%] z-20 h-8 w-[3px] rounded-[2px]"
+        style={{
+          background: 'linear-gradient(90deg, #2b2b32, #15151a)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 2px 0 3px rgba(0,0,0,0.35)',
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute left-[-3px] top-[calc(22%+2.25rem)] z-20 h-8 w-[3px] rounded-[2px]"
+        style={{
+          background: 'linear-gradient(90deg, #2b2b32, #15151a)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 2px 0 3px rgba(0,0,0,0.35)',
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute right-[-3px] top-[26%] z-20 h-14 w-[3px] rounded-[2px]"
+        style={{
+          background: 'linear-gradient(-90deg, #2b2b32, #15151a)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), -2px 0 3px rgba(0,0,0,0.35)',
+        }}
+        aria-hidden
+      />
+
+      <div
+        className="box-border h-full w-full"
+        style={{
+          borderRadius: '2.75rem',
+          padding: '10px 10px 13px',
+          boxSizing: 'border-box',
+          background:
+            'linear-gradient(168deg, #3a3a42 0%, #1c1c22 20%, #121218 52%, #0e0e14 82%, #25252c 100%)',
+          boxShadow:
+            'inset 0 2px 2px rgba(255,255,255,0.12), inset 0 -3px 8px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.55)',
+        }}
+      >
+        <div
+          className="relative h-full w-full overflow-hidden bg-black"
+          style={{
+            borderRadius: '2.15rem',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <img
+            src={heroOverviewPhone}
+            alt="Maison tenant dashboard on mobile"
+            className="h-full w-full object-cover object-top"
+            width={786}
+            height={1704}
+            decoding="async"
+            fetchPriority="high"
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Slide 1: Hero
 function HeroSlide() {
   return (
-    <section className="landing-snap-section flex items-center justify-center relative" data-nav-theme="dark">
-      {/* Deep slate-to-black radial gradient background */}
-      <div className="absolute inset-0 bg-[#0a0a0f]">
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(ellipse at top left, rgba(30, 41, 59, 0.4) 0%, transparent 50%),
-              radial-gradient(ellipse at top right, rgba(15, 23, 42, 0.3) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom right, rgba(30, 41, 59, 0.2) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom left, rgba(15, 23, 42, 0.3) 0%, transparent 50%),
-              #0a0a0f
-            `
-          }}
-        ></div>
-      </div>
-      
-      <div className="relative z-10 w-full box-border px-5">
-        <div className="max-w-[1280px] mx-auto">
-          {/* Hero orb column removed temporarily */}
-          <motion.div
-            initial="initial"
-            animate="animate"
-            variants={staggerChildren}
-            className="text-center max-w-4xl mx-auto"
+    <section
+      className="landing-snap-section relative min-h-0 overflow-x-hidden bg-[#0d0d0d]"
+      data-nav-theme="dark"
+    >
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 55% at 70% 20%, rgba(124, 58, 237, 0.09) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%), #0d0d0d',
+        }}
+      />
+
+      <div className="relative z-10 box-border flex h-full min-h-0 w-full max-w-[1280px] flex-col px-5 pt-[4.5rem] pb-3 md:mx-auto md:flex-row md:items-center md:justify-between md:gap-10 md:px-8 md:pt-[4.75rem] md:pb-6 lg:gap-14">
+        {/* Product visual: above headline on mobile; right column on desktop */}
+        <div className="relative order-1 flex min-h-0 w-full min-w-0 max-md:flex-none max-md:shrink-0 flex-1 flex-col items-center justify-start md:order-2 md:mt-0 md:max-w-[min(44%,420px)] md:flex-none md:justify-center">
+          <div
+            className="relative z-10 mx-auto w-[min(300px,88vw)] overflow-hidden max-md:translate-y-14 md:hidden"
+            style={{
+              height: 'calc(min(300px, 88vw) * 852 / 393 / 2)',
+            }}
           >
-            <motion.h1
-              {...fadeInUp}
-              className="text-white mb-4"
+            <div className="w-[min(300px,88vw)]">
+              <HeroIPhoneMockup />
+            </div>
+          </div>
+          <div className="mx-auto hidden w-[min(280px,32vw)] max-w-full md:block lg:w-[min(300px,30vw)]">
+            <HeroIPhoneMockup />
+          </div>
+        </div>
+
+        {/* Copy column */}
+        <motion.div
+          initial="initial"
+          animate="animate"
+          variants={staggerChildren}
+          className="order-2 flex min-h-0 min-w-0 flex-1 flex-col justify-center max-md:mt-1 md:order-1 md:max-w-[min(52%,34rem)] md:shrink md:pt-0"
+        >
+          <motion.h1
+            {...fadeInUp}
+            className="text-white"
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: 'clamp(2rem, 5.2vw + 1rem, 4.25rem)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.03em',
+              fontWeight: 700,
+            }}
+          >
+            Run Your Fleet.
+            <br />
+            Own The Experience.
+          </motion.h1>
+          <motion.p
+            {...fadeInUp}
+            className="mt-3 max-w-[21rem] text-[15px] leading-snug text-white/65 sm:max-w-xl sm:text-[16px] md:mt-4 md:text-[17px]"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            One platform for bookings, drivers, payments, and your brand.
+          </motion.p>
+          <motion.div
+            {...fadeInUp}
+            className="mt-4 grid w-full max-w-xl grid-cols-3 gap-x-1 text-[10px] leading-tight text-white/45 sm:gap-x-2 sm:text-[11px] md:mt-5 md:text-[12px]"
+            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          >
+            <span className="text-left sm:text-center">
+              {'\u2713'} Free to start
+            </span>
+            <span className="text-center">
+              {'\u2713'} No contracts
+            </span>
+            <span className="text-right sm:text-center">
+              {'\u2713'} White-label URLs
+            </span>
+          </motion.div>
+          <motion.div
+            {...fadeInUp}
+            className="mt-6 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-center md:mt-8"
+          >
+            <Link
+              to="/signup"
+              className="inline-flex w-full items-center justify-center gap-1.5 py-[13px] px-5 text-[15px] font-semibold text-white transition-colors hover:brightness-110 sm:w-auto sm:min-w-[168px]"
               style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 'clamp(2.4rem, 11vw, 6rem)',
-                lineHeight: 1,
-                letterSpacing: '-0.03em',
-                fontWeight: 700,
+                fontFamily: "'Work Sans', sans-serif",
+                borderRadius: '10px',
+                backgroundColor: '#7c3aed',
+                border: '2px solid transparent',
+                boxSizing: 'border-box',
               }}
             >
-              Run Your Fleet. Own The Experience.
-            </motion.h1>
-            <motion.p
-              {...fadeInUp}
-              className="text-[16px] text-[#7c5cfc] uppercase tracking-wider mb-4 font-medium"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              Modern limo software for operators who think like brands.
-            </motion.p>
-            <motion.div
-              {...fadeInUp}
-              className="flex flex-wrap items-center justify-center gap-2 mb-6"
-            >
-              <span
-                className="inline-flex rounded-full border border-[#7c5cfc]/35 bg-[#7c5cfc]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#c4b5fd]"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                MVP · shipping fast
+              Get Started
+              <span className="text-base font-normal leading-none opacity-90" aria-hidden>
+                →
               </span>
-              <span
-                className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-gray-300"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                Flexible billing · $0 Starter · cancel anytime
-              </span>
-            </motion.div>
-            <motion.p
-              {...fadeInUp}
-              className="text-[17px] text-gray-300 mb-8 leading-relaxed md:hidden"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            </Link>
+            <Link
+              to="/demo"
+              className="inline-flex w-full items-center justify-center py-[13px] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-white/[0.06] sm:w-auto sm:min-w-[168px]"
+              style={{
+                fontFamily: "'Work Sans', sans-serif",
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                boxSizing: 'border-box',
+              }}
             >
-              One platform for bookings, drivers, payments, and your brand—built for black car and limo operators. Start
-              free, upgrade when you grow, no long-term contracts.
-            </motion.p>
-            <motion.p
-              {...fadeInUp}
-              className="hidden text-[18px] text-gray-300 mb-8 leading-relaxed md:block"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              Maison centralizes bookings, drivers, payments, and branding into one clean platform built for black car and limo businesses. Start on a free Starter tier with ride-based pricing on larger fares, upgrade when you grow, or lock in predictable monthly plans—all without long-term contracts. Launch fast, operate with confidence, and deliver a level of service that looks and feels as premium as the rides you provide.
-            </motion.p>
-            <motion.div
-              {...fadeInUp}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
-            >
-              <Link
-                to="/signup"
-                className="inline-flex items-center justify-center w-full sm:w-auto sm:min-w-[168px] py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-transparent bg-[#7c5cfc] text-white hover:bg-[#7c3aed] transition-colors"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                Get Started
-              </Link>
-              <Link
-                to="/demo"
-                className="inline-flex items-center justify-center w-full sm:w-auto sm:min-w-[168px] py-[13px] px-5 text-[15px] font-semibold rounded-[10px] text-center box-border border-2 border-gray-700 text-white hover:border-[#7c5cfc] hover:text-[#7c5cfc] transition-colors"
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                See Demo
-              </Link>
-            </motion.div>
+              See Demo
+            </Link>
           </motion.div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )
@@ -977,20 +1067,21 @@ function ConclusionSlide() {
         whileInView="animate"
         viewport={{ once: true }}
         variants={fadeIn}
-        className="shrink-0"
-        style={{ borderTop: '0.5px solid #1e1c30' }}
+        className="landing-footer shrink-0 border-t border-[#1e1c30]/90 bg-[#0d0c18]"
       >
-        <div className="w-full box-border" style={{ padding: '52px 60px 32px' }}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-10 mb-6 text-left">
-            <div>
-              <div className="mb-3">
-                <MaisonWordmark color="#ffffff" style={{ fontSize: 18 }} />
-              </div>
+        <div className="landing-footer__inner w-full box-border px-5 pt-8 pb-6 md:px-[60px] md:pt-12 md:pb-8">
+          <div className="mb-6 md:mb-8 md:grid md:grid-cols-3 md:gap-x-12 md:items-start">
+            <div className="hidden pb-6 mb-6 border-b border-[#1e1c30] md:mb-0 md:block md:border-0 md:pb-0">
+              <MaisonWordmark
+                color="#ffffff"
+                className="block"
+                style={{ fontSize: 'clamp(1.35rem, 4.2vw, 1.5rem)' }}
+              />
               <p
-                className="leading-relaxed max-w-xs"
-                style={{ color: '#8a87a8', fontFamily: "'Work Sans', sans-serif", fontSize: 13 }}
+                className="mt-3.5 max-w-md leading-[1.55] tracking-[-0.01em] text-[13px] md:text-[14px]"
+                style={{ color: '#9b97b3', fontFamily: "'DM Sans', sans-serif", fontWeight: 450 }}
               >
-                Built for black car and limo operators who run their business like a brand.
+                Built for operators who run their business like a brand.
               </p>
               <span
                 className="inline-flex items-center mt-4 rounded-full"
@@ -1002,110 +1093,133 @@ function ConclusionSlide() {
                   lineHeight: '16px',
                   padding: '4px 10px',
                   fontFamily: "'Work Sans', sans-serif",
+                  letterSpacing: '0.02em',
                 }}
               >
                 slug.usemaison.io
               </span>
             </div>
 
-            <nav>
-              <h3
-                className="mb-3 uppercase tracking-[0.16em]"
-                style={{ color: '#4a4768', fontSize: 11, fontFamily: "'Work Sans', sans-serif" }}
-              >
-                Product
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="#platform"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      smoothScrollToSection('platform')
-                    }}
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Overview
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="#pricing"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      smoothScrollToSection('pricing')
-                    }}
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <Link
-                    to="/signup"
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Get Started
-                  </Link>
-                </li>
-              </ul>
-            </nav>
+            <div className="grid grid-cols-2 gap-x-5 sm:gap-x-8 md:contents text-left">
+              <nav className="min-w-0" aria-label="Product">
+                <h3
+                  className="mb-2.5 uppercase tracking-[0.2em] text-[10px] md:text-[11px]"
+                  style={{ color: '#5c5978', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
+                >
+                  Product
+                </h3>
+                <ul className="space-y-1.5 md:space-y-2">
+                  <li>
+                    <a
+                      href="#platform"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        smoothScrollToSection('platform')
+                      }}
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Overview
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#pricing"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        smoothScrollToSection('pricing')
+                      }}
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Pricing
+                    </a>
+                  </li>
+                  <li>
+                    <Link
+                      to="/signup"
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Get Started
+                    </Link>
+                  </li>
+                </ul>
+              </nav>
 
-            <nav>
-              <h3
-                className="mb-3 uppercase tracking-[0.16em]"
-                style={{ color: '#4a4768', fontSize: 11, fontFamily: "'Work Sans', sans-serif" }}
-              >
-                Company
-              </h3>
-              <ul className="space-y-2">
-                <li>
-                  <a
-                    href="/about"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/about#founders-vision"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Founder&apos;s Vision
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="mailto:hello@usemaison.io"
-                    className="transition-colors hover:text-[#a89fd4]"
-                    style={{ color: '#6b6888', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Contact
-                  </a>
-                </li>
-              </ul>
-            </nav>
+              <nav className="min-w-0" aria-label="Company">
+                <h3
+                  className="mb-2.5 uppercase tracking-[0.2em] text-[10px] md:text-[11px]"
+                  style={{ color: '#5c5978', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
+                >
+                  Company
+                </h3>
+                <ul className="space-y-1.5 md:space-y-2">
+                  <li>
+                    <a
+                      href="/about"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      About
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="/about#founders-vision"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Founder&apos;s Vision
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="mailto:hello@usemaison.io"
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Contact
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href={QUESTIONS_FORM_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={footerLinkClass}
+                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      Questions
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
           </div>
-          <div className="pt-4" style={{ borderTop: '0.5px solid #1e1c30' }}>
+
+          <div className="border-t border-[#1e1c30] pt-4">
             <p
-              style={{ color: '#3d3b54', fontSize: 12, fontFamily: "'Work Sans', sans-serif" }}
+              className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] md:hidden"
+              style={{ color: '#45435c', fontFamily: "'Work Sans', sans-serif" }}
             >
-              © 2026{' '}
+              <span>© 2026</span>
               <MaisonWordmark
-                color="#3d3b54"
-                style={{ fontSize: 12, display: 'inline', verticalAlign: 'baseline' }}
+                color="#45435c"
+                className="shrink-0"
+                style={{ fontSize: 12, display: 'inline-block', verticalAlign: 'baseline' }}
               />
-              . All rights reserved.
+              <span>. All rights reserved.</span>
+            </p>
+            <p
+              className="hidden text-xs md:block"
+              style={{ color: '#45435c', fontFamily: "'Work Sans', sans-serif" }}
+            >
+              © 2026 Maison. All rights reserved.
             </p>
           </div>
         </div>
@@ -1285,6 +1399,9 @@ export default function Landing() {
         >
           Company
         </a>
+        <a href={QUESTIONS_FORM_URL} target="_blank" rel="noopener noreferrer">
+          Questions
+        </a>
       </nav>
 
       <nav className="landing-snap-dot-nav" aria-label="Section navigation" data-theme={navTheme}>
@@ -1352,6 +1469,14 @@ export default function Landing() {
               }}
             >
               Company
+            </a>
+            <a
+              href={QUESTIONS_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMenuOpen(false)}
+            >
+              Questions
             </a>
             <div className="landing-snap-menu-overlay__divider" aria-hidden />
             <Link to="/signup" onClick={() => setMenuOpen(false)}>

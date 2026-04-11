@@ -5,6 +5,21 @@ import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
 
 const DEFAULT_FAVICON = '/favicon.png'
 const DEFAULT_ACCENT = '#6c63e8'
+const DEFAULT_DOCUMENT_TITLE = 'Maison'
+
+function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
+  const trimmed = companyName?.trim()
+  if (trimmed && trimmed.length > 0) {
+    document.title = trimmed
+    return
+  }
+  const s = slug?.trim()
+  if (s) {
+    document.title = s
+    return
+  }
+  document.title = DEFAULT_DOCUMENT_TITLE
+}
 
 function escapeSvgText(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -45,9 +60,9 @@ function applyFaviconToDocument(href: string, mime: string) {
 }
 
 /**
- * Hook to dynamically update the favicon based on tenant slug verification
- * Uses branding.favicon_url when set; otherwise an SVG generated from the first
- * character of the tenant company name (tenant primary color as background).
+ * Hook to dynamically update the favicon and document title based on tenant slug verification.
+ * Title uses profile.company_name when present (browser tab). Favicon uses branding.favicon_url when set;
+ * otherwise an SVG generated from the first character of the tenant company name (primary color as background).
  */
 export function useFavicon() {
   const slug = useTenantSlug()
@@ -56,6 +71,7 @@ export function useFavicon() {
     const updateFavicon = async () => {
       if (!slug) {
         applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
+        document.title = DEFAULT_DOCUMENT_TITLE
         return
       }
 
@@ -74,8 +90,11 @@ export function useFavicon() {
 
         if (!verification) {
           applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
+          document.title = DEFAULT_DOCUMENT_TITLE
           return
         }
+
+        applyDocumentTitleForTenant(verification.profile?.company_name, slug)
 
         const faviconUrl = verification.branding?.favicon_url?.trim() || null
         if (faviconUrl) {
@@ -93,6 +112,7 @@ export function useFavicon() {
           console.error('Failed to update favicon:', error)
         }
         applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
+        document.title = DEFAULT_DOCUMENT_TITLE
       }
     }
 

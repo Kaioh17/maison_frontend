@@ -1,11 +1,11 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createBooking, getBookings, getBookingAnalytics, type BookingResponse, type BookingAnalyticsResponse } from '@api/bookings'
 import { getVehicles, type VehicleResponse } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle, EnvelopeSimple } from '@phosphor-icons/react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle, EnvelopeSimple, CaretDown } from '@phosphor-icons/react'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
@@ -28,6 +28,185 @@ const riderFieldDepth: CSSProperties = {
 
 const riderHairlineDivider: CSSProperties = {
   borderTop: '1px solid var(--rider-hairline)',
+}
+
+type FleetGalleryEntry = { key: string; url: string }
+
+function collectVehicleImages(vehicle: VehicleResponse): FleetGalleryEntry[] {
+  if (!vehicle.vehicle_images) return []
+  return Object.entries(vehicle.vehicle_images)
+    .filter(([, url]) => url && String(url).trim())
+    .map(([key, url]) => ({ key, url: String(url) }))
+    .sort((a, b) => a.key.localeCompare(b.key))
+}
+
+function isVehicleAvailable(vehicle: VehicleResponse): boolean {
+  const s = (vehicle.status || '').toLowerCase()
+  return s === 'active' || s === 'available'
+}
+
+function FleetImageCarousel({
+  imageEntries,
+  roundedTopOnly,
+}: {
+  imageEntries: FleetGalleryEntry[]
+  /** Match card top corners; sheet uses full-width strip */
+  roundedTopOnly: boolean
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const [idx, setIdx] = useState(0)
+  const count = imageEntries.length
+
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el || count <= 1) return
+    const onScroll = () => {
+      const w = el.clientWidth || 1
+      setIdx(Math.min(count - 1, Math.max(0, Math.round(el.scrollLeft / w))))
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [count])
+
+  if (count === 0) {
+    return (
+      <div
+        style={{
+          aspectRatio: '16 / 9',
+          borderRadius: roundedTopOnly ? '12px 12px 0 0' : '0',
+          backgroundColor: 'var(--rider-surface-inset)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          color: 'var(--bw-text)',
+          opacity: 0.5,
+          fontFamily: 'Work Sans, sans-serif',
+          fontSize: '14px',
+          boxSizing: 'border-box',
+          maxWidth: '100%',
+        }}
+      >
+        <Car size={40} aria-hidden />
+        <span>No photos added</span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        borderRadius: roundedTopOnly ? '12px 12px 0 0' : '0',
+        overflow: 'hidden',
+        maxWidth: '100%',
+      }}
+    >
+      <div
+        ref={scrollerRef}
+        style={{
+          display: 'flex',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          scrollSnapType: 'x mandatory',
+          scrollBehavior: 'smooth',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+          maxWidth: '100%',
+        }}
+      >
+        {imageEntries.map((e) => (
+          <div
+            key={e.key}
+            style={{
+              flex: '0 0 100%',
+              width: '100%',
+              minWidth: 0,
+              scrollSnapAlign: 'start',
+              aspectRatio: '16 / 9',
+              position: 'relative',
+            }}
+          >
+            <img
+              src={e.url}
+              alt=""
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+              onError={(ev) => {
+                ev.currentTarget.style.visibility = 'hidden'
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      {count > 1 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(0,0, 0, 0.55)',
+            color: '#fff',
+            fontSize: '12px',
+            fontWeight: 600,
+            fontFamily: 'Work Sans, sans-serif',
+            pointerEvents: 'none',
+          }}
+        >
+          {idx + 1} / {count}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RiderFleetSpecRows({ vehicle }: { vehicle: VehicleResponse }) {
+  const labelStyle: CSSProperties = { color: 'var(--bw-text)', opacity: 0.65, flexShrink: 0 }
+  const valueStyle: CSSProperties = {
+    color: 'var(--bw-text)',
+    fontWeight: 400,
+    textAlign: 'right',
+    wordBreak: 'break-word',
+  }
+  const rows = [
+    { label: 'Category', value: vehicle.vehicle_category?.vehicle_category || '—' },
+    { label: 'Seating', value: String(vehicle.seating_capacity ?? '—') },
+    { label: 'License plate', value: vehicle.license_plate?.trim() || '—' },
+    { label: 'Color', value: vehicle.color?.trim() || '—' },
+  ]
+
+  return (
+    <div>
+      {rows.map((row, i) => (
+        <div
+          key={row.label}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: '12px',
+            fontSize: 'clamp(13px, 2.2vw, 14px)',
+            padding: '12px 0',
+            fontFamily: 'Work Sans, sans-serif',
+            borderTop: i === 0 ? 'none' : '1px solid var(--rider-hairline)',
+          }}
+        >
+          <span style={labelStyle}>{row.label}</span>
+          <span style={valueStyle}>{row.value}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export default function RiderDashboard() {
@@ -58,6 +237,7 @@ export default function RiderDashboard() {
   const [error, setError] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [fleetDetailsExpandedId, setFleetDetailsExpandedId] = useState<number | null>(null)
   
   // Limit-based loading state (replacing pagination)
   const [bookingsLimit, setBookingsLimit] = useState(5)
@@ -199,6 +379,15 @@ export default function RiderDashboard() {
   }
 
   const activeSection = getActiveSectionFromUrl()
+
+  useEffect(() => {
+    if (activeSection !== 'book-ride') return
+    const vid = (location.state as { preselectVehicleId?: number } | null)?.preselectVehicleId
+    if (vid != null && typeof vid === 'number' && vid > 0) {
+      setForm((f) => ({ ...f, vehicle_id: vid }))
+      navigate(`${location.pathname}${location.search ?? ''}`, { replace: true, state: {} })
+    }
+  }, [activeSection, location.pathname, location.search, location.state, navigate])
 
   // Track which section last loaded bookings to avoid unnecessary reloads
   const [lastBookingsSection, setLastBookingsSection] = useState<MenuSection | null>(null)
@@ -2176,194 +2365,246 @@ export default function RiderDashboard() {
           </div>
         )}
 
-        {/* Vehicles Section */}
+        {/* Vehicles Section — rider fleet browser (no extra shell; aligns with main padding) */}
         {activeSection === 'vehicles' && (
-          <div style={{
-            ...riderSurfaceShell,
-            padding: 'clamp(16px, 3vw, 20px)'
-          }}>
-            <h2 style={{
-              margin: '0 0 clamp(16px, 3vw, 20px) 0',
-              fontSize: 'clamp(18px, 3vw, 22px)',
-              fontWeight: 400,
-              fontFamily: 'Work Sans, sans-serif',
-              color: 'var(--bw-text)'
-            }}>
-              Vehicles
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 'min(100%, 520px)',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              boxSizing: 'border-box',
+              overflowX: 'hidden',
+            }}
+          >
+            <h2
+              style={{
+                margin: '0 0 12px 0',
+                fontSize: 'clamp(20px, 3.2vw, 24px)',
+                fontWeight: 600,
+                fontFamily: 'Work Sans, sans-serif',
+                color: 'var(--bw-text)',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'baseline',
+                gap: '8px',
+              }}
+            >
+              
+              {vehicles.length > 1 && (
+                <span
+                  style={{
+                    fontSize: 'clamp(14px, 2.4vw, 16px)',
+                    fontWeight: 400,
+                    color: 'var(--bw-text)',
+                    opacity: 0.65,
+                  }}
+                >
+                  · {vehicles.length} vehicles
+                </span>
+              )}
             </h2>
 
             {isLoadingVehicles && vehicles.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: 'clamp(40px, 8vw, 60px)',
-                color: 'var(--bw-text)',
-                opacity: 0.6,
-                fontSize: 'clamp(14px, 2.5vw, 16px)'
-              }}>
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 'clamp(40px, 8vw, 60px)',
+                  color: 'var(--bw-text)',
+                  opacity: 0.6,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontFamily: 'Work Sans, sans-serif',
+                }}
+              >
                 Loading vehicles...
               </div>
             ) : vehicles.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: 'clamp(40px, 8vw, 60px)',
-                color: 'var(--bw-text)',
-                opacity: 0.6,
-                fontSize: 'clamp(14px, 2.5vw, 16px)'
-              }}>
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 'clamp(40px, 8vw, 60px)',
+                  color: 'var(--bw-text)',
+                  opacity: 0.6,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontFamily: 'Work Sans, sans-serif',
+                }}
+              >
                 No vehicles available.
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(clamp(250px, 35vw, 300px), 1fr))',
-                gap: 'clamp(12px, 2.5vw, 16px)'
-              }}>
-                {vehicles.map((vehicle) => (
-                  <div
-                    key={vehicle.id}
-                    style={{
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: 'clamp(12px, 2.5vw, 16px)',
-                      ...riderFieldDepth
-                    }}
-                  >
-                    {/* Vehicle Images */}
-                    {vehicle.vehicle_images && Object.keys(vehicle.vehicle_images).length > 0 && (
-                      <div style={{
-                        marginBottom: 'clamp(12px, 2vw, 16px)',
-                        overflowX: 'auto',
-                        overflowY: 'hidden',
-                        scrollBehavior: 'smooth',
-                        scrollbarWidth: 'thin',
-                        scrollbarColor: 'var(--bw-border) var(--bw-bg)',
-                        WebkitOverflowScrolling: 'touch'
-                      }}>
-                        <div style={{
-                          display: 'flex',
-                          gap: 'clamp(8px, 1.5vw, 12px)',
-                          paddingBottom: '4px'
-                        }}>
-                          {Object.entries(vehicle.vehicle_images).map(([imageType, imageUrl]) => (
-                            <img
-                              key={imageType}
-                              src={imageUrl}
-                              alt={`${vehicle.make} ${vehicle.model} - ${imageType.replace('_', ' ')}`}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  width: '100%',
+                }}
+              >
+                {vehicles.map((vehicle) => {
+                  const available = isVehicleAvailable(vehicle)
+                  const imageEntries = collectVehicleImages(vehicle)
+                  const detailsOpen = fleetDetailsExpandedId === vehicle.id
+                  return (
+                    <div
+                      key={vehicle.id}
+                      style={{
+                        position: 'relative',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        backgroundColor: 'var(--rider-surface-inset)',
+                        boxShadow: 'var(--rider-field-inset-glow)',
+                        border: '1px solid var(--rider-hairline)',
+                      }}
+                    >
+                      <FleetImageCarousel imageEntries={imageEntries} roundedTopOnly />
+
+                      <div
+                        style={{
+                          padding: isMobile ? '12px' : '16px',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                            marginBottom: isMobile ? '10px' : '14px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'baseline',
+                              gap: '8px 12px',
+                              minWidth: 0,
+                              flex: '1 1 auto',
+                            }}
+                          >
+                            <span
                               style={{
-                                minWidth: 'clamp(120px, 25vw, 180px)',
-                                width: 'clamp(120px, 25vw, 180px)',
-                                height: 'clamp(90px, 20vw, 135px)',
-                                objectFit: 'cover',
-                                borderRadius: '6px',
-                                border: 'none',
-                                flexShrink: 0,
-                                boxShadow: 'var(--rider-image-shadow)'
+                                fontSize: 'clamp(17px, 3.2vw, 20px)',
+                                fontWeight: 400,
+                                fontFamily: 'Work Sans, sans-serif',
+                                color: 'var(--bw-text)',
+                                lineHeight: 1.2,
                               }}
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                              }}
-                            />
-                          ))}
+                            >
+                              {vehicle.make} {vehicle.model}
+                            </span>
+                            {vehicle.year != null && (
+                              <span
+                                style={{
+                                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                                  fontWeight: 400,
+                                  color: 'var(--bw-text)',
+                                  opacity: 0.55,
+                                  fontFamily: 'Work Sans, sans-serif',
+                                }}
+                              >
+                                {vehicle.year}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              flexShrink: 0,
+                              padding: '5px 11px',
+                              borderRadius: '999px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              fontFamily: 'Work Sans, sans-serif',
+                              letterSpacing: '0.02em',
+                              backgroundColor: available ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.22)',
+                              color: available ? '#34d399' : '#fbbf24',
+                              border: `1px solid ${available ? 'rgba(16, 185, 129, 0.45)' : 'rgba(245, 158, 11, 0.5)'}`,
+                            }}
+                          >
+                            {available ? 'Available' : 'Unavailable'}
+                          </span>
                         </div>
-                      </div>
-                    )}
-                    
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      marginBottom: '12px'
-                    }}>
-                      <Car size={24} style={{ color: 'var(--bw-text)', opacity: 0.7 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: 'clamp(16px, 3vw, 18px)',
-                          fontWeight: 600,
-                          color: 'var(--bw-text)',
-                          marginBottom: '4px'
-                        }}>
-                          {vehicle.make} {vehicle.model}
-                        </div>
-                        {vehicle.year && (
-                          <div style={{
-                            fontSize: 'clamp(12px, 2vw, 13px)',
+
+                        <button
+                          type="button"
+                          aria-expanded={detailsOpen}
+                          id={`rider-fleet-details-${vehicle.id}`}
+                          onClick={() =>
+                            setFleetDetailsExpandedId((id) => (id === vehicle.id ? null : vehicle.id))
+                          }
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '12px',
+                            padding: '12px 0',
+                            margin: 0,
+                            border: 'none',
+                            borderTop: '1px solid var(--rider-hairline)',
+                            backgroundColor: 'transparent',
                             color: 'var(--bw-text)',
-                            opacity: 0.7
-                          }}>
-                            {vehicle.year}
+                            cursor: 'pointer',
+                            fontFamily: 'Work Sans, sans-serif',
+                            fontSize: '14px',
+                            fontWeight: 400,
+                            textAlign: 'left',
+                          }}
+                        >
+                          Details
+                          <CaretDown
+                            size={20}
+                            weight="regular"
+                            aria-hidden
+                            style={{
+                              flexShrink: 0,
+                              transform: detailsOpen ? 'rotate(180deg)' : 'none',
+                              transition: 'transform 0.2s ease',
+                              opacity: 0.85,
+                            }}
+                          />
+                        </button>
+                        {detailsOpen && (
+                          <div
+                            role="region"
+                            aria-labelledby={`rider-fleet-details-${vehicle.id}`}
+                            style={{ paddingBottom: '4px' }}
+                          >
+                            <RiderFleetSpecRows vehicle={vehicle} />
                           </div>
                         )}
-                      </div>
-                    </div>
 
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      paddingTop: '12px',
-                      ...riderHairlineDivider
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'clamp(12px, 2vw, 13px)'
-                      }}>
-                        <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Category:</span>
-                        <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                          {vehicle.vehicle_category?.vehicle_category || 'N/A'}
-                        </span>
-                      </div>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'clamp(12px, 2vw, 13px)'
-                      }}>
-                        <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Seating:</span>
-                        <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                          {vehicle.seating_capacity || 'N/A'}
-                        </span>
-                      </div>
-                      {vehicle.license_plate && (
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          fontSize: 'clamp(12px, 2vw, 13px)'
-                        }}>
-                          <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>License:</span>
-                          <span style={{ color: 'var(--bw-text)', fontWeight: 500 }}>
-                            {vehicle.license_plate}
-                          </span>
-                        </div>
-                      )}
-                      {vehicle.color && (
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          fontSize: 'clamp(12px, 2vw, 13px)'
-                        }}>
-                          <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Color:</span>
-                          <span style={{ color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
-                            {vehicle.color}
-                          </span>
-                        </div>
-                      )}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: 'clamp(12px, 2vw, 13px)'
-                      }}>
-                        <span style={{ color: 'var(--bw-text)', opacity: 0.7 }}>Status:</span>
-                        <span style={{
-                          color: vehicle.status === 'active' ? '#10b981' : '#6b7280',
-                          fontWeight: 300,
-                          fontFamily: 'Work Sans, sans-serif'
-                        }}>
-                          {vehicle.status || 'N/A'}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate('/rider/book', { state: { preselectVehicleId: vehicle.id } })
+                          }
+                          style={{
+                            marginTop: '12px',
+                            width: '100%',
+                            padding: '14px 16px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            backgroundColor: 'var(--rider-primary)',
+                            color: 'var(--rider-on-primary)',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            fontFamily: 'Work Sans, sans-serif',
+                            cursor: 'pointer',
+                            boxSizing: 'border-box',
+                          }}
+                        >
+                          Book This Vehicle
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

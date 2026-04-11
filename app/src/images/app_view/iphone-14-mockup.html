@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maison — iPhone 14 Pro mockup</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding:48px 24px 80px;
+      background: #0d0d0d;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+
+    /* Soft purple ambient behind device */
+    .scene {
+      position: relative;
+      perspective: 1400px;
+      perspective-origin: 50% 45%;
+    }
+
+    .scene::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: min(420px, 90vw);
+      height: min(780px, 120vh);
+      transform: translate(-50%, -50%);
+      background: radial-gradient(
+        ellipse 55% 45% at 50% 45%,
+        rgba(124, 58, 237, 0.22) 0%,
+        rgba(124, 58, 237, 0.06) 45%,
+        transparent 72%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Outer chassis: deep space / titanium */
+    .device {
+      position: relative;
+      z-index: 1;
+      width: min(360px, 86vw);
+      transform-style: preserve-3d;
+      transform: rotateY(-6deg) rotateX(5deg);
+      filter: drop-shadow(0 40px 80px rgba(0, 0, 0, 0.45))
+        drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
+    }
+
+    .device--flat {
+      transform: none;
+      filter: drop-shadow(0 32px 64px rgba(0, 0, 0, 0.4));
+    }
+
+    .frame-outer {
+      position: relative;
+      border-radius: 55px;
+      padding: 12px 12px 18px;
+      background: linear-gradient(
+        168deg,
+        #3a3a42 0%,
+        #1c1c22 18%,
+        #121218 50%,
+        #0e0e14 78%,
+        #25252c 100%
+      );
+      box-shadow:
+        inset 0 2px 3px rgba(255, 255, 255, 0.14),
+        inset 0 -3px 8px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(0, 0, 0, 0.65);
+    }
+
+    /* Inner bezel ring */
+    .frame-inner {
+      position: relative;
+      border-radius: 44px;
+      padding: 3px;
+      background: linear-gradient(180deg, #08080c 0%, #020204 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+        inset 0 2px 20px rgba(0, 0, 0, 0.9);
+      overflow: hidden;
+    }
+
+    .screen {
+      position: relative;
+      border-radius: 41px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 393 / 852;
+ }
+
+    .screen img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      vertical-align: top;
+    }
+
+    /* Side buttons — left: volume */
+    .btn {
+      position: absolute;
+      background: linear-gradient(90deg, #2b2b32, #15151a);
+      border-radius: 3px;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        2px 0 4px rgba(0, 0, 0, 0.4);
+      z-index: 2;
+    }
+
+    .btn--vol-up {
+      left: -5px;
+      top: 22%;
+      width: 5px;
+      height: 52px;
+    }
+
+    .btn--vol-down {
+      left: -5px;
+      top: calc(22% + 58px);
+      width: 5px;
+      height: 52px;
+    }
+
+    .btn--power {
+      right: -5px;
+      top: 26%;
+      width: 5px;
+      height: 88px;
+      background: linear-gradient(-90deg, #2b2b32, #15151a);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        -2px 0 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.28);
+    }
+
+    .hint code {
+      color: rgba(167, 139, 250, 0.55);
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="device" id="device">
+      <div class="btn btn--vol-up" aria-hidden="true"></div>
+      <div class="btn btn--vol-down" aria-hidden="true"></div>
+      <div class="btn btn--power" aria-hidden="true"></div>
+
+      <div class="frame-outer">
+        <div class="frame-inner">
+          <div class="screen">
+            <!-- Same folder as this HTML; encode space in filename -->
+            <img
+              src="./overview_phone%20view.png"
+              alt="Maison tenant dashboard overview"
+              width="786"
+              height="1704"
+              decoding="async"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">
+    Toggle flat layout: add <code>?flat=1</code> to the URL or set <code>#flat</code> on <code>#device</code>.
+  </p>
+
+  <script>
+    (function () {
+      var d = document.getElementById("device");
+      if (!d) return;
+      var flat =
+        /\bflat=1\b/.test(location.search) || location.hash === "#flat";
+      if (flat) d.classList.add("device--flat");
+    })();
+  </script>
+</body>
+</html>
