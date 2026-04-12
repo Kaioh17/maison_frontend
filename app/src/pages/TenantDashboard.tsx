@@ -7,6 +7,7 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
+import QRCode from 'qrcode'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
@@ -126,6 +127,12 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
 const TENANT_FEEDBACK_FORM_URL = 'https://forms.gle/521ZvKprmq1YxjMs8'
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
+type OverviewLinkKey = 'rider' | 'driver' | 'landing'
+type OverviewLinkQrState = {
+  loading: boolean
+  imageDataUrl: string | null
+  error: string | null
+}
 
 // Helper component for vehicle image with fallback
 function VehicleImageCard({ imageUrl, make, model }: { imageUrl: string | null, make: string, model: string }) {
@@ -375,7 +382,12 @@ export default function TenantDashboard() {
   // Button hover states
   const [isRetryHovered, setIsRetryHovered] = useState(false)
   const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
-  const [overviewCopiedLink, setOverviewCopiedLink] = useState<'rider' | 'driver' | 'landing' | null>(null)
+  const [overviewCopiedLink, setOverviewCopiedLink] = useState<OverviewLinkKey | null>(null)
+  const [overviewLinkQrState, setOverviewLinkQrState] = useState<Record<OverviewLinkKey, OverviewLinkQrState>>({
+    rider: { loading: false, imageDataUrl: null, error: null },
+    driver: { loading: false, imageDataUrl: null, error: null },
+    landing: { loading: false, imageDataUrl: null, error: null },
+  })
   const [overviewLinksOpen, setOverviewLinksOpen] = useState(false)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
@@ -1314,7 +1326,7 @@ export default function TenantDashboard() {
     setIsMenuOpen(false)
   }
 
-  const copyTenantOverviewLink = async (kind: 'rider' | 'driver' | 'landing', url: string) => {
+  const copyTenantOverviewLink = async (kind: OverviewLinkKey, url: string) => {
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -1323,6 +1335,45 @@ export default function TenantDashboard() {
     } catch {
       console.error('Clipboard copy failed')
     }
+  }
+
+  const generateTenantOverviewLinkQr = async (kind: OverviewLinkKey, url: string) => {
+    if (!url) return
+    setOverviewLinkQrState(prev => ({
+      ...prev,
+      [kind]: { ...prev[kind], loading: true, error: null }
+    }))
+
+    try {
+      const imageDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 320 })
+      setOverviewLinkQrState(prev => ({
+        ...prev,
+        [kind]: { loading: false, imageDataUrl, error: null }
+      }))
+    } catch {
+      setOverviewLinkQrState(prev => ({
+        ...prev,
+        [kind]: {
+          ...prev[kind],
+          loading: false,
+          error: 'Could not generate QR code right now. Please try again.',
+        }
+      }))
+    }
+  }
+
+  const downloadTenantOverviewLinkQr = (kind: OverviewLinkKey, imageDataUrl: string) => {
+    const link = document.createElement('a')
+    link.href = imageDataUrl
+    link.download =
+      kind === 'landing'
+        ? 'maison-landing-page-qr.png'
+        : kind === 'rider'
+          ? 'maison-rider-login-qr.png'
+          : 'maison-driver-login-qr.png'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   if (loading) {
@@ -2434,54 +2485,116 @@ export default function TenantDashboard() {
                               { key: 'rider' as const, label: 'Rider login', url: riderLoginUrl },
                               { key: 'driver' as const, label: 'Driver login', url: driverLoginUrl },
                             ] as const
-                          ).map((row, idx, rows) => (
-                            <div
+                          ).map((row, idx, rows) => {
+                            const qrState = overviewLinkQrState[row.key]
+                            const qrImageDataUrl = qrState.imageDataUrl
+                            return (
+                              <div
                               key={row.key}
                               style={{
                                 display: 'flex',
-                                flexDirection: isMobile ? 'column' : 'row',
-                                alignItems: isMobile ? 'stretch' : 'center',
+                                flexDirection: 'column',
                                 gap: 12,
                                 padding: '14px 0',
                                 ...(idx < rows.length - 1 ? linkRowBorder : {}),
                               }}
                             >
-                              <div style={labelStyle}>{row.label}</div>
-                              <div style={urlStyle} title={row.url}>
-                                {row.url}
-                              </div>
                               <div
                                 style={{
                                   display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: 8,
-                                  flexShrink: 0,
+                                  flexDirection: isMobile ? 'column' : 'row',
+                                  alignItems: isMobile ? 'stretch' : 'center',
+                                  gap: 12,
                                 }}
                               >
-                                <a
-                                  href={row.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={btnOutline}
-                                >
-                                  <ArrowSquareOut size={16} aria-hidden />
-                                  {row.key === 'landing' ? 'View landing page' : 'Open'}
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => copyTenantOverviewLink(row.key, row.url)}
+                                <div style={labelStyle}>{row.label}</div>
+                                <div style={urlStyle} title={row.url}>
+                                  {row.url}
+                                </div>
+                                <div
                                   style={{
-                                    ...btnOutline,
-                                    border: lightMode ? '1px solid rgba(108, 99, 232, 0.35)' : '1px solid rgba(108, 99, 232, 0.45)',
-                                    color: 'var(--bw-accent)',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                    flexShrink: 0,
                                   }}
                                 >
-                                  <Copy size={16} aria-hidden />
-                                  {overviewCopiedLink === row.key ? 'Copied!' : 'Copy'}
-                                </button>
+                                  <a
+                                    href={row.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={btnOutline}
+                                  >
+                                    <ArrowSquareOut size={16} aria-hidden />
+                                    {row.key === 'landing' ? 'View landing page' : 'Open'}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyTenantOverviewLink(row.key, row.url)}
+                                    style={{
+                                      ...btnOutline,
+                                      border: lightMode ? '1px solid rgba(108, 99, 232, 0.35)' : '1px solid rgba(108, 99, 232, 0.45)',
+                                      color: 'var(--bw-accent)',
+                                    }}
+                                  >
+                                    <Copy size={16} aria-hidden />
+                                    {overviewCopiedLink === row.key ? 'Copied!' : 'Copy'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => generateTenantOverviewLinkQr(row.key, row.url)}
+                                    disabled={qrState.loading}
+                                    style={{
+                                      ...btnOutline,
+                                      background: qrState.loading
+                                        ? (lightMode ? '#f8fafc' : 'rgba(124, 122, 146, 0.2)')
+                                        : btnOutline.background,
+                                      cursor: qrState.loading ? 'not-allowed' : 'pointer',
+                                      opacity: qrState.loading ? 0.8 : 1,
+                                    }}
+                                  >
+                                    {qrState.loading ? 'Generating...' : 'Generate QR'}
+                                  </button>
+                                </div>
                               </div>
+                              {qrState.error ? (
+                                <div style={{ fontSize: 12, color: '#fda4af' }}>{qrState.error}</div>
+                              ) : null}
+                              {qrImageDataUrl ? (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'flex-start',
+                                    gap: 8,
+                                    borderTop: lightMode ? '1px solid rgba(15, 13, 26, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                    paddingTop: 10,
+                                  }}
+                                >
+                                  <img
+                                    src={qrImageDataUrl}
+                                    alt={`${row.label} QR code`}
+                                    style={{
+                                      width: '100%',
+                                      maxWidth: 168,
+                                      height: 'auto',
+                                      borderRadius: 8,
+                                      border: lightMode ? '1px solid #e2e8f0' : '1px solid #2a2640',
+                                      backgroundColor: '#ffffff',
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadTenantOverviewLinkQr(row.key, qrImageDataUrl)}
+                                    style={btnOutline}
+                                  >
+                                    Download QR
+                                  </button>
+                                </div>
+                              ) : null}
                             </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </>

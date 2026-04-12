@@ -20,9 +20,9 @@ export default defineConfig(({ mode }) => ({
     build: {
         rollupOptions: {
             output: {
-                /** Fewer HTTP round-trips on the demo shell; let Rollup merge app + most deps into the entry/async chunks. */
+                /** Fewer HTTP round-trips; app + router + other deps share the entry/async chunks except this vendor split. */
                 manualChunks: {
-                    vendor: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+                    vendor: ['react', 'react-dom'],
                 },
                 chunkFileNames: 'assets/[name]-[hash].js',
                 entryFileNames: 'assets/[name]-[hash].js',

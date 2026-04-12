@@ -21,13 +21,22 @@ export type CheckoutSessionResponse = {
   sub_total: number
 }
 
+/** `data` payload for `PATCH /v1/subscription/` (upgrade / change plan). */
+export type SubscriptionUpgradeResponse = {
+  subscription_id: string
+  tenant_id: number
+  customer_id: string
+  product_type: string
+  status: string
+}
+
 export async function createCheckoutSession(payload: CreateCheckoutSessionRequest) {
   const { data } = await http.post<StandardResponse<CheckoutSessionResponse>>('/v1/subscription/', payload)
   return data
 }
 
 export async function upgradeSubscription(payload: CreateCheckoutSessionRequest) {
-  const { data } = await http.patch<StandardResponse<CheckoutSessionResponse>>('/v1/subscription/', payload)
+  const { data } = await http.patch<StandardResponse<SubscriptionUpgradeResponse>>('/v1/subscription/', payload)
   return data
 }
 

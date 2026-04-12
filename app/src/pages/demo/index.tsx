@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { Link } from 'react-router-dom'
 import ThemeToggle from '@components/ThemeToggle'
+import QRCode from 'qrcode'
 import {
   Car,
   Users,
@@ -38,6 +39,13 @@ import {
 const BANNER_HEIGHT = 36
 
 type DemoTab = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
+type DemoLinkKey = 'rider' | 'driver'
+
+type DemoLinkQrState = {
+  loading: boolean
+  imageDataUrl: string | null
+  error: string | null
+}
 
 function bookingStatusTag(status: DemoBookingStatus): { label: string; bg: string; color: string } {
   if (status === 'active') return { label: 'Active', bg: '#052e16', color: '#4ade80' }
@@ -50,8 +58,12 @@ export default function DemoDashboard() {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 844)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [currentKpiIndex, setCurrentKpiIndex] = useState(0)
-  const [copiedLink, setCopiedLink] = useState<null | 'rider' | 'driver'>(null)
+  const [copiedLink, setCopiedLink] = useState<null | DemoLinkKey>(null)
   const [demoLinksOpen, setDemoLinksOpen] = useState(false)
+  const [linkQrState, setLinkQrState] = useState<Record<DemoLinkKey, DemoLinkQrState>>({
+    rider: { loading: false, imageDataUrl: null, error: null },
+    driver: { loading: false, imageDataUrl: null, error: null },
+  })
   const [bookingFilter, setBookingFilter] = useState<'' | DemoBookingStatus>('')
 
   const demoKpisRef = useRef<HTMLDivElement>(null)
@@ -81,7 +93,7 @@ export default function DemoDashboard() {
     [scrollToRef]
   )
 
-  const copyUrl = useCallback(async (url: string, key: 'rider' | 'driver') => {
+  const copyUrl = useCallback(async (url: string, key: DemoLinkKey) => {
     try {
       await navigator.clipboard.writeText(url)
       setCopiedLink(key)
@@ -89,6 +101,42 @@ export default function DemoDashboard() {
     } catch {
       setCopiedLink(null)
     }
+  }, [])
+
+  const generateQrForLink = useCallback(async (url: string, key: DemoLinkKey) => {
+    setLinkQrState((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], loading: true, error: null },
+    }))
+
+    try {
+      const imageDataUrl = await QRCode.toDataURL(url, {
+        margin: 1,
+        width: 320,
+      })
+      setLinkQrState((prev) => ({
+        ...prev,
+        [key]: { loading: false, imageDataUrl, error: null },
+      }))
+    } catch {
+      setLinkQrState((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          loading: false,
+          error: 'Could not generate QR code right now. Please try again.',
+        },
+      }))
+    }
+  }, [])
+
+  const downloadQrForLink = useCallback((imageDataUrl: string, key: DemoLinkKey) => {
+    const link = document.createElement('a')
+    link.href = imageDataUrl
+    link.download = key === 'rider' ? 'maison-rider-login-qr.png' : 'maison-driver-login-qr.png'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }, [])
 
   const filteredBookings = useMemo(() => {
@@ -766,13 +814,15 @@ export default function DemoDashboard() {
                           { label: 'Rider login', url: DEMO_RIDER_URL, key: 'rider' as const },
                           { label: 'Driver login', url: DEMO_DRIVER_URL, key: 'driver' as const },
                         ] as const
-                      ).map((row) => (
-                        <div
+                      ).map((row) => {
+                        const qrState = linkQrState[row.key]
+                        const qrImageDataUrl = qrState.imageDataUrl
+                        return (
+                          <div
                           key={row.key}
                           style={{
                             display: 'flex',
-                            flexDirection: isMobile ? 'column' : 'row',
-                            alignItems: isMobile ? 'stretch' : 'center',
+                            flexDirection: 'column',
                             gap: 10,
                             padding: '12px 14px',
                             borderRadius: 8,
@@ -780,57 +830,154 @@ export default function DemoDashboard() {
                             backgroundColor: '#1a1727',
                           }}
                         >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 600, color: '#9b97ae', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              {row.label}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: '#E0E0E0',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={row.url}
-                            >
-                              {row.url}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => copyUrl(row.url, row.key)}
+                          <div
                             style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                              padding: '8px 14px',
-                              borderRadius: 7,
-                              border: '1px solid #2a2640',
-                              backgroundColor: copiedLink === row.key ? 'rgba(108, 99, 232, 0.2)' : 'transparent',
-                              color: '#E0E0E0',
-                              cursor: 'pointer',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontSize: 12,
-                              fontWeight: 500,
-                              flexShrink: 0,
+                              display: 'flex',
+                              flexDirection: isMobile ? 'column' : 'row',
+                              alignItems: isMobile ? 'stretch' : 'center',
+                              gap: 10,
                             }}
                           >
-                            {copiedLink === row.key ? (
-                              <>
-                                <Check size={16} color="#4ade80" />
-                                Copied!
-                              </>
-                            ) : (
-                              <>
-                                <Copy size={16} />
-                                Copy
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      ))}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: '#9b97ae', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                {row.label}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: '#E0E0E0',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={row.url}
+                              >
+                                {row.url}
+                              </div>
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => copyUrl(row.url, row.key)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  padding: '8px 14px',
+                                  borderRadius: 7,
+                                  border: '1px solid #2a2640',
+                                  backgroundColor: copiedLink === row.key ? 'rgba(108, 99, 232, 0.2)' : 'transparent',
+                                  color: '#E0E0E0',
+                                  cursor: 'pointer',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {copiedLink === row.key ? (
+                                  <>
+                                    <Check size={16} color="#4ade80" />
+                                    Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={16} />
+                                    Copy
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => generateQrForLink(row.url, row.key)}
+                                disabled={qrState.loading}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  padding: '8px 14px',
+                                  borderRadius: 7,
+                                  border: '1px solid #2a2640',
+                                  backgroundColor: qrState.loading ? 'rgba(124, 122, 146, 0.2)' : 'transparent',
+                                  color: '#E0E0E0',
+                                  cursor: qrState.loading ? 'not-allowed' : 'pointer',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  flexShrink: 0,
+                                  opacity: qrState.loading ? 0.8 : 1,
+                                }}
+                              >
+                                {qrState.loading ? 'Generating...' : 'Generate QR'}
+                              </button>
+                            </div>
+                          </div>
+                          {qrState.error ? (
+                            <div style={{ fontSize: 12, color: '#fda4af' }}>{qrState.error}</div>
+                          ) : null}
+                          {qrImageDataUrl ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: 8,
+                                borderTop: '1px solid #2a2640',
+                                paddingTop: 10,
+                              }}
+                            >
+                              <img
+                                src={qrImageDataUrl}
+                                alt={`${row.label} QR code`}
+                                style={{
+                                  width: '100%',
+                                  maxWidth: 168,
+                                  height: 'auto',
+                                  borderRadius: 8,
+                                  border: '1px solid #2a2640',
+                                  backgroundColor: '#ffffff',
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => downloadQrForLink(qrImageDataUrl, row.key)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 6,
+                                  padding: '8px 14px',
+                                  borderRadius: 7,
+                                  border: '1px solid #2a2640',
+                                  backgroundColor: 'transparent',
+                                  color: '#E0E0E0',
+                                  cursor: 'pointer',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                Download QR
+                              </button>
+                              <div style={{ fontSize: 11, color: '#9b97ae', lineHeight: 1.35 }}>
+                                Tip: add this QR to your printed cards so riders and drivers can open login quickly.
+                              </div>
+                            </div>
+                          ) : null}
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : null}
                 </div>

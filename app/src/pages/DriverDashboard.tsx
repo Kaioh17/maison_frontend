@@ -9,6 +9,7 @@ import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, 
 import type { BookingResponse } from '@api/tenant'
 import { getBookings } from '@api/bookings'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
+import ThemeToggle from '@components/ThemeToggle'
 
 type MenuSection = 'dashboard' | 'vehicles' | 'bookings'
 type BookingsSubSection = 'upcoming' | 'new-requests' | 'all'
@@ -803,6 +804,9 @@ export default function DriverDashboard() {
           flexDirection: 'column',
           gap: '12px'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ThemeToggle />
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -910,6 +914,7 @@ export default function DriverDashboard() {
               ? menuItems.find(item => item.id === 'bookings')?.branches?.find(b => b.id === activeBookingsSubSection)?.label || 'Bookings'
               : menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
           </h1>
+          <ThemeToggle />
         </div>
 
         {/* Error Message */}
