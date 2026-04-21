@@ -308,8 +308,7 @@ export default function TenantLanding() {
                 opacity: 0.82,
               }}
             >
-              Partner with {companyName} on the road. Sign in to your driver dashboard or complete registration to join the
-              team.
+              Partner with {companyName} on the road. Sign in to your driver dashboard to manage trips and availability.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Link
@@ -332,23 +331,6 @@ export default function TenantLanding() {
               >
                 Driver sign in
                 <ArrowRight size={18} aria-hidden color="#111827" />
-              </Link>
-              <Link
-                to="/driver/register"
-                className="bw-btn-outline"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  textDecoration: 'none',
-                  borderRadius: 0,
-                  padding: '14px 22px',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 500,
-                }}
-              >
-                Driver registration
               </Link>
             </div>
           </article>

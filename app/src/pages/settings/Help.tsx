@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
-import { useNavigate } from 'react-router-dom'
-import { HelpCircle, Mail, Book, AlertCircle, CreditCard, FileText, ChevronRight } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { HelpCircle, Mail, Book, AlertCircle, CreditCard, FileText, ChevronRight, Smartphone } from 'lucide-react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { TENANT_SUPPORT_EMAIL } from '@config'
@@ -10,8 +10,10 @@ export default function Help() {
   const [info, setInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [installGuideOpen, setInstallGuideOpen] = useState(false)
   const { isOpen: menuIsOpen } = useSettingsMenu()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     const handleResize = () => {
@@ -34,6 +36,17 @@ export default function Help() {
     }
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (loading || location.hash !== '#install-web-app') return
+    setInstallGuideOpen(true)
+    const section = document.getElementById('install-web-app')
+    if (section) {
+      requestAnimationFrame(() => {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [loading, location.hash])
 
   if (loading) {
     return (
@@ -259,6 +272,86 @@ export default function Help() {
               </button>
             )
           })}
+        </div>
+
+        <div
+          id="install-web-app"
+          className="bw-card"
+          style={{
+            marginTop: 'clamp(16px, 3vw, 24px)',
+            backgroundColor: 'var(--bw-bg-secondary)',
+            border: '1px solid var(--bw-border)',
+            borderRadius: 'clamp(8px, 1.5vw, 12px)',
+            padding: 'clamp(16px, 2.5vw, 24px)'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setInstallGuideOpen((open) => !open)}
+            aria-expanded={installGuideOpen}
+            aria-controls="install-web-app-content"
+            style={{
+              width: '100%',
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              margin: 0,
+              cursor: 'pointer',
+              textAlign: 'left',
+              color: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
+              <Smartphone className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+              <h3 style={{ margin: 0, fontSize: 'clamp(16px, 2.5vw, 20px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
+                Install Maison as an app on your phone
+              </h3>
+            </div>
+            <ChevronRight
+              className="w-5 h-5"
+              style={{
+                color: 'var(--bw-muted)',
+                transform: installGuideOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                flexShrink: 0
+              }}
+            />
+          </button>
+          {installGuideOpen && (
+            <div id="install-web-app-content" style={{ marginTop: 12 }}>
+              <p style={{ margin: '0 0 16px 0', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.5 }}>
+                Save the Maison web app to your home screen for one-tap access like a native app.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'clamp(12px, 2vw, 16px)' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: 'clamp(14px, 2vw, 16px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
+                    iPhone (Safari)
+                  </h4>
+                  <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
+                    <li>Open Maison in Safari.</li>
+                    <li>Tap the Share icon (square with arrow).</li>
+                    <li>Choose Add to Home Screen.</li>
+                    <li>Tap Add.</li>
+                  </ol>
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: 'clamp(14px, 2vw, 16px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
+                    Android (Chrome)
+                  </h4>
+                  <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
+                    <li>Open Maison in Chrome.</li>
+                    <li>Tap the three-dot menu.</li>
+                    <li>Tap Install app or Add to Home screen.</li>
+                    <li>Confirm Install/Add.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

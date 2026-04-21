@@ -107,6 +107,9 @@ export default function AuthPage() {
       // Tenant login only
       const data = await loginTenant(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('tenant-install-app-tip', '1')
+      }
       // Navigate to tenant dashboard after successful login
       const from = location.state?.from?.pathname || '/tenant/overview'
       navigate(from, { replace: true })

@@ -11,7 +11,7 @@ import QRCode from 'qrcode'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, List, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -26,29 +26,43 @@ import {
   zellePhoneValidationError
 } from '@utils/zelleContact'
 
-/** Collapsible drawer nav (hamburger) on all viewports; isMobile (768px) is behavioral-only for KPI carousel, etc. */
+/** Persistent left nav; can be retracted with a shared toggle control. */
 const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
   position: fixed;
   top: 0;
   left: 0;
-  width: min(360px, 100vw);
+  width: 72px;
   height: 100vh;
   z-index: 999;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
-  transform: translateX(-100%);
+  transition: width 0.3s ease, box-shadow 0.3s ease;
+  transform: translateX(0);
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
-  transform: translateX(0);
+  width: min(360px, 100vw);
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
 }
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) {
+  box-shadow: none;
+}
 .bw.tenant-dashboard-layout .tenant-dashboard-main {
-  margin-left: 0;
-  width: 100%;
+  transition: margin-left 0.3s ease, width 0.3s ease;
   box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
+    width: 100vw;
+    transform: translateX(-100%);
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
+    transform: translateX(0);
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) {
+    transform: translateX(-100%);
+  }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
   display: flex;
@@ -320,8 +334,8 @@ export default function TenantDashboard() {
   const [showVehicleEditModal, setShowVehicleEditModal] = useState(false)
   const [tooltipVehicleId, setTooltipVehicleId] = useState<number | null>(null)
 
-  // Hamburger menu state
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // Sidebar state
+  const [isMenuOpen, setIsMenuOpen] = useState(true)
   
   // Mobile breakpoint state (behavioral: KPI carousel, stacked controls, etc. — still ≤768px)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -377,6 +391,7 @@ export default function TenantDashboard() {
   const [showDriverModeConfirm, setShowDriverModeConfirm] = useState(false)
   const [isSwitchingToDriver, setIsSwitchingToDriver] = useState(false)
   const [switchToDriverError, setSwitchToDriverError] = useState<string | null>(null)
+  const [showInstallAppNotice, setShowInstallAppNotice] = useState(false)
   const [isAddVehicleHovered, setIsAddVehicleHovered] = useState(false)
   
   // Button hover states
@@ -421,7 +436,7 @@ export default function TenantDashboard() {
     status: 'available',
     vehicle_category: '',
     vehicle_flat_rate: '',
-    seating_capacity: 4
+    seating_capacity: ''
   })
   const [addingVehicle, setAddingVehicle] = useState(false)
   const [addVehicleError, setAddVehicleError] = useState<string | null>(null)
@@ -569,6 +584,15 @@ export default function TenantDashboard() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const shouldShowInstallNotice = sessionStorage.getItem('tenant-install-app-tip') === '1'
+    if (shouldShowInstallNotice) {
+      setShowInstallAppNotice(true)
+      sessionStorage.removeItem('tenant-install-app-tip')
+    }
   }, [])
 
   const createDriver = async () => {
@@ -1181,6 +1205,17 @@ export default function TenantDashboard() {
       return
     }
 
+    const seatingTrim = String(newVehicle.seating_capacity).trim()
+    let seatingCapacityPayload: number | undefined
+    if (seatingTrim !== '') {
+      const n = parseInt(seatingTrim, 10)
+      if (Number.isNaN(n) || n < 1 || n > 50) {
+        setAddVehicleError('Enter a seating capacity between 1 and 50, or leave it blank.')
+        return
+      }
+      seatingCapacityPayload = n
+    }
+
     setAddingVehicle(true)
     setAddVehicleError(null)
 
@@ -1194,7 +1229,7 @@ export default function TenantDashboard() {
         status: newVehicle.status,
         vehicle_category: newVehicle.vehicle_category,
         vehicle_flat_rate: parseFloat(newVehicle.vehicle_flat_rate) || 0,
-        seating_capacity: parseInt(newVehicle.seating_capacity.toString()) || 4
+        ...(seatingCapacityPayload !== undefined ? { seating_capacity: seatingCapacityPayload } : {})
       }
 
       const response = await addVehicle(vehiclePayload)
@@ -1210,7 +1245,7 @@ export default function TenantDashboard() {
           status: 'available',
           vehicle_category: '',
           vehicle_flat_rate: '',
-          seating_capacity: 4
+          seating_capacity: ''
         })
         // Refresh vehicles list
         await load()
@@ -1315,7 +1350,6 @@ export default function TenantDashboard() {
     } else {
       // Navigate to the tab's route
       navigate(`/tenant/${tabId}`)
-      setIsMenuOpen(false)
     }
   }
 
@@ -1323,7 +1357,6 @@ export default function TenantDashboard() {
   const handleSettingsSubmenuClick = (path: string) => {
     navigate(path)
     setSettingsMenuOpen(false)
-    setIsMenuOpen(false)
   }
 
   const copyTenantOverviewLink = async (kind: OverviewLinkKey, url: string) => {
@@ -1509,8 +1542,8 @@ export default function TenantDashboard() {
       {/* Token Expiration Notification */}
       <TokenExpirationNotification />
       
-      {/* Overlay when menu is open */}
-      {isMenuOpen && (
+      {/* Mobile overlay when drawer is open */}
+      {isMobile && isMenuOpen && (
         <div
           className="tenant-dashboard-nav-overlay"
           style={{
@@ -1526,7 +1559,7 @@ export default function TenantDashboard() {
           onClick={() => setIsMenuOpen(false)}
         />
       )}
-
+      
       {/* Sidebar Menu - Left Aligned */}
       <div
         id="tenant-dashboard-nav"
@@ -1538,56 +1571,58 @@ export default function TenantDashboard() {
       >
         {/* Company Name in Sidebar */}
         <div style={{
-          padding: 'clamp(16px, 2vw, 24px)',
+          padding: isMenuOpen ? 'clamp(16px, 2vw, 24px)' : '12px',
           borderBottom: '1px solid var(--bw-border)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: isMenuOpen ? 'space-between' : 'center',
           gap: '12px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'clamp(12px, 2vw, 16px)',
-            flex: 1,
-            minWidth: 0
-          }}>
-            {info?.profile?.logo_url && (
-              <img 
-                src={info.profile.logo_url} 
-                alt={info?.profile?.company_name || 'Company logo'}
-                style={{
-                  width: 'clamp(40px, 5vw, 50px)',
-                  height: 'clamp(40px, 5vw, 50px)',
-                  objectFit: 'contain',
-                  flexShrink: 0
-                }}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
-            )}
-            <h1 style={{ 
-              fontFamily: '"DM Sans", sans-serif',
-              fontSize: 'clamp(20px, 3vw, 32px)',
-              fontWeight: 600,
-              margin: 0,
-              color: lightMode ? '#0f172a' : '#ffffff',
-              letterSpacing: '0.5px',
-              lineHeight: '1.2',
+          {isMenuOpen && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'clamp(12px, 2vw, 16px)',
               flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              minWidth: 0
             }}>
-              {info?.profile?.company_name || 'Dashboard'}
-            </h1>
-          </div>
+              {info?.profile?.logo_url && (
+                <img 
+                  src={info.profile.logo_url} 
+                  alt={info?.profile?.company_name || 'Company logo'}
+                  style={{
+                    width: 'clamp(40px, 5vw, 50px)',
+                    height: 'clamp(40px, 5vw, 50px)',
+                    objectFit: 'contain',
+                    flexShrink: 0
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
+              <h1 style={{ 
+                fontFamily: '"DM Sans", sans-serif',
+                fontSize: 'clamp(20px, 3vw, 32px)',
+                fontWeight: 600,
+                margin: 0,
+                color: lightMode ? '#0f172a' : '#ffffff',
+                letterSpacing: '0.5px',
+                lineHeight: '1.2',
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {info?.profile?.company_name || 'Dashboard'}
+              </h1>
+            </div>
+          )}
           <button
             className="bw-menu tenant-dashboard-sidebar-close"
-            onClick={() => setIsMenuOpen(false)}
-            aria-label="Close menu"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            aria-label={isMenuOpen ? 'Retract menu' : 'Expand menu'}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1595,17 +1630,19 @@ export default function TenantDashboard() {
               padding: '8px',
               minWidth: '40px',
               minHeight: '40px',
+              border: 'none',
+              backgroundColor: 'transparent',
               flexShrink: 0
             }}
           >
-            <XCircle size={20} />
+            <SidebarSimple size={20} weight="bold" aria-hidden />
           </button>
         </div>
 
         {/* Navigation Tabs in Sidebar */}
         <nav style={{
           flex: 1,
-          padding: 'clamp(12px, 1.5vw, 20px) 0',
+          padding: isMenuOpen ? 'clamp(12px, 1.5vw, 20px) 0' : '8px 0',
           display: 'flex',
           flexDirection: 'column',
           gap: '4px'
@@ -1623,24 +1660,25 @@ export default function TenantDashboard() {
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
+                    gap: isMenuOpen ? '12px' : '0',
+                    padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
                     backgroundColor: isActive 
                       ? (lightMode && tab.id === 'overview' ? 'var(--bw-accent)' : lightMode ? 'rgba(108, 99, 232, 0.1)' : 'var(--bw-bg-hover)')
                       : 'transparent',
                     border: 'none',
-                    borderLeft: isActive ? (lightMode && tab.id === 'overview' ? '3px solid var(--bw-accent)' : '2px solid var(--bw-accent)') : '2px solid transparent',
+                    borderLeft: isMenuOpen ? (isActive ? (lightMode && tab.id === 'overview' ? '3px solid var(--bw-accent)' : '2px solid var(--bw-accent)') : '2px solid transparent') : 'none',
                     color: isActive && lightMode && tab.id === 'overview' ? '#ffffff' : 'var(--bw-text)',
                     cursor: 'pointer',
                     fontSize: 'clamp(13px, 1.5vw, 15px)',
                     fontFamily: '"Work Sans", sans-serif',
                     fontWeight: 300,
-                    textAlign: 'left',
+                    textAlign: isMenuOpen ? 'left' : 'center',
                     transition: 'all 0.2s ease',
-                    justifyContent: 'space-between',
+                    justifyContent: isMenuOpen ? 'space-between' : 'center',
                     boxShadow: isActive && tab.id === 'overview' && !lightMode ? '0 0 12px rgba(108, 99, 232, 0.22)' : 'none',
                     position: 'relative'
                   }}
+                  title={!isMenuOpen ? tab.label : undefined}
                   onMouseEnter={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
@@ -1652,11 +1690,11 @@ export default function TenantDashboard() {
                     }
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMenuOpen ? '12px' : '0', flex: 1, justifyContent: isMenuOpen ? 'flex-start' : 'center' }}>
                     <IconComponent size={18} style={{ flexShrink: 0 }} />
-                    <span>{tab.label}</span>
+                    {isMenuOpen && <span>{tab.label}</span>}
                   </div>
-                  {isSettings && (
+                  {isMenuOpen && isSettings && (
                     <CaretDown 
                       size={16}
                       style={{ 
@@ -1668,7 +1706,7 @@ export default function TenantDashboard() {
                   )}
                 </button>
                 {/* Settings Submenu */}
-                {isSettings && settingsMenuOpen && (
+                {isMenuOpen && isSettings && settingsMenuOpen && (
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -1731,26 +1769,27 @@ export default function TenantDashboard() {
             href={TENANT_FEEDBACK_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setIsMenuOpen(false)}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)',
+              gap: isMenuOpen ? '12px' : '0',
+              padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
               backgroundColor: 'transparent',
               border: 'none',
-              borderLeft: '2px solid transparent',
+              borderLeft: isMenuOpen ? '2px solid transparent' : 'none',
               color: 'var(--bw-text)',
               cursor: 'pointer',
               fontSize: 'clamp(13px, 1.5vw, 15px)',
               fontFamily: '"Work Sans", sans-serif',
               fontWeight: 300,
-              textAlign: 'left',
+              textAlign: isMenuOpen ? 'left' : 'center',
               textDecoration: 'none',
               transition: 'all 0.2s ease',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              justifyContent: isMenuOpen ? 'flex-start' : 'center'
             }}
+            title={!isMenuOpen ? 'Feedback' : undefined}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
             }}
@@ -1759,19 +1798,20 @@ export default function TenantDashboard() {
             }}
           >
             <ChatCircleDots size={18} style={{ flexShrink: 0 }} aria-hidden />
-            <span style={{ flex: 1 }}>Feedback</span>
-            <ArrowSquareOut size={16} style={{ flexShrink: 0, opacity: 0.7 }} aria-hidden />
+            {isMenuOpen && <span style={{ flex: 1 }}>Feedback</span>}
+            {isMenuOpen && <ArrowSquareOut size={16} style={{ flexShrink: 0, opacity: 0.7 }} aria-hidden />}
           </a>
         </nav>
 
         {/* Footer Section in Sidebar */}
-        <div style={{
-          padding: 'clamp(12px, 1.5vw, 20px)',
-          borderTop: '1px solid var(--bw-border)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px'
-        }}>
+        {isMenuOpen && (
+          <div style={{
+            padding: 'clamp(12px, 1.5vw, 20px)',
+            borderTop: '1px solid var(--bw-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1824,7 +1864,6 @@ export default function TenantDashboard() {
           <button
             onClick={() => {
               useAuthStore.getState().logout()
-              setIsMenuOpen(false)
             }}
             style={{
               width: '100%',
@@ -1852,14 +1891,17 @@ export default function TenantDashboard() {
           >
             Logout
           </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
       <div className="tenant-dashboard-main" style={{
         flex: 1,
         minWidth: 0,
-        minHeight: '100vh'
+        minHeight: '100vh',
+        marginLeft: isMobile ? '0' : (isMenuOpen ? 'min(360px, 100vw)' : '72px'),
+        width: isMobile ? '100%' : (isMenuOpen ? 'calc(100% - min(360px, 100vw))' : 'calc(100% - 72px)')
       }}>
         <div className="bw-container" style={{ 
           padding: 'clamp(12px, 2vw, 24px) clamp(16px, 3vw, 32px)', 
@@ -1868,7 +1910,7 @@ export default function TenantDashboard() {
           minWidth: 0,
           boxSizing: 'border-box'
         }}>
-          {/* Top Bar with Hamburger Menu */}
+          {/* Top Bar with Sidebar Toggle */}
           <div style={{ 
             marginBottom: 'clamp(16px, 3vw, 32px)',
             paddingBottom: 'clamp(12px, 2vw, 16px)',
@@ -1879,29 +1921,31 @@ export default function TenantDashboard() {
             gap: '12px',
             flexWrap: 'wrap'
           }}>
-            <button
-              type="button"
-              className="bw-menu tenant-dashboard-menu-btn"
-              onClick={() => setIsMenuOpen((open) => !open)}
-              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={isMenuOpen}
-              aria-controls="tenant-dashboard-nav"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px',
-                minWidth: '40px',
-                minHeight: '40px',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--bw-border)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: 'var(--bw-text)'
-              }}
-            >
-              <List size={20} weight="bold" aria-hidden />
-            </button>
+            {isMobile && (
+              <button
+                type="button"
+                className="bw-menu tenant-dashboard-menu-btn"
+                onClick={() => setIsMenuOpen((open) => !open)}
+                aria-label={isMenuOpen ? 'Retract menu' : 'Expand menu'}
+                aria-expanded={isMenuOpen}
+                aria-controls="tenant-dashboard-nav"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '8px',
+                  minWidth: '40px',
+                  minHeight: '40px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--bw-text)'
+                }}
+              >
+                <SidebarSimple size={20} weight="bold" aria-hidden />
+              </button>
+            )}
 
             {activeTab === 'overview' ? (
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2016,6 +2060,73 @@ export default function TenantDashboard() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
+        {showInstallAppNotice && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              position: 'fixed',
+              top: isMobile ? '12px' : '16px',
+              right: isMobile ? '12px' : '16px',
+              left: isMobile ? '12px' : 'auto',
+              zIndex: 1100,
+              width: isMobile ? 'auto' : 'min(420px, calc(100vw - 32px))',
+              border: lightMode ? '1px solid rgba(79, 70, 229, 0.28)' : '1px solid rgba(167, 139, 250, 0.4)',
+              background: lightMode ? '#ffffff' : '#1f1b33',
+              boxShadow: lightMode ? '0 10px 24px rgba(15, 23, 42, 0.12)' : '0 12px 28px rgba(0, 0, 0, 0.45)',
+              borderRadius: 10,
+              padding: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <Info size={18} style={{ flexShrink: 0, marginTop: 1, color: lightMode ? '#4338ca' : '#c4b5fd' }} aria-hidden />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--bw-text)' }}>
+                  Install Maison as an app
+                </div>
+                <div style={{ marginTop: 4, fontSize: 13, color: 'var(--bw-muted)', lineHeight: 1.45 }}>
+                  Add Maison to your iPhone or Android home screen for faster access.
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="bw-btn-outline"
+                    onClick={() => {
+                      setShowInstallAppNotice(false)
+                      navigate('/tenant/settings/help#install-web-app')
+                    }}
+                    style={{ padding: '6px 10px', fontSize: 12, fontFamily: '"Work Sans", sans-serif' }}
+                  >
+                    View instructions
+                  </button>
+                  <button
+                    type="button"
+                    className="bw-btn-outline"
+                    onClick={() => setShowInstallAppNotice(false)}
+                    style={{ padding: '6px 10px', fontSize: 12, fontFamily: '"Work Sans", sans-serif' }}
+                  >
+                    Not now
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInstallAppNotice(false)}
+                aria-label="Dismiss install app notice"
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--bw-muted)',
+                  cursor: 'pointer',
+                  padding: 2,
+                  flexShrink: 0,
+                }}
+              >
+                <X size={14} aria-hidden />
+              </button>
+            </div>
+          </div>
+        )}
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div style={{
@@ -4418,7 +4529,7 @@ export default function TenantDashboard() {
                               status: 'available',
                               vehicle_category: '',
                               vehicle_flat_rate: '',
-                              seating_capacity: 4
+                              seating_capacity: ''
                             })
                           }}
                           style={{
@@ -4501,13 +4612,16 @@ export default function TenantDashboard() {
                               </select>
                             </div>
                             <div>
-                              <label className="small-muted" style={{
-                                display: 'block',
-                                marginBottom: '8px',
-                                fontFamily: '"Work Sans", sans-serif',
-                                fontSize: '13px',
-                                color: 'var(--bw-muted)'
-                              }}>
+                              <label
+                                className="small-muted"
+                                style={{
+                                  display: 'block',
+                                  marginBottom: '8px',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  fontSize: '13px',
+                                  color: 'var(--bw-muted)',
+                                }}
+                              >
                                 Model *
                               </label>
                               <select
@@ -4635,10 +4749,12 @@ export default function TenantDashboard() {
                               </label>
                               <input
                                 type="number"
+                                className="bw-input"
                                 value={newVehicle.seating_capacity}
-                                onChange={(e) => handleNewVehicleChange('seating_capacity', parseInt(e.target.value) || 4)}
+                                onChange={(e) => handleNewVehicleChange('seating_capacity', e.target.value)}
                                 min="1"
                                 max="50"
+                                placeholder="e.g. 4"
                                 style={{
                                   width: 'calc(10ch + 36px)',
                                   padding: '16px 18px 16px 18px',
@@ -4801,7 +4917,7 @@ export default function TenantDashboard() {
                                   status: 'available',
                                   vehicle_category: '',
                                   vehicle_flat_rate: '',
-                                  seating_capacity: 4
+                                  seating_capacity: ''
                                 })
                               }}
                               className={`bw-btn-outline ${isCancelAddVehicleHovered ? 'custom-hover-border' : ''}`}

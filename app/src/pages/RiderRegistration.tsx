@@ -34,6 +34,7 @@ export default function RiderRegistration() {
     postal_code: ''
   })
   const [step, setStep] = useState<1 | 2>(1)
+  const [showAddressFields, setShowAddressFields] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
@@ -105,7 +106,7 @@ export default function RiderRegistration() {
   // Redirect authenticated riders
   useEffect(() => {
     if (isAuthenticated && role === 'rider') {
-      navigate('/riders/profile', { replace: true })
+      navigate('/rider/dashboard', { replace: true })
     }
   }, [isAuthenticated, role, navigate])
 
@@ -134,6 +135,25 @@ export default function RiderRegistration() {
       setFormData({ ...formData, [name]: formatPhoneNumber(value) })
     } else {
       setFormData({ ...formData, [name]: value })
+    }
+  }
+
+  const normalizeOptionalValue = (value: string): string | null => {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  const handleAddressDetailsToggle = (checked: boolean) => {
+    setShowAddressFields(checked)
+    if (!checked) {
+      setFormData((prev) => ({
+        ...prev,
+        address: '',
+        city: '',
+        state: '',
+        country: '',
+        postal_code: '',
+      }))
     }
   }
 
@@ -200,11 +220,11 @@ export default function RiderRegistration() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone_no: phoneDigits,
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        country: formData.country,
-        postal_code: formData.postal_code,
+        address: showAddressFields ? normalizeOptionalValue(formData.address) : null,
+        city: showAddressFields ? normalizeOptionalValue(formData.city) : null,
+        state: showAddressFields ? normalizeOptionalValue(formData.state) : null,
+        country: showAddressFields ? normalizeOptionalValue(formData.country) : null,
+        postal_code: showAddressFields ? normalizeOptionalValue(formData.postal_code) : null,
         password: formData.password
       })
 
@@ -411,7 +431,7 @@ export default function RiderRegistration() {
             Step {step} of 2 — {step === 1 ? 'Account' : 'Where we pick you up'}.{' '}
             {step === 1
               ? 'You are entering your profile and password.'
-              : 'You are entering your pickup address.'}
+              : 'Address is optional. Check the box below only if you want to add it now.'}
           </p>
 
           {error && (
@@ -576,72 +596,94 @@ export default function RiderRegistration() {
             </div>
 
             <div style={{ display: step === 2 ? 'block' : 'none' }} aria-hidden={step !== 2}>
-            <label className="small-muted" htmlFor="address" style={{ fontFamily: 'Work Sans, sans-serif' }}>Address</label>
-            <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-              <MapPin size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-              <input 
-                id="address" 
-                name="address" 
-                type="text" 
-                required={step === 2}
-                className="bw-input" 
-                style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="123 Main St" 
-                value={formData.address}
-                onChange={handleInputChange} 
+            <label
+              htmlFor="add-address-details"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginBottom: 12,
+                cursor: 'pointer',
+                fontFamily: 'Work Sans, sans-serif',
+                fontSize: 14,
+                color: 'var(--bw-text)',
+              }}
+            >
+              <input
+                id="add-address-details"
+                type="checkbox"
+                checked={showAddressFields}
+                onChange={(e) => handleAddressDetailsToggle(e.target.checked)}
+                style={{ cursor: 'pointer' }}
               />
-            </div>
+              Add pickup address now (optional)
+            </label>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <label className="small-muted" htmlFor="city" style={{ fontFamily: 'Work Sans, sans-serif' }}>City</label>
-              <label className="small-muted" htmlFor="state" style={{ fontFamily: 'Work Sans, sans-serif' }}>State</label>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <CityAutocomplete
-                value={formData.city}
-                onChange={(value) => setFormData({ ...formData, city: value })}
-                selectedState={formData.state}
-                placeholder="New York"
-                className="bw-input"
-                style={{ padding: '16px 18px', borderRadius: 0 }}
-                required={step === 2}
-              />
-              <StateAutocomplete
-                value={formData.state}
-                onChange={(value) => setFormData({ ...formData, state: value, city: '' })}
-                placeholder="NY"
-                className="bw-input"
-                style={{ padding: '16px 18px', borderRadius: 0 }}
-                required={step === 2}
-              />
-            </div>
+            {showAddressFields && (
+              <>
+                <label className="small-muted" htmlFor="address" style={{ fontFamily: 'Work Sans, sans-serif' }}>Address (optional)</label>
+                <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
+                  <MapPin size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
+                  <input 
+                    id="address" 
+                    name="address" 
+                    type="text" 
+                    className="bw-input" 
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                    placeholder="123 Main St" 
+                    value={formData.address}
+                    onChange={handleInputChange} 
+                  />
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <label className="small-muted" htmlFor="country" style={{ fontFamily: 'Work Sans, sans-serif' }}>Country</label>
-              <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code</label>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <CountryAutocomplete
-                value={formData.country}
-                onChange={(value) => setFormData({ ...formData, country: value })}
-                placeholder="USA"
-                className="bw-input"
-                style={{ padding: '16px 18px', borderRadius: 0 }}
-                required={step === 2}
-              />
-              <input 
-                id="postal_code" 
-                name="postal_code" 
-                type="text" 
-                required={step === 2}
-                className="bw-input" 
-                style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="10001" 
-                value={formData.postal_code}
-                onChange={handleInputChange}
-                maxLength={5}
-              />
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <label className="small-muted" htmlFor="city" style={{ fontFamily: 'Work Sans, sans-serif' }}>City (optional)</label>
+                  <label className="small-muted" htmlFor="state" style={{ fontFamily: 'Work Sans, sans-serif' }}>State (optional)</label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <CityAutocomplete
+                    value={formData.city}
+                    onChange={(value) => setFormData({ ...formData, city: value })}
+                    selectedState={formData.state}
+                    placeholder="New York"
+                    className="bw-input"
+                    style={{ padding: '16px 18px', borderRadius: 0 }}
+                  />
+                  <StateAutocomplete
+                    value={formData.state}
+                    onChange={(value) => setFormData({ ...formData, state: value, city: '' })}
+                    placeholder="NY"
+                    className="bw-input"
+                    style={{ padding: '16px 18px', borderRadius: 0 }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <label className="small-muted" htmlFor="country" style={{ fontFamily: 'Work Sans, sans-serif' }}>Country (optional)</label>
+                  <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code (optional)</label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <CountryAutocomplete
+                    value={formData.country}
+                    onChange={(value) => setFormData({ ...formData, country: value })}
+                    placeholder="USA"
+                    className="bw-input"
+                    style={{ padding: '16px 18px', borderRadius: 0 }}
+                  />
+                  <input 
+                    id="postal_code" 
+                    name="postal_code" 
+                    type="text" 
+                    className="bw-input" 
+                    style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                    placeholder="10001" 
+                    value={formData.postal_code}
+                    onChange={handleInputChange}
+                    maxLength={5}
+                  />
+                </div>
+              </>
+            )}
 
             <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
               <button 
@@ -649,7 +691,7 @@ export default function RiderRegistration() {
                 className="bw-btn"
                 style={{ flex: 1, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, background: 'transparent', border: '1px solid var(--bw-border)', color: 'var(--bw-text)' }}
                 disabled={isLoading}
-                onClick={() => { setError(''); setStep(1) }}
+                onClick={() => { setError(''); setShowAddressFields(false); setStep(1) }}
               >
                 Back
               </button>

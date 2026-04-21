@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f0d1a" />
+    <title>Maison — Offline</title>
+    <style>
+      :root {
+        --bw-bg: #0f0d1a;
+        --bw-fg: #e0e0e0;
+        --bw-muted: #9b97ae;
+        --bw-border: #2a2640;
+        --bw-accent: #6c63e8;
+        --bw-accent-hover: #7068cc;
+        --bw-bg-secondary: #1a1727;
+      }
+      [data-theme='light'] {
+        --bw-bg: #f8fafc;
+        --bw-fg: #0f172a;
+        --bw-muted: #64748b;
+        --bw-border: #e2e8f0;
+        --bw-accent: #6c63e8;
+        --bw-accent-hover: #7068cc;
+        --bw-bg-secondary: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Arial,
+          sans-serif;
+        background: var(--bw-bg);
+        color: var(--bw-fg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: 100%;
+        max-width: 400px;
+        background: var(--bw-bg-secondary);
+        border: 1px solid var(--bw-border);
+        border-radius: 12px;
+        padding: 28px 24px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0 0 20px;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: var(--bw-muted);
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      button,
+      a.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+      }
+      button.primary {
+        background: var(--bw-accent);
+        color: #fff;
+      }
+      button.primary:hover {
+        background: var(--bw-accent-hover);
+      }
+      a.btn.secondary {
+        background: transparent;
+        color: var(--bw-fg);
+        border: 1px solid var(--bw-border);
+      }
+      a.btn.secondary:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      [data-theme='light'] a.btn.secondary:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
+    </style>
+    <script>
+      ;(function () {
+        try {
+          var saved = localStorage.getItem('theme')
+          var root = document.documentElement
+          if (saved === 'light') root.setAttribute('data-theme', 'light')
+          else if (saved === 'dark') root.setAttribute('data-theme', 'dark')
+          else if (saved === 'auto' && window.matchMedia) {
+            root.setAttribute(
+              'data-theme',
+              window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+            )
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            root.setAttribute('data-theme', 'light')
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You’re offline</h1>
+      <p>Maison needs a connection for live bookings and account data. Check your network, then try again.</p>
+      <div class="actions">
+        <button type="button" class="primary" onclick="location.reload()">Retry</button>
+        <a class="btn secondary" href="/">Back to home</a>
+      </div>
+    </div>
+  </body>
+</html>

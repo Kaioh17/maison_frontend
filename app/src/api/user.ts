@@ -6,11 +6,11 @@ export interface UserCreate {
   first_name: string
   last_name: string
   phone_no: string
-  address: string
-  city: string
-  state: string
-  country: string
-  postal_code: string
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  country?: string | null
+  postal_code?: string | null
   password: string
 }
 
@@ -19,11 +19,11 @@ export interface UserResponse {
   first_name: string
   last_name: string
   phone_no: string
-  address: string
-  city: string
-  state: string
-  country: string
-  postal_code: string
+  address: string | null
+  city: string | null
+  state: string | null
+  country: string | null
+  postal_code: string | null
   id: number
   role: string
   tier: string

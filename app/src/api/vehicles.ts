@@ -102,7 +102,7 @@ export type VehicleCreate = {
   status?: string
   vehicle_category: string
   vehicle_flat_rate: number
-  seating_capacity: number
+  seating_capacity?: number
 }
 
 export type VehicleDriverInfo = {

@@ -4040,7 +4040,7 @@ export default function TenantSettings() {
 
                   }}>
 
-                    Offer {RIDER_PAYMENT_METHOD_LABELS[methodId]}
+                    Offer {methodId === 'cash' ? 'Cash or card (in-person card like Square)' : RIDER_PAYMENT_METHOD_LABELS[methodId]}
 
                   </label>
 

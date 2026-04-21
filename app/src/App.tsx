@@ -46,7 +46,6 @@ const HelpTroubleshooting = lazy(() => import('@pages/settings/HelpTroubleshooti
 const StripeDocs = lazy(() => import('@pages/settings/StripeDocs'))
 const DriverHelp = lazy(() => import('@pages/DriverHelp'))
 const AddVehicle = lazy(() => import('@pages/AddVehicle'))
-const NotFound = lazy(() => import('@pages/NotFound'))
 const SubscriptionSelection = lazy(() => import('@pages/SubscriptionSelection'))
 const Success = lazy(() => import('@pages/Success'))
 const StripeReturn = lazy(() => import('@pages/StripeReturn'))
@@ -593,8 +592,8 @@ export default function App() {
         }
       />
 
-      {/* 404 - Catch all unmatched routes */}
-      <Route path="*" element={<NotFound />} />
+      {/* Catch all unmatched routes and send users to landing */}
+      <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </>

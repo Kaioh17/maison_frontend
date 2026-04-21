@@ -404,7 +404,7 @@ export default function RiderProfile() {
                   style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
                 />
               ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.address}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.address || 'Not provided'}</span>
               )}
             </div>
             <div className="bw-info-item">
@@ -418,7 +418,7 @@ export default function RiderProfile() {
                   style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.city}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.city || 'Not provided'}</span>
               )}
             </div>
             <div className="bw-info-item">
@@ -431,7 +431,7 @@ export default function RiderProfile() {
                   style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.state}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.state || 'Not provided'}</span>
               )}
             </div>
             <div className="bw-info-item">
@@ -444,7 +444,7 @@ export default function RiderProfile() {
                   style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
                 />
               ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.country}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.country || 'Not provided'}</span>
               )}
             </div>
             <div className="bw-info-item">
@@ -460,7 +460,7 @@ export default function RiderProfile() {
                   maxLength={5}
                 />
               ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.postal_code}</span>
+                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.postal_code || 'Not provided'}</span>
               )}
             </div>
           </div>
