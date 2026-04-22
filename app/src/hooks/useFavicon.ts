@@ -7,18 +7,32 @@ const DEFAULT_FAVICON = '/favicon.png'
 const DEFAULT_ACCENT = '#6c63e8'
 const DEFAULT_DOCUMENT_TITLE = 'Maison'
 
-function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
+function resolveTenantDocumentTitle(companyName: string | undefined, slug: string): string {
   const trimmed = companyName?.trim()
   if (trimmed && trimmed.length > 0) {
-    document.title = trimmed
-    return
+    return trimmed
   }
   const s = slug?.trim()
   if (s) {
-    document.title = s
-    return
+    return s
   }
-  document.title = DEFAULT_DOCUMENT_TITLE
+  return DEFAULT_DOCUMENT_TITLE
+}
+
+function applyAppleMobileWebAppTitle(title: string) {
+  let meta = document.querySelector("meta[name='apple-mobile-web-app-title']") as HTMLMetaElement | null
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'apple-mobile-web-app-title')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', title)
+}
+
+function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
+  const title = resolveTenantDocumentTitle(companyName, slug)
+  document.title = title
+  applyAppleMobileWebAppTitle(title)
 }
 
 function escapeSvgText(s: string): string {
@@ -71,7 +85,7 @@ export function useFavicon() {
     const updateFavicon = async () => {
       if (!slug) {
         applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-        document.title = DEFAULT_DOCUMENT_TITLE
+        applyDocumentTitleForTenant(undefined, '')
         return
       }
 
@@ -90,7 +104,7 @@ export function useFavicon() {
 
         if (!verification) {
           applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-          document.title = DEFAULT_DOCUMENT_TITLE
+          applyDocumentTitleForTenant(undefined, '')
           return
         }
 
@@ -112,7 +126,7 @@ export function useFavicon() {
           console.error('Failed to update favicon:', error)
         }
         applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-        document.title = DEFAULT_DOCUMENT_TITLE
+        applyDocumentTitleForTenant(undefined, '')
       }
     }
 

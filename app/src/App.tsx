@@ -7,6 +7,7 @@ import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AdminOpsGate from '@components/AdminOpsGate'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
+import { useFavicon } from '@hooks/useFavicon'
 
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
@@ -63,6 +64,9 @@ function PageFallback() {
 }
 
 export default function App() {
+  // Keep tab/app icon + title tenant-branded on subdomains across all routes.
+  useFavicon()
+
   return (
     <>
       <AccountVerificationNotification />
