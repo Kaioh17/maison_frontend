@@ -1913,13 +1913,20 @@ export default function TenantDashboard() {
           {/* Top Bar with Sidebar Toggle */}
           <div style={{ 
             marginBottom: 'clamp(16px, 3vw, 32px)',
+            marginTop: 'calc(-1 * clamp(12px, 2vw, 24px))',
+            marginLeft: 'calc(-1 * clamp(16px, 3vw, 32px))',
+            marginRight: 'calc(-1 * clamp(16px, 3vw, 32px))',
+            paddingTop: 'max(env(safe-area-inset-top), 0px)',
+            paddingLeft: 'clamp(16px, 3vw, 32px)',
+            paddingRight: 'clamp(16px, 3vw, 32px)',
             paddingBottom: 'clamp(12px, 2vw, 16px)',
             borderBottom: '1px solid var(--bw-border)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: activeTab === 'overview' ? 'flex-start' : 'center',
             gap: '12px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            backgroundColor: '#0d0d12'
           }}>
             {isMobile && (
               <button
