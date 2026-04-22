@@ -128,6 +128,7 @@ export default function TokenExpirationNotification() {
         backgroundColor: isExpired ? 'var(--bw-error, #C5483D)' : 'var(--bw-warning, #B8871B)',
         color: '#ffffff',
         padding: '16px 24px',
+        paddingTop: 'calc(max(env(safe-area-inset-top), 0px) + 16px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

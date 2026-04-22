@@ -214,7 +214,7 @@ export default function RiderLogin() {
             overflowY: 'auto'
           }}
         >
-          <div style={{ position: 'absolute', top: 'clamp(16px, 3vw, 24px)', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
+          <div style={{ position: 'absolute', top: 'calc(max(env(safe-area-inset-top), 0px) + clamp(16px, 3vw, 24px))', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
             <ThemeToggle />
           </div>
           <div style={{ width: '100%', maxWidth: '100%' }}>

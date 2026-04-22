@@ -172,7 +172,7 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
           onClick={toggleMenu}
           style={{
             position: 'fixed',
-            top: 'clamp(16px, 3vw, 24px)',
+            top: 'calc(max(env(safe-area-inset-top), 0px) + clamp(16px, 3vw, 24px))',
             left: isOpen ? 'calc(80% + clamp(16px, 3vw, 24px))' : 'clamp(16px, 3vw, 24px)',
             zIndex: 1001,
             padding: 'clamp(8px, 1.5vw, 12px)',
@@ -207,7 +207,7 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
           width: isOpen ? (isMobile ? '80%' : '20%') : (isMobile ? '0' : '64px'),
           maxWidth: isMobile ? '320px' : 'none',
           height: '100vh',
-          backgroundColor: 'var(--bw-bg)',
+          backgroundColor: isMobile ? '#0d0d12' : 'var(--bw-bg)',
           borderRight: '1px solid var(--bw-border)',
           zIndex: 999,
           transition: 'all 0.3s ease',
@@ -215,7 +215,9 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
           overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: isOpen ? 'var(--bw-shadow)' : 'none'
+          boxShadow: isOpen ? 'var(--bw-shadow)' : 'none',
+          paddingTop: isMobile ? 'max(env(safe-area-inset-top), 0px)' : 0,
+          boxSizing: 'border-box'
         }}
       >
         {/* Header */}

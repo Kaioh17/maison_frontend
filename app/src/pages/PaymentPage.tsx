@@ -361,7 +361,7 @@ export default function PaymentPage() {
         flexDirection: 'column',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
+        <div style={{ position: 'absolute', top: 'max(env(safe-area-inset-top), 0px)', right: 0, zIndex: 1 }}>
           <ThemeToggle />
         </div>
         <h1 style={{

@@ -82,6 +82,7 @@ export default function AccountVerificationNotification() {
         backgroundColor: orangeColor,
         color: '#ffffff',
         padding: '16px 24px',
+        paddingTop: 'calc(max(env(safe-area-inset-top), 0px) + 16px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
