@@ -68,7 +68,7 @@ export default function App() {
   useFavicon()
 
   return (
-    <>
+    <div style={{ paddingTop: 'max(env(safe-area-inset-top), 0px)' }}>
       <AccountVerificationNotification />
       <Suspense fallback={<PageFallback />}>
         <Routes>
@@ -600,6 +600,6 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </>
+    </div>
   )
 } 

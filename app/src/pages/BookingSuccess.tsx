@@ -67,7 +67,7 @@ export default function BookingSuccess() {
         textAlign: 'center',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 'max(env(safe-area-inset-top), 0px)', right: 0 }}>
+        <div style={{ position: 'absolute', top: 0, right: 0 }}>
           <ThemeToggle />
         </div>
         {/* Success Icon */}

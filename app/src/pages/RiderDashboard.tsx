@@ -817,6 +817,7 @@ export default function RiderDashboard() {
         {/* Company Logo/Name in Sidebar */}
         <div style={{
           padding: 'clamp(16px, 2.5vw, 24px)',
+          paddingTop: 'calc(max(env(safe-area-inset-top), 0px) + clamp(16px, 2.5vw, 24px))',
           borderBottom: '1px solid var(--bw-border)',
           display: 'flex',
           alignItems: 'center',
@@ -1061,19 +1062,12 @@ export default function RiderDashboard() {
         {/* Top Bar with Hamburger Menu */}
         <div style={{ 
           marginBottom: 'clamp(16px, 3vw, 24px)',
-          marginTop: 'calc(-1 * clamp(12px, 2.5vw, 24px))',
-          marginLeft: 'calc(-1 * clamp(12px, 2.5vw, 24px))',
-          marginRight: 'calc(-1 * clamp(12px, 2.5vw, 24px))',
-          paddingTop: 'max(env(safe-area-inset-top), 0px)',
-          paddingLeft: 'clamp(12px, 2.5vw, 24px)',
-          paddingRight: 'clamp(12px, 2.5vw, 24px)',
           paddingBottom: 'clamp(12px, 2vw, 16px)',
           borderBottom: '1px solid var(--bw-border)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '12px',
-          backgroundColor: '#0d0d12'
+          gap: '12px'
         }}>
           {isMobile && (
             <button

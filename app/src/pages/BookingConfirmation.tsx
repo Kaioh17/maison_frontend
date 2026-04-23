@@ -236,7 +236,7 @@ export default function BookingConfirmation() {
           >
             <X size={24} />
           </button>
-          <div style={{ position: 'absolute', right: 0, top: 'max(env(safe-area-inset-top), 0px)', zIndex: 2 }}>
+          <div style={{ position: 'absolute', right: 0, top: 0, zIndex: 2 }}>
             <ThemeToggle />
           </div>
           <h1 style={{
