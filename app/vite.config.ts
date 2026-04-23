@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
     tsconfigPaths(),
     VitePWA({
       registerType: 'autoUpdate',
-      /** Use `public/manifest.webmanifest`; do not emit the plugin default manifest. */
+      /** Manifest is served dynamically by backend `/api/v1/manifest.json`. */
       manifest: false,
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-      includeAssets: ['favicon.png', 'offline.html', 'manifest.webmanifest', 'icons/**/*.png'],
+      includeAssets: ['favicon.png', 'offline.html', 'icons/**/*.png'],
       devOptions: {
         enabled: false,
       },
