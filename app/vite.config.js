@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => ({
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             },
-            includeAssets: ['favicon.png', 'offline.html', 'icons/**/*.png'],
+            includeAssets: ['favicon.png', 'offline.html', 'manifest.webmanifest', 'icons/**/*.png'],
             devOptions: {
                 enabled: false,
             },
