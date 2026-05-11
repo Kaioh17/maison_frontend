@@ -16,6 +16,7 @@
 
 .tl-premium-props {
   grid-template-columns: 1fr;
+  gap: 10px;
 }
 
 .tl-premium-footer-links {
@@ -60,7 +61,7 @@
 
 @media (min-width: 900px) {
   .tl-premium-main {
-    padding: 48px 24px;
+    padding: clamp(44px, 6vw, 72px) clamp(24px, 4vw, 40px);
   }
 
   .tl-premium-cta-row {
@@ -73,6 +74,14 @@
 
   .tl-premium-props {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .tl-premium-props article {
+    border: 0 !important;
+    border-radius: 12px;
+    padding: 16px 14px !important;
+    background: color-mix(in srgb, currentColor 4%, transparent);
   }
 
   .tl-premium-footer-links {

@@ -142,7 +142,7 @@ export default function TenantLanding() {
           fontFamily: 'Work Sans, sans-serif',
         }}
       >
-        <div className="tl-premium-shell" style={{ maxWidth: 440, margin: '0 auto' }}>
+        <div className="tl-premium-shell" style={{ maxWidth: 1120, margin: '0 auto' }}>
           <header style={{ marginBottom: 28 }}>
             <p
               style={{
@@ -167,7 +167,7 @@ export default function TenantLanding() {
               style={{
                 margin: '12px 0 0 0',
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: 'clamp(28px, 7vw, 32px)',
+                fontSize: 'clamp(32px, 5vw, 52px)',
                 fontWeight: 600,
                 lineHeight: 1.18,
                 letterSpacing: '-0.01em',
@@ -183,7 +183,7 @@ export default function TenantLanding() {
                 margin: 0,
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 500,
-                fontSize: 'clamp(18px, 5.4vw, 22px)',
+                fontSize: 'clamp(22px, 3.2vw, 34px)',
                 lineHeight: 1.35,
                 display: '-webkit-box',
                 WebkitLineClamp: 4,
@@ -196,7 +196,7 @@ export default function TenantLanding() {
             <p
               style={{
                 margin: '12px 0 0 0',
-                fontSize: 14,
+                fontSize: 'clamp(15px, 1.35vw, 18px)',
                 fontWeight: 400,
                 lineHeight: 1.65,
                 color: premium.palette.muted,
@@ -252,8 +252,8 @@ export default function TenantLanding() {
           <section
             className="tl-premium-props"
             style={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: '1fr',
               marginBottom: 28,
             }}
           >
@@ -312,7 +312,7 @@ export default function TenantLanding() {
             {premium.footer.links.length > 0 ? (
               <div
                 className="tl-premium-footer-links"
-                style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}
+                style={{ display: 'flex', gap: 6, marginTop: 12 }}
               >
                 {premium.footer.links.map((link) => (
                   <a
