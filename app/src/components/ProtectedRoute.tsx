@@ -3,11 +3,13 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
 import { UserRole } from '@config'
 import { useTenantSlug } from '@hooks/useTenantSlug'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
 export default function ProtectedRoute({ allowRoles, children }: { allowRoles: UserRole[]; children: ReactNode }) {
   const { accessToken, role, isAuthenticated } = useAuthStore()
   const location = useLocation()
   const slug = useTenantSlug()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
 
   // Determine redirect path based on role and slug
   const getLoginPath = () => {
@@ -38,8 +40,26 @@ export default function ProtectedRoute({ allowRoles, children }: { allowRoles: U
   // If we have a token but no role yet, show loading
   if (accessToken && !role) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: loadingPalette.bg,
+        }}
+      >
+        <div
+          className="animate-spin"
+          aria-label="Loading"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '999px',
+            border: `2px solid ${loadingPalette.border}`,
+            borderTopColor: loadingPalette.accent,
+          }}
+        />
       </div>
     )
   }

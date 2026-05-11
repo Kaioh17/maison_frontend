@@ -7,7 +7,6 @@ import { type BookingResponse } from '@api/bookings'
 import { useFavicon } from '@hooks/useFavicon'
 import { Spinner, ArrowLeft, CreditCard } from '@phosphor-icons/react'
 import MaisonWordmark from '@components/MaisonWordmark'
-import ThemeToggle from '@components/ThemeToggle'
 import { useTheme } from '@contexts/ThemeContext'
 
 // Function to initialize Stripe with optional connected account
@@ -361,9 +360,6 @@ export default function PaymentPage() {
         flexDirection: 'column',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 1 }}>
-          <ThemeToggle />
-        </div>
         <h1 style={{
           margin: '0 0 clamp(24px, 4vw, 32px) 0',
           fontSize: 'clamp(24px, 4vw, 32px)',

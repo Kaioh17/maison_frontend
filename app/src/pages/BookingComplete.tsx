@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFavicon } from '@hooks/useFavicon'
 import { CheckCircle, House } from '@phosphor-icons/react'
-import ThemeToggle from '@components/ThemeToggle'
-
 export default function BookingComplete() {
   useFavicon()
   const navigate = useNavigate()
@@ -55,9 +53,6 @@ export default function BookingComplete() {
         textAlign: 'center',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0 }}>
-          <ThemeToggle />
-        </div>
         {/* Success Icon */}
         <div style={{
           width: 'clamp(80px, 10vw, 120px)',

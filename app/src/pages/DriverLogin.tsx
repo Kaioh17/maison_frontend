@@ -7,6 +7,7 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
 export default function DriverLogin() {
   useFavicon()
@@ -17,7 +18,8 @@ export default function DriverLogin() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
-  const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
+  const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
   
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
@@ -146,10 +148,10 @@ export default function DriverLogin() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
+        backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
-          color: 'var(--bw-text)',
+          color: loadingPalette.text,
           fontFamily: 'Work Sans, sans-serif',
           fontSize: '16px'
         }}>

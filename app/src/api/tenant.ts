@@ -34,6 +34,7 @@ export type TenantSettings = {
 
 export type TenantProfileBasic = {
   company_name: string
+  phone_no?: string | null
 }
 
 export type TenantSettingsResponse = {
@@ -61,13 +62,20 @@ export type TenantSettingsResponse = {
 
 export type TenantBranding = {
   theme: string
-  primary_color: string
-  secondary_color: string
-  accent_color: string
+  primary_color: string | null
+  secondary_color: string | null
+  accent_color: string | null
+  background_color: string | null
+  surface_color: string | null
+  text_color: string | null
+  text_muted_color: string | null
+  button_text_color: string | null
   favicon_url: string | null
   slug: string
   email_from_name: string | null
   email_from_address: string | null
+  /** Business-facing brand contact number shown to riders. */
+  phone?: string | null
   logo_url: string | null
   enable_branding: boolean
 }
@@ -84,6 +92,84 @@ export type SlugVerificationResponse = {
 
 export async function verifySlug(slug: string) {
   const { data } = await http.get<StandardResponse<SlugVerificationResponse>>(`/v1/slug/${slug}`)
+  return data
+}
+
+export type StorefrontAction = {
+  label: string
+  route: string
+}
+
+export type StorefrontFooterLink = {
+  label: string
+  value: string
+  href: string
+}
+
+export type StorefrontFooter = {
+  copyright: string
+  links: StorefrontFooterLink[]
+}
+
+export type DefaultStorefrontCard = {
+  title: string
+  description: string
+  primary_cta: StorefrontAction
+  secondary_cta?: StorefrontAction | null
+}
+
+export type DefaultStorefrontData = {
+  template: 'default'
+  tenant_name: string
+  wordmark: string
+  welcome_label: string
+  hero_title: string
+  hero_description: string
+  rider_card: DefaultStorefrontCard
+  driver_card: DefaultStorefrontCard
+  footer: StorefrontFooter
+}
+
+export type PremiumStorefrontValueProp = {
+  title: string
+  description: string
+}
+
+export type PremiumStorefrontPalette = {
+  background: string
+  text: string
+  accent: string
+  muted: string
+  /**
+   * Label color on the solid primary CTA (accent background).
+   * Present on premium storefront API responses; omit only in stale fixtures.
+   */
+  button_text?: string
+}
+
+export type PremiumStorefrontData = {
+  template: 'premium'
+  tenant_name: string
+  wordmark: string
+  caption: string
+  hero: {
+    title: string
+    supporting: string
+  }
+  ctas: {
+    primary: StorefrontAction
+    secondary: StorefrontAction
+  }
+  value_props: PremiumStorefrontValueProp[]
+  trust_line: string
+  palette: PremiumStorefrontPalette
+  footer: StorefrontFooter
+}
+
+export type StorefrontData = DefaultStorefrontData | PremiumStorefrontData
+
+export async function getTenantStorefront(slug: string) {
+  const { data } = await http.get<StandardResponse<StorefrontData>>(`/v1/slug/storefront/${slug}`)
   return data
 }
 

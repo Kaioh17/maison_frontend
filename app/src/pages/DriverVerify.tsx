@@ -5,6 +5,7 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { useFavicon } from '@hooks/useFavicon'
 import { Key } from '@phosphor-icons/react'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
 export default function DriverVerify() {
   useFavicon()
@@ -14,6 +15,7 @@ export default function DriverVerify() {
   const [error, setError] = useState('')
   const [token, setToken] = useState('')
   const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,10 +69,10 @@ export default function DriverVerify() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
+        backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
-          color: 'var(--bw-text)',
+          color: loadingPalette.text,
           fontFamily: 'Work Sans, sans-serif',
           fontSize: '16px'
         }}>

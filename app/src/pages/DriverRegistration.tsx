@@ -15,6 +15,7 @@ import {
   getPasswordPolicyFailures,
   PASSWORD_POLICY_HINT,
 } from '@utils/passwordPolicy'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
 export default function DriverRegistration() {
   useFavicon()
@@ -48,7 +49,8 @@ export default function DriverRegistration() {
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const [searchParams] = useSearchParams()
   const location = useLocation()
-  const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
+  const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
   // Get token and tenant_id from navigation state first, fallback to URL params for backward compatibility
   const token = (location.state as { token?: string })?.token || searchParams.get('token') || ''
   const tenantId = (location.state as { tenantId?: number })?.tenantId || null
@@ -331,10 +333,10 @@ export default function DriverRegistration() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
+        backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
-          color: 'var(--bw-text)',
+          color: loadingPalette.text,
           fontFamily: 'Work Sans, sans-serif',
           fontSize: '16px'
         }}>

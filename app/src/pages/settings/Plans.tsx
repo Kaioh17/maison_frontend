@@ -288,12 +288,14 @@ export default function Plans() {
                     display: 'flex',
                     alignItems: 'baseline',
                     justifyContent: 'center',
+                    flexWrap: 'wrap',
                     gap: 'clamp(4px, 1vw, 8px)',
+                    rowGap: '2px',
                     marginBottom: 'clamp(8px, 1.5vw, 12px)'
                   }}>
                     <span style={{
                       fontFamily: '"DM Sans", sans-serif',
-                      fontSize: 'clamp(28px, 4vw, 36px)',
+                      fontSize: 'clamp(20px, 5.5vw, 36px)',
                       fontWeight: 200,
                       color: 'var(--bw-text)'
                     }}>{plan.price}</span>

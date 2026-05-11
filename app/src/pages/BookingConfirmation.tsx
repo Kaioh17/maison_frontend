@@ -5,8 +5,6 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { listAllowedRiderPaymentMethods, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
 import { useFavicon } from '@hooks/useFavicon'
 import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check, Info } from '@phosphor-icons/react'
-import ThemeToggle from '@components/ThemeToggle'
-
 // Stripe Logo SVG Component
 const StripeLogo = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -236,9 +234,6 @@ export default function BookingConfirmation() {
           >
             <X size={24} />
           </button>
-          <div style={{ position: 'absolute', right: 0, top: 0, zIndex: 2 }}>
-            <ThemeToggle />
-          </div>
           <h1 style={{
             margin: '0 auto',
             fontSize: 'clamp(24px, 4vw, 32px)',

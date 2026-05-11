@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBrandingData } from '@api/tenantSettings'
 import { useNavigate } from 'react-router-dom'
-import { Palette, Save, Edit, X } from 'lucide-react'
+import { Palette, Save, Edit, X, ChevronDown, ChevronUp } from 'lucide-react'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
 export default function BrandingSettings() {
@@ -26,13 +26,21 @@ export default function BrandingSettings() {
     primary_color: '',
     secondary_color: '',
     accent_color: '',
+    background_color: '',
+    surface_color: '',
+    text_color: '',
+    text_muted_color: '',
+    button_text_color: '',
     favicon_url: '',
     slug: '',
     email_from_name: '',
     email_from_address: '',
+    phone: '',
     logo_url: '',
     enable_branding: false
   })
+
+  const [colorsOpen, setColorsOpen] = useState(true)
 
   useEffect(() => {
     const handleResize = () => {
@@ -122,10 +130,16 @@ export default function BrandingSettings() {
         primary_color: editedData.primary_color,
         secondary_color: editedData.secondary_color,
         accent_color: editedData.accent_color,
+        background_color: editedData.background_color,
+        surface_color: editedData.surface_color,
+        text_color: editedData.text_color,
+        text_muted_color: editedData.text_muted_color,
+        button_text_color: editedData.button_text_color,
         favicon_url: editedData.favicon_url,
         slug: editedData.slug,
         email_from_name: editedData.email_from_name,
         email_from_address: editedData.email_from_address,
+        phone: editedData.phone,
         enable_branding: editedData.enable_branding
       })
       setBranding(updated)
@@ -150,6 +164,207 @@ export default function BrandingSettings() {
     setFaviconFile(null)
     setFaviconPreview(null)
   }
+
+  type FieldItem = {
+    label: string
+    field: keyof TenantBrandingData
+    type: 'select' | 'color' | 'checkbox' | 'text' | 'email' | 'url'
+    options?: string[]
+    description: string
+  }
+
+  const colorFields: FieldItem[] = [
+    { label: 'Primary', field: 'primary_color', type: 'color', description: 'Main brand color — primary buttons, links, focus rings, active states.' },
+    { label: 'Secondary', field: 'secondary_color', type: 'color', description: 'Lighter complementary brand color — subtle accents, hover tints, secondary highlights.' },
+    { label: 'Accent', field: 'accent_color', type: 'color', description: 'Darker variant of Primary used for hover/pressed states on brand buttons and emphasized borders.' },
+    { label: 'Background', field: 'background_color', type: 'color', description: 'Page background color rendered behind everything else (the canvas under all content).' },
+    { label: 'Surface', field: 'surface_color', type: 'color', description: 'Color of elevated surfaces — cards, modals, dropdown menus, form input fills. Sits one layer above Background.' },
+    { label: 'Text', field: 'text_color', type: 'color', description: 'Primary text color used for body copy, headings, and labels rendered on Background / Surface.' },
+    { label: 'Muted Text', field: 'text_muted_color', type: 'color', description: 'Secondary text color for captions, helper hints, placeholder text, and supporting copy. Should pass contrast against Background.' },
+    { label: 'Button Text', field: 'button_text_color', type: 'color', description: 'Text + icon color rendered inside primary brand-filled buttons. Picked for contrast against Primary.' },
+  ]
+
+  const otherFields: FieldItem[] = [
+    { label: 'Theme', field: 'theme', type: 'select', options: ['light', 'dark', 'auto'], description: 'Default theme for your application interface' },
+    { label: 'Slug', field: 'slug', type: 'text', description: 'Unique identifier for your tenant (used in URLs)' },
+    { label: 'Email From Name', field: 'email_from_name', type: 'text', description: 'Display name shown in emails sent to users' },
+    { label: 'Email From Address', field: 'email_from_address', type: 'email', description: 'Email address used as sender for system emails' },
+    { label: 'Brand Contact Phone', field: 'phone', type: 'text', description: 'Public business phone shown to riders in the app contact menu. Use your brand support line, not a personal number.' },
+    { label: 'Favicon URL', field: 'favicon_url', type: 'url', description: 'URL to your favicon icon (shown in browser tabs)' },
+    { label: 'Enable Branding', field: 'enable_branding', type: 'checkbox', description: 'Enable custom branding across the application' },
+  ]
+
+  const renderField = (item: FieldItem) => (
+    <div key={item.field} className="bw-form-group" style={{
+      gridColumn: item.field === 'favicon_url' || item.field === 'enable_branding' ? (isMobile ? 'span 1' : 'span 2') : 'span 1'
+    }}>
+      <div style={{ marginBottom: 'clamp(4px, 0.8vw, 6px)' }}>
+        <label className="bw-form-label small-muted" style={{
+          fontSize: 'clamp(11px, 1.3vw, 13px)',
+          fontFamily: '"Work Sans", sans-serif',
+          fontWeight: 300,
+          color: 'var(--bw-muted)',
+          display: 'block',
+          marginBottom: item.description ? '2px' : '0'
+        }}>
+          {item.label}
+        </label>
+        {item.description && (
+          <span style={{
+            fontSize: 'clamp(10px, 1.2vw, 11px)',
+            fontFamily: '"Work Sans", sans-serif',
+            fontWeight: 300,
+            color: 'var(--bw-muted)',
+            opacity: 0.7,
+            display: 'block',
+            lineHeight: 1.3
+          }}>
+            {item.description}
+          </span>
+        )}
+      </div>
+      {isEditing ? (
+        item.type === 'select' ? (
+          <select
+            value={editedData[item.field] as string || ''}
+            onChange={(e) => handleInputChange(item.field, e.target.value)}
+            className="bw-input"
+            style={{
+              width: '100%',
+              padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+              fontSize: 'clamp(12px, 1.5vw, 14px)',
+              fontFamily: '"Work Sans", sans-serif',
+              borderRadius: 0,
+              color: 'var(--bw-text)',
+              backgroundColor: 'var(--bw-bg)',
+              border: '1px solid var(--bw-border)'
+            }}
+          >
+            {item.options?.map(opt => (
+              <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
+            ))}
+          </select>
+        ) : item.type === 'checkbox' ? (
+          <select
+            value={editedData[item.field] ? 'true' : 'false'}
+            onChange={(e) => handleInputChange(item.field, e.target.value === 'true')}
+            className="bw-input"
+            style={{
+              width: '100%',
+              padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+              fontSize: 'clamp(12px, 1.5vw, 14px)',
+              fontFamily: '"Work Sans", sans-serif',
+              borderRadius: 0,
+              color: 'var(--bw-text)',
+              backgroundColor: 'var(--bw-bg)',
+              border: '1px solid var(--bw-border)'
+            }}
+          >
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        ) : item.type === 'color' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1vw, 8px)', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', width: '100%' }}>
+              <input
+                type="color"
+                value={editedData[item.field] as string || '#ffffff'}
+                onChange={(e) => handleInputChange(item.field, e.target.value)}
+                style={{
+                  width: 'clamp(50px, 7vw, 60px)',
+                  height: 'clamp(40px, 5vw, 45px)',
+                  padding: '0',
+                  border: '1px solid var(--bw-border)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              />
+              <input
+                type="text"
+                value={editedData[item.field] as string || ''}
+                onChange={(e) => handleInputChange(item.field, e.target.value)}
+                placeholder="#000000"
+                className="bw-input"
+                style={{
+                  flex: 1,
+                  padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+                  fontSize: 'clamp(12px, 1.5vw, 14px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  borderRadius: 0,
+                  color: 'var(--bw-text)',
+                  backgroundColor: 'var(--bw-bg)',
+                  border: '1px solid var(--bw-border)'
+                }}
+              />
+            </div>
+            <div
+              style={{
+                width: '50%',
+                height: '15px',
+                borderRadius: '4px',
+                backgroundColor: (editedData[item.field] as string) || '#ffffff',
+                border: '1px solid var(--bw-border)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+              }}
+            />
+          </div>
+        ) : (
+          <input
+            type={item.type}
+            value={editedData[item.field] as string || ''}
+            onChange={(e) => handleInputChange(item.field, e.target.value)}
+            className="bw-input"
+            style={{
+              width: '100%',
+              padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
+              fontSize: 'clamp(12px, 1.5vw, 14px)',
+              fontFamily: '"Work Sans", sans-serif',
+              borderRadius: 0,
+              color: 'var(--bw-text)',
+              backgroundColor: 'var(--bw-bg)',
+              border: '1px solid var(--bw-border)'
+            }}
+          />
+        )
+      ) : item.type === 'color' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1vw, 8px)' }}>
+          <div style={{
+            fontSize: 'clamp(12px, 1.5vw, 14px)',
+            fontFamily: '"Work Sans", sans-serif',
+            fontWeight: 300,
+            color: 'var(--bw-text)',
+            padding: 'clamp(12px, 2vw, 16px) 0'
+          }}>
+            {editedData[item.field] as string || 'N/A'}
+          </div>
+          <div
+            style={{
+              width: '50%',
+              height: '15px',
+              borderRadius: '4px',
+              backgroundColor: (editedData[item.field] as string) || '#ffffff',
+              border: '1px solid var(--bw-border)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
+          />
+        </div>
+      ) : (
+        <div style={{
+          fontSize: 'clamp(12px, 1.5vw, 14px)',
+          fontFamily: '"Work Sans", sans-serif',
+          fontWeight: 300,
+          color: 'var(--bw-text)',
+          padding: 'clamp(12px, 2vw, 16px) 0'
+        }}>
+          {item.type === 'checkbox'
+            ? (editedData[item.field] ? 'Yes' : 'No')
+            : (editedData[item.field] as string || 'N/A')
+          }
+        </div>
+      )}
+    </div>
+  )
 
   if (loading) {
     return (
@@ -305,194 +520,79 @@ export default function BrandingSettings() {
           borderRadius: 'clamp(8px, 1.5vw, 12px)',
           padding: 'clamp(16px, 2.5vw, 24px)'
         }}>
-          <div style={{ 
-            display: 'grid', 
+          <div style={{
+            display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
             gap: 'clamp(16px, 2vw, 24px)',
             width: '100%',
             maxWidth: '100%'
           }}>
-            {[
-              { label: 'Theme', field: 'theme', type: 'select', options: ['light', 'dark', 'auto'], description: 'Default theme for your application interface' },
-              { label: 'Primary Color', field: 'primary_color', type: 'color', description: 'Main brand color used throughout the application' },
-              { label: 'Secondary Color', field: 'secondary_color', type: 'color', description: 'Secondary brand color for accents and highlights' },
-              { label: 'Accent Color', field: 'accent_color', type: 'color', description: 'Accent color for buttons and interactive elements' },
-              { label: 'Slug', field: 'slug', type: 'text', description: 'Unique identifier for your tenant (used in URLs)' },
-              { label: 'Email From Name', field: 'email_from_name', type: 'text', description: 'Display name shown in emails sent to users' },
-              { label: 'Email From Address', field: 'email_from_address', type: 'email', description: 'Email address used as sender for system emails' },
-              { label: 'Favicon URL', field: 'favicon_url', type: 'url', description: 'URL to your favicon icon (shown in browser tabs)' },
-              { label: 'Enable Branding', field: 'enable_branding', type: 'checkbox', description: 'Enable custom branding across the application' }
-            ].map((item) => (
-              <div key={item.field} className="bw-form-group" style={{ 
-                gridColumn: item.field === 'favicon_url' || item.field === 'enable_branding' ? (isMobile ? 'span 1' : 'span 2') : 'span 1'
-              }}>
-                <div style={{ marginBottom: 'clamp(4px, 0.8vw, 6px)' }}>
-                  <label className="bw-form-label small-muted" style={{
-                    fontSize: 'clamp(11px, 1.3vw, 13px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-muted)',
-                    display: 'block',
-                    marginBottom: item.description ? '2px' : '0'
-                  }}>
-                    {item.label}
-                  </label>
-                  {item.description && (
-                    <span style={{
-                      fontSize: 'clamp(10px, 1.2vw, 11px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 300,
-                      color: 'var(--bw-muted)',
-                      opacity: 0.7,
-                      display: 'block',
-                      lineHeight: 1.3
-                    }}>
-                      {item.description}
-                    </span>
-                  )}
-                </div>
-                {isEditing ? (
-                  item.type === 'select' ? (
-                    <select
-                      value={editedData[item.field as keyof TenantBrandingData] as string || ''}
-                      onChange={(e) => handleInputChange(item.field as keyof TenantBrandingData, e.target.value)}
-                      className="bw-input"
-                      style={{
-                        width: '100%',
-                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        borderRadius: 0,
-                        color: 'var(--bw-text)',
-                        backgroundColor: 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)'
-                      }}
-                    >
-                      {item.options?.map(opt => (
-                        <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
-                      ))}
-                    </select>
-                  ) : item.type === 'checkbox' ? (
-                    <select
-                      value={editedData[item.field as keyof TenantBrandingData] ? 'true' : 'false'}
-                      onChange={(e) => handleInputChange(item.field as keyof TenantBrandingData, e.target.value === 'true')}
-                      className="bw-input"
-                      style={{
-                        width: '100%',
-                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        borderRadius: 0,
-                        color: 'var(--bw-text)',
-                        backgroundColor: 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)'
-                      }}
-                    >
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
-                    </select>
-                  ) : item.type === 'color' ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1vw, 8px)', width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', width: '100%' }}>
-                        <input
-                          type="color"
-                          value={editedData[item.field as keyof TenantBrandingData] as string || '#ffffff'}
-                          onChange={(e) => handleInputChange(item.field as keyof TenantBrandingData, e.target.value)}
-                          style={{
-                            width: 'clamp(50px, 7vw, 60px)',
-                            height: 'clamp(40px, 5vw, 45px)',
-                            padding: '0',
-                            border: '1px solid var(--bw-border)',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            flexShrink: 0
-                          }}
-                        />
-                        <input
-                          type="text"
-                          value={editedData[item.field as keyof TenantBrandingData] as string || ''}
-                          onChange={(e) => handleInputChange(item.field as keyof TenantBrandingData, e.target.value)}
-                          placeholder="#000000"
-                          className="bw-input"
-                          style={{
-                            flex: 1,
-                            padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            fontFamily: '"Work Sans", sans-serif',
-                            borderRadius: 0,
-                            color: 'var(--bw-text)',
-                            backgroundColor: 'var(--bw-bg)',
-                            border: '1px solid var(--bw-border)'
-                          }}
-                        />
-                      </div>
-                      <div
-                        style={{
-                          width: '50%',
-                          height: '15px',
-                          borderRadius: '4px',
-                          backgroundColor: (editedData[item.field as keyof TenantBrandingData] as string) || '#ffffff',
-                          border: '1px solid var(--bw-border)',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <input
-                      type={item.type}
-                      value={editedData[item.field as keyof TenantBrandingData] as string || ''}
-                      onChange={(e) => handleInputChange(item.field as keyof TenantBrandingData, e.target.value)}
-                      className="bw-input"
-                      style={{
-                        width: '100%',
-                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        borderRadius: 0,
-                        color: 'var(--bw-text)',
-                        backgroundColor: 'var(--bw-bg)',
-                        border: '1px solid var(--bw-border)'
-                      }}
-                    />
-                  )
-                ) : item.type === 'color' ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1vw, 8px)' }}>
-                    <div style={{
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 300,
-                      color: 'var(--bw-text)',
-                      padding: 'clamp(12px, 2vw, 16px) 0'
-                    }}>
-                      {editedData[item.field as keyof TenantBrandingData] as string || 'N/A'}
-                    </div>
-                    <div
-                      style={{
-                        width: '50%',
-                        height: '15px',
-                        borderRadius: '4px',
-                        backgroundColor: (editedData[item.field as keyof TenantBrandingData] as string) || '#ffffff',
-                        border: '1px solid var(--bw-border)',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-text)',
-                    padding: 'clamp(12px, 2vw, 16px) 0'
-                  }}>
-                    {item.type === 'checkbox' 
-                      ? (editedData[item.field as keyof TenantBrandingData] ? 'Yes' : 'No')
-                      : (editedData[item.field as keyof TenantBrandingData] as string || 'N/A')
-                    }
-                  </div>
-                )}
+            {otherFields.map(renderField)}
+          </div>
+
+          {/* Colors Section (collapsible) */}
+          <div style={{ marginTop: 'clamp(24px, 4vw, 32px)', paddingTop: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)' }}>
+            <button
+              type="button"
+              onClick={() => setColorsOpen(o => !o)}
+              aria-expanded={colorsOpen}
+              aria-controls="branding-colors-panel"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'clamp(12px, 2vw, 16px)',
+                width: '100%',
+                padding: 0,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                marginBottom: colorsOpen ? 'clamp(16px, 2.5vw, 24px)' : 0
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h4 style={{
+                  margin: '0 0 4px 0',
+                  fontSize: 'clamp(14px, 2vw, 16px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 400,
+                  color: 'var(--bw-text)'
+                }}>
+                  Colors
+                </h4>
+                <span style={{
+                  fontSize: 'clamp(10px, 1.2vw, 11px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  color: 'var(--bw-muted)',
+                  opacity: 0.7,
+                  display: 'block',
+                  lineHeight: 1.3
+                }}>
+                  Brand palette used across the application. Toggle the section to edit individual colors.
+                </span>
               </div>
-            ))}
+              {colorsOpen ? (
+                <ChevronUp style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
+              ) : (
+                <ChevronDown style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
+              )}
+            </button>
+            {colorsOpen && (
+              <div
+                id="branding-colors-panel"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+                  gap: 'clamp(16px, 2vw, 24px)',
+                  width: '100%',
+                  maxWidth: '100%'
+                }}
+              >
+                {colorFields.map(renderField)}
+              </div>
+            )}
           </div>
 
           {/* Logo Upload Section */}

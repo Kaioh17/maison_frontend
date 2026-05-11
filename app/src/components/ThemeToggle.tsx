@@ -1,42 +1,37 @@
 import React from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from '@phosphor-icons/react'
 import { useTheme } from '@contexts/ThemeContext'
 
 export default function ThemeToggle() {
-  const { theme, setTheme, isDark } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === 'dark'
 
-  const toggleTheme = () => {
+  const handleToggle = () => {
     setTheme(isDark ? 'light' : 'dark')
   }
 
   return (
     <button
-      onClick={toggleTheme}
+      type="button"
+      onClick={handleToggle}
+      aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       style={{
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        padding: '8px',
-        display: 'flex',
+        border: '1px solid var(--bw-border)',
+        background: 'var(--bw-bg)',
+        color: 'var(--bw-text)',
+        borderRadius: 9999,
+        width: 40,
+        height: 40,
+        display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'var(--bw-text)',
-        transition: 'opacity 0.2s ease'
+        cursor: 'pointer',
+        fontSize: 16,
+        lineHeight: 1,
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.opacity = '0.7'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = '1'
-      }}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {isDark ? (
-        <Sun className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
-      ) : (
-        <Moon className="w-5 h-5" style={{ width: '20px', height: '20px' }} />
-      )}
+      {isDark ? <Moon size={18} weight="regular" aria-hidden /> : <Sun size={18} weight="regular" aria-hidden />}
     </button>
   )
 }

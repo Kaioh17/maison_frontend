@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTenantBySlug, type SlugVerificationResponse, type TenantSettingsResponse } from '@api/tenant'
+import { getTenantBySlug, type SlugVerificationResponse, type TenantSettingsResponse, type TenantBranding } from '@api/tenant'
 import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 
@@ -15,8 +15,12 @@ export type TenantInfo = {
    * Comes from slug verify `branding.email_from_address` (not the tenant’s private login email unless operators set it there).
    */
   contact_email?: string | null
+  /** Public contact phone for riders; branding.phone takes precedence when set. */
+  contact_phone?: string | null
   /** Core tenant settings from `/v1/slug/:slug` (same shape as config.settings PATCH/GET). */
   settings?: TenantSettingsResponse
+  /** Full branding row (palette + theme + enable_branding) from `/v1/slug/:slug`. */
+  branding?: TenantBranding
   [key: string]: any // Allow other fields for backward compatibility
 }
 
@@ -49,7 +53,9 @@ export function useTenantInfo() {
             logo_url: cached.data.branding.logo_url || null,
             favicon_url: cached.data.branding.favicon_url || null,
             contact_email: cached.data.branding.email_from_address?.trim() || null,
+            contact_phone: cached.data.branding.phone?.trim() || cached.data.profile.phone_no?.trim() || null,
             settings: cached.data.settings,
+            branding: cached.data.branding,
             // tenant_id not available from cache, will need to fetch if required
           }
           setTenantInfo(transformedInfo)
@@ -88,9 +94,10 @@ export function useTenantInfo() {
             logo_url: response.data.branding.logo_url || null,
             favicon_url: response.data.branding.favicon_url || null,
             contact_email: response.data.branding.email_from_address?.trim() || null,
+            contact_phone: response.data.branding.phone?.trim() || response.data.profile.phone_no?.trim() || null,
             tenant_id: tenantId,
             settings: response.data.settings,
-            // Do NOT implement color theming yet (skip primary_color, secondary_color, etc.)
+            branding: response.data.branding,
           }
           setTenantInfo(transformedInfo)
           

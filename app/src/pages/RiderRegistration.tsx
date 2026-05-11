@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeSlash, Envelope, Lock, User, Phone, MapPin, ArrowRight } from '@phosphor-icons/react'
+import React, { useState, useEffect } from 'react'
+import { Eye, EyeSlash, ArrowRight, ArrowLeft } from '@phosphor-icons/react'
 import { createUser } from '@api/user'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
@@ -16,10 +16,457 @@ import {
   getPasswordPolicyFailures,
   PASSWORD_POLICY_HINT,
 } from '@utils/passwordPolicy'
-import ThemeToggle from '@components/ThemeToggle'
+import {
+  resolveRiderAuthPalette,
+  type RiderAuthPalette,
+} from '@utils/riderAuthPalette'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
+
+const DESKTOP_BREAKPOINT = '(min-width: 768px)'
+const FONT_STACK =
+  'Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+
+// Override CSS theme variables so autocomplete dropdowns and any descendant
+// using --bw-* tokens render against the rider-auth palette regardless of the
+// user's globally saved theme.
+function buildScopedThemeVars(p: RiderAuthPalette): React.CSSProperties {
+  return {
+    ['--bw-bg' as string]: p.bg,
+    ['--bw-fg' as string]: p.text,
+    ['--bw-text' as string]: p.text,
+    ['--bw-muted' as string]: p.muted,
+    ['--bw-border' as string]: p.inputBorder,
+    ['--bw-border-strong' as string]: p.inputBorder,
+    ['--bw-focus' as string]: p.brand,
+  }
+}
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : true
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(query)
+    const onChange = () => setMatches(mq.matches)
+    if (mq.addEventListener) mq.addEventListener('change', onChange)
+    else mq.addListener(onChange)
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange)
+      else mq.removeListener(onChange)
+    }
+  }, [query])
+
+  return matches
+}
+
+interface BrandMarkProps {
+  companyName: string
+  logoUrl?: string | null
+  variant: 'desktop' | 'mobile'
+  palette: RiderAuthPalette
+}
+
+function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
+  if (variant === 'desktop') {
+    if (logoUrl) {
+      return (
+        <img
+          src={logoUrl}
+          alt={companyName}
+          width={140}
+          height={32}
+          loading="eager"
+          decoding="async"
+          style={{
+            display: 'block',
+            margin: '0 auto',
+            maxHeight: 32,
+            maxWidth: 180,
+            objectFit: 'contain',
+          }}
+        />
+      )
+    }
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          color: palette.text,
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          fontFamily: FONT_STACK,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 9999,
+            background: palette.brand,
+            display: 'inline-block',
+          }}
+        />
+        <span>{companyName}</span>
+      </div>
+    )
+  }
+
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={companyName}
+        width={48}
+        height={48}
+        loading="eager"
+        decoding="async"
+        style={{
+          display: 'block',
+          maxWidth: 48,
+          maxHeight: 48,
+          objectFit: 'contain',
+        }}
+      />
+    )
+  }
+
+  return (
+    <span
+      style={{
+        fontSize: 16,
+        fontWeight: 500,
+        color: palette.text,
+        fontFamily: FONT_STACK,
+      }}
+    >
+      {companyName}
+    </span>
+  )
+}
+
+interface PrimaryButtonProps {
+  isLoading: boolean
+  label: string
+  loadingLabel: string
+  flex?: number
+  palette: RiderAuthPalette
+}
+
+function PrimaryButton({ isLoading, label, loadingLabel, flex, palette }: PrimaryButtonProps) {
+  return (
+    <button
+      type="submit"
+      disabled={isLoading}
+      style={{
+        flex,
+        width: flex ? undefined : '100%',
+        background: palette.brand,
+        color: palette.buttonText,
+        border: 0,
+        borderRadius: 8,
+        padding: '12px 16px',
+        fontSize: 14,
+        fontWeight: 500,
+        fontFamily: FONT_STACK,
+        cursor: isLoading ? 'not-allowed' : 'pointer',
+        opacity: isLoading ? 0.7 : 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        transition: 'background-color 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!isLoading) e.currentTarget.style.background = palette.brandHover
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = palette.brand
+      }}
+    >
+      <span>{isLoading ? loadingLabel : label}</span>
+      {!isLoading && <ArrowRight size={16} aria-hidden weight="bold" />}
+    </button>
+  )
+}
+
+interface GhostButtonProps {
+  onClick: () => void
+  disabled?: boolean
+  label: string
+  flex?: number
+  withBackArrow?: boolean
+  palette: RiderAuthPalette
+}
+
+function GhostButton({ onClick, disabled, label, flex, withBackArrow, palette }: GhostButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        flex,
+        width: flex ? undefined : '100%',
+        background: 'transparent',
+        color: palette.text,
+        border: `1px solid ${palette.inputBorder}`,
+        borderRadius: 8,
+        padding: '12px 16px',
+        fontSize: 14,
+        fontWeight: 500,
+        fontFamily: FONT_STACK,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+      }}
+    >
+      {withBackArrow && <ArrowLeft size={16} aria-hidden weight="bold" />}
+      <span>{label}</span>
+    </button>
+  )
+}
+
+interface ErrorBannerProps {
+  message: string
+  palette: RiderAuthPalette
+}
+
+function ErrorBanner({ message, palette }: ErrorBannerProps) {
+  return (
+    <div
+      role="alert"
+      style={{
+        marginTop: 16,
+        padding: '10px 12px',
+        background: palette.errorBg,
+        border: `1px solid ${palette.errorBorder}`,
+        borderRadius: 8,
+        color: palette.error,
+        fontSize: 13,
+        fontFamily: FONT_STACK,
+        lineHeight: 1.4,
+      }}
+    >
+      {message}
+    </div>
+  )
+}
+
+interface FloatingFieldProps {
+  id: string
+  name: string
+  label: string
+  type?: string
+  autoComplete?: string
+  required?: boolean
+  placeholder?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  adornment?: React.ReactNode
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
+  maxLength?: number
+  palette: RiderAuthPalette
+  ['aria-invalid']?: boolean
+}
+
+function FloatingField({
+  id,
+  name,
+  label,
+  type = 'text',
+  autoComplete,
+  required,
+  placeholder,
+  value,
+  onChange,
+  adornment,
+  inputMode,
+  maxLength,
+  palette,
+  ...rest
+}: FloatingFieldProps) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <div
+      style={{
+        background: palette.inputBg,
+        border: `1px solid ${focused ? palette.brand : palette.inputBorder}`,
+        borderRadius: 8,
+        padding: '8px 12px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        transition: 'border-color 0.15s ease',
+      }}
+    >
+      <label htmlFor={id} style={{ flex: 1, display: 'block', cursor: 'text' }}>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: palette.labelMuted,
+            fontFamily: FONT_STACK,
+            marginBottom: 2,
+          }}
+        >
+          {label}
+        </span>
+        <input
+          id={id}
+          name={name}
+          type={type}
+          autoComplete={autoComplete}
+          required={required}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          inputMode={inputMode}
+          maxLength={maxLength}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 0,
+            outline: 'none',
+            color: palette.text,
+            fontSize: 14,
+            fontFamily: FONT_STACK,
+            padding: 0,
+          }}
+          {...rest}
+        />
+      </label>
+      {adornment}
+    </div>
+  )
+}
+
+interface DesktopFieldProps {
+  id: string
+  name: string
+  label: string
+  type?: string
+  autoComplete?: string
+  required?: boolean
+  placeholder?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  adornment?: React.ReactNode
+  maxLength?: number
+  palette: RiderAuthPalette
+  ['aria-invalid']?: boolean
+}
+
+function DesktopField({
+  id,
+  name,
+  label,
+  type = 'text',
+  autoComplete,
+  required,
+  placeholder,
+  value,
+  onChange,
+  adornment,
+  maxLength,
+  palette,
+  ...rest
+}: DesktopFieldProps) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        style={{
+          display: 'block',
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          color: palette.labelMuted,
+          fontFamily: FONT_STACK,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <input
+          id={id}
+          name={name}
+          type={type}
+          autoComplete={autoComplete}
+          required={required}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          maxLength={maxLength}
+          style={{
+            width: '100%',
+            background: palette.inputBg,
+            border: `1px solid ${palette.inputBorder}`,
+            borderRadius: 8,
+            padding: adornment ? '12px 40px 12px 14px' : '12px 14px',
+            color: palette.text,
+            fontSize: 14,
+            fontFamily: FONT_STACK,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = palette.brand
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = palette.inputBorder
+          }}
+          {...rest}
+        />
+        {adornment && (
+          <div
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            {adornment}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const formatPhoneNumber = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+const normalizeOptionalValue = (value: string): string | null => {
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
 
 export default function RiderRegistration() {
   useFavicon()
+  const isDesktop = useMediaQuery(DESKTOP_BREAKPOINT)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -31,103 +478,23 @@ export default function RiderRegistration() {
     city: '',
     state: '',
     country: '',
-    postal_code: ''
+    postal_code: '',
   })
   const [step, setStep] = useState<1 | 2>(1)
   const [showAddressFields, setShowAddressFields] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
-  const [currentTheme, setCurrentTheme] = useState<string>('dark')
-  const imageContainerRef = useRef<HTMLDivElement>(null)
   const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
-  
+  const palette = resolveRiderAuthPalette(tenantInfo?.branding)
+
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
 
-  // Determine current theme
-  const getCurrentTheme = () => {
-    if (typeof window === 'undefined') return 'dark'
-    const theme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
-    if (theme === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return theme || 'dark'
-  }
-
-  useEffect(() => {
-    const updateTheme = () => {
-      const theme = getCurrentTheme()
-      setCurrentTheme(theme)
-    }
-
-    updateTheme()
-
-    // Listen for theme changes
-    const observer = new MutationObserver(updateTheme)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
-
-    // Listen for system theme changes (for auto mode)
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', updateTheme)
-
-    return () => {
-      observer.disconnect()
-      mediaQuery.removeEventListener('change', updateTheme)
-    }
-  }, [])
-
-  // Lazy load background image
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !backgroundImage) {
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp').then((module) => {
-              setBackgroundImage(module.default)
-            })
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: '50px' }
-    )
-
-    if (imageContainerRef.current) {
-      observer.observe(imageContainerRef.current)
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [backgroundImage])
-
-  // Redirect authenticated riders
   useEffect(() => {
     if (isAuthenticated && role === 'rider') {
       navigate('/rider/dashboard', { replace: true })
     }
   }, [isAuthenticated, role, navigate])
-
-  const formatPhoneNumber = (value: string): string => {
-    // Remove all non-digit characters
-    const phoneNumber = value.replace(/\D/g, '')
-    
-    // Limit to 10 digits for US format, or 15 for international
-    const phoneNumberDigits = phoneNumber.slice(0, 10)
-    
-    // Format based on length
-    if (phoneNumberDigits.length === 0) {
-      return ''
-    } else if (phoneNumberDigits.length <= 3) {
-      return `(${phoneNumberDigits}`
-    } else if (phoneNumberDigits.length <= 6) {
-      return `(${phoneNumberDigits.slice(0, 3)}) ${phoneNumberDigits.slice(3)}`
-    } else {
-      return `(${phoneNumberDigits.slice(0, 3)}) ${phoneNumberDigits.slice(3, 6)}-${phoneNumberDigits.slice(6)}`
-    }
-  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -136,11 +503,6 @@ export default function RiderRegistration() {
     } else {
       setFormData({ ...formData, [name]: value })
     }
-  }
-
-  const normalizeOptionalValue = (value: string): string | null => {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : null
   }
 
   const handleAddressDetailsToggle = (checked: boolean) => {
@@ -190,13 +552,10 @@ export default function RiderRegistration() {
       setError('Loading tenant information...')
       return
     }
-
     if (tenantInfo && !slug) {
-      console.error('Tenant info loaded but slug is missing:', { tenantInfo })
       setError('Unable to determine tenant slug. Please refresh the page or contact support.')
       return
     }
-
     if (!slug) {
       setError('Tenant information is required. Please access this page with a valid tenant slug.')
       return
@@ -225,7 +584,7 @@ export default function RiderRegistration() {
         state: showAddressFields ? normalizeOptionalValue(formData.state) : null,
         country: showAddressFields ? normalizeOptionalValue(formData.country) : null,
         postal_code: showAddressFields ? normalizeOptionalValue(formData.postal_code) : null,
-        password: formData.password
+        password: formData.password,
       })
 
       const data = await loginRider(formData.email, formData.password)
@@ -238,507 +597,850 @@ export default function RiderRegistration() {
     }
   }
 
-  // Don't render if already authenticated
+  const handleBack = () => {
+    setError('')
+    setShowAddressFields(false)
+    setStep(1)
+  }
+
   if (isAuthenticated && role === 'rider') {
     return null
   }
 
-  // Show loading state while fetching tenant info
   if (tenantLoading) {
+    const loadingPalette = resolveSubdomainLoadingPalette(slug)
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
-      }}>
-        <div style={{ 
-          color: 'var(--bw-text)',
-          fontFamily: 'Work Sans, sans-serif',
-          fontSize: '16px'
-        }}>
-          Loading...
-        </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: loadingPalette.bg,
+          color: loadingPalette.muted,
+          fontFamily: FONT_STACK,
+          fontSize: 14,
+          ['--bw-bg' as string]: loadingPalette.bg,
+          ['--bw-fg' as string]: loadingPalette.text,
+          ['--bw-text' as string]: loadingPalette.text,
+          ['--bw-muted' as string]: loadingPalette.muted,
+          ['--bw-border' as string]: loadingPalette.border,
+          ['--bw-border-strong' as string]: loadingPalette.border,
+          ['--bw-focus' as string]: loadingPalette.accent,
+          ['--bw-accent' as string]: loadingPalette.accent,
+        }}
+      >
+        Loading…
       </div>
     )
   }
 
-  // Show error if tenant not found (after loading completes)
   if (!tenantLoading && !tenantInfo && !slug) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: 'var(--bw-bg)',
-        padding: '24px'
-      }}>
-        <div style={{ 
-          color: 'var(--bw-error)',
-          fontFamily: 'Work Sans, sans-serif',
-          fontSize: '16px',
-          marginBottom: '16px',
-          textAlign: 'center'
-        }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: palette.bg,
+          padding: 24,
+          fontFamily: FONT_STACK,
+          ...buildScopedThemeVars(palette),
+        }}
+      >
+        <p style={{ color: palette.error, fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
           Tenant not found. Please check the URL and try again.
-        </div>
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <button 
-            className="bw-btn" 
-            style={{ 
-              borderRadius: 0, 
-              padding: '14px 24px', 
-              fontFamily: 'Work Sans, sans-serif', 
-              fontWeight: 500 
-            }}
-          >
-            Go to Home
-          </button>
+        </p>
+        <Link
+          to="/"
+          style={{
+            background: palette.brand,
+            color: palette.buttonText,
+            borderRadius: 8,
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 500,
+            textDecoration: 'none',
+          }}
+        >
+          Go to Home
         </Link>
       </div>
     )
   }
 
   const companyName = tenantInfo?.company_name || 'Our Service'
-  const riderPasswordFailures = getPasswordPolicyFailures(formData.password)
-  const riderEmailFormatError = getEmailFormatError(formData.email)
+  const passwordFailures = getPasswordPolicyFailures(formData.password)
+  const emailFormatError = getEmailFormatError(formData.email)
+
+  const sharedProps: LayoutProps = {
+    companyName,
+    logoUrl: tenantInfo?.logo_url,
+    formData,
+    onInputChange: handleInputChange,
+    onSubmit: handleFormSubmit,
+    isLoading,
+    error,
+    showPassword,
+    setShowPassword,
+    emailFormatError,
+    passwordFailures,
+    step,
+    showAddressFields,
+    onAddressToggle: handleAddressDetailsToggle,
+    onBack: handleBack,
+    setFormData,
+    palette,
+  }
+
+  return isDesktop ? <DesktopLayout {...sharedProps} /> : <MobileLayout {...sharedProps} />
+}
+
+interface LayoutProps {
+  companyName: string
+  logoUrl?: string | null
+  formData: {
+    email: string
+    password: string
+    first_name: string
+    last_name: string
+    phone_no: string
+    address: string
+    city: string
+    state: string
+    country: string
+    postal_code: string
+  }
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onSubmit: (e: React.FormEvent) => void
+  isLoading: boolean
+  error: string
+  showPassword: boolean
+  setShowPassword: (value: boolean) => void
+  emailFormatError: string | null
+  passwordFailures: string[]
+  step: 1 | 2
+  showAddressFields: boolean
+  onAddressToggle: (checked: boolean) => void
+  onBack: () => void
+  setFormData: React.Dispatch<React.SetStateAction<LayoutProps['formData']>>
+  palette: RiderAuthPalette
+}
+
+function StepIndicator({ step, palette }: { step: 1 | 2; palette: RiderAuthPalette }) {
+  const label = step === 1 ? 'Step 1 of 2 — Account' : 'Step 2 of 2 — Pickup address'
+  return (
+    <p
+      aria-live="polite"
+      style={{
+        margin: '6px 0 0',
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: palette.labelMuted,
+        fontFamily: FONT_STACK,
+      }}
+    >
+      {label}
+    </p>
+  )
+}
+
+function AddressToggle({
+  checked,
+  onChange,
+  palette,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  palette: RiderAuthPalette
+}) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        cursor: 'pointer',
+        fontFamily: FONT_STACK,
+        fontSize: 13,
+        color: palette.text,
+        userSelect: 'none',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{
+          width: 16,
+          height: 16,
+          accentColor: palette.brand,
+          cursor: 'pointer',
+        }}
+      />
+      <span>Add pickup address now (optional)</span>
+    </label>
+  )
+}
+
+function DesktopLayout({
+  companyName,
+  logoUrl,
+  formData,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  error,
+  showPassword,
+  setShowPassword,
+  emailFormatError,
+  passwordFailures,
+  step,
+  showAddressFields,
+  onAddressToggle,
+  onBack,
+  setFormData,
+  palette,
+}: LayoutProps) {
+  const autocompleteStyle: React.CSSProperties = {
+    background: palette.inputBg,
+    border: `1px solid ${palette.inputBorder}`,
+    borderRadius: 8,
+    padding: '12px 14px',
+    color: palette.text,
+    fontSize: 14,
+    fontFamily: FONT_STACK,
+  }
 
   return (
-    <main className="bw" aria-label="Rider Registration" style={{ margin: 0, padding: 0, minHeight: '100vh', overflow: 'auto' }}>
-      <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
-        {/* Left side - Image (60%) */}
-        <div 
-          ref={imageContainerRef}
-          className="rider-registration-image-container"
-          style={{ 
-            width: '60%', 
-            height: '100%', 
-            position: 'relative',
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-            backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            transition: 'background-image 0.3s ease',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: '48px',
-            paddingTop: '120px'
-          }} 
-        >
-          {/* Tint: Maison page background at ~60% opacity (matches login/signup) */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
-            zIndex: 1
-          }}></div>
-          <div style={{
-            color: 'white',
-            textAlign: 'center',
-            maxWidth: '600px',
-            zIndex: 2,
-            position: 'relative',
-            padding: '32px'
-          }}>
-            <p style={{
-              fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-              fontSize: '20px',
-              lineHeight: '1.6',
-              fontWeight: 300,
-              textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-              margin: 0
-            }}>
-              Join {companyName}'s community of riders. Create your account to start booking rides and managing your profile.
-            </p>
-          </div>
+    <main
+      aria-label="Rider Registration"
+      style={{
+        margin: 0,
+        padding: '32px 24px',
+        minHeight: '100vh',
+        background: palette.bg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: FONT_STACK,
+        color: palette.text,
+        ...buildScopedThemeVars(palette),
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+        <div style={{ marginBottom: 32 }}>
+          <BrandMark companyName={companyName} logoUrl={logoUrl} variant="desktop" palette={palette} />
         </div>
 
-        {/* Right side - Registration Form (40%) */}
-        <div 
-          role="form" 
-          aria-labelledby="registration-title"
-          className="rider-registration-form-container"
-          style={{ 
-            width: '40%', 
-            minHeight: '100vh',
-            position: 'relative',
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center', 
-            justifyContent: 'flex-start',
-            padding: '24px',
-            paddingTop: 'clamp(24px, 5vw, 48px)',
-            backgroundColor: 'var(--bw-bg)',
-            overflowY: 'auto'
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 22,
+            fontWeight: 500,
+            color: palette.text,
+            fontFamily: FONT_STACK,
+            letterSpacing: '-0.01em',
           }}
         >
-          <div style={{ position: 'absolute', top: 'clamp(16px, 3vw, 24px)', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
-            <ThemeToggle />
-          </div>
-          <div style={{ width: '100%', maxWidth: '100%' }}>
-            {/* Company Logo/Name */}
-            {tenantInfo && (
-              <div style={{ 
-                marginBottom: '24px', 
-                display: 'flex', 
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}>
-                {tenantInfo.logo_url ? (
-                  <img 
-                    src={tenantInfo.logo_url} 
-                    alt={companyName}
-                    width={200}
-                    height={60}
-                    loading="eager"
-                    decoding="async"
+          Create your account
+        </h1>
+        <p
+          style={{
+            margin: '6px 0 0',
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          {`Sign up for ${companyName}`}
+        </p>
+        <StepIndicator step={step} palette={palette} />
+
+        {error && <ErrorBanner message={error} palette={palette} />}
+
+        <form onSubmit={onSubmit} style={{ marginTop: 24, textAlign: 'left' }}>
+          {step === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <DesktopField
+                  id="first_name"
+                  name="first_name"
+                  label="First name"
+                  autoComplete="given-name"
+                  required
+                  placeholder="John"
+                  value={formData.first_name}
+                  onChange={onInputChange}
+                  palette={palette}
+                />
+                <DesktopField
+                  id="last_name"
+                  name="last_name"
+                  label="Last name"
+                  autoComplete="family-name"
+                  required
+                  placeholder="Doe"
+                  value={formData.last_name}
+                  onChange={onInputChange}
+                  palette={palette}
+                />
+              </div>
+
+              <div>
+                <DesktopField
+                  id="email"
+                  name="email"
+                  label="Email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  placeholder="you@email.com"
+                  value={formData.email}
+                  onChange={onInputChange}
+                  aria-invalid={formData.email.length > 0 && !!emailFormatError}
+                  palette={palette}
+                />
+                <p
+                  style={{
+                    margin: '6px 2px 0',
+                    fontSize: 11,
+                    color: palette.muted,
+                    fontFamily: FONT_STACK,
+                  }}
+                >
+                  {EMAIL_FORMAT_HINT}
+                </p>
+                {emailFormatError && (
+                  <div
+                    role="alert"
                     style={{
-                      maxHeight: '60px',
-                      maxWidth: '200px',
-                      objectFit: 'contain'
+                      marginTop: 4,
+                      fontSize: 12,
+                      color: palette.error,
+                      fontFamily: FONT_STACK,
                     }}
-                  />
-                ) : (
-                  <h1 style={{
-                    margin: 0,
-                    fontSize: '32px',
-                    fontWeight: 600,
-                    color: 'var(--bw-text)',
-                    fontFamily: 'DM Sans, sans-serif'
-                  }}>
-                    {companyName}
-                  </h1>
+                  >
+                    {emailFormatError}
+                  </div>
                 )}
               </div>
-            )}
-            <h2 id="registration-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Create account</h2>
-          <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
-            {tenantInfo ? `Sign up for ${companyName}` : 'Sign up to get started'}
-          </p>
-          <p
-            className="small-muted"
-            aria-live="polite"
-            style={{ marginTop: 8, fontSize: 13, fontFamily: 'Work Sans, sans-serif', fontWeight: 400, letterSpacing: '0.02em', lineHeight: 1.45 }}
-          >
-            Step {step} of 2 — {step === 1 ? 'Account' : 'Where we pick you up'}.{' '}
-            {step === 1
-              ? 'You are entering your profile and password.'
-              : 'Address is optional. Check the box below only if you want to add it now.'}
-          </p>
 
-          {error && (
-            <div style={{ 
-              marginTop: 16, 
-              padding: '12px', 
-              backgroundColor: 'rgba(197, 72, 61, 0.1)', 
-              border: '1px solid var(--bw-error)', 
-              borderRadius: '4px',
-              color: 'var(--bw-error)',
-              fontSize: '14px',
-              fontFamily: 'Work Sans, sans-serif',
-              width: '100%'
-            }}>
-              {error}
+              <DesktopField
+                id="phone_no"
+                name="phone_no"
+                label="Phone"
+                type="tel"
+                autoComplete="tel"
+                required
+                placeholder="(555) 555-5555"
+                value={formData.phone_no}
+                onChange={onInputChange}
+                maxLength={14}
+                palette={palette}
+              />
+
+              <div>
+                <DesktopField
+                  id="password"
+                  name="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={onInputChange}
+                  palette={palette}
+                  adornment={
+                    <button
+                      type="button"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        background: 'transparent',
+                        border: 0,
+                        color: palette.muted,
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
+                <p
+                  style={{
+                    margin: '6px 2px 0',
+                    fontSize: 11,
+                    color: palette.muted,
+                    fontFamily: FONT_STACK,
+                  }}
+                >
+                  {PASSWORD_POLICY_HINT}
+                </p>
+                {formData.password.length > 0 && passwordFailures.length > 0 && (
+                  <div
+                    role="alert"
+                    style={{
+                      marginTop: 4,
+                      fontSize: 12,
+                      color: palette.error,
+                      fontFamily: FONT_STACK,
+                    }}
+                  >
+                    {formatPasswordPolicySentence(passwordFailures)}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <PrimaryButton
+                  isLoading={isLoading}
+                  label="Continue"
+                  loadingLabel="Continue"
+                  palette={palette}
+                />
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleFormSubmit} style={{ marginTop: 16, width: '100%' }}>
-            <div style={{ display: step === 1 ? 'block' : 'none' }} aria-hidden={step !== 1}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <label className="small-muted" htmlFor="first_name" style={{ fontFamily: 'Work Sans, sans-serif' }}>First name</label>
-              <label className="small-muted" htmlFor="last_name" style={{ fontFamily: 'Work Sans, sans-serif' }}>Last name</label>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div style={{ position: 'relative' }}>
-                <User size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="first_name" 
-                  name="first_name" 
-                  type="text" 
-                  autoComplete="given-name"
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="John" 
-                  value={formData.first_name}
-                  onChange={handleInputChange} 
-                />
-              </div>
-              <div style={{ position: 'relative' }}>
-                <User size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="last_name" 
-                  name="last_name" 
-                  type="text" 
-                  autoComplete="family-name"
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="Doe" 
-                  value={formData.last_name}
-                  onChange={handleInputChange} 
-                />
-              </div>
-            </div>
+          {step === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <AddressToggle checked={showAddressFields} onChange={onAddressToggle} palette={palette} />
 
-            <div style={{ marginBottom: 12 }}>
-              <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-              <div style={{ position: 'relative', marginTop: 6 }}>
-                <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  autoComplete="email"
-                  required 
-                  className="bw-input" 
-                  aria-invalid={formData.email.length > 0 && !!riderEmailFormatError}
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="you@email.com" 
-                  value={formData.email}
-                  onChange={handleInputChange} 
-                />
-              </div>
-              <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
-                {EMAIL_FORMAT_HINT}
-              </p>
-              {riderEmailFormatError && (
-                <div
-                  role="alert"
-                  style={{
-                    marginTop: 6,
-                    fontSize: 13,
-                    fontFamily: 'Work Sans, sans-serif',
-                    color: 'var(--bw-error)',
-                  }}
-                >
-                  {riderEmailFormatError}
-                </div>
+              {showAddressFields && (
+                <>
+                  <DesktopField
+                    id="address"
+                    name="address"
+                    label="Address"
+                    placeholder="123 Main St"
+                    value={formData.address}
+                    onChange={onInputChange}
+                    palette={palette}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                          color: palette.labelMuted,
+                          fontFamily: FONT_STACK,
+                          marginBottom: 8,
+                        }}
+                      >
+                        City
+                      </span>
+                      <CityAutocomplete
+                        value={formData.city}
+                        onChange={(value) => setFormData((prev) => ({ ...prev, city: value }))}
+                        selectedState={formData.state}
+                        placeholder="New York"
+                        className=""
+                        style={autocompleteStyle}
+                      />
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                          color: palette.labelMuted,
+                          fontFamily: FONT_STACK,
+                          marginBottom: 8,
+                        }}
+                      >
+                        State
+                      </span>
+                      <StateAutocomplete
+                        value={formData.state}
+                        onChange={(value) =>
+                          setFormData((prev) => ({ ...prev, state: value, city: '' }))
+                        }
+                        placeholder="NY"
+                        className=""
+                        style={autocompleteStyle}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.14em',
+                          textTransform: 'uppercase',
+                          color: palette.labelMuted,
+                          fontFamily: FONT_STACK,
+                          marginBottom: 8,
+                        }}
+                      >
+                        Country
+                      </span>
+                      <CountryAutocomplete
+                        value={formData.country}
+                        onChange={(value) => setFormData((prev) => ({ ...prev, country: value }))}
+                        placeholder="USA"
+                        className=""
+                        style={autocompleteStyle}
+                      />
+                    </div>
+                    <DesktopField
+                      id="postal_code"
+                      name="postal_code"
+                      label="Postal code"
+                      placeholder="10001"
+                      value={formData.postal_code}
+                      onChange={onInputChange}
+                      maxLength={10}
+                      palette={palette}
+                    />
+                  </div>
+                </>
               )}
-            </div>
 
-            <label className="small-muted" htmlFor="phone_no" style={{ fontFamily: 'Work Sans, sans-serif' }}>Phone number</label>
-            <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-              <Phone size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-              <input 
-                id="phone_no" 
-                name="phone_no" 
-                type="tel" 
-                autoComplete="tel"
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="(555) 555-5555" 
-                value={formData.phone_no}
-                onChange={handleInputChange}
-                maxLength={14}
-              />
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <GhostButton
+                  onClick={onBack}
+                  disabled={isLoading}
+                  label="Back"
+                  flex={1}
+                  withBackArrow
+                  palette={palette}
+                />
+                <PrimaryButton
+                  isLoading={isLoading}
+                  label="Create account"
+                  loadingLabel="Creating…"
+                  flex={2}
+                  palette={palette}
+                />
+              </div>
             </div>
+          )}
+        </form>
 
-            <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
-            <div style={{ position: 'relative', marginTop: 6 }}>
-              <Lock size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-              <input 
-                id="password" 
-                name="password" 
-                type={showPassword ? 'text' : 'password'} 
-                autoComplete="new-password"
-                required 
-                className="bw-input" 
-                style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                placeholder="••••••••" 
-                value={formData.password}
-                onChange={handleInputChange} 
-              />
-              <button 
-                type="button" 
-                aria-label="Toggle password" 
-                onClick={() => setShowPassword(!showPassword)} 
-                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
-              >
-                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
-              {PASSWORD_POLICY_HINT}
-            </p>
-            {formData.password.length > 0 && riderPasswordFailures.length > 0 && (
+        <p
+          style={{
+            marginTop: 24,
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          Already have an account?{' '}
+          <Link
+            to="/riders/login"
+            style={{ color: palette.brand, textDecoration: 'none', fontWeight: 500 }}
+          >
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </main>
+  )
+}
+
+function MobileLayout({
+  companyName,
+  logoUrl,
+  formData,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  error,
+  showPassword,
+  setShowPassword,
+  emailFormatError,
+  passwordFailures,
+  step,
+  showAddressFields,
+  onAddressToggle,
+  onBack,
+  setFormData,
+  palette,
+}: LayoutProps) {
+  const autocompleteStyle: React.CSSProperties = {
+    background: palette.inputBg,
+    border: `1px solid ${palette.inputBorder}`,
+    borderRadius: 8,
+    padding: '12px 14px',
+    color: palette.text,
+    fontSize: 14,
+    fontFamily: FONT_STACK,
+  }
+
+  return (
+    <main
+      aria-label="Rider Registration"
+      style={{
+        margin: 0,
+        minHeight: '100vh',
+        background: palette.bg,
+        color: palette.text,
+        fontFamily: FONT_STACK,
+        padding:
+          'calc(env(safe-area-inset-top, 0px) + 24px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        ...buildScopedThemeVars(palette),
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          marginBottom: 24,
+        }}
+      >
+        <BrandMark companyName={companyName} logoUrl={logoUrl} variant="mobile" palette={palette} />
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          Create your account
+        </p>
+        <StepIndicator step={step} palette={palette} />
+      </div>
+
+      {error && <ErrorBanner message={error} palette={palette} />}
+
+      <form
+        onSubmit={onSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}
+      >
+        {step === 1 && (
+          <>
+            <FloatingField
+              id="first_name"
+              name="first_name"
+              label="First name"
+              autoComplete="given-name"
+              required
+              placeholder="John"
+              value={formData.first_name}
+              onChange={onInputChange}
+              palette={palette}
+            />
+            <FloatingField
+              id="last_name"
+              name="last_name"
+              label="Last name"
+              autoComplete="family-name"
+              required
+              placeholder="Doe"
+              value={formData.last_name}
+              onChange={onInputChange}
+              palette={palette}
+            />
+            <FloatingField
+              id="email"
+              name="email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@email.com"
+              value={formData.email}
+              onChange={onInputChange}
+              aria-invalid={formData.email.length > 0 && !!emailFormatError}
+              palette={palette}
+            />
+            {emailFormatError && (
               <div
                 role="alert"
                 style={{
-                  marginTop: 6,
-                  fontSize: 13,
-                  fontFamily: 'Work Sans, sans-serif',
-                  color: 'var(--bw-error)',
+                  fontSize: 12,
+                  color: palette.error,
+                  fontFamily: FONT_STACK,
+                  marginTop: -4,
                 }}
               >
-                {formatPasswordPolicySentence(riderPasswordFailures)}
+                {emailFormatError}
               </div>
             )}
-
-            <button 
-              className="bw-btn" 
-              style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-              disabled={isLoading}
-              type="submit"
-            >
-              <span>Continue</span>
-              <ArrowRight size={16} aria-hidden />
-            </button>
-            </div>
-
-            <div style={{ display: step === 2 ? 'block' : 'none' }} aria-hidden={step !== 2}>
-            <label
-              htmlFor="add-address-details"
+            <FloatingField
+              id="phone_no"
+              name="phone_no"
+              label="Phone"
+              type="tel"
+              autoComplete="tel"
+              required
+              placeholder="(555) 555-5555"
+              value={formData.phone_no}
+              onChange={onInputChange}
+              inputMode="tel"
+              maxLength={14}
+              palette={palette}
+            />
+            <FloatingField
+              id="password"
+              name="password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={onInputChange}
+              palette={palette}
+              adornment={
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    color: palette.muted,
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                </button>
+              }
+            />
+            {formData.password.length > 0 && passwordFailures.length > 0 && (
+              <div
+                role="alert"
+                style={{
+                  fontSize: 12,
+                  color: palette.error,
+                  fontFamily: FONT_STACK,
+                  marginTop: -4,
+                }}
+              >
+                {formatPasswordPolicySentence(passwordFailures)}
+              </div>
+            )}
+            <p
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginBottom: 12,
-                cursor: 'pointer',
-                fontFamily: 'Work Sans, sans-serif',
-                fontSize: 14,
-                color: 'var(--bw-text)',
+                margin: '0 2px',
+                fontSize: 11,
+                color: palette.muted,
+                fontFamily: FONT_STACK,
               }}
             >
-              <input
-                id="add-address-details"
-                type="checkbox"
-                checked={showAddressFields}
-                onChange={(e) => handleAddressDetailsToggle(e.target.checked)}
-                style={{ cursor: 'pointer' }}
-              />
-              Add pickup address now (optional)
-            </label>
+              {PASSWORD_POLICY_HINT}
+            </p>
 
+            <div style={{ marginTop: 8 }}>
+              <PrimaryButton isLoading={isLoading} label="Continue" loadingLabel="Continue" palette={palette} />
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <AddressToggle checked={showAddressFields} onChange={onAddressToggle} palette={palette} />
             {showAddressFields && (
               <>
-                <label className="small-muted" htmlFor="address" style={{ fontFamily: 'Work Sans, sans-serif' }}>Address (optional)</label>
-                <div style={{ position: 'relative', marginTop: 6, marginBottom: 12 }}>
-                  <MapPin size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                  <input 
-                    id="address" 
-                    name="address" 
-                    type="text" 
-                    className="bw-input" 
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="123 Main St" 
-                    value={formData.address}
-                    onChange={handleInputChange} 
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <label className="small-muted" htmlFor="city" style={{ fontFamily: 'Work Sans, sans-serif' }}>City (optional)</label>
-                  <label className="small-muted" htmlFor="state" style={{ fontFamily: 'Work Sans, sans-serif' }}>State (optional)</label>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <CityAutocomplete
-                    value={formData.city}
-                    onChange={(value) => setFormData({ ...formData, city: value })}
-                    selectedState={formData.state}
-                    placeholder="New York"
-                    className="bw-input"
-                    style={{ padding: '16px 18px', borderRadius: 0 }}
-                  />
-                  <StateAutocomplete
-                    value={formData.state}
-                    onChange={(value) => setFormData({ ...formData, state: value, city: '' })}
-                    placeholder="NY"
-                    className="bw-input"
-                    style={{ padding: '16px 18px', borderRadius: 0 }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <label className="small-muted" htmlFor="country" style={{ fontFamily: 'Work Sans, sans-serif' }}>Country (optional)</label>
-                  <label className="small-muted" htmlFor="postal_code" style={{ fontFamily: 'Work Sans, sans-serif' }}>Postal code (optional)</label>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <CountryAutocomplete
-                    value={formData.country}
-                    onChange={(value) => setFormData({ ...formData, country: value })}
-                    placeholder="USA"
-                    className="bw-input"
-                    style={{ padding: '16px 18px', borderRadius: 0 }}
-                  />
-                  <input 
-                    id="postal_code" 
-                    name="postal_code" 
-                    type="text" 
-                    className="bw-input" 
-                    style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="10001" 
-                    value={formData.postal_code}
-                    onChange={handleInputChange}
-                    maxLength={5}
-                  />
-                </div>
+                <FloatingField
+                  id="address"
+                  name="address"
+                  label="Address"
+                  placeholder="123 Main St"
+                  value={formData.address}
+                  onChange={onInputChange}
+                  palette={palette}
+                />
+                <CityAutocomplete
+                  value={formData.city}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, city: value }))}
+                  selectedState={formData.state}
+                  placeholder="City"
+                  className=""
+                  style={autocompleteStyle}
+                />
+                <StateAutocomplete
+                  value={formData.state}
+                  onChange={(value) =>
+                    setFormData((prev) => ({ ...prev, state: value, city: '' }))
+                  }
+                  placeholder="State"
+                  className=""
+                  style={autocompleteStyle}
+                />
+                <CountryAutocomplete
+                  value={formData.country}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, country: value }))}
+                  placeholder="Country"
+                  className=""
+                  style={autocompleteStyle}
+                />
+                <FloatingField
+                  id="postal_code"
+                  name="postal_code"
+                  label="Postal code"
+                  placeholder="10001"
+                  value={formData.postal_code}
+                  onChange={onInputChange}
+                  maxLength={10}
+                  palette={palette}
+                />
               </>
             )}
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-              <button 
-                type="button"
-                className="bw-btn"
-                style={{ flex: 1, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, background: 'transparent', border: '1px solid var(--bw-border)', color: 'var(--bw-text)' }}
+            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+              <GhostButton
+                onClick={onBack}
                 disabled={isLoading}
-                onClick={() => { setError(''); setShowAddressFields(false); setStep(1) }}
-              >
-                Back
-              </button>
-              <button 
-                className="bw-btn" 
-                style={{ flex: 2, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-                disabled={isLoading}
-                type="submit"
-              >
-                <span>{isLoading ? 'Creating account...' : 'Create account'}</span>
-                {!isLoading && <ArrowRight size={16} aria-hidden />}
-              </button>
+                label="Back"
+                flex={1}
+                withBackArrow
+                palette={palette}
+              />
+              <PrimaryButton
+                isLoading={isLoading}
+                label="Create account"
+                loadingLabel="Creating…"
+                flex={2}
+                palette={palette}
+              />
             </div>
-            </div>
+          </>
+        )}
+      </form>
 
-            <div style={{ marginTop: 24, width: '100%' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                marginBottom: 16,
-                gap: 12
-              }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
-                <span className="small-muted" style={{ fontSize: '12px', fontFamily: 'Work Sans, sans-serif' }}>or</span>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
-              </div>
-              <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
-                Already have an account?{' '}
-                <Link to="/riders/login" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
-                  signin
-                </Link>
-              </p>
-            </div>
-          </form>
-          </div>
-        </div>
-      </div>
-      <style>{`
-        @media (max-width: 1024px) {
-          .rider-registration-image-container {
-            display: none !important;
-          }
-          .rider-registration-form-container {
-            width: 100% !important;
-          }
-        }
-      `}</style>
+      <p
+        style={{
+          marginTop: 24,
+          textAlign: 'center',
+          fontSize: 13,
+          color: palette.muted,
+          fontFamily: FONT_STACK,
+        }}
+      >
+        Already have an account?{' '}
+        <Link to="/riders/login" style={{ color: palette.brand, textDecoration: 'none', fontWeight: 500 }}>
+          Sign in
+        </Link>
+      </p>
     </main>
   )
 }

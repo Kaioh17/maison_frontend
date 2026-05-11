@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { verifySlug } from '@api/tenant'
 import { useTenantSlug } from '@hooks/useTenantSlug'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 import { getCachedSlugVerification, setCachedSlugVerification, isCacheExpired, type SlugBlockReason } from '@utils/slugCache'
 import {
   isGuestAccessDeniedAxiosError,
@@ -16,6 +17,7 @@ interface SlugVerificationProps {
 
 export default function SlugVerification({ children }: SlugVerificationProps) {
   const slug = useTenantSlug()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
   const [isValid, setIsValid] = useState<boolean | null>(null)
   const [blockReason, setBlockReason] = useState<SlugBlockReason | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -80,13 +82,18 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
 
   if (isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '100vh',
-        fontFamily: 'Work Sans, sans-serif'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          backgroundColor: loadingPalette.bg,
+          color: loadingPalette.muted,
+          fontFamily: 'Work Sans, sans-serif',
+          fontSize: 14,
+        }}
+      >
         <div>Loading...</div>
       </div>
     )

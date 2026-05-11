@@ -9,8 +9,6 @@ import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, 
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
-import ThemeToggle from '@components/ThemeToggle'
-
 type MenuSection = 'dashboard' | 'book-ride' | 'all-bookings' | 'vehicles'
 
 const riderSurfaceShell: CSSProperties = {
@@ -247,6 +245,15 @@ export default function RiderDashboard() {
   const [hasMoreBookings, setHasMoreBookings] = useState(true)
   
   const { tenantInfo, slug } = useTenantInfo()
+  const hasContactPhone = !!tenantInfo?.contact_phone?.trim()
+  const contactPhoneDisplay = hasContactPhone
+    ? (isCompleteUsPhone(tenantInfo?.contact_phone)
+      ? (zelleNumberFromApi(tenantInfo?.contact_phone) ?? tenantInfo?.contact_phone?.trim() ?? '')
+      : (tenantInfo?.contact_phone?.trim() ?? ''))
+    : ''
+  const contactPhoneTelHref = tenantInfo?.contact_phone
+    ? `tel:${tenantInfo.contact_phone.replace(/[^\d+]/g, '')}`
+    : ''
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -749,6 +756,8 @@ export default function RiderDashboard() {
   const pendingBookings = analytics?.pending ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
   const confirmedBookings = analytics?.confirmed ?? 0
   const cancelledBookings = analytics?.cancelled ?? 0
+  const isFreshDashboard = dashboardTotalBookings === 0
+  const riderCompanyName = tenantInfo?.company_name?.trim() || 'your service'
 
   const menuItems = [
     { id: 'dashboard' as MenuSection, label: 'Dashboard', icon: SquaresFour },
@@ -928,7 +937,7 @@ export default function RiderDashboard() {
           })}
         </nav>
 
-        {/* Tenant contact (public slug: branding.email_from_address) */}
+        {/* Tenant contact (public slug: branding.email_from_address + branding.phone) */}
         <div
           style={{
             padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
@@ -940,7 +949,7 @@ export default function RiderDashboard() {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              marginBottom: '8px',
+              marginBottom: hasContactPhone || tenantInfo?.contact_email ? '8px' : '0',
               fontSize: '11px',
               fontWeight: 600,
               letterSpacing: '0.06em',
@@ -953,38 +962,85 @@ export default function RiderDashboard() {
             <EnvelopeSimple size={14} style={{ flexShrink: 0, opacity: 0.85 }} aria-hidden />
             Contact
           </div>
-          {tenantInfo?.contact_email ? (
-            <a
-              href={`mailto:${encodeURIComponent(tenantInfo.contact_email)}`}
-              style={{
-                display: 'inline-block',
-                maxWidth: '100%',
-                wordBreak: 'break-word',
-                fontSize: 'clamp(13px, 2vw, 14px)',
-                fontWeight: 500,
-                color: 'var(--rider-primary)',
-                textDecoration: 'underline',
-                textUnderlineOffset: '3px',
-                fontFamily: 'Work Sans, sans-serif',
-              }}
-            >
-              {tenantInfo.contact_email}
-            </a>
-          ) : (
-            <p
-              style={{
-                margin: 0,
-                fontSize: 'clamp(12px, 1.8vw, 13px)',
-                lineHeight: 1.45,
-                color: 'var(--bw-text)',
-                opacity: 0.55,
-                fontFamily: 'Work Sans, sans-serif',
-                fontWeight: 300,
-              }}
-            >
-              No contact email listed for this operator yet.
-            </p>
-          )}
+          <div style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', columnGap: '18px', rowGap: '8px' }}>
+            {hasContactPhone ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    opacity: 0.6,
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 400,
+                    color: 'var(--bw-text)',
+                  }}
+                >
+                  Phone
+                </span>
+                <a
+                  href={contactPhoneTelHref}
+                  style={{
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                    wordBreak: 'break-word',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: 500,
+                    color: 'var(--rider-primary)',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '3px',
+                    fontFamily: 'Work Sans, sans-serif',
+                  }}
+                >
+                  {contactPhoneDisplay}
+                </a>
+              </div>
+            ) : null}
+            {tenantInfo?.contact_email ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    opacity: 0.6,
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 400,
+                    color: 'var(--bw-text)',
+                  }}
+                >
+                  Email
+                </span>
+                <a
+                  href={`mailto:${encodeURIComponent(tenantInfo.contact_email)}`}
+                  style={{
+                    display: 'inline-block',
+                    maxWidth: '100%',
+                    wordBreak: 'break-word',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: 500,
+                    color: 'var(--rider-primary)',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '3px',
+                    fontFamily: 'Work Sans, sans-serif',
+                  }}
+                >
+                  {tenantInfo.contact_email}
+                </a>
+              </div>
+            ) : (
+              <p
+                style={{
+                  margin: 0,
+                  flexBasis: '100%',
+                  fontSize: 'clamp(12px, 1.8vw, 13px)',
+                  lineHeight: 1.45,
+                  color: 'var(--bw-text)',
+                  opacity: 0.55,
+                  fontFamily: 'Work Sans, sans-serif',
+                  fontWeight: 300,
+                }}
+              >
+                No contact email listed for this operator yet.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Footer Section */}
@@ -995,9 +1051,6 @@ export default function RiderDashboard() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <ThemeToggle />
-          </div>
           <Link 
             to="/riders/profile" 
             style={{ textDecoration: 'none' }}
@@ -1103,7 +1156,6 @@ export default function RiderDashboard() {
           }}>
             {menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
           </h1>
-          <ThemeToggle />
         </div>
 
         {/* Error Message */}
@@ -1136,136 +1188,186 @@ export default function RiderDashboard() {
               </div>
             ) : (
               <>
-            {/* Stats Cards - three KPIs in one row */}
-            <div 
-              className="rider-stats-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 'clamp(12px, 2vw, 16px)'
-              }}
-            >
+            {isFreshDashboard ? (
               <div style={{
                 backgroundColor: 'var(--rider-surface-elevated)',
                 border: 'none',
                 borderRadius: '12px',
-                padding: 'clamp(16px, 3vw, 24px)',
-                textAlign: 'center'
+                padding: 'clamp(20px, 4vw, 28px)',
+                boxShadow: 'var(--rider-shell-shadow)'
               }}>
-                <div style={{
-                  fontSize: 'clamp(28px, 5vw, 40px)',
-                  fontWeight: 700,
+                <h2 style={{
+                  margin: 0,
+                  fontSize: 'clamp(18px, 3vw, 24px)',
+                  fontWeight: 500,
                   color: 'var(--bw-text)',
-                  marginBottom: '8px',
+                  fontFamily: 'Work Sans, sans-serif',
+                  letterSpacing: '-0.01em'
+                }}>
+                  Welcome to {riderCompanyName}.
+                </h2>
+                <p style={{
+                  margin: '10px 0 0 0',
+                  maxWidth: '56ch',
+                  fontSize: 'clamp(13px, 2.2vw, 15px)',
+                  lineHeight: 1.65,
+                  color: 'var(--bw-muted)',
                   fontFamily: 'Work Sans, sans-serif'
                 }}>
-                  {dashboardTotalBookings}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 300
-                }}>
-                  Total Bookings
-                </div>
+                  Your bookings, ride history, and trip status updates will appear here once you take your first ride.
+                </p>
+                <button
+                  onClick={() => handleMenuSelect('book-ride')}
+                  style={{
+                    marginTop: 'clamp(14px, 2.5vw, 18px)',
+                    padding: 'clamp(12px, 2.3vw, 16px) clamp(18px, 3.4vw, 22px)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
+                    border: 'none',
+                    borderRadius: 7,
+                    cursor: 'pointer',
+                    fontSize: 'clamp(14px, 2.3vw, 15px)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 600
+                  }}
+                >
+                  Book your first ride
+                </button>
               </div>
+            ) : (
+              /* Stats Cards - three KPIs in one row */
+              <div
+                className="rider-stats-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 'clamp(12px, 2vw, 16px)'
+                }}
+              >
+                <div style={{
+                  backgroundColor: 'var(--rider-surface-elevated)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: 'clamp(16px, 3vw, 24px)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{
+                    fontSize: 'clamp(28px, 5vw, 40px)',
+                    fontWeight: 700,
+                    color: 'var(--bw-text)',
+                    marginBottom: '8px',
+                    fontFamily: 'Work Sans, sans-serif'
+                  }}>
+                    {dashboardTotalBookings}
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300
+                  }}>
+                    Total Bookings
+                  </div>
+                </div>
 
-              <div style={{
-                backgroundColor: 'var(--rider-surface-elevated)',
-                border: 'none',
-                borderRadius: '12px',
-                padding: 'clamp(16px, 3vw, 24px)',
-                textAlign: 'center'
-              }}>
                 <div style={{
-                  fontSize: 'clamp(28px, 5vw, 40px)',
-                  fontWeight: 700,
-                  color: 'var(--bw-text)',
-                  marginBottom: '8px',
-                  fontFamily: 'Work Sans, sans-serif'
+                  backgroundColor: 'var(--rider-surface-elevated)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: 'clamp(16px, 3vw, 24px)',
+                  textAlign: 'center'
                 }}>
-                  {completedBookings}
+                  <div style={{
+                    fontSize: 'clamp(28px, 5vw, 40px)',
+                    fontWeight: 700,
+                    color: 'var(--bw-text)',
+                    marginBottom: '8px',
+                    fontFamily: 'Work Sans, sans-serif'
+                  }}>
+                    {completedBookings}
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300
+                  }}>
+                    Completed
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 300
-                }}>
-                  Completed
-                </div>
-              </div>
 
-              <div style={{
-                backgroundColor: 'var(--rider-surface-elevated)',
-                border: 'none',
-                borderRadius: '12px',
-                padding: 'clamp(16px, 3vw, 24px)',
-                textAlign: 'center'
-              }}>
                 <div style={{
-                  fontSize: 'clamp(28px, 5vw, 40px)',
-                  fontWeight: 700,
-                  color: 'var(--bw-text)',
-                  marginBottom: '8px',
-                  fontFamily: 'Work Sans, sans-serif'
+                  backgroundColor: 'var(--rider-surface-elevated)',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: 'clamp(16px, 3vw, 24px)',
+                  textAlign: 'center'
                 }}>
-                  {pendingBookings}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 300
-                }}>
-                  Pending
+                  <div style={{
+                    fontSize: 'clamp(28px, 5vw, 40px)',
+                    fontWeight: 700,
+                    color: 'var(--bw-text)',
+                    marginBottom: '8px',
+                    fontFamily: 'Work Sans, sans-serif'
+                  }}>
+                    {pendingBookings}
+                  </div>
+                  <div style={{
+                    fontSize: 'clamp(12px, 2vw, 14px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.7,
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300
+                  }}>
+                    Pending
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 30vw, 250px), 1fr))',
-              gap: 'clamp(12px, 2vw, 16px)'
-            }}>
-              <button
-                onClick={() => handleMenuSelect('book-ride')}
-                style={{
-                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                  backgroundColor: 'var(--rider-primary)',
-                  color: 'var(--rider-on-primary)',
-                  border: 'none',
-                  borderRadius: 7,
-                  cursor: 'pointer',
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 600
-                }}
-              >
-                Book a Ride
-              </button>
-              <button
-                onClick={() => handleMenuSelect('all-bookings')}
-                style={{
-                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                  backgroundColor: 'transparent',
-                  color: 'var(--bw-text)',
-                  border: '1px solid var(--rider-primary)',
-                  borderRadius: 7,
-                  cursor: 'pointer',
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 600
-                }}
-              >
-                See All Bookings
-              </button>
-            </div>
+            {!isFreshDashboard && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 30vw, 250px), 1fr))',
+                gap: 'clamp(12px, 2vw, 16px)'
+              }}>
+                <button
+                  onClick={() => handleMenuSelect('book-ride')}
+                  style={{
+                    padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
+                    border: 'none',
+                    borderRadius: 7,
+                    cursor: 'pointer',
+                    fontSize: 'clamp(14px, 2.5vw, 16px)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 600
+                  }}
+                >
+                  Book a Ride
+                </button>
+                <button
+                  onClick={() => handleMenuSelect('all-bookings')}
+                  style={{
+                    padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--bw-text)',
+                    border: '1px solid var(--rider-primary)',
+                    borderRadius: 7,
+                    cursor: 'pointer',
+                    fontSize: 'clamp(14px, 2.5vw, 16px)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 600
+                  }}
+                >
+                  See All Bookings
+                </button>
+              </div>
+            )}
 
             {/* Recent Rides */}
             {recentBookings.length > 0 && (

@@ -4,8 +4,6 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { type BookingResponse } from '@api/bookings'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import { CheckCircle, MapPin, Calendar, Clock, CurrencyDollar } from '@phosphor-icons/react'
-import ThemeToggle from '@components/ThemeToggle'
-
 export default function BookingSuccess() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -67,9 +65,6 @@ export default function BookingSuccess() {
         textAlign: 'center',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0 }}>
-          <ThemeToggle />
-        </div>
         {/* Success Icon */}
         <div style={{
           width: 'clamp(80px, 10vw, 120px)',

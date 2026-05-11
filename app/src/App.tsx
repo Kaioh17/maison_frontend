@@ -1,13 +1,37 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import ProtectedRoute from '@components/ProtectedRoute'
 import SlugVerification from '@components/SlugVerification'
+import RiderBrandedShell from '@components/RiderBrandedShell'
 import SubdomainBlock from '@components/SubdomainBlock'
 import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AdminOpsGate from '@components/AdminOpsGate'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 import { useFavicon } from '@hooks/useFavicon'
+import { useTenantSlug } from '@hooks/useTenantSlug'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
+
+/**
+ * Shared wrapper for every protected rider-space route. The rendered tree is
+ * intentionally identical to inlining `<SlugVerification><RiderBrandedShell>
+ * <ProtectedRoute allowRoles={["rider"]}>…</ProtectedRoute></RiderBrandedShell>
+ * </SlugVerification>`, so swapping this in is purely a deduplication.
+ *
+ * Order matters: SlugVerification populates the tenant cache that
+ * RiderBrandedShell reads, and the shell must wrap ProtectedRoute so any
+ * redirect chrome it renders also picks up the tenant palette.
+ */
+function RiderRoute({ children }: { children: ReactNode }) {
+  return (
+    <SlugVerification>
+      <RiderBrandedShell>
+        <ProtectedRoute allowRoles={["rider"]}>{children}</ProtectedRoute>
+      </RiderBrandedShell>
+    </SlugVerification>
+  )
+}
 
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
@@ -54,11 +78,27 @@ const StripeReauth = lazy(() => import('@pages/StripeReauth'))
 const DeveloperOperations = lazy(() => import('@pages/DeveloperOperations'))
 const AdminLogin = lazy(() => import('@pages/AdminLogin'))
 const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
+const TempQrEditor = lazy(() => import('@pages/TempQrEditor'))
 
 function PageFallback() {
+  const location = useLocation()
+  const slug = useTenantSlug()
+  const loadingPalette = resolveSubdomainLoadingPalette(slug)
+  const isRiderRoute = /^\/riders?\//.test(location.pathname)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="animate-pulse text-gray-500 dark:text-gray-400">Loading…</div>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: loadingPalette.bg,
+        color: isRiderRoute ? loadingPalette.muted : loadingPalette.text,
+        fontFamily: 'Work Sans, sans-serif',
+        fontSize: 14,
+      }}
+    >
+      <div style={{ opacity: 0.85 }}>Loading…</div>
     </div>
   )
 }
@@ -90,6 +130,8 @@ export default function App() {
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
       <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />
       <Route path="/demo/stripe-redirect" element={<SubdomainBlock><DemoStripeRedirect /></SubdomainBlock>} />
+      <Route path="/tools/qr-studio" element={<TempQrEditor />} />
+      <Route path="/tools/temp-qr" element={<Navigate to="/tools/qr-studio" replace />} />
 
       <Route
         path="/tenant/login"
@@ -364,105 +406,90 @@ export default function App() {
         }
       />
 
-      {/* White-label rider routes with subdomain */}
+      {/* White-label rider routes with subdomain.
+          Every protected rider route is wrapped in RiderRoute which adds
+          RiderBrandedShell — driving CSS custom property overrides from the
+          tenant's branding row across the entire subtree.
+          /riders/login + /riders/register intentionally opt out: they resolve
+          their own palette inline via resolveRiderAuthPalette. */}
       <Route
         path="/rider/dashboard"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/book"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/see-bookings"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/drivers"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/vehicles"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/confirm-booking"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <BookingConfirmation />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <BookingConfirmation />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/payment"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <PaymentPage />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <PaymentPage />
+          </RiderRoute>
         }
       />
       <Route
         path="/rider/booking-success"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <BookingSuccess />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <BookingSuccess />
+          </RiderRoute>
         }
       />
       <Route
         path="/booking/complete"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <BookingComplete />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <BookingComplete />
+          </RiderRoute>
         }
       />
       <Route
         path="/booking/failed"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <BookingFailed />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <BookingFailed />
+          </RiderRoute>
         }
       />
 
@@ -487,11 +514,9 @@ export default function App() {
       <Route
         path="/riders/profile"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["rider"]}>
-              <RiderProfile />
-            </ProtectedRoute>
-          </SlugVerification>
+          <RiderRoute>
+            <RiderProfile />
+          </RiderRoute>
         }
       />
 

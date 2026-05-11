@@ -57,7 +57,7 @@ function tenantFaviconLetter(companyName: string | undefined, slug: string): str
   return chars[0] ?? '?'
 }
 
-function buildLetterFaviconDataUrl(letter: string, backgroundColor: string): string {
+function buildLetterFaviconDataUrl(letter: string, backgroundColor: string | null | undefined): string {
   const ch = escapeSvgText(letter)
   const bg = normalizePrimaryColorForFavicon(backgroundColor)
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${bg}"/><text x="32" y="32" font-family="system-ui,-apple-system,BlinkMacSystemFont,sans-serif" font-size="32" font-weight="600" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${ch}</text></svg>`

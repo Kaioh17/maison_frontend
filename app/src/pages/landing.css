@@ -179,6 +179,24 @@
   min-width: 0;
 }
 
+@media (max-width: 767px) {
+  /* Extra top margin so absolute-positioned "Most Popular" badges aren't clipped */
+  .pricing-plans-grid {
+    margin-top: clamp(28px, 6vw, 48px) !important;
+  }
+
+  /* Cards need overflow: visible so the badge peeks above the card border */
+  .pricing-plans-grid .bw-card {
+    overflow: visible;
+  }
+
+  /* Full-width CTAs feel more natural on touch screens */
+  .pricing-plans-grid .bw-card .bw-btn,
+  .pricing-plans-grid .bw-card .bw-btn-outline {
+    max-width: 100% !important;
+  }
+}
+
 .landing-hero-image {
   position: absolute;
   top: 0;

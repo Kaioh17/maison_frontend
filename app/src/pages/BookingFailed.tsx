@@ -1,8 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useFavicon } from '@hooks/useFavicon'
 import { XCircle, House, ArrowLeft } from '@phosphor-icons/react'
-import ThemeToggle from '@components/ThemeToggle'
-
 export default function BookingFailed() {
   useFavicon()
   const navigate = useNavigate()
@@ -28,9 +26,6 @@ export default function BookingFailed() {
         textAlign: 'center',
         position: 'relative'
       }}>
-        <div style={{ position: 'absolute', top: 0, right: 0 }}>
-          <ThemeToggle />
-        </div>
         {/* Error Icon */}
         <div style={{
           width: 'clamp(80px, 10vw, 120px)',

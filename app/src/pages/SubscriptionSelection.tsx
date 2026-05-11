@@ -217,16 +217,18 @@ export default function SubscriptionSelection() {
                   color: 'var(--bw-text)',
                   marginBottom: 'clamp(8px, 1.5vw, 12px)'
                 }}>{plan.name}</h3>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'baseline', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
                   justifyContent: 'center',
+                  flexWrap: 'wrap',
                   gap: 'clamp(4px, 1vw, 8px)',
+                  rowGap: '2px',
                   marginBottom: 'clamp(8px, 1.5vw, 12px)'
                 }}>
-                  <span style={{ 
+                  <span style={{
                     fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 'clamp(36px, 5vw, 48px)',
+                    fontSize: 'clamp(22px, 7vw, 48px)',
                     fontWeight: 200,
                     color: 'var(--bw-text)'
                   }}>{plan.price}</span>
@@ -250,7 +252,6 @@ export default function SubscriptionSelection() {
                     fontSize: 'clamp(14px, 2vw, 16px)',
                     padding: 'clamp(12px, 2.5vw, 14px) clamp(24px, 4vw, 32px)',
                     width: '100%',
-                    maxWidth: '300px',
                     cursor: loading !== null ? 'not-allowed' : 'pointer',
                     opacity: loading === plan.product_type ? 0.6 : 1
                   }}

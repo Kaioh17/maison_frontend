@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import {
   listAdminTenants,
   deleteAdminTenant,
+  forceVerifyTenant,
   type AdminTenantRow,
 } from '@api/admin'
 import { AUTH_API_KEY } from '@config'
@@ -20,6 +21,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { AxiosError } from 'axios'
+import { Link } from 'react-router-dom'
 
 function formatWhen(iso: string) {
   try {
@@ -90,6 +92,10 @@ export default function DeveloperOperations() {
   const [deleteTarget, setDeleteTarget] = useState<AdminTenantRow | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [forceTarget, setForceTarget] = useState<AdminTenantRow | null>(null)
+  const [forceBusy, setForceBusy] = useState(false)
+  const [forceConfirm, setForceConfirm] = useState('')
+  const [forceAck, setForceAck] = useState(false)
 
   const hasApiKey = Boolean(AUTH_API_KEY)
 
@@ -156,6 +162,40 @@ export default function DeveloperOperations() {
   const deleteReady =
     deleteTarget && deleteConfirm.trim() === String(deleteTarget.id)
 
+  const openForceVerify = (row: AdminTenantRow) => {
+    setForceTarget(row)
+    setForceConfirm('')
+    setForceAck(false)
+  }
+
+  const closeForceVerify = () => {
+    if (forceBusy) return
+    setForceTarget(null)
+    setForceConfirm('')
+    setForceAck(false)
+  }
+
+  const forcePhrase = forceTarget ? `FORCE VERIFY ${forceTarget.id}` : ''
+  const forceReady =
+    forceTarget && forceAck && forceConfirm.trim().toUpperCase() === forcePhrase
+
+  const confirmForceVerify = async () => {
+    if (!forceTarget || !forceReady) return
+    setForceBusy(true)
+    setError(null)
+    try {
+      await forceVerifyTenant(forceTarget.id, true)
+      setForceTarget(null)
+      setForceConfirm('')
+      setForceAck(false)
+      await load(true)
+    } catch (e) {
+      setError(await errMessage(e))
+    } finally {
+      setForceBusy(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0c0f14] text-slate-200">
       <div className="border-b border-white/[0.06] bg-[#0c0f14]/95 backdrop-blur-md sticky top-0 z-10">
@@ -172,6 +212,12 @@ export default function DeveloperOperations() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              to="/tools/qr-studio"
+              className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 transition-colors"
+            >
+              QR Code Studio
+            </Link>
             <button
               type="button"
               onClick={() => load(true)}
@@ -194,7 +240,7 @@ export default function DeveloperOperations() {
               <code className="text-amber-200/95">/login</code>.
             </p>
             <p className="text-amber-200/70">
-              Deleting a tenant is irreversible. Ensure you are pointed at a safe backend.
+              Delete and force-verify actions are high impact. Ensure you are pointed at a safe backend.
             </p>
           </div>
         </div>
@@ -248,8 +294,9 @@ export default function DeveloperOperations() {
                     <th className="px-4 py-3 font-medium">Name</th>
                     <th className="px-4 py-3 font-medium">Email</th>
                     <th className="px-4 py-3 font-medium">Phone</th>
+                    <th className="px-4 py-3 font-medium">Verified</th>
                     <th className="px-4 py-3 font-medium">Created</th>
-                    <th className="px-4 py-3 font-medium w-28 text-right">Actions</th>
+                    <th className="px-4 py-3 font-medium w-56 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
@@ -270,10 +317,31 @@ export default function DeveloperOperations() {
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                         {r.phone_no || '—'}
                       </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            r.is_verified
+                              ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
+                              : 'border border-amber-500/30 bg-amber-500/15 text-amber-200'
+                          }`}
+                        >
+                          {r.is_verified ? 'Verified' : 'Pending'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                         {formatWhen(r.created_on)}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openForceVerify(r)}
+                            disabled={Boolean(r.is_verified)}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Force verify
+                          </button>
                         <button
                           type="button"
                           onClick={() => openDelete(r)}
@@ -282,6 +350,7 @@ export default function DeveloperOperations() {
                           <Trash2 className="h-3.5 w-3.5" />
                           Delete
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -391,6 +460,95 @@ export default function DeveloperOperations() {
                   <Trash2 className="h-4 w-4" />
                 )}
                 Delete tenant
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {forceTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="force-verify-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141a22] shadow-2xl shadow-black/60 p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/25">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <h3
+                  id="force-verify-title"
+                  className="text-lg font-semibold text-white"
+                >
+                  Force verify tenant?
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  <span className="text-white font-medium">
+                    {forceTarget.full_name ||
+                      `${forceTarget.first_name} ${forceTarget.last_name}`.trim()}
+                  </span>{' '}
+                  <span className="font-mono text-slate-500">({forceTarget.id})</span>
+                </p>
+                <p className="text-xs text-amber-300/90 mt-3">
+                  Use only when Stripe webhook delivery failed and payment is already confirmed.
+                  This bypasses normal verification and activates the tenant immediately.
+                </p>
+                <p className="text-xs text-amber-300/80 mt-2">
+                  Endpoint:{' '}
+                  <code className="text-amber-200/80 bg-black/30 px-1 rounded">
+                    PATCH /api/v1/admin/force/verify?tenant_id={forceTarget.id}&permission=true
+                  </code>
+                </p>
+              </div>
+            </div>
+            <label className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+              <input
+                type="checkbox"
+                checked={forceAck}
+                onChange={(e) => setForceAck(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I confirm this tenant already paid and I accept the risk of overriding verification.
+              </span>
+            </label>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Type <span className="font-mono text-amber-200/80">{forcePhrase}</span> to continue
+              </label>
+              <input
+                type="text"
+                value={forceConfirm}
+                onChange={(e) => setForceConfirm(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white font-mono placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                placeholder={forcePhrase}
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={closeForceVerify}
+                disabled={forceBusy}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmForceVerify}
+                disabled={!forceReady || forceBusy}
+                className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {forceBusy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
+                Force verify tenant
               </button>
             </div>
           </div>

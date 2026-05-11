@@ -8,6 +8,7 @@ export type AdminTenantRow = {
   first_name: string
   full_name: string
   id: number
+  is_verified?: boolean
   last_name: string
   phone_no: string
 }
@@ -53,6 +54,23 @@ export async function deleteAdminTenant(tenantId: number) {
   const { data } = await http.delete<StandardResponse<unknown>>(
     `/v1/admin/delete/${tenantId}/tenant`,
     {
+      headers: {
+        Accept: 'application/json',
+      },
+    }
+  )
+  return data
+}
+
+export async function forceVerifyTenant(tenantId: number, permission: boolean) {
+  const { data } = await http.patch<StandardResponse<unknown>>(
+    '/v1/admin/force/verify',
+    null,
+    {
+      params: {
+        tenant_id: tenantId,
+        permission,
+      },
       headers: {
         Accept: 'application/json',
       },

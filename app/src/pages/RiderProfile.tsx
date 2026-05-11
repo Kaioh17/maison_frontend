@@ -9,8 +9,6 @@ import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 import StateAutocomplete from '@components/StateAutocomplete'
 import CityAutocomplete from '@components/CityAutocomplete'
-import ThemeToggle from '@components/ThemeToggle'
-
 export default function RiderProfile() {
   useFavicon()
   const [userInfo, setUserInfo] = useState<UserResponse | null>(null)
@@ -288,7 +286,6 @@ export default function RiderProfile() {
               <SignOut size={16} />
               Logout
             </button>
-            <ThemeToggle />
           </div>
         </div>
 

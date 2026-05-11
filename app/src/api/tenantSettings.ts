@@ -58,10 +58,17 @@ export type TenantBrandingData = {
   primary_color: string
   secondary_color: string
   accent_color: string
+  background_color: string | null
+  surface_color: string | null
+  text_color: string | null
+  text_muted_color: string | null
+  button_text_color: string | null
   favicon_url: string | null
   slug: string
   email_from_name: string | null
   email_from_address: string | null
+  /** Business-facing number displayed to riders (not necessarily owner personal line). */
+  phone: string | null
   logo_url: string | null
   enable_branding: boolean
 }
@@ -104,10 +111,16 @@ export type UpdateTenantBrandingPayload = {
   primary_color?: string
   secondary_color?: string
   accent_color?: string
+  background_color?: string | null
+  surface_color?: string | null
+  text_color?: string | null
+  text_muted_color?: string | null
+  button_text_color?: string | null
   favicon_url?: string | null
   slug?: string
   email_from_name?: string | null
   email_from_address?: string | null
+  phone?: string | null
   logo_url?: string | null
   enable_branding?: boolean
 }

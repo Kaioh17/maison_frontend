@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeSlash, Envelope, Lock, ArrowRight } from '@phosphor-icons/react'
+import React, { useState, useEffect } from 'react'
+import { Eye, EyeSlash, ArrowRight } from '@phosphor-icons/react'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
@@ -7,90 +7,218 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
-import ThemeToggle from '@components/ThemeToggle'
+import {
+  resolveRiderAuthPalette,
+  type RiderAuthPalette,
+} from '@utils/riderAuthPalette'
+import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
+
+const DESKTOP_BREAKPOINT = '(min-width: 768px)'
+const FONT_STACK =
+  'Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : true
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(query)
+    const onChange = () => setMatches(mq.matches)
+    if (mq.addEventListener) mq.addEventListener('change', onChange)
+    else mq.addListener(onChange)
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange)
+      else mq.removeListener(onChange)
+    }
+  }, [query])
+
+  return matches
+}
+
+interface BrandMarkProps {
+  companyName: string
+  logoUrl?: string | null
+  variant: 'desktop' | 'mobile'
+  palette: RiderAuthPalette
+}
+
+function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
+  if (variant === 'desktop') {
+    if (logoUrl) {
+      return (
+        <img
+          src={logoUrl}
+          alt={companyName}
+          width={140}
+          height={32}
+          loading="eager"
+          decoding="async"
+          style={{
+            display: 'block',
+            margin: '0 auto',
+            maxHeight: 32,
+            maxWidth: 180,
+            objectFit: 'contain',
+          }}
+        />
+      )
+    }
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          color: palette.text,
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          fontFamily: FONT_STACK,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 9999,
+            background: palette.brand,
+            display: 'inline-block',
+          }}
+        />
+        <span>{companyName}</span>
+      </div>
+    )
+  }
+
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt={companyName}
+        width={48}
+        height={48}
+        loading="eager"
+        decoding="async"
+        style={{
+          display: 'block',
+          maxWidth: 48,
+          maxHeight: 48,
+          objectFit: 'contain',
+        }}
+      />
+    )
+  }
+
+  return (
+    <span
+      style={{
+        fontSize: 16,
+        fontWeight: 500,
+        color: palette.text,
+        fontFamily: FONT_STACK,
+      }}
+    >
+      {companyName}
+    </span>
+  )
+}
+
+interface PrimaryButtonProps {
+  isLoading: boolean
+  label: string
+  loadingLabel: string
+  palette: RiderAuthPalette
+}
+
+function PrimaryButton({ isLoading, label, loadingLabel, palette }: PrimaryButtonProps) {
+  return (
+    <button
+      type="submit"
+      disabled={isLoading}
+      style={{
+        width: '100%',
+        background: palette.brand,
+        color: palette.buttonText,
+        border: 0,
+        borderRadius: 8,
+        padding: '12px 16px',
+        fontSize: 14,
+        fontWeight: 500,
+        fontFamily: FONT_STACK,
+        cursor: isLoading ? 'not-allowed' : 'pointer',
+        opacity: isLoading ? 0.7 : 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        transition: 'background-color 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!isLoading) e.currentTarget.style.background = palette.brandHover
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = palette.brand
+      }}
+    >
+      <span>{isLoading ? loadingLabel : label}</span>
+      {!isLoading && <ArrowRight size={16} aria-hidden weight="bold" />}
+    </button>
+  )
+}
+
+interface ErrorBannerProps {
+  message: string
+  palette: RiderAuthPalette
+}
+
+function ErrorBanner({ message, palette }: ErrorBannerProps) {
+  return (
+    <div
+      role="alert"
+      style={{
+        marginTop: 16,
+        padding: '10px 12px',
+        background: palette.errorBg,
+        border: `1px solid ${palette.errorBorder}`,
+        borderRadius: 8,
+        color: palette.error,
+        fontSize: 13,
+        fontFamily: FONT_STACK,
+        lineHeight: 1.4,
+      }}
+    >
+      {message}
+    </div>
+  )
+}
 
 export default function RiderLogin() {
   useFavicon()
+  const isDesktop = useMediaQuery(DESKTOP_BREAKPOINT)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
-  const [currentTheme, setCurrentTheme] = useState<string>('dark')
-  const imageContainerRef = useRef<HTMLDivElement>(null)
-  const { tenantInfo, isLoading: tenantLoading } = useTenantInfo()
-  
+  const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
+  const palette = resolveRiderAuthPalette(tenantInfo?.branding)
+
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
 
-  // Determine current theme
-  const getCurrentTheme = () => {
-    if (typeof window === 'undefined') return 'dark'
-    const theme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme')
-    if (theme === 'auto') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return theme || 'dark'
-  }
-
-  useEffect(() => {
-    const updateTheme = () => {
-      const theme = getCurrentTheme()
-      setCurrentTheme(theme)
-    }
-
-    updateTheme()
-
-    // Listen for theme changes
-    const observer = new MutationObserver(updateTheme)
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
-
-    // Listen for system theme changes (for auto mode)
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    mediaQuery.addEventListener('change', updateTheme)
-
-    return () => {
-      observer.disconnect()
-      mediaQuery.removeEventListener('change', updateTheme)
-    }
-  }, [])
-
-  // Lazy load background image
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !backgroundImage) {
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp').then((module) => {
-              setBackgroundImage(module.default)
-            })
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: '50px' }
-    )
-
-    if (imageContainerRef.current) {
-      observer.observe(imageContainerRef.current)
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [backgroundImage])
-
-  // Redirect authenticated riders
   useEffect(() => {
     if (isAuthenticated && role === 'rider') {
       navigate('/rider/dashboard', { replace: true })
     }
   }, [isAuthenticated, role, navigate])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, [e.target.name]: e.target.value })
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormData({ ...formData, [e.target.name]: e.target.value })
 
-  const riderLoginEmailFormatError = getEmailFormatError(formData.email)
+  const emailFormatError = getEmailFormatError(formData.email)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,8 +231,6 @@ export default function RiderLogin() {
       setIsLoading(true)
       const data = await loginRider(formData.email, formData.password)
       useAuthStore.getState().login({ token: data.access_token })
-      
-      // Navigate to rider dashboard
       navigate('/rider/dashboard', { replace: true })
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'))
@@ -113,270 +239,548 @@ export default function RiderLogin() {
     }
   }
 
-  // Don't render if already authenticated
   if (isAuthenticated && role === 'rider') {
     return null
   }
 
-  // Show loading state while fetching tenant info
   if (tenantLoading) {
+    const loadingPalette = resolveSubdomainLoadingPalette(slug)
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
-      }}>
-        <div style={{ 
-          color: 'var(--bw-text)',
-          fontFamily: 'Work Sans, sans-serif',
-          fontSize: '16px'
-        }}>
-          Loading...
-        </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          background: loadingPalette.bg,
+          color: loadingPalette.muted,
+          fontFamily: FONT_STACK,
+          fontSize: 14,
+          ['--bw-bg' as string]: loadingPalette.bg,
+          ['--bw-text' as string]: loadingPalette.text,
+          ['--bw-muted' as string]: loadingPalette.muted,
+          ['--bw-accent' as string]: loadingPalette.accent,
+          ['--bw-border' as string]: loadingPalette.border,
+        }}
+      >
+        Loading…
       </div>
     )
   }
 
   const companyName = tenantInfo?.company_name || 'Our Service'
 
+  return isDesktop ? (
+    <DesktopLayout
+      companyName={companyName}
+      logoUrl={tenantInfo?.logo_url}
+      formData={formData}
+      onInputChange={handleInputChange}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      error={error}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+      emailFormatError={emailFormatError}
+      palette={palette}
+    />
+  ) : (
+    <MobileLayout
+      companyName={companyName}
+      logoUrl={tenantInfo?.logo_url}
+      formData={formData}
+      onInputChange={handleInputChange}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      error={error}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+      emailFormatError={emailFormatError}
+      palette={palette}
+    />
+  )
+}
+
+interface LayoutProps {
+  companyName: string
+  logoUrl?: string | null
+  formData: { email: string; password: string }
+  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onSubmit: (e: React.FormEvent) => void
+  isLoading: boolean
+  error: string
+  showPassword: boolean
+  setShowPassword: (value: boolean) => void
+  emailFormatError: string | null
+  palette: RiderAuthPalette
+}
+
+function DesktopLayout({
+  companyName,
+  logoUrl,
+  formData,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  error,
+  showPassword,
+  setShowPassword,
+  emailFormatError,
+  palette,
+}: LayoutProps) {
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: '0.14em',
+    textTransform: 'uppercase',
+    color: palette.labelMuted,
+    fontFamily: FONT_STACK,
+    marginBottom: 8,
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    background: palette.inputBg,
+    border: `1px solid ${palette.inputBorder}`,
+    borderRadius: 8,
+    padding: '12px 14px',
+    color: palette.text,
+    fontSize: 14,
+    fontFamily: FONT_STACK,
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
   return (
-    <main className="bw" aria-label="Rider Login" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
-        {/* Left side - Image (60%) */}
-        <div 
-          ref={imageContainerRef}
-          className="rider-login-image-container"
-          style={{ 
-            width: '60%', 
-            height: '100%', 
-            position: 'relative',
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-            backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            transition: 'background-image 0.3s ease',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: '48px',
-            paddingTop: '120px'
-          }} 
-        >
-          {/* Tint: Maison page background at ~60% opacity (matches login/signup) */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
-            zIndex: 1
-          }}></div>
-          <div style={{
-            color: 'white',
-            textAlign: 'center',
-            maxWidth: '600px',
-            zIndex: 2,
-            position: 'relative',
-            padding: '32px'
-          }}>
-            <p style={{
-              fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-              fontSize: '20px',
-              lineHeight: '1.6',
-              fontWeight: 300,
-              textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-              margin: 0
-            }}>
-              Welcome back to {companyName}. Sign in to continue booking rides and managing your account.
-            </p>
-          </div>
+    <main
+      aria-label="Rider Login"
+      style={{
+        margin: 0,
+        padding: 24,
+        minHeight: '100vh',
+        background: palette.bg,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: FONT_STACK,
+        color: palette.text,
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 320, textAlign: 'center' }}>
+        <div style={{ marginBottom: 32 }}>
+          <BrandMark companyName={companyName} logoUrl={logoUrl} variant="desktop" palette={palette} />
         </div>
 
-        {/* Right side - Login Form (40%) */}
-        <div 
-          role="form" 
-          aria-labelledby="login-title"
-          className="rider-login-form-container"
-          style={{ 
-            width: '40%', 
-            height: '100%', 
-            position: 'relative',
-            display: 'flex', 
-            flexDirection: 'column',
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: '24px',
-            backgroundColor: 'var(--bw-bg)',
-            overflowY: 'auto'
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 22,
+            fontWeight: 500,
+            color: palette.text,
+            fontFamily: FONT_STACK,
+            letterSpacing: '-0.01em',
           }}
         >
-          <div style={{ position: 'absolute', top: 'clamp(16px, 3vw, 24px)', right: 'clamp(16px, 3vw, 24px)', zIndex: 3 }}>
-            <ThemeToggle />
-          </div>
-          <div style={{ width: '100%', maxWidth: '100%' }}>
-            {/* Company Logo/Name */}
-            {tenantInfo && (
-              <div style={{ 
-                marginBottom: '24px', 
-                display: 'flex', 
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}>
-                {tenantInfo.logo_url ? (
-                  <img 
-                    src={tenantInfo.logo_url} 
-                    alt={companyName}
-                    width={200}
-                    height={60}
-                    loading="eager"
-                    decoding="async"
-                    style={{
-                      maxHeight: '60px',
-                      maxWidth: '200px',
-                      objectFit: 'contain'
-                    }}
-                  />
-                ) : (
-                  <h1 style={{
-                    margin: 0,
-                    fontSize: '32px',
-                    fontWeight: 600,
-                    color: 'var(--bw-text)',
-                    fontFamily: 'DM Sans, sans-serif'
-                  }}>
-                    {companyName}
-                  </h1>
-                )}
-              </div>
-            )}
-            <h2 id="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Sign in</h2>
-            <p className="small-muted" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>
-              {tenantInfo ? `Sign in to ${companyName}` : 'Sign in to your account'}
+          Welcome back
+        </h1>
+        <p
+          style={{
+            margin: '6px 0 0',
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          Sign in to your account
+        </p>
+
+        {error && <ErrorBanner message={error} palette={palette} />}
+
+        <form
+          onSubmit={onSubmit}
+          style={{ marginTop: 28, textAlign: 'left' }}
+          aria-describedby={error ? undefined : 'email-hint'}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <label htmlFor="email" style={labelStyle}>
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@email.com"
+              value={formData.email}
+              onChange={onInputChange}
+              aria-invalid={formData.email.length > 0 && !!emailFormatError}
+              aria-describedby="email-hint"
+              style={inputStyle}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = palette.brand
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = palette.inputBorder
+              }}
+            />
+            <p
+              id="email-hint"
+              style={{
+                margin: '6px 2px 0',
+                fontSize: 11,
+                color: palette.muted,
+                fontFamily: FONT_STACK,
+              }}
+            >
+              {EMAIL_FORMAT_HINT}
             </p>
-
-            {error && (
-              <div style={{ 
-                marginTop: 16, 
-                padding: '12px', 
-                backgroundColor: 'rgba(197, 72, 61, 0.1)', 
-                border: '1px solid var(--bw-error)', 
-                borderRadius: '4px',
-                color: 'var(--bw-error)',
-                fontSize: '14px',
-                fontFamily: 'Work Sans, sans-serif',
-                width: '100%'
-              }}>
-                {error}
+            {emailFormatError && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: 4,
+                  fontSize: 12,
+                  color: palette.error,
+                  fontFamily: FONT_STACK,
+                }}
+              >
+                {emailFormatError}
               </div>
             )}
-
-            <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
-              <div style={{ marginBottom: 12 }}>
-                <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-                <div style={{ position: 'relative', marginTop: 6 }}>
-                  <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                  <input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    autoComplete="email"
-                    required 
-                    className="bw-input" 
-                    aria-invalid={formData.email.length > 0 && !!riderLoginEmailFormatError}
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="you@email.com" 
-                    value={formData.email}
-                    onChange={handleInputChange} 
-                  />
-                </div>
-                <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
-                  {EMAIL_FORMAT_HINT}
-                </p>
-                {riderLoginEmailFormatError && (
-                  <div
-                    role="alert"
-                    style={{
-                      marginTop: 6,
-                      fontSize: 13,
-                      fontFamily: 'Work Sans, sans-serif',
-                      color: 'var(--bw-error)',
-                    }}
-                  >
-                    {riderLoginEmailFormatError}
-                  </div>
-                )}
-              </div>
-
-              <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
-              <div style={{ position: 'relative', marginTop: 6 }}>
-                <Lock size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                <input 
-                  id="password" 
-                  name="password" 
-                  type={showPassword ? 'text' : 'password'} 
-                  required 
-                  className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                  placeholder="••••••••" 
-                  value={formData.password}
-                  onChange={handleInputChange} 
-                />
-                <button 
-                  type="button" 
-                  aria-label="Toggle password" 
-                  onClick={() => setShowPassword(!showPassword)} 
-                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: currentTheme === 'dark' ? '#ffffff' : '#4c4e4eff', cursor: 'pointer' }}
-                >
-                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-
-              <button 
-                className="bw-btn" 
-                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-                disabled={isLoading}
-                type="submit"
-              >
-                <span>{isLoading ? 'Signing in...' : 'Sign in'}</span>
-                {!isLoading && <ArrowRight size={16} aria-hidden />}
-              </button>
-
-              <div style={{ marginTop: 24, width: '100%' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  marginBottom: 16,
-                  gap: 12
-                }}>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
-                  <span className="small-muted" style={{ fontSize: '12px', fontFamily: 'Work Sans, sans-serif' }}>or</span>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
-                </div>
-                <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
-                  Don't have an account?{' '}
-                  <Link to="/riders/register" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
-                    signup
-                  </Link>
-                </p>
-              </div>
-            </form>
           </div>
-        </div>
+
+          <div>
+            <label htmlFor="password" style={labelStyle}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={onInputChange}
+                style={{ ...inputStyle, paddingRight: 40 }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = palette.brand
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = palette.inputBorder
+                }}
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 0,
+                  color: palette.muted,
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}
+              >
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              margin: '12px 0 20px',
+            }}
+          >
+            <Link
+              to="/riders/forgot-password"
+              style={{
+                fontSize: 12,
+                color: palette.brand,
+                textDecoration: 'none',
+                fontFamily: FONT_STACK,
+              }}
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <PrimaryButton isLoading={isLoading} label="Sign in" loadingLabel="Signing in…" palette={palette} />
+        </form>
+
+        <p
+          style={{
+            marginTop: 24,
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          No account?{' '}
+          <Link
+            to="/riders/register"
+            style={{ color: palette.brand, textDecoration: 'none', fontWeight: 500 }}
+          >
+            Sign up
+          </Link>
+        </p>
       </div>
-      <style>{`
-        @media (max-width: 1024px) {
-          .rider-login-image-container {
-            display: none !important;
-          }
-          .rider-login-form-container {
-            width: 100% !important;
-          }
-        }
-      `}</style>
     </main>
+  )
+}
+
+function MobileLayout({
+  companyName,
+  logoUrl,
+  formData,
+  onInputChange,
+  onSubmit,
+  isLoading,
+  error,
+  showPassword,
+  setShowPassword,
+  emailFormatError,
+  palette,
+}: LayoutProps) {
+  return (
+    <main
+      aria-label="Rider Login"
+      style={{
+        margin: 0,
+        minHeight: '100vh',
+        background: palette.bg,
+        color: palette.text,
+        fontFamily: FONT_STACK,
+        padding:
+          'calc(env(safe-area-inset-top, 0px) + 32px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          marginBottom: 28,
+        }}
+      >
+        <BrandMark companyName={companyName} logoUrl={logoUrl} variant="mobile" palette={palette} />
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 13,
+            color: palette.muted,
+            fontFamily: FONT_STACK,
+          }}
+        >
+          Sign in to continue
+        </p>
+      </div>
+
+      {error && <ErrorBanner message={error} palette={palette} />}
+
+      <form
+        onSubmit={onSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}
+      >
+        <FloatingField
+          id="email"
+          name="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="you@email.com"
+          value={formData.email}
+          onChange={onInputChange}
+          aria-invalid={formData.email.length > 0 && !!emailFormatError}
+          palette={palette}
+        />
+        {emailFormatError && (
+          <div
+            role="alert"
+            style={{
+              fontSize: 12,
+              color: palette.error,
+              fontFamily: FONT_STACK,
+              marginTop: -4,
+            }}
+          >
+            {emailFormatError}
+          </div>
+        )}
+
+        <FloatingField
+          id="password"
+          name="password"
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          autoComplete="current-password"
+          required
+          placeholder="••••••••"
+          value={formData.password}
+          onChange={onInputChange}
+          palette={palette}
+          adornment={
+            <button
+              type="button"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                background: 'transparent',
+                border: 0,
+                color: palette.muted,
+                cursor: 'pointer',
+                padding: 4,
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+            </button>
+          }
+        />
+
+        <div style={{ marginTop: 8 }}>
+          <PrimaryButton
+            isLoading={isLoading}
+            label="Sign in"
+            loadingLabel="Signing in…"
+            palette={palette}
+          />
+        </div>
+      </form>
+
+      <div
+        style={{
+          marginTop: 28,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: 13,
+          fontFamily: FONT_STACK,
+        }}
+      >
+        <Link
+          to="/riders/forgot-password"
+          style={{ color: palette.brand, textDecoration: 'none' }}
+        >
+          Forgot password?
+        </Link>
+        <Link
+          to="/riders/register"
+          style={{ color: palette.brand, textDecoration: 'none' }}
+        >
+          Sign up
+        </Link>
+      </div>
+    </main>
+  )
+}
+
+interface FloatingFieldProps {
+  id: string
+  name: string
+  label: string
+  type?: string
+  autoComplete?: string
+  required?: boolean
+  placeholder?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  adornment?: React.ReactNode
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
+  maxLength?: number
+  palette: RiderAuthPalette
+  ['aria-invalid']?: boolean
+}
+
+function FloatingField({
+  id,
+  name,
+  label,
+  type = 'text',
+  autoComplete,
+  required,
+  placeholder,
+  value,
+  onChange,
+  adornment,
+  inputMode,
+  maxLength,
+  palette,
+  ...rest
+}: FloatingFieldProps) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <div
+      style={{
+        background: palette.inputBg,
+        border: `1px solid ${focused ? palette.brand : palette.inputBorder}`,
+        borderRadius: 8,
+        padding: '8px 12px 10px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        transition: 'border-color 0.15s ease',
+      }}
+    >
+      <label htmlFor={id} style={{ flex: 1, display: 'block', cursor: 'text' }}>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: palette.labelMuted,
+            fontFamily: FONT_STACK,
+            marginBottom: 2,
+          }}
+        >
+          {label}
+        </span>
+        <input
+          id={id}
+          name={name}
+          type={type}
+          autoComplete={autoComplete}
+          required={required}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          inputMode={inputMode}
+          maxLength={maxLength}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width: '100%',
+            background: 'transparent',
+            border: 0,
+            outline: 'none',
+            color: palette.text,
+            fontSize: 14,
+            fontFamily: FONT_STACK,
+            padding: 0,
+          }}
+          {...rest}
+        />
+      </label>
+      {adornment}
+    </div>
   )
 }
