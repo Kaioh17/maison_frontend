@@ -7,8 +7,12 @@ const env = import.meta.env.VITE_ENVIRONMENT
 const envMainDomain = import.meta.env.VITE_MAIN_DOMAIN
 const envDevDomain = import.meta.env.VITE_DEV_DOMAIN
 
-/** Production mode (VITE_ENVIRONMENT === 'production'). */
-export const IS_PRODUCTION = env === 'production'
+/**
+ * Production mode.
+ * Prefer Vite's built-in PROD flag so production builds still work even when
+ * VITE_ENVIRONMENT is unset or misconfigured.
+ */
+export const IS_PRODUCTION = import.meta.env.PROD || env === 'production'
 
 /** Dev host list for "is this a dev host?" checks. */
 export const DEV_HOSTS: readonly string[] = ['localhost', '127.0.0.1']

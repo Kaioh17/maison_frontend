@@ -155,8 +155,9 @@ export function isLocalDevelopmentHostname(hostname: string): boolean {
  */
 export function isAdminAppSubdomain(): boolean {
   if (typeof window === 'undefined') return false
+  const mainDomain = getMainDomain().toLowerCase()
   const host = window.location.hostname.split(':')[0].toLowerCase()
-  return host === `admin.${MAIN_DOMAIN.toLowerCase()}`
+  return host === `admin.${mainDomain}`
 }
 
 export function extractSubdomain(hostname: string): string | null {
