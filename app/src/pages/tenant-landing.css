@@ -6,6 +6,31 @@
   width: 100%;
 }
 
+.tl-premium-driver-hint:hover {
+  opacity: 0.88;
+}
+
+/* Premium driver info (/driver/start): disclosure rows */
+.premium-driver-detail > summary {
+  list-style: none;
+}
+
+.premium-driver-detail > summary::marker {
+  content: none;
+}
+
+.premium-driver-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.premium-driver-detail-caret {
+  transition: transform 0.2s ease;
+}
+
+.premium-driver-detail[open] .premium-driver-detail-caret {
+  transform: rotate(90deg);
+}
+
 .tl-premium-cta-row {
   flex-direction: column;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
@@ -11,7 +11,7 @@ import QRCode from 'qrcode'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -134,6 +134,15 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
+}
+.bw.tenant-dashboard-layout .tenant-driver-table-row {
+  transition: background-color 0.15s ease;
+}
+.bw.tenant-dashboard-layout .tenant-driver-table-row:hover {
+  background-color: rgba(124, 58, 237, 0.07);
+}
+[data-theme="light"] .bw.tenant-dashboard-layout .tenant-driver-table-row:hover {
+  background-color: rgba(124, 58, 237, 0.06);
 }
 `.trim()
 
@@ -285,6 +294,18 @@ function overviewBookingStatusDisplay(status: string | undefined): { label: stri
   return { label: cap, bg: '#27272a', color: '#a1a1aa' }
 }
 
+function tenantDriverTypeLabel(driverType: string): 'In-House' | 'Outsourced' {
+  return driverType === 'in_house' ? 'In-House' : 'Outsourced'
+}
+
+/** Best-effort `tel:` link for tenant driver cards. */
+function tenantTelHrefFromPhone(phone: string): string | null {
+  const digits = (phone || '').replace(/\D/g, '')
+  if (!digits) return null
+  if (digits.length === 10) return `tel:+1${digits}`
+  return `tel:+${digits}`
+}
+
 export default function TenantDashboard() {
   const { accessToken, role } = useAuthStore()
   const navigate = useNavigate()
@@ -311,6 +332,13 @@ export default function TenantDashboard() {
     clearSearch,
     hasActiveSearch,
   } = useBookingSearch(bookings)
+
+  const [driverListSearch, setDriverListSearch] = useState('')
+  const [driverFilterStatus, setDriverFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
+  const [driverFilterType, setDriverFilterType] = useState<'all' | 'in_house' | 'outsourced'>('all')
+  const [expandedDriverCardIds, setExpandedDriverCardIds] = useState<Set<number>>(new Set())
+  const [driverCardMenuOpenId, setDriverCardMenuOpenId] = useState<number | null>(null)
+
   const [error, setError] = useState<string | null>(null)
   const [addingCategory, setAddingCategory] = useState(false)
   const [editingRates, setEditingRates] = useState<{ [key: string]: number }>({})
@@ -1202,6 +1230,30 @@ export default function TenantDashboard() {
     }
   }
 
+  useEffect(() => {
+    if (location.pathname !== '/tenant/bookings') return
+    const st = location.state as { driverRideSearch?: string } | null | undefined
+    const q = typeof st?.driverRideSearch === 'string' ? st.driverRideSearch.trim() : ''
+    if (!q) return
+    handleSearchChange(q)
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: {} })
+  }, [location.pathname, location.search, location.state, handleSearchChange, navigate])
+
+  useEffect(() => {
+    if (driverCardMenuOpenId === null) return
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const el = e.target as HTMLElement
+      if (el.closest?.('.tenant-driver-card-menu')) return
+      setDriverCardMenuOpenId(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('touchstart', onDown)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('touchstart', onDown)
+    }
+  }, [driverCardMenuOpenId])
+
   const handleAssignDriverToBooking = async () => {
     if (!selectedBooking || !selectedDriverForBooking) return
 
@@ -1389,6 +1441,68 @@ export default function TenantDashboard() {
 
   const activeTab = getActiveTab()
 
+  const activeDriverCount = useMemo(
+    () => drivers.filter((d) => d.is_active).length,
+    [drivers]
+  )
+
+  const filteredDriversForList = useMemo(() => {
+    let list = [...drivers]
+    const q = driverListSearch.trim().toLowerCase()
+    if (q) {
+      list = list.filter(
+        (d) =>
+          `${d.first_name} ${d.last_name}`.toLowerCase().includes(q) ||
+          (d.email || '').toLowerCase().includes(q)
+      )
+    }
+    if (driverFilterStatus === 'active') list = list.filter((d) => d.is_active)
+    if (driverFilterStatus === 'inactive') list = list.filter((d) => !d.is_active)
+    if (driverFilterType === 'in_house') list = list.filter((d) => d.driver_type === 'in_house')
+    if (driverFilterType === 'outsourced') list = list.filter((d) => d.driver_type !== 'in_house')
+    return list
+  }, [drivers, driverListSearch, driverFilterStatus, driverFilterType])
+
+  /** Long tenant driver lists collapse on mobile until expanded */
+  const useCompressedDriverCards = drivers.length >= 20
+
+  const openDriverRideHistory = useCallback(
+    (d: DriverResponse) => {
+      const full = `${d.first_name} ${d.last_name}`.trim()
+      navigate('/tenant/bookings', { state: { driverRideSearch: full } })
+      setDriverCardMenuOpenId(null)
+      if (isMobile) setIsMenuOpen(false)
+    },
+    [navigate, isMobile]
+  )
+
+  const toggleDriverCardExpanded = useCallback((driverId: number) => {
+    setExpandedDriverCardIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(driverId)) next.delete(driverId)
+      else next.add(driverId)
+      return next
+    })
+  }, [])
+
+  const driverPalette = useMemo(
+    () =>
+      lightMode
+        ? {
+            card: '#fafafa',
+            line: '1px solid #e2e8f0',
+            contactPill: '#f1f5f9',
+            statsLabel: '#64748b',
+          }
+        : {
+            card: '#11111a',
+            line: '1px solid rgba(255,255,255,0.08)',
+            contactPill: 'rgba(255,255,255,0.06)',
+            statsLabel: '#9ca3af',
+          },
+    [lightMode]
+  )
+
   // Get dynamic page title based on active tab
   const getPageTitle = (): string => {
     const activeTabData = tabs.find(tab => tab.id === activeTab)
@@ -1403,6 +1517,7 @@ export default function TenantDashboard() {
     } else {
       // Navigate to the tab's route
       navigate(`/tenant/${tabId}`)
+      if (isMobile) setIsMenuOpen(false)
     }
   }
 
@@ -1410,6 +1525,7 @@ export default function TenantDashboard() {
   const handleSettingsSubmenuClick = (path: string) => {
     navigate(path)
     setSettingsMenuOpen(false)
+    if (isMobile) setIsMenuOpen(false)
   }
 
   const copyTenantOverviewLink = async (kind: OverviewLinkKey, url: string) => {
@@ -1825,6 +1941,9 @@ export default function TenantDashboard() {
             href={TENANT_FEEDBACK_FORM_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              if (isMobile) setIsMenuOpen(false)
+            }}
             style={{
               width: '100%',
               display: 'flex',
@@ -1889,6 +2008,7 @@ export default function TenantDashboard() {
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              if (isMobile) setIsMenuOpen(false)
               setShowDriverModeConfirm(true)
             }}
             style={{
@@ -1919,6 +2039,7 @@ export default function TenantDashboard() {
           </button>
           <button
             onClick={() => {
+              if (isMobile) setIsMenuOpen(false)
               useAuthStore.getState().logout()
             }}
             style={{
@@ -2028,6 +2149,35 @@ export default function TenantDashboard() {
                   {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
                   {info?.profile?.city ? ` · ${info.profile.city}` : ''}
                 </div>
+              </div>
+            ) : activeTab === 'drivers' && isMobile ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: 'clamp(20px, 3vw, 28px)',
+                  fontWeight: 400,
+                  fontFamily: '"Work Sans", sans-serif',
+                  color: 'var(--bw-text)',
+                  lineHeight: 1,
+                  minWidth: 0
+                }}>
+                  {getPageTitle()}
+                </h3>
+                <span style={{
+                  flexShrink: 0,
+                  fontSize: 'clamp(11px, 1.4vw, 12px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  letterSpacing: '0.03em',
+                  padding: '5px 10px',
+                  borderRadius: '999px',
+                  border: lightMode ? '1px solid rgba(124, 58, 237, 0.28)' : '1px solid rgba(124, 58, 237, 0.45)',
+                  backgroundColor: lightMode ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.14)',
+                  color: lightMode ? '#5b21b6' : '#c4b5fd'
+                }} title={`${drivers.length} total drivers`}
+                >
+                  {activeDriverCount === 1 ? '1 active' : `${activeDriverCount} active`}
+                </span>
               </div>
             ) : (
               <h3 style={{
@@ -3431,15 +3581,19 @@ export default function TenantDashboard() {
 
         {/* Drivers Tab */}
         {activeTab === 'drivers' && (
-          <div className="bw-content">
-            <div className="bw-content-header" style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              marginBottom: 'clamp(16px, 3vw, 24px)',
-              gap: 'clamp(12px, 2vw, 16px)'
-            }}>
-              <button 
+          <>
+            <div
+              className="bw-content-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                marginBottom: 'clamp(12px, 2vw, 18px)',
+                gap: 'clamp(12px, 2vw, 16px)',
+              }}
+            >
+              <button
+                type="button"
                 className={`bw-btn bw-btn-action ${isAddDriverHovered ? 'custom-hover-border' : ''}`}
                 onClick={() => setShowAddDriver(true)}
                 onMouseEnter={() => setIsAddDriverHovered(true)}
@@ -3455,31 +3609,128 @@ export default function TenantDashboard() {
                   width: isMobile ? '100%' : 'auto',
                   justifyContent: 'center',
                   borderRadius: 7,
-                  border: isAddDriverHovered ? '2px solid var(--bw-accent)' : undefined,
-                  borderColor: isAddDriverHovered ? 'var(--bw-accent)' : undefined,
-                  color: isAddDriverHovered ? 'var(--bw-accent)' : undefined,
-                  transition: 'all 0.2s ease'
+                  backgroundColor: 'transparent',
+                  border: isMobile
+                    ? `2px dashed ${isAddDriverHovered ? '#7c3aed' : lightMode ? '#94a3b8' : 'rgba(255,255,255,0.22)'}`
+                    : undefined,
+                  borderColor: !isMobile && isAddDriverHovered ? 'var(--bw-accent)' : undefined,
+                  color: isAddDriverHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : lightMode ? '#334155' : 'var(--bw-text)',
+                  transition: 'all 0.2s ease',
                 } as React.CSSProperties}
               >
-                <Plus className="w-4 h-4" style={{ 
-                  width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                  height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                  color: isAddDriverHovered ? 'var(--bw-accent)' : 'inherit',
-                  fill: isAddDriverHovered ? 'var(--bw-accent)' : 'currentColor'
-                }} />
-                <span style={{ color: isAddDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                  Add Driver
-                </span>
+                <Plus
+                  className="w-4 h-4"
+                  style={{
+                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                    color: isAddDriverHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : 'inherit',
+                  }}
+                  aria-hidden
+                />
+                <span>Add Driver</span>
               </button>
             </div>
 
-            <div className="bw-card" style={{
-              padding: 'clamp(16px, 3vw, 24px)',
-              border: '1px solid var(--bw-border)',
-              borderRadius: '12px'
-            }}>
-              {isMobile ? (
-                /* Mobile Card Layout */
+            {drivers.length > 0 && (
+              <div
+                style={{
+                  marginBottom: 'clamp(12px, 2vw, 18px)',
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  flexWrap: isMobile ? 'nowrap' : 'wrap',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  gap: 10,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  style={{
+                    flex: isMobile ? undefined : '1 1 220px',
+                    minWidth: isMobile ? '100%' : 200,
+                    position: 'relative',
+                  }}
+                >
+                  <MagnifyingGlass
+                    size={17}
+                    style={{
+                      position: 'absolute',
+                      left: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--bw-muted)',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    className="bw-input"
+                    value={driverListSearch}
+                    onChange={(e) => setDriverListSearch(e.target.value)}
+                    placeholder="Search by name or email…"
+                    aria-label="Search drivers"
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px 8px 38px',
+                      boxSizing: 'border-box',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontSize: 13,
+                    }}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: 8,
+                    flexShrink: 0,
+                  }}
+                >
+                  <select
+                    className="bw-input"
+                    value={driverFilterStatus}
+                    onChange={(e) => setDriverFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+                    aria-label="Filter by driver status"
+                    style={{
+                      minWidth: isMobile ? '100%' : 108,
+                      maxWidth: isMobile ? '100%' : 130,
+                      width: isMobile ? '100%' : 'auto',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontSize: 12,
+                      padding: '6px 10px',
+                    }}
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                  <select
+                    className="bw-input"
+                    value={driverFilterType}
+                    onChange={(e) =>
+                      setDriverFilterType(e.target.value as 'all' | 'in_house' | 'outsourced')
+                    }
+                    aria-label="Filter by driver type"
+                    style={{
+                      minWidth: isMobile ? '100%' : 108,
+                      maxWidth: isMobile ? '100%' : 128,
+                      width: isMobile ? '100%' : 'auto',
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontSize: 12,
+                      padding: '6px 10px',
+                    }}
+                  >
+                    <option value="all">All types</option>
+                    <option value="in_house">In-House</option>
+                    <option value="outsourced">Outsourced</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {isMobile ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 16px)' }}>
                   {drivers.length === 0 ? (
                     <div className="bw-empty-state" style={{
@@ -3491,8 +3742,8 @@ export default function TenantDashboard() {
                         display: 'flex',
                         justifyContent: 'center'
                       }}>
-                        <User size={32} style={{ 
-                          width: 'clamp(32px, 5vw, 48px)', 
+                        <User size={32} style={{
+                          width: 'clamp(32px, 5vw, 48px)',
                           height: 'clamp(32px, 5vw, 48px)',
                           color: 'var(--bw-muted)'
                         }} />
@@ -3510,205 +3761,494 @@ export default function TenantDashboard() {
                         fontFamily: '"Work Sans", sans-serif'
                       }}>Add your first driver to get started</div>
                     </div>
+                  ) : filteredDriversForList.length === 0 ? (
+                    <div className="bw-empty-state" style={{
+                      padding: 'clamp(24px, 4vw, 48px)',
+                      textAlign: 'center'
+                    }}>
+                      <div className="bw-empty-text" style={{
+                        fontSize: 'clamp(16px, 2.5vw, 20px)',
+                        color: 'var(--bw-text)',
+                        marginBottom: 'clamp(8px, 1.5vw, 12px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 500
+                      }}>No matching drivers</div>
+                      <div className="bw-empty-subtext" style={{
+                        fontSize: 'clamp(14px, 2vw, 16px)',
+                        color: 'var(--bw-muted)',
+                        fontFamily: '"Work Sans", sans-serif'
+                      }}>Try adjusting search or filters</div>
+                    </div>
                   ) : (
-                    drivers.map((driver) => (
-                      <div 
-                        key={driver.id} 
-                        onClick={() => handleDriverClick(driver.id)}
-                        style={{ 
-                          cursor: 'pointer',
-                          border: '1px solid var(--bw-border)',
-                          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-                          padding: 'clamp(16px, 3vw, 24px)',
-                          backgroundColor: 'var(--bw-bg-secondary)',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover-strong)'
-                          e.currentTarget.style.borderColor = 'var(--bw-border-strong)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-                          e.currentTarget.style.borderColor = 'var(--bw-border)'
-                        }}
-                      >
-                        {/* Driver Name and Avatar */}
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 'clamp(12px, 2vw, 16px)',
-                          marginBottom: 'clamp(12px, 2vw, 16px)'
-                        }}>
-                          <div style={{
-                            width: 'clamp(40px, 5vw, 50px)',
-                            height: 'clamp(40px, 5vw, 50px)',
+                    filteredDriversForList.map((driver) => {
+                      const telHref = tenantTelHrefFromPhone(driver.phone_no)
+                      const verified = driver.is_registered === 'registered'
+                      const inHouse = driver.driver_type === 'in_house'
+                      const collapsedAccordion =
+                        useCompressedDriverCards && !expandedDriverCardIds.has(driver.id)
+                      const initials = overviewDriverInitials(driver)
+
+                      const avatar = (
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
                             borderRadius: '50%',
-                            backgroundColor: 'var(--bw-bg)',
+                            backgroundColor: '#7c3aed',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            border: '1px solid var(--bw-border)',
-                            flexShrink: 0
-                          }}>
-                            <User className="w-5 h-5" style={{ 
-                              width: 'clamp(18px, 2.5vw, 20px)',
-                              height: 'clamp(18px, 2.5vw, 20px)',
-                              color: 'var(--bw-text)' 
-                            }} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ 
-                              fontSize: 'clamp(18px, 3vw, 22px)',
-                              fontWeight: 600,
-                              color: 'var(--bw-text)',
-                              marginBottom: 'clamp(4px, 1vw, 8px)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              lineHeight: 1.2
-                            }}>
-                              {driver.first_name} {driver.last_name}
-                            </div>
-                            <div style={{ 
-                              fontSize: 'clamp(14px, 2vw, 16px)',
-                              color: 'var(--bw-muted)',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              {driver.email}
-                            </div>
-                          </div>
+                            color: '#ffffff',
+                            fontSize: 15,
+                            fontWeight: 700,
+                            fontFamily: '"Work Sans", sans-serif',
+                            flexShrink: 0,
+                          }}
+                          aria-hidden
+                        >
+                          {initials}
                         </div>
+                      )
 
-                        {/* Driver Details Grid */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: 'clamp(12px, 2vw, 16px)',
-                          marginBottom: 'clamp(12px, 2vw, 16px)'
-                        }}>
-                          {/* Contact */}
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(12px, 1.5vw, 14px)',
-                              color: 'var(--bw-muted)',
-                              marginBottom: 'clamp(6px, 1vw, 8px)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontWeight: 500
-                            }}>
-                              Contact
-                            </div>
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 'clamp(6px, 1.5vw, 8px)',
-                              fontSize: 'clamp(14px, 2vw, 16px)',
-                              color: 'var(--bw-text)',
-                              fontFamily: '"Work Sans", sans-serif'
-                            }}>
-                              <Phone size={12} style={{ 
-                                width: 'clamp(14px, 2vw, 16px)',
-                                height: 'clamp(14px, 2vw, 16px)',
-                                color: 'var(--bw-muted)' 
-                              }} />
-                              {driver.phone_no}
-                            </div>
-                          </div>
-
-                          {/* Rides */}
-                          <div>
-                            <div style={{
-                              fontSize: 'clamp(12px, 1.5vw, 14px)',
-                              color: 'var(--bw-muted)',
-                              marginBottom: 'clamp(6px, 1vw, 8px)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontWeight: 500
-                            }}>
-                              Completed Rides
-                            </div>
-                            <div style={{
-                              fontSize: 'clamp(14px, 2vw, 16px)',
-                              color: 'var(--bw-text)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontWeight: 600
-                            }}>
-                              {driver.completed_rides}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Badges Row */}
-                        <div style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 'clamp(8px, 1.5vw, 10px)',
-                          alignItems: 'center'
-                        }}>
-                          <span className={`bw-badge ${driver.driver_type === 'in_house' ? 'bw-badge-primary' : 'bw-badge-secondary'}`} style={{
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                            fontFamily: '"Work Sans", sans-serif'
-                          }}>
-                            {driver.driver_type === 'in_house' ? 'In-House' : 'Outsourced'}
-                          </span>
-                          <span className={`bw-badge ${driver.is_active ? 'bw-badge-success' : 'bw-badge-warning'}`} style={{
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                            fontFamily: '"Work Sans", sans-serif'
-                          }}>
-                            {driver.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                          <span className={`bw-badge ${driver.is_registered === 'registered' ? 'bw-badge-success' : 'bw-badge-warning'}`} style={{
-                            fontSize: 'clamp(12px, 1.5vw, 14px)',
-                            padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                            fontFamily: '"Work Sans", sans-serif'
-                          }}>
-                            {driver.is_registered === 'registered' ? 'Registered' : 'Pending'}
-                          </span>
-                        </div>
-                        {driver.driver_type === 'in_house' && (
-                          <button
-                            type="button"
-                            className="bw-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openAssignVehicleToDriver(driver.id)
+                      if (collapsedAccordion) {
+                        return (
+                          <div
+                            key={driver.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={false}
+                            onClick={() => toggleDriverCardExpanded(driver.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                toggleDriverCardExpanded(driver.id)
+                              }
                             }}
                             style={{
-                              marginTop: 'clamp(12px, 2vw, 16px)',
-                              width: '100%',
-                              padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                              fontSize: 'clamp(14px, 2vw, 16px)',
-                              fontFamily: '"Work Sans", sans-serif',
-                              fontWeight: 600,
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 'clamp(8px, 1.5vw, 10px)',
-                              borderRadius: 7,
-                              backgroundColor: '#10b981',
-                              border: '2px solid #10b981',
-                              color: '#ffffff',
+                              gap: 12,
+                              padding: '12px 14px',
+                              border: driverPalette.line,
+                              borderRadius: 12,
+                              backgroundColor: driverPalette.card,
                               cursor: 'pointer',
-                              boxSizing: 'border-box',
+                              fontFamily: '"Work Sans", sans-serif',
+                              outline: 'none',
                             }}
                           >
-                            <Car className="w-4 h-4" style={{ width: 18, height: 18 }} aria-hidden />
-                            Assign vehicle
-                          </button>
-                        )}
-                      </div>
-                    ))
+                            {avatar}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 'clamp(16px, 2.8vw, 18px)',
+                                fontWeight: 600,
+                                color: 'var(--bw-text)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {driver.first_name} {driver.last_name}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                              <span style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                backgroundColor: driver.is_active ? '#10b981' : '#d97706',
+                              }} aria-hidden />
+                              <span style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: driver.is_active ? '#10b981' : '#d97706',
+                              }}>
+                                {driver.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            <CaretRight size={20} color="var(--bw-muted)" aria-hidden />
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div
+                          key={driver.id}
+                          style={{
+                            border: driverPalette.line,
+                            borderRadius: 'clamp(8px, 1.5vw, 12px)',
+                            padding: 'clamp(16px, 3vw, 20px)',
+                            backgroundColor: driverPalette.card,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 10,
+                              marginBottom: 14,
+                              position: 'relative',
+                            }}
+                          >
+                            {avatar}
+                            <div
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                paddingRight: 36,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  alignItems: 'baseline',
+                                  gap: '6px 8px',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: 'clamp(17px, 3vw, 20px)',
+                                    fontWeight: 600,
+                                    color: 'var(--bw-text)',
+                                    fontFamily: '"Work Sans", sans-serif',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {driver.first_name} {driver.last_name}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.06em',
+                                    textTransform: 'uppercase' as const,
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    flexShrink: 0,
+                                    fontFamily: '"Work Sans", sans-serif',
+                                    ...(inHouse
+                                      ? {
+                                          color: '#ddd6fe',
+                                          backgroundColor: 'rgba(124, 58, 237, 0.28)',
+                                          border: '1px solid rgba(124, 58, 237, 0.45)',
+                                        }
+                                      : {
+                                          color: driverPalette.statsLabel,
+                                          backgroundColor: driverPalette.contactPill,
+                                          border: driverPalette.line,
+                                        }),
+                                  }}
+                                >
+                                  {tenantDriverTypeLabel(driver.driver_type)}
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 'clamp(13px, 2vw, 14px)',
+                                  color: 'var(--bw-muted)',
+                                  fontFamily: '"Work Sans", sans-serif',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={driver.email}
+                              >
+                                {driver.email}
+                              </div>
+                            </div>
+
+                            <div className="tenant-driver-card-menu" style={{ position: 'absolute', right: 0, top: 0 }}>
+                              <button
+                                type="button"
+                                aria-label="Driver actions"
+                                aria-expanded={driverCardMenuOpenId === driver.id}
+                                aria-haspopup="menu"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDriverCardMenuOpenId(driverCardMenuOpenId === driver.id ? null : driver.id)
+                                }}
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: 'var(--bw-muted)',
+                                  padding: 6,
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <DotsThreeVertical size={22} weight="bold" aria-hidden />
+                              </button>
+                              {driverCardMenuOpenId === driver.id ? (
+                                <div
+                                  role="menu"
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 'calc(100% + 6px)',
+                                    minWidth: 200,
+                                    zIndex: 20,
+                                    borderRadius: 8,
+                                    border: driverPalette.line,
+                                    backgroundColor: lightMode ? '#ffffff' : '#1a1a24',
+                                    boxShadow: lightMode ? '0 10px 30px rgba(15,23,42,0.12)' : '0 12px 32px rgba(0,0,0,0.45)',
+                                    padding: 6,
+                                    fontFamily: '"Work Sans", sans-serif',
+                                  }}
+                                >
+                                  <button type="button" role="menuitem" className="tenant-driver-card-menu"
+                                    style={{
+                                      display: 'block', width: '100%', textAlign: 'left' as const, padding: '10px 10px',
+                                      border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer',
+                                      color: 'var(--bw-text)', fontSize: 14,
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setDriverCardMenuOpenId(null)
+                                      handleDriverClick(driver.id)
+                                    }}
+                                  >
+                                    Driver details
+                                  </button>
+                                  <button type="button" role="menuitem" className="tenant-driver-card-menu"
+                                    style={{
+                                      display: 'block', width: '100%', textAlign: 'left' as const, padding: '10px 10px',
+                                      border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer',
+                                      color: 'var(--bw-text)', fontSize: 14,
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openDriverRideHistory(driver)
+                                    }}
+                                  >
+                                    View ride history
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {telHref ? (
+                            <a
+                              href={telHref}
+                              onClick={(e) => e.stopPropagation()}
+                              className="tenant-driver-card-menu"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                marginBottom: 14,
+                                textDecoration: 'none',
+                                color: 'var(--bw-text)',
+                                fontFamily: '"Work Sans", sans-serif',
+                              }}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                <Phone size={18} weight="bold" style={{ flexShrink: 0, color: 'var(--bw-muted)' }} aria-hidden />
+                                <span style={{ fontWeight: 600, fontSize: 'clamp(15px, 2vw, 16px)' }}>{driver.phone_no}</span>
+                              </span>
+                              <span style={{ fontSize: 11, color: 'var(--bw-muted)', fontWeight: 500, flexShrink: 0 }}>
+                                Tap to call
+                              </span>
+                            </a>
+                          ) : (
+                            <div
+                              style={{
+                                marginBottom: 14,
+                                color: 'var(--bw-muted)',
+                                fontSize: 14,
+                                fontFamily: '"Work Sans", sans-serif',
+                              }}
+                            >
+                              No phone number
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr',
+                              columnGap: 'clamp(10px, 2vw, 14px)',
+                              rowGap: 8,
+                              marginBottom: 12,
+                              fontFamily: '"Work Sans", sans-serif',
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase' as const,
+                                color: driverPalette.statsLabel,
+                              }}
+                            >
+                              Status
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase' as const,
+                                color: driverPalette.statsLabel,
+                              }}
+                            >
+                              Rides
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                              <span
+                                style={{
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: '50%',
+                                  backgroundColor: driver.is_active ? '#10b981' : '#d97706',
+                                  flexShrink: 0,
+                                }}
+                                aria-hidden
+                              />
+                              <span
+                                style={{
+                                  fontSize: 'clamp(15px, 2vw, 17px)',
+                                  fontWeight: 600,
+                                  color: 'var(--bw-text)',
+                                }}
+                              >
+                                {driver.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 6px' }}>
+                              <span
+                                style={{
+                                  fontSize: 'clamp(20px, 4vw, 24px)',
+                                  fontWeight: 700,
+                                  color: 'var(--bw-text)',
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {driver.completed_rides}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 'clamp(12px, 1.8vw, 13px)',
+                                  color: driverPalette.statsLabel,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                completed
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: 'clamp(12px, 1.8vw, 13px)',
+                            fontFamily: '"Work Sans", sans-serif',
+                            fontWeight: 500,
+                            marginBottom: 14,
+                            color: verified ? '#10b981' : '#d97706',
+                          }}>
+                            {verified ? (
+                              <>
+                                <ShieldCheck size={18} weight="duotone" aria-hidden />
+                                Registration verified
+                              </>
+                            ) : (
+                              <>
+                                <WarningCircle size={18} weight="fill" aria-hidden />
+                                Registration pending
+                              </>
+                            )}
+                          </div>
+
+                          {inHouse ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openAssignVehicleToDriver(driver.id)
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: 'clamp(13px, 2.5vw, 16px) clamp(20px, 4vw, 24px)',
+                                fontSize: 'clamp(14px, 2vw, 15px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                borderRadius: 8,
+                                backgroundColor: 'transparent',
+                                border: '2px solid #10b981',
+                                color: '#10b981',
+                                cursor: 'pointer',
+                                boxSizing: 'border-box',
+                              }}
+                            >
+                              <Car style={{ width: 20, height: 20 }} aria-hidden />
+                              Assign vehicle
+                            </button>
+                          ) : null}
+                          {useCompressedDriverCards ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleDriverCardExpanded(driver.id)
+                              }}
+                              style={{
+                                marginTop: 10,
+                                width: '100%',
+                                padding: '10px',
+                                border: `1px solid ${lightMode ? '#cbd5e1' : 'rgba(255,255,255,0.12)'}`,
+                                borderRadius: 8,
+                                backgroundColor: 'transparent',
+                                color: 'var(--bw-muted)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Collapse
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })
                   )}
                 </div>
               ) : (
-                /* Desktop Table Layout */
                 <div className="bw-table">
-                  <div className="bw-table-header" style={{ gridTemplateColumns: driversTableGridColumns }}>
-                    <div className="bw-table-cell">Driver</div>
-                    <div className="bw-table-cell">Contact</div>
-                    <div className="bw-table-cell">Type</div>
-                    <div className="bw-table-cell">Status</div>
-                    <div className="bw-table-cell">Registration</div>
-                    <div className="bw-table-cell">Rides</div>
-                    <div className="bw-table-cell" />
+                  <div
+                    className="bw-table-header"
+                    role="row"
+                    style={{
+                      gridTemplateColumns: driversTableGridColumns,
+                      display: 'grid',
+                      gap: 16,
+                      padding: '16px 24px',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span role="columnheader">Driver</span>
+                    <span role="columnheader">Contact</span>
+                    <span role="columnheader">Type</span>
+                    <span role="columnheader">Status</span>
+                    <span role="columnheader">Registration</span>
+                    <span role="columnheader" style={{ justifySelf: 'end' }}>
+                      Rides
+                    </span>
+                    <span aria-hidden />
                   </div>
                   {drivers.length === 0 ? (
                     <div className="bw-empty-state">
@@ -3718,55 +4258,164 @@ export default function TenantDashboard() {
                       <div className="bw-empty-text">No drivers yet</div>
                       <div className="bw-empty-subtext">Add your first driver to get started</div>
                     </div>
+                  ) : filteredDriversForList.length === 0 ? (
+                    <div className="bw-empty-state">
+                      <div className="bw-empty-text">No matching drivers</div>
+                      <div className="bw-empty-subtext">Try adjusting search or filters</div>
+                    </div>
                   ) : (
-                    drivers.map((driver) => (
-                      <div 
-                        key={driver.id} 
-                        className="bw-table-row"
+                    filteredDriversForList.map((driver) => (
+                      <div
+                        key={driver.id}
+                        role="row"
+                        className="bw-table-row tenant-driver-table-row"
                         onClick={() => handleDriverClick(driver.id)}
-                        style={{ cursor: 'pointer', gridTemplateColumns: driversTableGridColumns }}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'grid',
+                          gridTemplateColumns: driversTableGridColumns,
+                          gap: 16,
+                          padding: '16px 24px',
+                          alignItems: 'center',
+                        }}
                       >
-                        <div className="bw-table-cell">
-                          <div className="bw-user-info">
-                            <div className="bw-user-avatar">
-                              <User size={16} />
-                            </div>
-                            <div>
-                              <div className="bw-user-name">{driver.first_name} {driver.last_name}</div>
-                              <div className="bw-user-email">{driver.email}</div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="bw-table-cell">
-                          <div className="bw-contact-info">
-                            <div className="bw-contact-item">
-                              <Phone size={12} />
-                              {driver.phone_no}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="bw-table-cell">
-                          <span className={`bw-badge ${driver.driver_type === 'in_house' ? 'bw-badge-primary' : 'bw-badge-secondary'}`}>
-                            {driver.driver_type === 'in_house' ? 'In-House' : 'Outsourced'}
+                        <span
+                          role="gridcell"
+                          title={`${driver.first_name} ${driver.last_name}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            minWidth: 0,
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: '50%',
+                              backgroundColor: '#7c3aed',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ffffff',
+                              fontSize: 14,
+                              fontWeight: 700,
+                              flexShrink: 0,
+                              fontFamily: '"Work Sans", sans-serif',
+                            }}
+                          >
+                            {overviewDriverInitials(driver)}
                           </span>
-                        </div>
-                        <div className="bw-table-cell">
-                          <span className={`bw-badge ${driver.is_active ? 'bw-badge-success' : 'bw-badge-warning'}`}>
+                          <span style={{ minWidth: 0, display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+                            <span className="bw-user-name" style={{ display: 'block' }}>
+                              {driver.first_name} {driver.last_name}
+                            </span>
+                            <span className="bw-user-email" style={{ display: 'block' }}>
+                              {driver.email}
+                            </span>
+                          </span>
+                        </span>
+                        <span
+                          role="gridcell"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 12,
+                            fontFamily: '"Work Sans", sans-serif',
+                            color: 'var(--bw-muted)',
+                          }}
+                        >
+                          <Phone size={12} aria-hidden /> {driver.phone_no}
+                        </span>
+                        <span role="gridcell">
+                          <span
+                            className={`bw-badge ${driver.driver_type === 'in_house' ? 'bw-badge-primary' : 'bw-badge-secondary'}`}
+                            style={{ fontSize: 11, padding: '3px 8px', fontWeight: 600, display: 'inline-block' }}
+                          >
+                            {tenantDriverTypeLabel(driver.driver_type)}
+                          </span>
+                        </span>
+                        <span role="gridcell">
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 7,
+                              padding: '5px 11px',
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: '"Work Sans", sans-serif',
+                              backgroundColor: driver.is_active ? 'rgba(16,185,129,0.14)' : 'rgba(217,119,6,0.14)',
+                              color: driver.is_active ? '#10b981' : '#d97706',
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: driver.is_active ? '#10b981' : '#d97706',
+                              }}
+                              aria-hidden
+                            />
                             {driver.is_active ? 'Active' : 'Inactive'}
                           </span>
-                        </div>
-                        <div className="bw-table-cell">
-                          <span className={`bw-badge ${driver.is_registered === 'registered' ? 'bw-badge-success' : 'bw-badge-warning'}`}>
-                            {driver.is_registered === 'registered' ? 'Registered' : 'Pending'}
-                          </span>
-                        </div>
-                        <div className="bw-table-cell">
-                          {driver.completed_rides}
-                        </div>
-                        <div
-                          className="bw-table-cell"
-                          style={{ justifyContent: 'flex-end' }}
+                        </span>
+                        <span role="gridcell">
+                          {driver.is_registered === 'registered' ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 13,
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 500,
+                                color: '#10b981',
+                              }}
+                            >
+                              <ShieldCheck size={18} weight="duotone" aria-hidden /> Verified
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 13,
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 500,
+                                color: '#d97706',
+                              }}
+                            >
+                              <WarningCircle size={18} weight="fill" aria-hidden /> Pending
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          role="gridcell"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'baseline',
+                            justifyContent: 'flex-end',
+                            justifySelf: 'end',
+                            gap: 6,
+                            width: '100%',
+                            fontFamily: '"Work Sans", sans-serif',
+                          }}
+                        >
+                          <span style={{ fontWeight: 700 }}>{driver.completed_rides}</span>{' '}
+                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--bw-muted)' }}>rides</span>
+                        </span>
+                        <span
+                          role="gridcell"
+                          style={{ justifySelf: 'end' }}
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           {driver.driver_type === 'in_house' ? (
                             <button
@@ -3774,7 +4423,7 @@ export default function TenantDashboard() {
                               className="bw-btn"
                               onClick={() => openAssignVehicleToDriver(driver.id)}
                               style={{
-                                padding: '10px 16px',
+                                padding: '9px 14px',
                                 fontSize: '13px',
                                 fontFamily: '"Work Sans", sans-serif',
                                 fontWeight: 600,
@@ -3782,9 +4431,9 @@ export default function TenantDashboard() {
                                 alignItems: 'center',
                                 gap: 8,
                                 borderRadius: 7,
-                                backgroundColor: '#10b981',
+                                backgroundColor: 'transparent',
                                 border: '2px solid #10b981',
-                                color: '#ffffff',
+                                color: '#10b981',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
                               }}
@@ -3793,14 +4442,13 @@ export default function TenantDashboard() {
                               Assign vehicle
                             </button>
                           ) : null}
-                        </div>
+                        </span>
                       </div>
                     ))
                   )}
                 </div>
               )}
-            </div>
-          </div>
+          </>
         )}
 
         {/* Bookings Tab */}

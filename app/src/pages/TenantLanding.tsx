@@ -143,6 +143,33 @@ export default function TenantLanding() {
         }}
       >
         <div className="tl-premium-shell" style={{ maxWidth: 1120, margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 14,
+            }}
+          >
+            <Link
+              to="/driver/start"
+              className="tl-premium-driver-hint"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '7px 13px',
+                borderRadius: 999,
+                border: `0.5px solid ${fadedMuted}`,
+                backgroundColor: `color-mix(in srgb, ${premium.palette.muted} 8%, transparent)`,
+                fontSize: 13,
+                fontWeight: 500,
+                letterSpacing: '0.04em',
+                color: premium.palette.muted,
+                textDecoration: 'none',
+              }}
+            >
+              Driver?
+            </Link>
+          </div>
           <header style={{ marginBottom: 28 }}>
             <p
               style={{

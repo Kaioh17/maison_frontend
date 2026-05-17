@@ -5,12 +5,10 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, CheckCircle, XCircle, Phone, WarningCircle, Clock, FileText, CaretLeft, CaretRight, NavigationArrow, ArrowRight, MapTrifold, Question } from '@phosphor-icons/react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, CheckCircle, XCircle, Phone, WarningCircle, Clock, FileText, CaretLeft, CaretRight, NavigationArrow, ArrowRight, MapTrifold, Question, EnvelopeSimple } from '@phosphor-icons/react'
 import type { BookingResponse } from '@api/tenant'
 import { getBookings } from '@api/bookings'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
-import ThemeToggle from '@components/ThemeToggle'
-
 type MenuSection = 'dashboard' | 'vehicles' | 'bookings'
 type BookingsSubSection = 'upcoming' | 'new-requests' | 'all'
 
@@ -805,8 +803,72 @@ export default function DriverDashboard() {
           flexDirection: 'column',
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <ThemeToggle />
+          <div>
+            <p
+              style={{
+                margin: '0 0 8px 0',
+                fontSize: 'clamp(11px, 1.5vw, 12px)',
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--bw-muted)',
+                fontFamily: 'Work Sans, sans-serif',
+              }}
+            >
+              Contact
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {tenantInfo?.contact_phone?.trim() ? (
+                <a
+                  href={`tel:${tenantInfo.contact_phone.replace(/\D/g, '')}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: 'clamp(13px, 1.8vw, 14px)',
+                    color: 'var(--bw-text)',
+                    textDecoration: 'none',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 400,
+                  }}
+                >
+                  <Phone size={18} aria-hidden />
+                  <span>{formatPhoneNumber(tenantInfo.contact_phone)}</span>
+                </a>
+              ) : null}
+              {tenantInfo?.contact_email?.trim() ? (
+                <a
+                  href={`mailto:${tenantInfo.contact_email.trim()}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    fontSize: 'clamp(13px, 1.8vw, 14px)',
+                    color: 'var(--bw-accent)',
+                    textDecoration: 'none',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 400,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  <EnvelopeSimple size={18} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden />
+                  <span>{tenantInfo.contact_email.trim()}</span>
+                </a>
+              ) : null}
+              {!tenantInfo?.contact_phone?.trim() && !tenantInfo?.contact_email?.trim() ? (
+                <span
+                  style={{
+                    fontSize: 'clamp(12px, 1.6vw, 13px)',
+                    color: 'var(--bw-muted)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 300,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Dispatch contact isn&apos;t listed here yet. Use Help below or ask your manager for the best number to call.
+                </span>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -915,7 +977,6 @@ export default function DriverDashboard() {
               ? menuItems.find(item => item.id === 'bookings')?.branches?.find(b => b.id === activeBookingsSubSection)?.label || 'Bookings'
               : menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
           </h1>
-          <ThemeToggle />
         </div>
 
         {/* Error Message */}

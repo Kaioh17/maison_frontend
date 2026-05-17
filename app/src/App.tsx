@@ -33,6 +33,24 @@ function RiderRoute({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Driver-facing subdomain routes: same tenant CSS variable overrides as
+ * {@link RiderRoute} (`RiderBrandedShell` sets `--bw-*` from slug verification).
+ *
+ * `/driver` and `/driver/vehicles` (no `/driver/dashboard` prefix) intentionally
+ * omit `SlugVerification` so drivers can still use those paths on the apex host
+ * where no tenant slug exists.
+ */
+function DriverRoute({ children }: { children: ReactNode }) {
+  return (
+    <SlugVerification>
+      <RiderBrandedShell>
+        <ProtectedRoute allowRoles={["driver"]}>{children}</ProtectedRoute>
+      </RiderBrandedShell>
+    </SlugVerification>
+  )
+}
+
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
 const TenantLanding = lazy(() => import('@pages/TenantLanding'))
@@ -70,6 +88,7 @@ const HelpAdminGuide = lazy(() => import('@pages/settings/HelpAdminGuide'))
 const HelpTroubleshooting = lazy(() => import('@pages/settings/HelpTroubleshooting'))
 const StripeDocs = lazy(() => import('@pages/settings/StripeDocs'))
 const DriverHelp = lazy(() => import('@pages/DriverHelp'))
+const PremiumDriverStart = lazy(() => import('@pages/PremiumDriverStart'))
 const AddVehicle = lazy(() => import('@pages/AddVehicle'))
 const SubscriptionSelection = lazy(() => import('@pages/SubscriptionSelection'))
 const Success = lazy(() => import('@pages/Success'))
@@ -85,6 +104,7 @@ function PageFallback() {
   const slug = useTenantSlug()
   const loadingPalette = resolveSubdomainLoadingPalette(slug)
   const isRiderRoute = /^\/riders?\//.test(location.pathname)
+  const isGuestDriverRoute = /^\/driver(\/|$)/.test(location.pathname)
   return (
     <div
       style={{
@@ -93,7 +113,7 @@ function PageFallback() {
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: loadingPalette.bg,
-        color: isRiderRoute ? loadingPalette.muted : loadingPalette.text,
+        color: isRiderRoute || isGuestDriverRoute ? loadingPalette.muted : loadingPalette.text,
         fontFamily: 'Work Sans, sans-serif',
         fontSize: 14,
       }}
@@ -392,7 +412,9 @@ export default function App() {
         path="/driver"
         element={
           <ProtectedRoute allowRoles={["driver"]}>
-            <DriverDashboard />
+            <RiderBrandedShell>
+              <DriverDashboard />
+            </RiderBrandedShell>
           </ProtectedRoute>
         }
       />
@@ -401,7 +423,9 @@ export default function App() {
         path="/driver/vehicles"
         element={
           <ProtectedRoute allowRoles={["driver"]}>
-            <DriverDashboard />
+            <RiderBrandedShell>
+              <DriverDashboard />
+            </RiderBrandedShell>
           </ProtectedRoute>
         }
       />
@@ -520,12 +544,23 @@ export default function App() {
         }
       />
 
-      {/* White-label driver routes with subdomain */}
+      {/* White-label driver routes with subdomain — tenant palette via RiderBrandedShell */}
+      <Route
+        path="/driver/start"
+        element={
+          <SlugVerification>
+            <PremiumDriverStart />
+          </SlugVerification>
+        }
+      />
+
       <Route
         path="/driver/login"
         element={
           <SlugVerification>
-            <DriverLogin />
+            <RiderBrandedShell>
+              <DriverLogin />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />
@@ -534,7 +569,9 @@ export default function App() {
         path="/driver/verify"
         element={
           <SlugVerification>
-            <DriverVerify />
+            <RiderBrandedShell>
+              <DriverVerify />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />
@@ -543,7 +580,9 @@ export default function App() {
         path="/driver/register"
         element={
           <SlugVerification>
-            <DriverRegistration />
+            <RiderBrandedShell>
+              <DriverRegistration />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />
@@ -551,73 +590,51 @@ export default function App() {
       <Route
         path="/driver/dashboard"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverDashboard />
+          </DriverRoute>
         }
       />
 
       <Route
         path="/driver/bookings"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverDashboard />
+          </DriverRoute>
         }
       />
       <Route
         path="/driver/bookings/upcoming"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverDashboard />
+          </DriverRoute>
         }
       />
       <Route
         path="/driver/bookings/new-requests"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverDashboard />
+          </DriverRoute>
         }
       />
       <Route
         path="/driver/bookings/all"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverDashboard />
+          </DriverRoute>
         }
       />
 
       <Route
-        path="/driver/vehicles"
-        element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          </SlugVerification>
-        }
-      />
-      <Route
         path="/driver/help"
         element={
-          <SlugVerification>
-            <ProtectedRoute allowRoles={["driver"]}>
-              <DriverHelp />
-            </ProtectedRoute>
-          </SlugVerification>
+          <DriverRoute>
+            <DriverHelp />
+          </DriverRoute>
         }
       />
 
