@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Edit, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { X, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import { getVehicleById, updateVehicleImage, getVehicleImageTypes } from '@api/vehicles'
 import type { VehicleResponse } from '@api/vehicles'
 
@@ -9,6 +9,8 @@ interface VehicleEditModalProps {
   onClose: () => void
   onVehicleUpdated: () => void
   onDelete?: (vehicleId: number) => void
+  /** Mobile only: opens parent assign-driver flow when the vehicle has no driver. */
+  onMobileAssignDriver?: (vehicleId: number) => void
 }
 
 type ImageUploadState = {
@@ -22,7 +24,8 @@ export default function VehicleEditModal({
   isOpen, 
   onClose, 
   onVehicleUpdated,
-  onDelete
+  onDelete,
+  onMobileAssignDriver
 }: VehicleEditModalProps) {
   const [vehicle, setVehicle] = useState<VehicleResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -235,22 +238,7 @@ export default function VehicleEditModal({
           padding: isMobile ? 'clamp(16px, 3vw, 24px)' : '16px 24px',
           gap: isMobile ? 'clamp(12px, 2vw, 16px)' : '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 2vw, 16px)', flex: 1, width: '100%' }}>
-            <div style={{ 
-              width: isMobile ? 'clamp(36px, 5vw, 40px)' : 40, 
-              height: isMobile ? 'clamp(36px, 5vw, 40px)' : 40, 
-              border: '1px solid var(--bw-border-strong)', 
-              display: 'grid', 
-              placeItems: 'center', 
-              borderRadius: 2,
-              flexShrink: 0
-            }}>
-              <Edit size={20} style={{ 
-                width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
-                height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : 20,
-                fontWeight: 300 
-              }} />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1, width: '100%', minWidth: 0 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 style={{ 
                 margin: 0, 
@@ -455,13 +443,6 @@ export default function VehicleEditModal({
                             overflow: 'hidden',
                             backgroundColor: 'var(--bw-bg-secondary)',
                             cursor: 'pointer',
-                            transition: 'border-color 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--bw-accent)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--bw-border)'
                           }}
                           onClick={() => handleImageTypeClick(imageType)}
                         >
@@ -986,6 +967,34 @@ export default function VehicleEditModal({
                   margin: '0 auto clamp(8px, 1.5vw, 12px)'
                 }} />
                 <p style={{ margin: 0 }}>No driver assigned to this vehicle</p>
+                {isMobile && onMobileAssignDriver && (
+                  <button
+                    type="button"
+                    className="bw-btn"
+                    onClick={() => onMobileAssignDriver(vehicle.id)}
+                    disabled={isSaving || isUploadingImage}
+                    style={{
+                      marginTop: 'clamp(16px, 3vw, 20px)',
+                      width: '100%',
+                      padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                      fontSize: 'clamp(14px, 2vw, 16px)',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 'clamp(8px, 1.5vw, 10px)',
+                      borderRadius: 7,
+                      backgroundColor: '#10b981',
+                      border: '2px solid #10b981',
+                      color: '#ffffff',
+                      cursor: isSaving || isUploadingImage ? 'not-allowed' : 'pointer',
+                      opacity: isSaving || isUploadingImage ? 0.6 : 1,
+                    }}
+                  >
+                    Assign driver
+                  </button>
+                )}
               </div>
             )}
 

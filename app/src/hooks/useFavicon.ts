@@ -2,11 +2,14 @@ import { useEffect } from 'react'
 import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
+import { parseHex, pickColor } from '@utils/colorTokens'
 
 const DEFAULT_FAVICON = '/favicon1.png'
 const DEFAULT_APPLE_TOUCH_ICON = '/apple-touch-icon.png'
 const DEFAULT_MANIFEST_HREF = '/manifest.webmanifest'
 const DEFAULT_ACCENT = '#6c63e8'
+/** Matches `index.html` and `:root --bw-bg` so non-tenant / fallback chrome stays consistent. */
+const DEFAULT_THEME_COLOR = '#0f0d1a'
 const DEFAULT_DOCUMENT_TITLE = 'Maison'
 
 function resolveTenantDocumentTitle(companyName: string | undefined, slug: string): string {
@@ -29,6 +32,43 @@ function setOrCreateMeta(name: string, content: string) {
     document.head.appendChild(meta)
   }
   meta.setAttribute('content', content)
+}
+
+/** Solid #rrggbb for `theme-color` and root backgrounds; null if the value is not a parseable hex. */
+function formatSolidHexForMeta(color: string | null | undefined): string | null {
+  const rgb = parseHex(pickColor(color))
+  if (!rgb) return null
+  const h = (n: number) => n.toString(16).padStart(2, '0')
+  return `#${h(rgb[0])}${h(rgb[1])}${h(rgb[2])}`
+}
+
+/**
+ * Mobile browsers (especially iOS) paint the overscroll / home-indicator "safe"
+ * region from `theme-color` and from html/body background. Keep them aligned with
+ * the tenant canvas color so the chin does not stay on the default purple shell.
+ */
+function applyRootChromeBackground(color: string | null) {
+  const html = document.documentElement
+  const body = document.body
+  if (color) {
+    html.style.setProperty('background-color', color)
+    body.style.setProperty('background-color', color)
+  } else {
+    html.style.removeProperty('background-color')
+    body.style.removeProperty('background-color')
+  }
+}
+
+function applyTenantBrowserChrome(branding: SlugVerificationResponse['branding'] | null | undefined) {
+  if (!branding?.enable_branding) {
+    setOrCreateMeta('theme-color', DEFAULT_THEME_COLOR)
+    applyRootChromeBackground(null)
+    return
+  }
+  const hex =
+    formatSolidHexForMeta(pickColor(branding.background_color)) ?? DEFAULT_THEME_COLOR
+  setOrCreateMeta('theme-color', hex)
+  applyRootChromeBackground(hex)
 }
 
 function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
@@ -130,12 +170,17 @@ function applyDefaultPwaBranding() {
   applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
   applyAppleTouchIcon(DEFAULT_APPLE_TOUCH_ICON)
   applyDocumentTitleForTenant(undefined, '')
+  setOrCreateMeta('theme-color', DEFAULT_THEME_COLOR)
+  applyRootChromeBackground(null)
 }
 
 /**
- * Hook to dynamically update the favicon and document title based on tenant slug verification.
+ * Hook to dynamically update the favicon, document title, and mobile browser chrome
+ * (`theme-color` + html/body background) from tenant slug verification.
  * Title uses profile.company_name when present (browser tab). Favicon uses branding.favicon_url when set;
  * otherwise an SVG generated from the first character of the tenant company name (primary color as background).
+ * When `enable_branding` is true, the page canvas color (`background_color`) drives `theme-color` and root
+ * backgrounds so overscroll / home-indicator safe areas match the tenant shell.
  *
  * Install-time PWA metadata (manifest icons + apple-touch-icon) is served by the
  * backend per-Host so home-screen installs land on the correct tenant branding
@@ -169,6 +214,7 @@ export function useFavicon() {
           return
         }
 
+        applyTenantBrowserChrome(verification.branding)
         applyDocumentTitleForTenant(verification.profile?.company_name, slug)
 
         const faviconUrl = verification.branding?.favicon_url?.trim() || null

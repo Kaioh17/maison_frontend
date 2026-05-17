@@ -374,6 +374,14 @@ export default function TenantDashboard() {
   const [isAssigning, setIsAssigning] = useState(false)
   const [assignError, setAssignError] = useState<string | null>(null)
 
+  // Assign vehicle to driver (in-house, from Drivers tab)
+  const [showAssignVehicleToDriver, setShowAssignVehicleToDriver] = useState(false)
+  const [assignVehicleToDriverId, setAssignVehicleToDriverId] = useState<number | null>(null)
+  const [selectedVehicleIdForDriverAssign, setSelectedVehicleIdForDriverAssign] = useState('')
+  const [assignVehicleToDriverError, setAssignVehicleToDriverError] = useState<string | null>(null)
+  const [isCancelAssignVehicleToDriverHovered, setIsCancelAssignVehicleToDriverHovered] = useState(false)
+  const [isConfirmAssignVehicleToDriverHovered, setIsConfirmAssignVehicleToDriverHovered] = useState(false)
+
   // Vehicle Settings dropdown state
   const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
   
@@ -724,6 +732,51 @@ export default function TenantDashboard() {
       setIsAssigning(false)
     }
   }
+
+  const confirmAssignVehicleToDriver = async () => {
+    if (!assignVehicleToDriverId || !selectedVehicleIdForDriverAssign) return
+
+    setIsAssigning(true)
+    setAssignVehicleToDriverError(null)
+
+    try {
+      await assignDriverToVehicleNew(Number(selectedVehicleIdForDriverAssign), assignVehicleToDriverId)
+      setShowAssignVehicleToDriver(false)
+      setAssignVehicleToDriverId(null)
+      setSelectedVehicleIdForDriverAssign('')
+      await load()
+    } catch (error: any) {
+      console.error('Failed to assign vehicle to driver:', error)
+
+      if (error?.response) {
+        const status = error.response.status
+        const errorData = error.response.data
+
+        const errorMessage = errorData?.message ||
+          errorData?.detail ||
+          errorData?.error?.message ||
+          errorData?.error ||
+          `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
+
+        setAssignVehicleToDriverError(errorMessage)
+      } else if (error?.request) {
+        setAssignVehicleToDriverError('No response from server. Please check your connection and try again.')
+      } else {
+        setAssignVehicleToDriverError(error?.message || 'Failed to assign vehicle. Please try again.')
+      }
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  const openAssignVehicleToDriver = (driverId: number) => {
+    setAssignVehicleToDriverId(driverId)
+    setSelectedVehicleIdForDriverAssign('')
+    setAssignVehicleToDriverError(null)
+    setShowAssignVehicleToDriver(true)
+  }
+
+  const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(120px, 1.1fr)'
 
   const saveVehicleRate = async (categoryName: string, newRate: number) => {
     try {
@@ -3610,6 +3663,37 @@ export default function TenantDashboard() {
                             {driver.is_registered === 'registered' ? 'Registered' : 'Pending'}
                           </span>
                         </div>
+                        {driver.driver_type === 'in_house' && (
+                          <button
+                            type="button"
+                            className="bw-btn"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openAssignVehicleToDriver(driver.id)
+                            }}
+                            style={{
+                              marginTop: 'clamp(12px, 2vw, 16px)',
+                              width: '100%',
+                              padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                              fontSize: 'clamp(14px, 2vw, 16px)',
+                              fontFamily: '"Work Sans", sans-serif',
+                              fontWeight: 600,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 'clamp(8px, 1.5vw, 10px)',
+                              borderRadius: 7,
+                              backgroundColor: '#10b981',
+                              border: '2px solid #10b981',
+                              color: '#ffffff',
+                              cursor: 'pointer',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <Car className="w-4 h-4" style={{ width: 18, height: 18 }} aria-hidden />
+                            Assign vehicle
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
@@ -3617,13 +3701,14 @@ export default function TenantDashboard() {
               ) : (
                 /* Desktop Table Layout */
                 <div className="bw-table">
-                  <div className="bw-table-header">
+                  <div className="bw-table-header" style={{ gridTemplateColumns: driversTableGridColumns }}>
                     <div className="bw-table-cell">Driver</div>
                     <div className="bw-table-cell">Contact</div>
                     <div className="bw-table-cell">Type</div>
                     <div className="bw-table-cell">Status</div>
                     <div className="bw-table-cell">Registration</div>
                     <div className="bw-table-cell">Rides</div>
+                    <div className="bw-table-cell" />
                   </div>
                   {drivers.length === 0 ? (
                     <div className="bw-empty-state">
@@ -3639,7 +3724,7 @@ export default function TenantDashboard() {
                         key={driver.id} 
                         className="bw-table-row"
                         onClick={() => handleDriverClick(driver.id)}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', gridTemplateColumns: driversTableGridColumns }}
                       >
                         <div className="bw-table-cell">
                           <div className="bw-user-info">
@@ -3677,6 +3762,37 @@ export default function TenantDashboard() {
                         </div>
                         <div className="bw-table-cell">
                           {driver.completed_rides}
+                        </div>
+                        <div
+                          className="bw-table-cell"
+                          style={{ justifyContent: 'flex-end' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {driver.driver_type === 'in_house' ? (
+                            <button
+                              type="button"
+                              className="bw-btn"
+                              onClick={() => openAssignVehicleToDriver(driver.id)}
+                              style={{
+                                padding: '10px 16px',
+                                fontSize: '13px',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                borderRadius: 7,
+                                backgroundColor: '#10b981',
+                                border: '2px solid #10b981',
+                                color: '#ffffff',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <Car style={{ width: 16, height: 16 }} aria-hidden />
+                              Assign vehicle
+                            </button>
+                          ) : null}
                         </div>
                       </div>
                     ))
@@ -5072,25 +5188,28 @@ export default function TenantDashboard() {
                         right: 0,
                         top: isHovered ? 0 : undefined,
                         height: isHovered ? '100%' : 'auto',
+                        maxHeight: isHovered ? '100%' : undefined,
+                        boxSizing: 'border-box',
                         backgroundColor: 'var(--bw-bg-secondary)',
                         borderTop: '1px solid var(--bw-border)',
-                        padding: isHovered ? 'clamp(20px, 5vw, 40px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px) clamp(16px, 3vw, 24px)' : 'clamp(16px, 3vw, 24px)',
+                        padding: isHovered ? 'clamp(12px, 3vw, 20px) clamp(12px, 2.5vw, 20px)' : 'clamp(16px, 3vw, 24px)',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 'clamp(12px, 2vw, 16px)',
-                        justifyContent: isHovered ? 'flex-start' : 'flex-start',
+                        justifyContent: isHovered ? 'center' : 'flex-start',
                         alignItems: isHovered ? 'center' : 'stretch',
                         textAlign: isHovered ? 'center' : 'left',
+                        overflowY: isHovered ? 'auto' : 'hidden',
+                        WebkitOverflowScrolling: 'touch',
                         zIndex: 2
                       }}>
-                        {/* Default View - Vehicle Name, Category, and Dot */}
+                        {/* Default View — removed from layout on hover so the detail panel stays centered */}
                         <div style={{
-                          display: 'flex',
+                          display: isHovered ? 'none' : 'flex',
                           flexDirection: 'column',
                           gap: 'clamp(8px, 1.5vw, 12px)',
                           width: '100%',
-                          opacity: isHovered ? 0 : 1,
                           transition: 'opacity 0.2s ease',
                           pointerEvents: isHovered ? 'none' : 'auto'
                         }}>
@@ -5182,8 +5301,10 @@ export default function TenantDashboard() {
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: 'clamp(16px, 2.5vw, 20px)',
+                          gap: 'clamp(12px, 2vw, 18px)',
                           width: '100%',
+                          maxWidth: '100%',
+                          flexShrink: 0,
                           opacity: isHovered ? 1 : 0,
                           transition: 'opacity 0.2s ease 0.1s',
                           pointerEvents: isHovered ? 'auto' : 'none',
@@ -6205,6 +6326,14 @@ export default function TenantDashboard() {
             load()
           }}
           onDelete={handleDeleteVehicle}
+          onMobileAssignDriver={(id) => {
+            setShowVehicleEditModal(false)
+            setEditingVehicleId(null)
+            setAssigningVehicleId(id)
+            setShowAssignConfirm(true)
+            setSelectedDriverId('')
+            setAssignError(null)
+          }}
           />
         )}
 
@@ -7381,6 +7510,209 @@ export default function TenantDashboard() {
               >
                 <span style={{ color: isConfirmAssignHovered ? '#10b981' : '#ffffff' }}>
                   {isAssigning ? 'Assigning...' : 'Assign Driver'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign vehicle to in-house driver (from Drivers tab) */}
+      {showAssignVehicleToDriver && assignVehicleToDriverId != null && (
+        <div className="bw-modal-overlay" onClick={() => {
+          if (!isAssigning) {
+            setShowAssignVehicleToDriver(false)
+            setAssignVehicleToDriverId(null)
+            setSelectedVehicleIdForDriverAssign('')
+            setAssignVehicleToDriverError(null)
+          }
+        }}>
+          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
+            maxWidth: '500px',
+            width: '90vw'
+          }}>
+            <div className="bw-modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderBottom: '1px solid var(--bw-border)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                fontWeight: 400,
+                fontFamily: '"Work Sans", sans-serif',
+                color: '#10b981'
+              }}>
+                Assign vehicle
+              </h3>
+              <button
+                className="bw-btn-icon"
+                onClick={() => {
+                  if (!isAssigning) {
+                    setShowAssignVehicleToDriver(false)
+                    setAssignVehicleToDriverId(null)
+                    setSelectedVehicleIdForDriverAssign('')
+                    setAssignVehicleToDriverError(null)
+                  }
+                }}
+                style={{
+                  padding: '8px',
+                  minWidth: '32px',
+                  minHeight: '32px'
+                }}
+                disabled={isAssigning}
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="bw-modal-body" style={{
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  backgroundColor: 'var(--bw-bg-secondary)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--bw-border)'
+                }}>
+                  <WarningCircle size={20} style={{ color: '#10b981', flexShrink: 0 }} />
+                  <div style={{ fontSize: '14px', color: 'var(--bw-text)' }}>
+                    Select an available vehicle to assign to this driver.
+                  </div>
+                </div>
+                {drivers.find((d) => d.id === assignVehicleToDriverId) && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid var(--bw-border)',
+                    fontSize: '13px'
+                  }}>
+                    <div style={{ color: 'var(--bw-muted)', marginBottom: '4px' }}>Driver</div>
+                    <div style={{ color: 'var(--bw-text)', fontWeight: 500 }}>
+                      {drivers.find((d) => d.id === assignVehicleToDriverId)?.first_name}{' '}
+                      {drivers.find((d) => d.id === assignVehicleToDriverId)?.last_name}
+                    </div>
+                  </div>
+                )}
+                <div className="bw-form-group">
+                  <label>Select vehicle</label>
+                  <select
+                    value={selectedVehicleIdForDriverAssign}
+                    onChange={(e) => setSelectedVehicleIdForDriverAssign(e.target.value)}
+                    className="bw-input"
+                    disabled={isAssigning}
+                    style={{ color: '#374151', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="">Choose a vehicle</option>
+                    {vehicles
+                      .filter((v) => !v.driver)
+                      .map((v) => (
+                        <option key={v.id} value={v.id} style={{ color: '#374151', backgroundColor: '#ffffff' }}>
+                          {v.year} {v.make} {v.model}
+                          {v.license_plate ? ` — ${v.license_plate}` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                {vehicles.filter((v) => !v.driver).length === 0 && (
+                  <div style={{ fontSize: '13px', color: 'var(--bw-muted)' }}>
+                    No unassigned vehicles. Unassign a vehicle on the Vehicles tab or add a new vehicle first.
+                  </div>
+                )}
+                {assignVehicleToDriverError && (
+                  <div style={{
+                    padding: '12px',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    borderRadius: '6px',
+                    border: '1px solid #ef4444',
+                    fontSize: '13px',
+                    color: '#ef4444'
+                  }}>
+                    {assignVehicleToDriverError}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="bw-modal-footer" style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              padding: 'clamp(16px, 2.5vw, 24px)',
+              borderTop: '1px solid var(--bw-border)',
+              flexWrap: isMobile ? 'wrap' : 'nowrap'
+            }}>
+              <button
+                className={`bw-btn-outline ${isCancelAssignVehicleToDriverHovered ? 'custom-hover-border' : ''}`}
+                onClick={() => {
+                  if (!isAssigning) {
+                    setShowAssignVehicleToDriver(false)
+                    setAssignVehicleToDriverId(null)
+                    setSelectedVehicleIdForDriverAssign('')
+                    setAssignVehicleToDriverError(null)
+                  }
+                }}
+                onMouseEnter={() => !isAssigning && setIsCancelAssignVehicleToDriverHovered(true)}
+                onMouseLeave={() => setIsCancelAssignVehicleToDriverHovered(false)}
+                disabled={isAssigning}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  border: isCancelAssignVehicleToDriverHovered ? '2px solid var(--bw-accent)' : undefined,
+                  borderColor: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : undefined,
+                  color: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : undefined,
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
+                  Cancel
+                </span>
+              </button>
+              <button
+                className={`bw-btn ${isConfirmAssignVehicleToDriverHovered ? 'custom-hover-border' : ''}`}
+                onClick={confirmAssignVehicleToDriver}
+                onMouseEnter={() => !isAssigning && setIsConfirmAssignVehicleToDriverHovered(true)}
+                onMouseLeave={() => setIsConfirmAssignVehicleToDriverHovered(false)}
+                disabled={isAssigning || !selectedVehicleIdForDriverAssign}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  backgroundColor: isConfirmAssignVehicleToDriverHovered ? 'transparent' : '#10b981',
+                  border: '2px solid #10b981',
+                  borderColor: '#10b981',
+                  color: isConfirmAssignVehicleToDriverHovered ? '#10b981' : '#ffffff',
+                  boxShadow: isConfirmAssignVehicleToDriverHovered ? 'inset 0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+                  transform: isConfirmAssignVehicleToDriverHovered ? 'scale(0.98)' : 'scale(1)',
+                  opacity: (!selectedVehicleIdForDriverAssign || isAssigning) ? 0.5 : 1,
+                  cursor: (!selectedVehicleIdForDriverAssign || isAssigning) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease'
+                } as React.CSSProperties}
+              >
+                <span style={{ color: isConfirmAssignVehicleToDriverHovered ? '#10b981' : '#ffffff' }}>
+                  {isAssigning ? 'Assigning...' : 'Assign vehicle'}
                 </span>
               </button>
             </div>
