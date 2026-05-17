@@ -5,15 +5,31 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import tsconfigPaths from 'vite-tsconfig-paths';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** Dev / preview: forward browser `/api/*` to the backend (reads `VITE_API_PROXY` from `.env`). */
+/**
+ * Dev / preview: forward browser `/api/*` to the backend (reads `VITE_API_PROXY` from `.env`).
+ *
+ * Also forwards the per-host PWA install metadata endpoints. iOS Safari and
+ * Android Chrome snapshot manifest/apple-touch-icon at "Add to Home Screen"
+ * time before client JS runs, so these must be served by the backend (which
+ * resolves the tenant from the request Host header). Static fallbacks in
+ * `public/` ship for the case where the backend is unreachable.
+ */
 function apiProxyConfig(mode) {
     const env = loadEnv(mode, __dirname, '');
     const target = (env.VITE_API_PROXY || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    const passthrough = {
+        target,
+        changeOrigin: true,
+    };
     return {
-        '/api': {
-            target,
-            changeOrigin: true,
-        },
+        '/api': passthrough,
+        '/manifest.webmanifest': passthrough,
+        '/apple-touch-icon.png': passthrough,
+        '/apple-touch-icon-precomposed.png': passthrough,
+        '^/apple-touch-icon-[^/]+\\.png$': passthrough,
+        '^/icons/icon-[^/]+\\.png$': passthrough,
+        '/favicon.png': passthrough,
+        '/favicon.ico': passthrough,
     };
 }
 export default defineConfig(({ mode }) => ({
@@ -27,10 +43,17 @@ export default defineConfig(({ mode }) => ({
             srcDir: 'src',
             filename: 'sw.ts',
             injectManifest: {
-                globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
+                globPatterns: ['**/*.{js,css,html,woff2,woff}'],
+                globIgnores: [
+                    '**/manifest.webmanifest',
+                    '**/apple-touch-icon*.png',
+                    '**/icons/icon*.png',
+                    '**/favicon.*',
+                    '**/favicon1.png',
+                ],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             },
-            includeAssets: ['favicon.png', 'offline.html', 'manifest.webmanifest', 'icons/**/*.png'],
+            includeAssets: ['offline.html', 'favicon.svg', 'icons/icon.svg'],
             devOptions: {
                 enabled: false,
             },

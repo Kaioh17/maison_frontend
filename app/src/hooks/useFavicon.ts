@@ -3,7 +3,9 @@ import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
 
-const DEFAULT_FAVICON = '/favicon.png'
+const DEFAULT_FAVICON = '/favicon1.png'
+const DEFAULT_APPLE_TOUCH_ICON = '/apple-touch-icon.png'
+const DEFAULT_MANIFEST_HREF = '/manifest.webmanifest'
 const DEFAULT_ACCENT = '#6c63e8'
 const DEFAULT_DOCUMENT_TITLE = 'Maison'
 
@@ -19,20 +21,22 @@ function resolveTenantDocumentTitle(companyName: string | undefined, slug: strin
   return DEFAULT_DOCUMENT_TITLE
 }
 
-function applyAppleMobileWebAppTitle(title: string) {
-  let meta = document.querySelector("meta[name='apple-mobile-web-app-title']") as HTMLMetaElement | null
+function setOrCreateMeta(name: string, content: string) {
+  let meta = document.querySelector(`meta[name='${name}']`) as HTMLMetaElement | null
   if (!meta) {
     meta = document.createElement('meta')
-    meta.setAttribute('name', 'apple-mobile-web-app-title')
+    meta.setAttribute('name', name)
     document.head.appendChild(meta)
   }
-  meta.setAttribute('content', title)
+  meta.setAttribute('content', content)
 }
 
 function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
   const title = resolveTenantDocumentTitle(companyName, slug)
   document.title = title
-  applyAppleMobileWebAppTitle(title)
+  // Both meta tags drive the home-screen label on iOS Safari and Android Chrome.
+  setOrCreateMeta('apple-mobile-web-app-title', title)
+  setOrCreateMeta('application-name', title)
 }
 
 function escapeSvgText(s: string): string {
@@ -73,10 +77,69 @@ function applyFaviconToDocument(href: string, mime: string) {
   document.head.appendChild(link)
 }
 
+function setOrCreateLink(rel: string, href: string, opts: { type?: string; sizes?: string } = {}) {
+  let link = document.querySelector(`link[rel='${rel}']`) as HTMLLinkElement | null
+  if (!link) {
+    link = document.createElement('link')
+    link.rel = rel
+    document.head.appendChild(link)
+  }
+  link.href = href
+  if (opts.type) {
+    link.type = opts.type
+  } else {
+    link.removeAttribute('type')
+  }
+  if (opts.sizes) {
+    link.setAttribute('sizes', opts.sizes)
+  } else {
+    link.removeAttribute('sizes')
+  }
+}
+
+/**
+ * Keep the apple-touch-icon link in sync so iOS uses tenant branding when
+ * the user "Adds to Home Screen" from an already-rendered tab.
+ * Note: iOS Safari often snapshots the icon from the *initial* HTML on first
+ * paint, so the backend `/apple-touch-icon.png` endpoint (which is per-host)
+ * is the install-time source of truth — this runtime update is a safety net
+ * for in-session navigations.
+ */
+function applyAppleTouchIcon(href: string) {
+  setOrCreateLink('apple-touch-icon', href, { sizes: '180x180' })
+}
+
+/**
+ * Force the manifest link to refetch so browsers that re-read it on visibility
+ * change pick up tenant-branded name/colors/icons. iOS does not currently
+ * consult the manifest at install time, but Android Chrome may revalidate.
+ */
+function refreshManifestLink() {
+  const link = document.querySelector("link[rel='manifest']") as HTMLLinkElement | null
+  if (!link) {
+    setOrCreateLink('manifest', DEFAULT_MANIFEST_HREF)
+    return
+  }
+  // Strip any existing cache buster, then append one so the browser refetches
+  // even if the URL was otherwise identical across renders.
+  const base = link.href.split('?')[0]
+  link.href = `${base}?ts=${Date.now()}`
+}
+
+function applyDefaultPwaBranding() {
+  applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
+  applyAppleTouchIcon(DEFAULT_APPLE_TOUCH_ICON)
+  applyDocumentTitleForTenant(undefined, '')
+}
+
 /**
  * Hook to dynamically update the favicon and document title based on tenant slug verification.
  * Title uses profile.company_name when present (browser tab). Favicon uses branding.favicon_url when set;
  * otherwise an SVG generated from the first character of the tenant company name (primary color as background).
+ *
+ * Install-time PWA metadata (manifest icons + apple-touch-icon) is served by the
+ * backend per-Host so home-screen installs land on the correct tenant branding
+ * even before this hook runs.
  */
 export function useFavicon() {
   const slug = useTenantSlug()
@@ -84,8 +147,7 @@ export function useFavicon() {
   useEffect(() => {
     const updateFavicon = async () => {
       if (!slug) {
-        applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-        applyDocumentTitleForTenant(undefined, '')
+        applyDefaultPwaBranding()
         return
       }
 
@@ -103,8 +165,7 @@ export function useFavicon() {
         }
 
         if (!verification) {
-          applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-          applyDocumentTitleForTenant(undefined, '')
+          applyDefaultPwaBranding()
           return
         }
 
@@ -113,20 +174,24 @@ export function useFavicon() {
         const faviconUrl = verification.branding?.favicon_url?.trim() || null
         if (faviconUrl) {
           applyFaviconToDocument(faviconUrl, 'image/png')
-          return
+          applyAppleTouchIcon(faviconUrl)
+        } else {
+          const letter = tenantFaviconLetter(verification.profile?.company_name, slug)
+          const primary = verification.branding?.primary_color
+          const dataUrl = buildLetterFaviconDataUrl(letter, primary)
+          applyFaviconToDocument(dataUrl, 'image/svg+xml')
+          // The backend endpoint always returns a per-host PNG so iOS gets a
+          // tenant-branded raster even when no favicon_url is set.
+          applyAppleTouchIcon(DEFAULT_APPLE_TOUCH_ICON)
         }
 
-        const letter = tenantFaviconLetter(verification.profile?.company_name, slug)
-        const primary = verification.branding?.primary_color
-        const dataUrl = buildLetterFaviconDataUrl(letter, primary)
-        applyFaviconToDocument(dataUrl, 'image/svg+xml')
+        refreshManifestLink()
       } catch (error: unknown) {
         const status = (error as { response?: { status?: number } })?.response?.status
         if (status !== 403) {
           console.error('Failed to update favicon:', error)
         }
-        applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-        applyDocumentTitleForTenant(undefined, '')
+        applyDefaultPwaBranding()
       }
     }
 
