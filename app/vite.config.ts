@@ -22,6 +22,13 @@ function apiProxyConfig(mode: string) {
   const passthrough = {
     target,
     changeOrigin: true,
+    configure: (proxy: unknown) => {
+      const { on } = proxy as { on: (e: string, fn: (...a: unknown[]) => void) => void }
+      on('proxyReq', (proxyReq: { setHeader: (k: string, v: string) => void }, req: { headers: { host?: string } }) => {
+        const host = req.headers.host
+        if (host) proxyReq.setHeader('X-Forwarded-Host', host)
+      })
+    },
   } as const
   return {
     '/api': passthrough,
