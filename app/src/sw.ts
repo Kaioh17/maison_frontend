@@ -41,7 +41,6 @@ const PWA_METADATA_PATTERNS: RegExp[] = [
   /^\/manifest\.webmanifest$/,
   /^\/apple-touch-icon(?:-[\w-]+)?(?:-precomposed)?\.png$/,
   /^\/icons\/icon(?:-[\w-]+)?\.png$/,
-  /^\/favicon1\.png$/,
   /^\/favicon\.(?:png|ico|svg)$/,
 ]
 

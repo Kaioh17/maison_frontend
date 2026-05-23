@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { createBooking, getBookings, getBookingAnalytics, type BookingResponse, type BookingAnalyticsResponse } from '@api/bookings'
+import { createBooking, getBookings, getBookingAnalytics, cancelRiderBooking, getBookingRating, type BookingResponse, type BookingAnalyticsResponse, type BookingRatingResponse } from '@api/bookings'
 import { getVehicles, type VehicleResponse } from '@api/vehicles'
+import { createBookingRating } from '@api/user'
 import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
@@ -28,6 +29,47 @@ const riderHairlineDivider: CSSProperties = {
   borderTop: '1px solid var(--rider-hairline)',
 }
 
+const STAR_PATH_D = 'M12 2.35l2.96 6 6.62.96-4.79 4.67 1.13 6.59L12 17.45 6.08 20.57l1.13-6.59L2.42 9.31l6.62-.96L12 2.35z'
+
+function starFillPercent(value: number, index: number): number {
+  if (value >= index) return 100
+  if (value >= index - 0.5) return 50
+  return 0
+}
+
+function RideStar({
+  fillPercent,
+  gradientId,
+  size = 34,
+}: {
+  fillPercent: number
+  gradientId: string
+  size?: number
+}) {
+  const amber = '#f59e0b'
+  const emptyStroke = 'rgba(148, 163, 184, 0.55)'
+  const emptyFill = 'rgba(148, 163, 184, 0.08)'
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable="false">
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset={`${fillPercent}%`} stopColor={amber} />
+          <stop offset={`${fillPercent}%`} stopColor={emptyFill} />
+          <stop offset="100%" stopColor={emptyFill} />
+        </linearGradient>
+      </defs>
+      <path
+        d={STAR_PATH_D}
+        fill={`url(#${gradientId})`}
+        stroke={fillPercent > 0 ? amber : emptyStroke}
+        strokeWidth="1.45"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 type FleetGalleryEntry = { key: string; url: string }
 
 function collectVehicleImages(vehicle: VehicleResponse): FleetGalleryEntry[] {
@@ -41,6 +83,16 @@ function collectVehicleImages(vehicle: VehicleResponse): FleetGalleryEntry[] {
 function isVehicleAvailable(vehicle: VehicleResponse): boolean {
   const s = (vehicle.status || '').toLowerCase()
   return s === 'active' || s === 'available'
+}
+
+function formatContactPhone(phone: string): string {
+  const digits = (phone || '').replace(/\D/g, '')
+  if (!digits) return phone || 'N/A'
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  return phone
 }
 
 function FleetImageCarousel({
@@ -232,7 +284,14 @@ export default function RiderDashboard() {
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false)
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false)
   const [isLoading, setIsLoading] = useState(false) // Only for booking creation
+  const [isCancellingBookingId, setIsCancellingBookingId] = useState<number | null>(null)
+  const [isSubmittingRatingId, setIsSubmittingRatingId] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [bookingRatings, setBookingRatings] = useState<Record<number, BookingRatingResponse>>({})
+  const [ratingDrafts, setRatingDrafts] = useState<Record<number, { rating_value: number | null; review_comment: string; interacted: boolean }>>({})
+  const [ratingHoverValues, setRatingHoverValues] = useState<Record<number, number | null>>({})
+  const [supportsHover, setSupportsHover] = useState(true)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [fleetDetailsExpandedId, setFleetDetailsExpandedId] = useState<number | null>(null)
@@ -266,6 +325,14 @@ export default function RiderDashboard() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover)')
+    const sync = () => setSupportsHover(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
   }, [])
 
   // Separate loading functions
@@ -458,6 +525,19 @@ export default function RiderDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, bookingsLimit, bookingStatusFilter, serviceTypeFilter])
 
+  useEffect(() => {
+    const completedIds = bookings
+      .filter((b) => isCompletedBooking(b))
+      .map((b) => b.id as number)
+      .filter((id) => bookingRatings[id] == null)
+
+    if (completedIds.length === 0) return
+    completedIds.forEach((id) => {
+      fetchRatingForBooking(id)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings])
+
   const book = async () => {
     // Dynamic validation based on service type
     let isValid = true
@@ -638,8 +718,9 @@ export default function RiderDashboard() {
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'confirmed':
-      case 'completed':
         return '#10b981'
+      case 'completed':
+        return '#a78bfa'
       case 'pending':
         return '#f59e0b'
       case 'cancelled':
@@ -654,10 +735,10 @@ export default function RiderDashboard() {
     if (s === 'pending') {
       return { backgroundColor: '#fed7aa', color: '#c2410c' }
     }
-    if (s === 'active') {
+    if (s === 'confirmed' || s === 'active') {
       return { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }
     }
-    if (s === 'completed' || s === 'confirmed') {
+    if (s === 'completed') {
       return { backgroundColor: 'rgba(124, 92, 252, 0.15)', color: '#a88eff' }
     }
     return { backgroundColor: getStatusColor(status) + '20', color: getStatusColor(status) }
@@ -732,30 +813,194 @@ export default function RiderDashboard() {
     setBookingsLimit(prev => prev + 5)
   }
 
+  const isCompletedBooking = (booking: BookingResponse) =>
+    (booking.booking_status || '').toLowerCase() === 'completed' && !!booking.id
+
+  const getRatingDraft = (bookingId: number) =>
+    ratingDrafts[bookingId] || { rating_value: null, review_comment: '', interacted: false }
+
+  const setRatingDraftValue = (bookingId: number, value: number) => {
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [bookingId]: {
+        ...getRatingDraft(bookingId),
+        rating_value: value,
+        interacted: true,
+      },
+    }))
+  }
+
+  const setRatingDraftComment = (bookingId: number, value: string) => {
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [bookingId]: {
+        ...getRatingDraft(bookingId),
+        review_comment: value,
+      },
+    }))
+  }
+
+  const setHoverRating = (bookingId: number, value: number | null) => {
+    setRatingHoverValues((prev) => ({ ...prev, [bookingId]: value }))
+  }
+
+  const getDisplayRating = (bookingId: number) => {
+    if (supportsHover && ratingHoverValues[bookingId] != null) return ratingHoverValues[bookingId] as number
+    return getRatingDraft(bookingId).rating_value ?? 0
+  }
+
+  const fetchRatingForBooking = async (bookingId: number) => {
+    try {
+      const response = await getBookingRating(bookingId)
+      if (response.success && response.data) {
+        setBookingRatings((prev) => ({ ...prev, [bookingId]: response.data! }))
+      }
+    } catch (err: any) {
+      // No rating yet should not surface as UI error.
+      if (err?.response?.status === 404) return
+    }
+  }
+
+  const submitBookingRating = async (booking: BookingResponse) => {
+    if (!booking.id || !isCompletedBooking(booking)) return
+    const draft = getRatingDraft(booking.id)
+    if (draft.rating_value == null) {
+      setError('Please choose a star rating before submitting.')
+      return
+    }
+    try {
+      setError('')
+      setNotice('')
+      setIsSubmittingRatingId(booking.id)
+      const response = await createBookingRating({
+        booking_id: booking.id,
+        rating_value: draft.rating_value,
+        review_comment: draft.review_comment.trim() || undefined,
+      })
+      if (response.success) {
+        // Fetch from booking ratings endpoint as source of truth for display.
+        await fetchRatingForBooking(booking.id)
+        setNotice(response.message || 'Rating submitted successfully.')
+      } else {
+        setError(response.message || 'Failed to submit rating')
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to submit rating')
+    } finally {
+      setIsSubmittingRatingId(null)
+    }
+  }
+
+  const canCancelBooking = (booking: BookingResponse) => {
+    const s = (booking.booking_status || '').toLowerCase()
+    return !!booking.id && s !== 'cancelled' && s !== 'completed'
+  }
+
+  const extractErrorMessage = (err: any) => {
+    const detail = err?.response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) {
+      const msg = detail[0]?.msg
+      if (typeof msg === 'string') return msg
+    }
+    return err?.response?.data?.message || err?.message || 'Failed to cancel ride'
+  }
+
+  const cancelRide = async (booking: BookingResponse) => {
+    if (!booking.id || !canCancelBooking(booking)) return
+
+    const reasonInput = window.prompt('Optional: add a cancellation reason for your operator.')
+    if (reasonInput === null) return
+    const cancellation_reason = reasonInput.trim() || undefined
+
+    const confirmCancel = window.confirm(
+      `Cancel Booking #${booking.id}?\n\nWarning: cancelling close to pickup time may require an additional confirmation.`
+    )
+    if (!confirmCancel) return
+
+    try {
+      setError('')
+      setNotice('')
+      setIsCancellingBookingId(booking.id)
+      const response = await cancelRiderBooking(booking.id, {
+        cancellation_reason,
+        acknowledge_warning: false,
+      })
+
+      if (response.success) {
+        setNotice(response.message || `Booking #${booking.id} cancelled successfully.`)
+        await Promise.all([
+          loadBookings(1, undefined, 'dashboard'),
+          loadAllBookings(bookingsLimit, bookingStatusFilter || undefined, serviceTypeFilter || undefined),
+          loadAnalytics(),
+        ])
+      } else {
+        setError(response.message || 'Failed to cancel ride')
+      }
+    } catch (err: any) {
+      const message = extractErrorMessage(err)
+      const needsWarningAck = message.toLowerCase().includes('acknowledge_warning')
+
+      if (needsWarningAck) {
+        const proceed = window.confirm(`${message}\n\nDo you still want to cancel this ride?`)
+        if (!proceed) {
+          setIsCancellingBookingId(null)
+          return
+        }
+        try {
+          const retried = await cancelRiderBooking(booking.id, {
+            cancellation_reason,
+            acknowledge_warning: true,
+          })
+          if (retried.success) {
+            setNotice(retried.message || `Booking #${booking.id} cancelled successfully.`)
+            await Promise.all([
+              loadBookings(1, undefined, 'dashboard'),
+              loadAllBookings(bookingsLimit, bookingStatusFilter || undefined, serviceTypeFilter || undefined),
+              loadAnalytics(),
+            ])
+          } else {
+            setError(retried.message || 'Failed to cancel ride')
+          }
+        } catch (retryErr: any) {
+          setError(extractErrorMessage(retryErr))
+        } finally {
+          setIsCancellingBookingId(null)
+        }
+        return
+      }
+
+      setError(message)
+    } finally {
+      setIsCancellingBookingId(null)
+    }
+  }
+
   // Filter bookings
   const now = new Date()
-  const recentBookings = bookings
-    .filter(b => {
-      const pickupDate = new Date(b.pickup_time)
-      return pickupDate < now
-    })
-    .sort((a, b) => new Date(b.pickup_time).getTime() - new Date(a.pickup_time).getTime())
-    .slice(0, 5)
-
+  const upcomingStatuses = new Set(['pending', 'confirmed'])
   const upcomingBookings = bookings
     .filter(b => {
       const pickupDate = new Date(b.pickup_time)
-      return pickupDate >= now && b.booking_status?.toLowerCase() !== 'cancelled'
+      if (Number.isNaN(pickupDate.getTime())) return false
+      const status = (b.booking_status || '').toLowerCase()
+      return pickupDate > now && upcomingStatuses.has(status)
     })
     .sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime())
+    .slice(0, 5)
+
+  const rideHistoryBookings = bookings
+    .filter(b => {
+      const pickupDate = new Date(b.pickup_time)
+      return !Number.isNaN(pickupDate.getTime()) && pickupDate <= now
+    })
+    .sort((a, b) => new Date(b.pickup_time).getTime() - new Date(a.pickup_time).getTime())
     .slice(0, 5)
 
   // Use analytics data if available, otherwise fallback to calculated values
   const dashboardTotalBookings = analytics?.total ?? bookings.length
   const completedBookings = analytics?.completed ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'completed').length
   const pendingBookings = analytics?.pending ?? bookings.filter(b => b.booking_status?.toLowerCase() === 'pending').length
-  const confirmedBookings = analytics?.confirmed ?? 0
-  const cancelledBookings = analytics?.cancelled ?? 0
   const isFreshDashboard = dashboardTotalBookings === 0
   const riderCompanyName = tenantInfo?.company_name?.trim() || 'your service'
 
@@ -1173,6 +1418,20 @@ export default function RiderDashboard() {
           </div>
         )}
 
+        {notice && (
+          <div style={{
+            padding: 'clamp(10px, 2vw, 12px)',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.45)',
+            borderRadius: '8px',
+            color: '#10b981',
+            marginBottom: 'clamp(16px, 3vw, 24px)',
+            fontSize: 'clamp(13px, 2vw, 14px)'
+          }}>
+            {notice}
+          </div>
+        )}
+
         {/* Dashboard Section */}
         {activeSection === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 3vw, 24px)' }}>
@@ -1235,142 +1494,121 @@ export default function RiderDashboard() {
                 </button>
               </div>
             ) : (
-              /* Stats Cards - three KPIs in one row */
-              <div
-                className="rider-stats-grid"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 'clamp(12px, 2vw, 16px)'
-                }}
-              >
-                <div style={{
-                  backgroundColor: 'var(--rider-surface-elevated)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: 'clamp(16px, 3vw, 24px)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(28px, 5vw, 40px)',
-                    fontWeight: 700,
-                    color: 'var(--bw-text)',
-                    marginBottom: '8px',
-                    fontFamily: 'Work Sans, sans-serif'
-                  }}>
-                    {dashboardTotalBookings}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.8vw, 12px)' }}>
+                {/* Compact KPI strip */}
+                <div
+                  className="rider-stats-strip"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 0,
+                    backgroundColor: 'var(--rider-surface-elevated)',
+                    borderRadius: '10px',
+                    border: '1px solid var(--rider-hairline)',
+                    overflow: 'hidden',
+                    boxShadow: 'var(--rider-field-inset-glow)'
+                  }}
+                >
+                  <div className="rider-stat-segment" style={{ minWidth: 'clamp(140px, 30vw, 180px)', flex: '1 1 0%', padding: 'clamp(10px, 2.2vw, 14px)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <Calendar size={15} style={{ color: '#b0b9c6' }} />
+                      <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
+                        Total Bookings
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 'clamp(20px, 4.2vw, 24px)', color: 'var(--bw-text)', fontWeight: 600, fontFamily: 'Work Sans, sans-serif', lineHeight: 1.1 }}>
+                      {dashboardTotalBookings}
+                    </div>
                   </div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 300
-                  }}>
-                    Total Bookings
+
+                  <div className="rider-stat-segment" style={{ minWidth: 'clamp(140px, 30vw, 180px)', flex: '1 1 0%', padding: 'clamp(10px, 2.2vw, 14px)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <CheckCircle size={15} style={{ color: '#34d399' }} />
+                      <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
+                        Completed
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 'clamp(20px, 4.2vw, 24px)', color: 'var(--bw-text)', fontWeight: 600, fontFamily: 'Work Sans, sans-serif', lineHeight: 1.1 }}>
+                      {completedBookings}
+                    </div>
+                  </div>
+
+                  <div
+                    className="rider-stat-segment"
+                    style={{
+                      minWidth: 'clamp(140px, 30vw, 180px)',
+                      flex: '1 1 0%',
+                      padding: 'clamp(10px, 2.2vw, 14px)',
+                      opacity: pendingBookings === 0 ? 0.62 : 1
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <Clock size={15} style={{ color: '#fbbf24' }} />
+                      <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
+                        Pending
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 'clamp(20px, 4.2vw, 24px)',
+                        color: pendingBookings === 0 ? '#9ca3af' : 'var(--bw-text)',
+                        fontWeight: 600,
+                        fontFamily: 'Work Sans, sans-serif',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {pendingBookings}
+                    </div>
                   </div>
                 </div>
 
-                <div style={{
-                  backgroundColor: 'var(--rider-surface-elevated)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: 'clamp(16px, 3vw, 24px)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(28px, 5vw, 40px)',
-                    fontWeight: 700,
-                    color: 'var(--bw-text)',
-                    marginBottom: '8px',
-                    fontFamily: 'Work Sans, sans-serif'
-                  }}>
-                    {completedBookings}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 300
-                  }}>
-                    Completed
-                  </div>
-                </div>
-
-                <div style={{
-                  backgroundColor: 'var(--rider-surface-elevated)',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: 'clamp(16px, 3vw, 24px)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: 'clamp(28px, 5vw, 40px)',
-                    fontWeight: 700,
-                    color: 'var(--bw-text)',
-                    marginBottom: '8px',
-                    fontFamily: 'Work Sans, sans-serif'
-                  }}>
-                    {pendingBookings}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 300
-                  }}>
-                    Pending
-                  </div>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button
+                    onClick={() => handleMenuSelect('book-ride')}
+                    style={{
+                      width: '100%',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
+                      backgroundColor: 'var(--rider-primary)',
+                      color: 'var(--rider-on-primary)',
+                      border: 'none',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      fontSize: 'clamp(14px, 2.5vw, 16px)',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Car size={18} weight="regular" />
+                    Book a Ride
+                  </button>
+                  <button
+                    onClick={() => handleMenuSelect('all-bookings')}
+                    style={{
+                      width: '100%',
+                      padding: 'clamp(13px, 2.3vw, 16px) clamp(20px, 4vw, 24px)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--rider-primary)',
+                      border: '1px solid var(--rider-primary)',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      fontSize: 'clamp(14px, 2.4vw, 15px)',
+                      fontFamily: 'Work Sans, sans-serif',
+                      fontWeight: 500
+                    }}
+                  >
+                    See All Bookings
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Action Buttons */}
-            {!isFreshDashboard && (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(200px, 30vw, 250px), 1fr))',
-                gap: 'clamp(12px, 2vw, 16px)'
-              }}>
-                <button
-                  onClick={() => handleMenuSelect('book-ride')}
-                  style={{
-                    padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                    backgroundColor: 'var(--rider-primary)',
-                    color: 'var(--rider-on-primary)',
-                    border: 'none',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    fontSize: 'clamp(14px, 2.5vw, 16px)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 600
-                  }}
-                >
-                  Book a Ride
-                </button>
-                <button
-                  onClick={() => handleMenuSelect('all-bookings')}
-                  style={{
-                    padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                    backgroundColor: 'transparent',
-                    color: 'var(--bw-text)',
-                    border: '1px solid var(--rider-primary)',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    fontSize: 'clamp(14px, 2.5vw, 16px)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 600
-                  }}
-                >
-                  See All Bookings
-                </button>
-              </div>
-            )}
-
-            {/* Recent Rides */}
-            {recentBookings.length > 0 && (
+            {/* Upcoming Rides */}
+            {upcomingBookings.length > 0 && (
               <div style={{
                 backgroundColor: 'var(--rider-surface-elevated)',
                 border: 'none',
@@ -1385,10 +1623,10 @@ export default function RiderDashboard() {
                   fontFamily: 'Work Sans, sans-serif',
                   color: 'var(--bw-text)'
                 }}>
-                  Recent Rides
+                  Upcoming Rides
                 </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {recentBookings.map((booking) => (
+                  {upcomingBookings.map((booking, index) => (
                     <div
                       key={booking.id}
                       role="button"
@@ -1403,13 +1641,13 @@ export default function RiderDashboard() {
                         }
                       }}
                       style={{
-                        border: 'none',
+                        border: index === 0 ? '1px solid rgba(248, 231, 206, 0.45)' : 'none',
                         borderRadius: '8px',
-                        padding: 'clamp(12px, 2vw, 16px)',
+                        padding: index === 0 ? 'clamp(14px, 2.3vw, 18px)' : 'clamp(12px, 2vw, 16px)',
                         backgroundColor: 'var(--rider-surface-inset)',
                         cursor: 'pointer',
                         transition: 'background-color 0.15s ease',
-                        boxShadow: 'var(--rider-field-inset-glow)'
+                        boxShadow: index === 0 ? '0 0 0 1px rgba(248, 231, 206, 0.1), var(--rider-field-inset-glow)' : 'var(--rider-field-inset-glow)'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = 'var(--rider-row-hover)'
@@ -1428,12 +1666,12 @@ export default function RiderDashboard() {
                       }}>
                         <div>
                           <div style={{
-                            fontSize: 'clamp(14px, 2.5vw, 16px)',
+                            fontSize: index === 0 ? 'clamp(15px, 2.7vw, 17px)' : 'clamp(14px, 2.5vw, 16px)',
                             fontWeight: 600,
                             color: 'var(--bw-text)',
                             marginBottom: '4px'
                           }}>
-                            Booking #{booking.id}
+                            {index === 0 ? 'Next Ride' : `Booking #${booking.id}`}
                           </div>
                           <div style={{
                             fontSize: 'clamp(10px, 1.5vw, 11px)',
@@ -1472,8 +1710,8 @@ export default function RiderDashboard() {
               </div>
             )}
 
-            {/* Upcoming Rides */}
-            {upcomingBookings.length > 0 && (
+            {/* Ride History */}
+            {rideHistoryBookings.length > 0 && (
               <div style={{
                 backgroundColor: 'var(--rider-surface-elevated)',
                 border: 'none',
@@ -1488,10 +1726,10 @@ export default function RiderDashboard() {
                   fontFamily: 'Work Sans, sans-serif',
                   color: 'var(--bw-text)'
                 }}>
-                  Upcoming Rides
+                  Ride History
                 </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {upcomingBookings.map((booking) => (
+                  {rideHistoryBookings.map((booking) => (
                     <div
                       key={booking.id}
                       role="button"
@@ -1575,15 +1813,45 @@ export default function RiderDashboard() {
               </div>
             )}
 
-            {recentBookings.length === 0 && upcomingBookings.length === 0 && !isLoadingBookings && (
+            {upcomingBookings.length === 0 && !isLoadingBookings && (
               <div style={{
+                ...riderSurfaceShell,
                 textAlign: 'center',
-                padding: 'clamp(40px, 8vw, 60px)',
-                color: 'var(--bw-text)',
-                opacity: 0.6,
-                fontSize: 'clamp(14px, 2.5vw, 16px)'
+                padding: 'clamp(22px, 4vw, 28px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px'
               }}>
-                No bookings yet. Book your first ride!
+                <div style={{
+                  color: 'var(--bw-text)',
+                  opacity: 0.7,
+                  fontSize: 'clamp(14px, 2.5vw, 16px)',
+                  fontFamily: 'Work Sans, sans-serif'
+                }}>
+                  No upcoming rides.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleMenuSelect('book-ride')}
+                  style={{
+                    padding: 'clamp(12px, 2.3vw, 16px) clamp(18px, 3.4vw, 22px)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 'clamp(14px, 2.3vw, 15px)',
+                    fontFamily: 'Work Sans, sans-serif',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Car size={17} weight="regular" />
+                  Book a Ride
+                </button>
               </div>
             )}
               </>
@@ -2205,6 +2473,21 @@ export default function RiderDashboard() {
               </div>
             </div>
 
+            <div style={{
+              marginTop: 'clamp(12px, 2.5vw, 16px)',
+              marginBottom: 'clamp(12px, 2.5vw, 16px)',
+              padding: 'clamp(10px, 2vw, 12px)',
+              borderRadius: '8px',
+              border: '1px solid rgba(245, 158, 11, 0.45)',
+              backgroundColor: 'rgba(245, 158, 11, 0.12)',
+              color: '#f59e0b',
+              fontSize: 'clamp(12px, 2vw, 13px)',
+              lineHeight: 1.45,
+              fontFamily: 'Work Sans, sans-serif',
+            }}>
+              Warning: Cancelling close to pickup time may need an extra confirmation.
+            </div>
+
             {isLoadingBookings && bookings.length === 0 ? (
               <div style={{
                 textAlign: 'center',
@@ -2371,6 +2654,14 @@ export default function RiderDashboard() {
                             <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>{booking.driver_name}</div>
                           </div>
                         )}
+                        {booking.driver_phone && (
+                          <div>
+                            <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Driver Phone</div>
+                            <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>
+                              {formatContactPhone(booking.driver_phone)}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {booking.notes && (
@@ -2385,6 +2676,215 @@ export default function RiderDashboard() {
                           boxShadow: 'var(--rider-field-inset-glow)'
                         }}>
                           <strong>Notes:</strong> {booking.notes}
+                        </div>
+                      )}
+
+                      {isCompletedBooking(booking) && booking.id && (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: 'clamp(10px, 2vw, 12px)',
+                          borderRadius: '6px',
+                          fontSize: 'clamp(12px, 2vw, 14px)',
+                          color: 'var(--bw-text)',
+                          backgroundColor: 'var(--rider-notes-bg)',
+                          boxShadow: 'var(--rider-field-inset-glow)',
+                        }}>
+                          <strong style={{ display: 'block', marginBottom: '8px' }}>Ride Rating</strong>
+
+                          {bookingRatings[booking.id!] ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div>
+                                <strong>Score:</strong> {bookingRatings[booking.id!].rating_value.toFixed(1)} / 5.0
+                              </div>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {[1, 2, 3, 4, 5].map((i) => {
+                                  const fillPercent = starFillPercent(bookingRatings[booking.id!].rating_value, i)
+                                  return (
+                                    <div key={`rated-${booking.id}-${i}`} style={{ width: 34, height: 34 }}>
+                                      <RideStar
+                                        fillPercent={fillPercent}
+                                        gradientId={`rated-grad-${booking.id}-${i}`}
+                                        size={34}
+                                      />
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              {bookingRatings[booking.id!].review_comment && (
+                                <div>
+                                  <strong>Comment:</strong> {bookingRatings[booking.id!].review_comment}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ opacity: 0.8 }}>Rating</label>
+                                <div
+                                  role="slider"
+                                  aria-label="Rate this ride"
+                                  aria-valuemin={0}
+                                  aria-valuemax={5}
+                                  aria-valuenow={getRatingDraft(booking.id).rating_value ?? 0}
+                                  aria-valuetext={
+                                    getRatingDraft(booking.id).rating_value == null
+                                      ? 'No rating selected'
+                                      : `${getRatingDraft(booking.id).rating_value?.toFixed(1)} out of 5.0`
+                                  }
+                                  tabIndex={0}
+                                  onMouseLeave={() => {
+                                    if (supportsHover) setHoverRating(booking.id!, null)
+                                  }}
+                                  onKeyDown={(e) => {
+                                    const current = getRatingDraft(booking.id!).rating_value ?? 0
+                                    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                                      e.preventDefault()
+                                      setRatingDraftValue(booking.id!, Math.min(5, current + 0.5))
+                                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                                      e.preventDefault()
+                                      setRatingDraftValue(booking.id!, Math.max(0.5, current - 0.5))
+                                    } else if (e.key === 'Home') {
+                                      e.preventDefault()
+                                      setRatingDraftValue(booking.id!, 0.5)
+                                    } else if (e.key === 'End') {
+                                      e.preventDefault()
+                                      setRatingDraftValue(booking.id!, 5)
+                                    }
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--bw-border)',
+                                    backgroundColor: 'var(--rider-surface-inset)',
+                                    color: 'var(--bw-text)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    outline: 'none',
+                                  }}
+                                >
+                                  {/* <div style={{ fontSize: '12px', opacity: 0.75 }}>
+                                    Full star = 1.0, half star = 0.5
+                                  </div> */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {[1, 2, 3, 4, 5].map((i) => {
+                                      const halfValue = i - 0.5
+                                      const fullValue = i
+                                      const displayRating = getDisplayRating(booking.id!)
+                                      const fillPercent = starFillPercent(displayRating, i)
+                                      return (
+                                        <div
+                                          key={`rating-pair-${booking.id}-${i}`}
+                                          style={{
+                                            width: 44,
+                                            height: 44,
+                                            position: 'relative',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}
+                                        >
+                                          <RideStar
+                                            fillPercent={fillPercent}
+                                            gradientId={`draft-grad-${booking.id}-${i}`}
+                                            size={34}
+                                          />
+                                          <button
+                                            type="button"
+                                            title={`${halfValue.toFixed(1)} stars`}
+                                            aria-label={`${halfValue.toFixed(1)} stars`}
+                                            onMouseEnter={() => {
+                                              if (supportsHover) setHoverRating(booking.id!, halfValue)
+                                            }}
+                                            onClick={() => setRatingDraftValue(booking.id!, halfValue)}
+                                            style={{
+                                              position: 'absolute',
+                                              left: 0,
+                                              top: 0,
+                                              width: '50%',
+                                              height: '100%',
+                                              border: 'none',
+                                              backgroundColor: 'transparent',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                            }}
+                                          >
+                                            <span style={{ display: 'none' }}>{halfValue.toFixed(1)}</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            title={`${fullValue.toFixed(1)} stars`}
+                                            aria-label={`${fullValue.toFixed(1)} stars`}
+                                            onMouseEnter={() => {
+                                              if (supportsHover) setHoverRating(booking.id!, fullValue)
+                                            }}
+                                            onClick={() => setRatingDraftValue(booking.id!, fullValue)}
+                                            style={{
+                                              position: 'absolute',
+                                              right: 0,
+                                              top: 0,
+                                              width: '50%',
+                                              height: '100%',
+                                              border: 'none',
+                                              backgroundColor: 'transparent',
+                                              cursor: 'pointer',
+                                              padding: 0,
+                                            }}
+                                          >
+                                            <span style={{ display: 'none' }}>{fullValue.toFixed(1)}</span>
+                                          </button>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                  {/* {getRatingDraft(booking.id).interacted && getRatingDraft(booking.id).rating_value != null && (
+                                    // <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                                    //   Selected: {getRatingDraft(booking.id).rating_value?.toFixed(1)} / 5.0
+                                    // </div>
+                                  )} */}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ opacity: 0.8 }}>Comment (optional)</label>
+                                <textarea
+                                  value={getRatingDraft(booking.id).review_comment}
+                                  onChange={(e) => setRatingDraftComment(booking.id!, e.target.value)}
+                                  rows={3}
+                                  placeholder="How was your ride?"
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--bw-border)',
+                                    backgroundColor: 'var(--rider-surface-inset)',
+                                    color: 'var(--bw-text)',
+                                    resize: 'vertical',
+                                  }}
+                                />
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => submitBookingRating(booking)}
+                                disabled={isSubmittingRatingId === booking.id || getRatingDraft(booking.id).rating_value == null}
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid rgba(124, 92, 252, 0.55)',
+                                  backgroundColor: 'rgba(124, 92, 252, 0.15)',
+                                  color: '#a88eff',
+                                  cursor: (isSubmittingRatingId === booking.id || getRatingDraft(booking.id).rating_value == null) ? 'not-allowed' : 'pointer',
+                                  fontWeight: 600,
+                                  opacity: (isSubmittingRatingId === booking.id || getRatingDraft(booking.id).rating_value == null) ? 0.45 : 1,
+                                }}
+                              >
+                                {isSubmittingRatingId === booking.id ? 'Submitting...' : 'Submit Rating'}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -2406,6 +2906,35 @@ export default function RiderDashboard() {
                           {zelleEmailFromApi(booking.zelle_email) != null && (
                             <div style={{ wordBreak: 'break-all' }}>Email: {zelleEmailDisplay(booking.zelle_email)}</div>
                           )}
+                        </div>
+                      )}
+
+                      {canCancelBooking(booking) && (
+                        <div style={{
+                          marginTop: '10px',
+                          paddingTop: '12px',
+                          ...riderHairlineDivider,
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => cancelRide(booking)}
+                            disabled={isCancellingBookingId === booking.id}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(239, 68, 68, 0.55)',
+                              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                              color: '#ef4444',
+                              cursor: isCancellingBookingId === booking.id ? 'not-allowed' : 'pointer',
+                              fontSize: 'clamp(13px, 2vw, 14px)',
+                              fontFamily: 'Work Sans, sans-serif',
+                              fontWeight: 600,
+                              opacity: isCancellingBookingId === booking.id ? 0.6 : 1,
+                            }}
+                          >
+                            {isCancellingBookingId === booking.id ? 'Cancelling...' : 'Cancel Ride'}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -2716,7 +3245,20 @@ export default function RiderDashboard() {
 
       {/* Responsive Styles */}
       <style>{`
-        /* Stats Grid: three KPIs in one row */
+        /* Compact KPI strip with subtle separators */
+        .rider-stat-segment + .rider-stat-segment {
+          border-left: 1px solid var(--rider-hairline);
+        }
+
+        /* If needed on narrow screens, wrap to 2 + 1 */
+        @media (max-width: 560px) {
+          .rider-stats-strip .rider-stat-segment:nth-child(3) {
+            flex-basis: 100% !important;
+            border-left: none !important;
+            border-top: 1px solid var(--rider-hairline);
+          }
+        }
+
         @media (max-width: 768px) {
           .datetime-inputs-container {
             grid-template-columns: 1fr !important;

@@ -426,8 +426,10 @@ export type BookingResponse = {
   estimated_price: number
   booking_status: string
   customer_name: string
+  customer_phone?: string | null
   vehicle: string
   driver_name: string
+  driver_phone?: string | null
   // Optional fields that may still be present in some responses
   vehicle_id?: number
   id?: number

@@ -4,7 +4,7 @@ import { getCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
 import { parseHex, pickColor } from '@utils/colorTokens'
 
-const DEFAULT_FAVICON = '/favicon1.png'
+const DEFAULT_FAVICON = '/favicon-48x48.png'
 const DEFAULT_APPLE_TOUCH_ICON = '/apple-touch-icon.png'
 const DEFAULT_MANIFEST_HREF = '/manifest.webmanifest'
 const DEFAULT_ACCENT = '#6c63e8'

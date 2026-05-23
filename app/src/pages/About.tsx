@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function About() {
@@ -6,8 +7,14 @@ export default function About() {
     <main className="min-h-screen bg-[#0a0a0f] text-white" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
       <section className="mx-auto max-w-4xl px-6 py-12 md:py-16">
         <div className="mb-8 flex items-center justify-between gap-4">
-          <Link to="/" className="text-2xl tracking-tight text-white">
-            <MaisonWordmark color="#ffffff" style={{ fontSize: '1.5rem' }} />
+          <Link
+            to="/"
+            className="text-white"
+            aria-label="Maison home"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.9rem', lineHeight: 1 }}
+          >
+            <MaisonDarkModeLogo forceDark height={30} />
+            <MaisonWordmark color="#ffffff" style={{ fontSize: '1.5rem', display: 'inline-block' }} />
           </Link>
           <Link
             to="/signup"

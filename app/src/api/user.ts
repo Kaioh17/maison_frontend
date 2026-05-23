@@ -40,3 +40,27 @@ export async function getUserInfo() {
   const { data } = await http.get<StandardResponse<UserResponse>>('/v1/users/')
   return data
 }
+
+export interface BookingRatingCreate {
+  booking_id: number
+  rating_value: number
+  review_comment?: string
+}
+
+export interface BookingRatingResponse {
+  id: string
+  tenant_id: number
+  booking_id: number
+  rating_value: number
+  review_comment?: string | null
+  created_on: string
+  updated_on?: string | null
+}
+
+export async function createBookingRating(payload: BookingRatingCreate) {
+  const { data } = await http.post<StandardResponse<BookingRatingResponse>>(
+    '/v1/users/booking/ratings',
+    payload
+  )
+  return data
+}

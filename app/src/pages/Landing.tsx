@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import MaisonWordmark from '@components/MaisonWordmark'
+import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan } from '@data/landingPricingPlans'
 import './landing-pricing.css'
@@ -1249,10 +1250,13 @@ function ConclusionSlide() {
         <div className="landing-footer__inner w-full box-border px-5 pt-8 pb-6 md:px-[60px] md:pt-12 md:pb-8">
           <div className="mb-6 md:mb-8 md:grid md:grid-cols-3 md:gap-x-12 md:items-start">
             <div className="hidden pb-6 mb-6 border-b border-[#1e1c30] md:mb-0 md:block md:border-0 md:pb-0">
-              <MaisonWordmark
-                color="#ffffff"
+              <MaisonDarkModeLogo
+                forceDark
                 className="block"
-                style={{ fontSize: 'clamp(1.35rem, 4.2vw, 1.5rem)' }}
+                style={{
+                  height: 'clamp(1.5rem, 4vw, 2rem)',
+                  width: 'auto',
+                }}
               />
               <p
                 className="mt-3.5 max-w-md leading-[1.55] tracking-[-0.01em] text-[13px] md:text-[14px]"
@@ -1507,11 +1511,28 @@ export default function Landing() {
           data-theme={navTheme}
           onClick={scrollToTop}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'clamp(0.75rem, 2.2vw, 1rem)',
             opacity: hideFloatingChromeOnPricing ? 0 : 1,
             pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
           }}
         >
-          <MaisonWordmark color={null} style={{ fontSize: 'inherit' }} />
+          <MaisonDarkModeLogo
+            forceDark
+            style={{
+              height: 'clamp(1.625rem, 4vw, 2.125rem)',
+              width: 'auto',
+            }}
+          />
+          <MaisonWordmark
+            color={null}
+            style={{
+              fontSize: 'clamp(1.2rem, 2.8vw, 1.5rem)',
+              display: 'inline-block',
+              verticalAlign: 'middle',
+            }}
+          />
         </button>
       </div>
 

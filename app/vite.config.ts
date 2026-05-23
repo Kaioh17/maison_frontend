@@ -15,6 +15,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
  * time before client JS runs, so these must be served by the backend (which
  * resolves the tenant from the request Host header). Static fallbacks in
  * `public/` ship for the case where the backend is unreachable.
+ *
+ * `/favicon-48x48.png` and `/favicon.ico` are not proxied: Vite serves `public/` so
+ * the tab icon works in dev even when the API is down or returns redirects.
  */
 function apiProxyConfig(mode: string) {
   const env = loadEnv(mode, __dirname, '')
@@ -37,8 +40,6 @@ function apiProxyConfig(mode: string) {
     '/apple-touch-icon-precomposed.png': passthrough,
     '^/apple-touch-icon-[^/]+\\.png$': passthrough,
     '^/icons/icon-[^/]+\\.png$': passthrough,
-    '/favicon.png': passthrough,
-    '/favicon.ico': passthrough,
   } as const
 }
 
@@ -68,7 +69,6 @@ export default defineConfig(({ mode }) => ({
           '**/apple-touch-icon*.png',
           '**/icons/icon*.png',
           '**/favicon.*',
-          '**/favicon1.png',
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },

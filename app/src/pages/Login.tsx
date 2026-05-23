@@ -1,24 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Mail, Lock, Car, ArrowRight } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
 import { loginTenant } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import MaisonWordmark from '@components/MaisonWordmark'
+
+const LOGIN_HERO_INTERVAL_MS = 60_000
+const LOGIN_HERO_FADE_MS = 1_400
+
+const LOGIN_HERO_SLIDES = [
+  {
+    id: 'opening',
+    tagline:
+      'Deliver five‑star journeys with every mile. Keep your bookings, drivers, and customers in perfect sync so you can focus on exceptional service.',
+  },
+  {
+    id: 'branded',
+    tagline:
+      'Your name on every ride, your operation in order. Bookings, drivers, and customers stay in sync, so the service matches the standard you set.',
+  },
+] as const
 
 export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
+  const [heroUrls, setHeroUrls] = useState<[string | null, string | null]>([null, null])
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
-  const imageContainerRef = useRef<HTMLDivElement>(null)
-  
+
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, role } = useAuthStore()
 
   const getCurrentTheme = () => {
     if (typeof window === 'undefined') return 'dark'
@@ -49,31 +65,39 @@ export default function AuthPage() {
     }
   }, [])
 
-  // Lazy load background image
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !backgroundImage) {
-            // Load image when container is visible
-            import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp').then((module) => {
-              setBackgroundImage(module.default)
-            })
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: '50px' } // Start loading 50px before it's visible
-    )
-
-    if (imageContainerRef.current) {
-      observer.observe(imageContainerRef.current)
-    }
-
+    let cancelled = false
+    Promise.all([
+      import('../images/nikita-pishchugin-IdyI9y8BfB4-unsplash.webp'),
+      import('../images/login_image.jpg'),
+    ]).then(([a, b]) => {
+      if (!cancelled) setHeroUrls([a.default, b.default])
+    })
     return () => {
-      observer.disconnect()
+      cancelled = true
     }
-  }, [backgroundImage])
+  }, [])
+
+  useEffect(() => {
+    let id: ReturnType<typeof setInterval> | undefined
+    const tick = () => {
+      setHeroSlideIndex((i) => (i + 1) % LOGIN_HERO_SLIDES.length)
+    }
+    const arm = () => {
+      if (id) clearInterval(id)
+      id = setInterval(tick, LOGIN_HERO_INTERVAL_MS)
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') arm()
+      else if (id) clearInterval(id)
+    }
+    arm()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (id) clearInterval(id)
+    }
+  }, [])
 
   // Don't auto-redirect - always show login page
   // Users can manually navigate away if needed
@@ -153,9 +177,13 @@ export default function AuthPage() {
             padding: 16px !important;
           }
           .login-logo {
-            font-size: 30px !important;
             top: 16px !important;
             left: 16px !important;
+          }
+          .login-logo img {
+            height: 37px !important;
+            width: auto !important;
+            max-width: min(300px, 88vw) !important;
           }
           .login-title {
             font-size: 28px !important;
@@ -198,23 +226,23 @@ export default function AuthPage() {
             padding: 10px !important;
           }
         }
+        .login-hero-layer {
+          transition: opacity ${LOGIN_HERO_FADE_MS}ms ease;
+        }
+        .login-hero-tagline {
+          transition: opacity ${LOGIN_HERO_FADE_MS}ms ease;
+        }
       `}</style>
       <main className="bw" aria-label="Auth" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
         <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
           {/* Left side - Image (70%) */}
           <div 
-            ref={imageContainerRef}
             className="login-image-container"
             style={{ 
               width: '70%', 
               height: '100%', 
               position: 'relative',
-              backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-              backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              transition: 'background-image 0.3s ease',
+              backgroundColor: heroUrls[0] ? 'transparent' : '#f3f4f6',
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'center',
@@ -222,6 +250,26 @@ export default function AuthPage() {
               paddingTop: '120px'
             }} 
           >
+            <div style={{ position: 'absolute', inset: 0 }}>
+              {heroUrls.map((url, i) =>
+                url ? (
+                  <div
+                    key={i}
+                    className="login-hero-layer"
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage: `url(${url})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundRepeat: 'no-repeat',
+                      opacity: heroSlideIndex === i ? 1 : 0,
+                    }}
+                  />
+                ) : null
+              )}
+            </div>
             {/* Tint: Maison page background at ~60% opacity (replaces former rgba(0,0,0,0.6)) */}
             <div style={{
               position: 'absolute',
@@ -230,7 +278,8 @@ export default function AuthPage() {
               width: '100%',
               height: '100%',
               backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
-              zIndex: 1
+              zIndex: 1,
+              pointerEvents: 'none',
             }}></div>
             <div style={{
               color: 'white',
@@ -238,18 +287,29 @@ export default function AuthPage() {
               maxWidth: '600px',
               zIndex: 2,
               position: 'relative',
-              padding: '32px'
+              padding: '32px',
+              display: 'grid',
+              justifyItems: 'stretch',
             }}>
-              <p style={{
-                fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-                fontSize: '20px',
-                lineHeight: '1.6',
-                fontWeight: 300,
-                textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
-                margin: 0
-              }}>
-                Deliver five‑star journeys with every mile. Keep your bookings, drivers, and customers in perfect sync so you can focus on exceptional service.
-              </p>
+              {LOGIN_HERO_SLIDES.map((slide, i) => (
+                <p
+                  key={slide.id}
+                  className="login-hero-tagline"
+                  style={{
+                    gridRow: 1,
+                    gridColumn: 1,
+                    fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+                    fontSize: '20px',
+                    lineHeight: '1.6',
+                    fontWeight: 300,
+                    textShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
+                    margin: 0,
+                    opacity: heroSlideIndex === i ? 1 : 0,
+                  }}
+                >
+                  {slide.tagline}
+                </p>
+              ))}
             </div>
           </div>
 
@@ -278,11 +338,16 @@ export default function AuthPage() {
                 top: '24px',
                 left: '24px',
                 zIndex: 10,
-                fontSize: 40,
                 lineHeight: 1,
               }}
             >
-              <MaisonWordmark />
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
+                <MaisonDarkModeLogo height={52} />
+                <MaisonWordmark
+                  color={null}
+                  style={{ fontSize: '1.5rem', display: 'inline-block', verticalAlign: 'middle' }}
+                />
+              </div>
             </div>
             <h2 className="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Welcome back</h2>
             <p className="small-muted login-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Sign in to continue</p>

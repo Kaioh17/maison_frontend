@@ -25,6 +25,7 @@ import {
   isCompleteUsPhone,
   zellePhoneValidationError
 } from '@utils/zelleContact'
+import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
 
 /** Persistent left nav; can be retracted with a shared toggle control. */
 const TENANT_DASHBOARD_LAYOUT_CSS = `
@@ -148,6 +149,46 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
 
 /** Google Form: complaints, product feedback, and general questions for tenants */
 const TENANT_FEEDBACK_FORM_URL = 'https://forms.gle/521ZvKprmq1YxjMs8'
+const STAR_PATH_D = 'M12 2.35l2.96 6 6.62.96-4.79 4.67 1.13 6.59L12 17.45 6.08 20.57l1.13-6.59L2.42 9.31l6.62-.96L12 2.35z'
+
+function starFillPercent(value: number, index: number): number {
+  if (value >= index) return 100
+  if (value >= index - 0.5) return 50
+  return 0
+}
+
+function RatingStar({
+  fillPercent,
+  gradientId,
+  size = 26,
+}: {
+  fillPercent: number
+  gradientId: string
+  size?: number
+}) {
+  const amber = '#f59e0b'
+  const emptyStroke = 'rgba(148, 163, 184, 0.55)'
+  const emptyFill = 'rgba(148, 163, 184, 0.08)'
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden focusable="false">
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset={`${fillPercent}%`} stopColor={amber} />
+          <stop offset={`${fillPercent}%`} stopColor={emptyFill} />
+          <stop offset="100%" stopColor={emptyFill} />
+        </linearGradient>
+      </defs>
+      <path
+        d={STAR_PATH_D}
+        fill={`url(#${gradientId})`}
+        stroke={fillPercent > 0 ? amber : emptyStroke}
+        strokeWidth="1.45"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 type OverviewLinkKey = 'rider' | 'driver' | 'landing'
@@ -372,6 +413,8 @@ export default function TenantDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null)
   const [showBookingDetails, setShowBookingDetails] = useState(false)
   const [loadingBookingDetails, setLoadingBookingDetails] = useState(false)
+  const [selectedBookingRating, setSelectedBookingRating] = useState<BookingRatingResponse | null>(null)
+  const [loadingBookingRating, setLoadingBookingRating] = useState(false)
 
   // Driver details modal state
   const [selectedDriver, setSelectedDriver] = useState<DriverDetailResponse | null>(null)
@@ -1192,11 +1235,18 @@ export default function TenantDashboard() {
 
   const handleBookingClick = async (bookingId: number) => {
     setLoadingBookingDetails(true)
+    setLoadingBookingRating(true)
+    setSelectedBookingRating(null)
     setShowBookingDetails(true)
     try {
-      const response = await getTenantBookingById(bookingId)
+      const [response, bookingRatingResponse] = await Promise.all([
+        getTenantBookingById(bookingId),
+        getBookingRating(bookingId).catch(() => null),
+      ])
+
       if (response.data && response.data.length > 0) {
         setSelectedBooking(response.data[0])
+        setSelectedBookingRating(bookingRatingResponse?.data || null)
       } else {
         setError('Booking not found')
         setShowBookingDetails(false)
@@ -1207,6 +1257,7 @@ export default function TenantDashboard() {
       setShowBookingDetails(false)
     } finally {
       setLoadingBookingDetails(false)
+      setLoadingBookingRating(false)
     }
   }
 
@@ -5043,6 +5094,24 @@ export default function TenantDashboard() {
                               <strong>Driver:</strong> {booking.driver_name}
                             </div>
                           )}
+                          {booking.customer_phone && (
+                            <div style={{
+                              fontSize: 'clamp(12px, 1.5vw, 14px)',
+                              color: 'var(--bw-muted)',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              <strong>Customer Phone:</strong> {booking.customer_phone}
+                            </div>
+                          )}
+                          {booking.driver_phone && (
+                            <div style={{
+                              fontSize: 'clamp(12px, 1.5vw, 14px)',
+                              color: 'var(--bw-muted)',
+                              fontFamily: '"Work Sans", sans-serif'
+                            }}>
+                              <strong>Driver Phone:</strong> {booking.driver_phone}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
@@ -5094,6 +5163,11 @@ export default function TenantDashboard() {
                                 {booking.customer_name || 'Anonymous Customer'}
                               </span>
                             </div>
+                            {booking.customer_phone && (
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: '500' }}>Phone:</span> {booking.customer_phone}
+                              </div>
+                            )}
                             <div className="bw-route-item" style={{ fontSize: '12px', color: '#6b7280' }}>
                               <MapPin size={12} />
                               <span style={{ marginLeft: '4px' }}>From: {booking.pickup_location}</span>
@@ -5138,6 +5212,11 @@ export default function TenantDashboard() {
                             <div style={{ fontSize: '12px' }}>
                               <span style={{ fontWeight: '500' }}>Driver:</span> {booking.driver_name && booking.driver_name !== 'None' ? booking.driver_name : 'No assigned driver'}
                             </div>
+                            {booking.driver_phone && (
+                              <div style={{ fontSize: '12px' }}>
+                                <span style={{ fontWeight: '500' }}>Driver Phone:</span> {booking.driver_phone}
+                              </div>
+                            )}
                             <div style={{ fontSize: '12px' }}>
                               <span style={{ fontWeight: '500' }}>Vehicle:</span> {booking.vehicle || 'N/A'}
                             </div>
@@ -6990,96 +7069,161 @@ export default function TenantDashboard() {
         <div className="bw-modal-overlay" onClick={() => {
           setShowBookingDetails(false)
           setSelectedBooking(null)
+          setSelectedBookingRating(null)
         }}>
           <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
-            maxWidth: '600px',
-            width: '90vw',
+            maxWidth: '1120px',
+            width: '94vw',
             maxHeight: '90vh',
-            overflowY: 'auto'
+            overflowY: isMobile ? 'auto' : 'hidden',
+            background: 'transparent',
+            border: 'none',
+            boxShadow: 'none',
+            padding: 0,
+            position: 'relative'
           }}>
-            <div className="bw-modal-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 2.5vw, 24px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Booking Details
-              </h3>
-              <button 
-                className="bw-btn-icon" 
-                onClick={() => {
-                  setShowBookingDetails(false)
-                  setSelectedBooking(null)
-                }}
-                style={{
-                  padding: '8px',
-                  minWidth: '32px',
-                  minHeight: '32px'
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="bw-modal-body" style={{
+            <div style={{
               padding: 'clamp(16px, 2.5vw, 24px)',
               fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300
+              fontWeight: 300,
             }}>
               {loadingBookingDetails ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ color: 'var(--bw-muted)' }}>Loading booking details...</div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 2fr) minmax(280px, 1fr)',
+                  gap: '24px',
+                  alignItems: 'start',
+                }}>
+                  <div style={{
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2.5vw, 24px)',
+                    minHeight: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    gap: '16px',
+                    maxHeight: isMobile ? undefined : 'calc(90vh - 64px)',
+                    overflowY: isMobile ? undefined : 'auto',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: 400, color: 'var(--bw-text)' }}>
+                        Booking Details
+                      </h3>
+                      <button
+                        className="bw-btn-icon"
+                        onClick={() => {
+                          setShowBookingDetails(false)
+                          setSelectedBooking(null)
+                          setSelectedBookingRating(null)
+                        }}
+                        style={{ padding: '8px', minWidth: '32px', minHeight: '32px' }}
+                        aria-label="Close booking details"
+                      >
+                        <XCircle size={20} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '120px' }}>
+                    <div style={{ color: 'var(--bw-muted)' }}>Loading booking details...</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2vw, 20px)',
+                    alignSelf: 'start',
+                  }}>
+                    <div style={{ color: 'var(--bw-muted)' }}>
+                      Loading rating...
+                    </div>
+                  </div>
                 </div>
               ) : selectedBooking ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 2.5vw, 24px)' }}>
-                  {/* Booking ID and Status */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 2fr) minmax(280px, 1fr)',
+                  gap: '24px',
+                  alignItems: 'start',
+                }}>
+                  {/* Booking details content */}
                   <div style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingBottom: 'clamp(12px, 2vw, 16px)',
-                    borderBottom: '1px solid var(--bw-border)'
+                    flexDirection: 'column',
+                    gap: 'clamp(16px, 2.5vw, 24px)',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2.5vw, 24px)',
+                    boxShadow: '0 8px 28px rgba(0, 0, 0, 0.12)',
+                    maxHeight: isMobile ? undefined : 'calc(90vh - 64px)',
+                    overflowY: isMobile ? undefined : 'auto',
                   }}>
-                    <div>
-                      <div style={{
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-                        color: 'var(--bw-muted)',
-                        marginBottom: '4px'
-                      }}>
-                        Booking ID
-                      </div>
-                      <div style={{
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{
+                        margin: 0,
                         fontSize: 'clamp(18px, 2.5vw, 24px)',
                         fontWeight: 400,
                         color: 'var(--bw-text)'
                       }}>
-                        #{selectedBooking.id}
+                        Booking Details
+                      </h3>
+                      <button
+                        className="bw-btn-icon"
+                        onClick={() => {
+                          setShowBookingDetails(false)
+                          setSelectedBooking(null)
+                          setSelectedBookingRating(null)
+                        }}
+                        style={{ padding: '8px', minWidth: '32px', minHeight: '32px' }}
+                        aria-label="Close booking details"
+                      >
+                        <XCircle size={20} />
+                      </button>
+                    </div>
+                    {/* Booking ID and Status */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      paddingBottom: 'clamp(12px, 2vw, 16px)',
+                      borderBottom: '1px solid var(--bw-border)'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(12px, 1.5vw, 14px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Booking ID
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(18px, 2.5vw, 24px)',
+                          fontWeight: 400,
+                          color: 'var(--bw-text)'
+                        }}>
+                          #{selectedBooking.id}
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '4px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: getStatusColorHex(selectedBooking.booking_status) + '20',
+                        border: `1px solid ${getStatusColorHex(selectedBooking.booking_status)}`,
+                        color: getStatusColorHex(selectedBooking.booking_status),
+                        fontSize: 'clamp(11px, 1.8vw, 12px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 500,
+                        display: 'inline-block',
+                        textTransform: 'capitalize'
+                      }}>
+                        {selectedBooking.booking_status}
                       </div>
                     </div>
-                    <div style={{
-                      padding: '4px 12px',
-                      borderRadius: '8px',
-                      backgroundColor: getStatusColorHex(selectedBooking.booking_status) + '20',
-                      border: `1px solid ${getStatusColorHex(selectedBooking.booking_status)}`,
-                      color: getStatusColorHex(selectedBooking.booking_status),
-                      fontSize: 'clamp(11px, 1.8vw, 12px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 500,
-                      display: 'inline-block',
-                      textTransform: 'capitalize'
-                    }}>
-                      {selectedBooking.booking_status}
-                    </div>
-                  </div>
 
-                  {/* Customer Information */}
-                  <div>
+                    {/* Customer Information */}
+                    <div>
                     <h4 style={{
                       margin: '0 0 clamp(8px, 1.5vw, 12px) 0',
                       fontSize: 'clamp(14px, 2vw, 18px)',
@@ -7106,6 +7250,21 @@ export default function TenantDashboard() {
                           color: 'var(--bw-text)'
                         }}>
                           {selectedBooking.customer_name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          Customer Phone
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.customer_phone || 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -7320,6 +7479,21 @@ export default function TenantDashboard() {
                           color: 'var(--bw-muted)',
                           marginBottom: '4px'
                         }}>
+                          Driver Phone
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(13px, 1.5vw, 15px)',
+                          color: 'var(--bw-text)'
+                        }}>
+                          {selectedBooking.driver_phone || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{
+                          fontSize: 'clamp(11px, 1.3vw, 13px)',
+                          color: 'var(--bw-muted)',
+                          marginBottom: '4px'
+                        }}>
                           Vehicle
                         </div>
                         <div style={{
@@ -7375,10 +7549,119 @@ export default function TenantDashboard() {
                     </div>
                   )}
 
+                  </div>
+
+                  {/* Rating card (outside booking details content) */}
+                  <div style={{
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2vw, 20px)',
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    alignSelf: 'start',
+                    boxShadow: '0 8px 28px rgba(0, 0, 0, 0.12)'
+                  }}>
+                    <div style={{
+                      fontSize: 'clamp(12px, 1.5vw, 14px)',
+                      color: 'var(--bw-muted)',
+                    }}>
+                      Ride Rating
+                    </div>
+                    {loadingBookingRating ? (
+                      <div style={{ color: 'var(--bw-muted)', fontSize: 'clamp(12px, 1.4vw, 13px)' }}>
+                        Loading rating...
+                      </div>
+                    ) : selectedBookingRating ? (
+                      <>
+                        <div style={{
+                          fontSize: 'clamp(16px, 2.2vw, 20px)',
+                          fontWeight: 500,
+                          color: 'var(--bw-text)',
+                        }}>
+                          {selectedBookingRating.rating_value.toFixed(1)} / 5.0
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <RatingStar
+                              key={`tenant-booking-rating-${selectedBooking.id || 'unknown'}-${i}`}
+                              fillPercent={starFillPercent(selectedBookingRating.rating_value, i)}
+                              gradientId={`tenant-booking-rating-grad-${selectedBooking.id || 'unknown'}-${i}`}
+                              size={24}
+                            />
+                          ))}
+                        </div>
+                        <div style={{
+                          fontSize: 'clamp(12px, 1.4vw, 14px)',
+                          color: 'var(--bw-text)',
+                          lineHeight: 1.45,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}>
+                          {selectedBookingRating.review_comment || 'No written review left.'}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{
+                        fontSize: 'clamp(12px, 1.4vw, 14px)',
+                        color: 'var(--bw-muted)',
+                      }}>
+                        No rating submitted yet.
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ color: 'var(--bw-muted)' }}>No booking details available</div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 2fr) minmax(280px, 1fr)',
+                  gap: '24px',
+                  alignItems: 'start',
+                }}>
+                  <div style={{
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2.5vw, 24px)',
+                    minHeight: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    gap: '16px',
+                    maxHeight: isMobile ? undefined : 'calc(90vh - 64px)',
+                    overflowY: isMobile ? undefined : 'auto',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: 400, color: 'var(--bw-text)' }}>
+                        Booking Details
+                      </h3>
+                      <button
+                        className="bw-btn-icon"
+                        onClick={() => {
+                          setShowBookingDetails(false)
+                          setSelectedBooking(null)
+                          setSelectedBookingRating(null)
+                        }}
+                        style={{ padding: '8px', minWidth: '32px', minHeight: '32px' }}
+                        aria-label="Close booking details"
+                      >
+                        <XCircle size={20} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '120px' }}>
+                      <div style={{ color: 'var(--bw-muted)' }}>No booking details available</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    backgroundColor: 'var(--bw-bg-secondary)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: '12px',
+                    padding: 'clamp(16px, 2vw, 20px)',
+                    alignSelf: 'start',
+                  }}>
+                    <div style={{ color: 'var(--bw-muted)' }}>No rating submitted yet.</div>
+                  </div>
                 </div>
               )}
             </div>

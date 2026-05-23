@@ -3185,6 +3185,12 @@ export default function DriverDashboard() {
                               <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>{booking.customer_name}</div>
                             </div>
                           )}
+                          {booking.customer_phone && (
+                            <div>
+                              <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Customer Phone</div>
+                              <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>{formatPhoneNumber(booking.customer_phone)}</div>
+                            </div>
+                          )}
                           {booking.driver_name && (
                             <div>
                               <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Driver</div>

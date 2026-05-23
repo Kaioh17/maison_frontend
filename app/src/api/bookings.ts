@@ -15,8 +15,10 @@ export type BookingResponse = {
   estimated_price: number
   booking_status: string
   customer_name: string
+  customer_phone?: string | null
   vehicle: string
   driver_name: string
+  driver_phone?: string | null
   deposit?: number | null
   zelle_number?: string | null
   zelle_email?: string | null
@@ -87,6 +89,45 @@ export async function approveBooking(
       is_approved: isApproved,
       payment_method: paymentMethod,
     }
+  )
+  return data
+}
+
+export type CancelRidePayload = {
+  cancellation_reason?: string
+  acknowledge_warning?: boolean
+}
+
+export type CancelRideResponse = {
+  booking_id: number
+  booking_status: string
+  warning?: string | null
+}
+
+export type BookingRatingResponse = {
+  id: string
+  tenant_id: number
+  booking_id: number
+  rating_value: number
+  review_comment?: string | null
+  created_on: string
+  updated_on?: string | null
+}
+
+export async function cancelRiderBooking(
+  bookingId: number,
+  payload: CancelRidePayload
+) {
+  const { data } = await http.patch<StandardResponse<CancelRideResponse>>(
+    `/v1/bookings/rider/${bookingId}/cancel`,
+    payload
+  )
+  return data
+}
+
+export async function getBookingRating(bookingId: number) {
+  const { data } = await http.get<StandardResponse<BookingRatingResponse>>(
+    `/v1/bookings/${bookingId}/ratings`
   )
   return data
 }

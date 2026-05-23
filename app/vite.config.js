@@ -13,6 +13,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * time before client JS runs, so these must be served by the backend (which
  * resolves the tenant from the request Host header). Static fallbacks in
  * `public/` ship for the case where the backend is unreachable.
+ *
+ * `/favicon-48x48.png` / `/favicon.ico` are not proxied so `public/` is served in dev.
  */
 function apiProxyConfig(mode) {
     const env = loadEnv(mode, __dirname, '');
@@ -35,8 +37,6 @@ function apiProxyConfig(mode) {
         '/apple-touch-icon-precomposed.png': passthrough,
         '^/apple-touch-icon-[^/]+\\.png$': passthrough,
         '^/icons/icon-[^/]+\\.png$': passthrough,
-        '/favicon.png': passthrough,
-        '/favicon.ico': passthrough,
     };
 }
 export default defineConfig(({ mode }) => ({
@@ -56,7 +56,6 @@ export default defineConfig(({ mode }) => ({
                     '**/apple-touch-icon*.png',
                     '**/icons/icon*.png',
                     '**/favicon.*',
-                    '**/favicon1.png',
                 ],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             },
