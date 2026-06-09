@@ -95,6 +95,7 @@ const Success = lazy(() => import('@pages/Success'))
 const StripeReturn = lazy(() => import('@pages/StripeReturn'))
 const StripeReauth = lazy(() => import('@pages/StripeReauth'))
 const DeveloperOperations = lazy(() => import('@pages/DeveloperOperations'))
+const AdminTenantDetail = lazy(() => import('@pages/AdminTenantDetail'))
 const AdminLogin = lazy(() => import('@pages/AdminLogin'))
 const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
 const TempQrEditor = lazy(() => import('@pages/TempQrEditor'))
@@ -143,6 +144,14 @@ export default function App() {
         element={
           <AdminOpsGate>
             <DeveloperOperations />
+          </AdminOpsGate>
+        }
+      />
+      <Route
+        path="/tenants/:tenantId"
+        element={
+          <AdminOpsGate>
+            <AdminTenantDetail />
           </AdminOpsGate>
         }
       />
@@ -522,6 +531,39 @@ export default function App() {
         element={
           <SlugVerification>
             <RiderLogin />
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/riders/confirm-booking"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <BookingConfirmation />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/riders/payment"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <PaymentPage />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/riders/booking-success"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <BookingSuccess guestMode />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />

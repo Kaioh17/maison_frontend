@@ -93,6 +93,28 @@ export async function approveBooking(
   return data
 }
 
+export async function getBookingByConfirmToken(token: string) {
+  const { data } = await http.get<StandardResponse<BookingResponse>>(
+    `/v1/bookings/confirm/${encodeURIComponent(token)}`
+  )
+  return data
+}
+
+export async function approveBookingByToken(
+  token: string,
+  isApproved: boolean,
+  paymentMethod: 'cash' | 'card' | 'zelle'
+) {
+  const { data } = await http.patch<StandardResponse<BookingResponse>>(
+    `/v1/bookings/confirm/${encodeURIComponent(token)}`,
+    {
+      is_approved: isApproved,
+      payment_method: paymentMethod,
+    }
+  )
+  return data
+}
+
 export type CancelRidePayload = {
   cancellation_reason?: string
   acknowledge_warning?: boolean

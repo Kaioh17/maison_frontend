@@ -21,7 +21,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { AxiosError } from 'axios'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 function formatWhen(iso: string) {
   try {
@@ -85,6 +85,7 @@ const comingSoon: SoonCard[] = [
 ]
 
 export default function DeveloperOperations() {
+  const navigate = useNavigate()
   const [rows, setRows] = useState<AdminTenantRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -303,7 +304,9 @@ export default function DeveloperOperations() {
                   {sorted.map((r) => (
                     <tr
                       key={r.id}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      onClick={() => navigate(`/tenants/${r.id}`)}
+                      className="hover:bg-white/[0.04] transition-colors cursor-pointer"
+                      title="View tenant detail"
                     >
                       <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">
                         {r.id}
@@ -335,7 +338,10 @@ export default function DeveloperOperations() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => openForceVerify(r)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openForceVerify(r)
+                            }}
                             disabled={Boolean(r.is_verified)}
                             className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                           >
@@ -344,7 +350,10 @@ export default function DeveloperOperations() {
                           </button>
                         <button
                           type="button"
-                          onClick={() => openDelete(r)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openDelete(r)
+                          }}
                           className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/35 bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

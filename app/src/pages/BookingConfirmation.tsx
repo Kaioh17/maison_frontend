@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { approveBooking, type BookingResponse } from '@api/bookings'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import {
+  approveBooking,
+  approveBookingByToken,
+  getBookingByConfirmToken,
+  type BookingResponse,
+} from '@api/bookings'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { listAllowedRiderPaymentMethods, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
 import { useFavicon } from '@hooks/useFavicon'
@@ -23,6 +28,9 @@ export default function BookingConfirmation() {
   useFavicon()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const confirmToken = searchParams.get('token')
+  const isGuestConfirm = Boolean(confirmToken)
   const { tenantInfo } = useTenantInfo()
   const permittedPaymentMethods = useMemo(
     () =>
@@ -38,19 +46,46 @@ export default function BookingConfirmation() {
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [showDeclineWarning, setShowDeclineWarning] = useState(false)
   const [showZelleInfoModal, setShowZelleInfoModal] = useState(false)
+  const [loadingBooking, setLoadingBooking] = useState(isGuestConfirm)
 
   const zelleOffered = permittedPaymentMethods.includes('zelle')
 
   useEffect(() => {
-    // Get booking data from navigation state
+    if (isGuestConfirm && confirmToken) {
+      let cancelled = false
+      ;(async () => {
+        try {
+          setLoadingBooking(true)
+          setError('')
+          const response = await getBookingByConfirmToken(confirmToken)
+          if (cancelled) return
+          if (response.success && response.data) {
+            setBooking(response.data)
+          } else {
+            setError(response.message || 'Unable to load this booking.')
+          }
+        } catch (err: any) {
+          if (!cancelled) {
+            setError(err.response?.data?.detail || 'This confirmation link is invalid or has expired.')
+          }
+        } finally {
+          if (!cancelled) setLoadingBooking(false)
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }
+
     const bookingData = location.state?.booking as BookingResponse | undefined
     if (!bookingData) {
-      // Redirect back to booking form if no booking data
-      navigate('/rider/book', { replace: true })
+      if (!isGuestConfirm) {
+        navigate('/rider/book', { replace: true })
+      }
       return
     }
     setBooking(bookingData)
-  }, [location.state, navigate])
+  }, [confirmToken, isGuestConfirm, location.state, navigate])
 
   useEffect(() => {
     setSelectedPaymentMethod((prev) => {
@@ -88,10 +123,15 @@ export default function BookingConfirmation() {
       return
     }
 
+    const successPath = isGuestConfirm ? '/riders/booking-success' : '/rider/booking-success'
+    const paymentPath = isGuestConfirm ? '/riders/payment' : '/rider/payment'
+
     try {
       setIsLoading(true)
       setError('')
-      const response = await approveBooking(booking.id, true, selectedPaymentMethod)
+      const response = isGuestConfirm && confirmToken
+        ? await approveBookingByToken(confirmToken, true, selectedPaymentMethod)
+        : await approveBooking(booking.id, true, selectedPaymentMethod)
       if (response.success) {
         // Merge response data with existing booking data
         const updatedBooking = {
@@ -102,7 +142,7 @@ export default function BookingConfirmation() {
 
         // If card payment is selected and client_secret is provided, navigate to payment page
         if (selectedPaymentMethod === 'card' && response.data.payment?.client_secret) {
-          navigate('/rider/payment', {
+          navigate(paymentPath, {
             state: { 
               booking: updatedBooking,
               clientSecret: response.data.payment.client_secret
@@ -116,7 +156,7 @@ export default function BookingConfirmation() {
           return
         }
         // Otherwise, navigate to booking success page
-        navigate('/rider/booking-success', {
+        navigate(successPath, {
           state: { booking: updatedBooking }
         })
       } else {
@@ -135,6 +175,11 @@ export default function BookingConfirmation() {
     try {
       setIsLoading(true)
       setError('')
+      if (isGuestConfirm && confirmToken) {
+        await approveBookingByToken(confirmToken, false, 'cash')
+        navigate('/', { replace: true })
+        return
+      }
       await approveBooking(booking.id, false, 'cash')
       // Navigate back to dashboard
       navigate('/rider/dashboard', { replace: true })
@@ -154,7 +199,7 @@ export default function BookingConfirmation() {
     return method.charAt(0).toUpperCase() + method.slice(1)
   }
 
-  if (!booking) {
+  if (loadingBooking || !booking) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -162,9 +207,17 @@ export default function BookingConfirmation() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: 'Work Sans, sans-serif'
+        fontFamily: 'Work Sans, sans-serif',
+        flexDirection: 'column',
+        gap: 12,
+        padding: 24,
       }}>
-        <div style={{ color: 'var(--bw-text)', fontSize: '16px' }}>Loading...</div>
+        <div style={{ color: 'var(--bw-text)', fontSize: '16px' }}>
+          {loadingBooking ? 'Loading your ride details…' : 'Unable to load booking'}
+        </div>
+        {!loadingBooking && error ? (
+          <div style={{ color: '#ef4444', fontSize: '14px', textAlign: 'center', maxWidth: 420 }}>{error}</div>
+        ) : null}
       </div>
     )
   }

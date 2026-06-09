@@ -4,7 +4,7 @@ import { useTenantInfo } from '@hooks/useTenantInfo'
 import { type BookingResponse } from '@api/bookings'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import { CheckCircle, MapPin, Calendar, Clock, CurrencyDollar } from '@phosphor-icons/react'
-export default function BookingSuccess() {
+export default function BookingSuccess({ guestMode = false }: { guestMode?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { slug } = useTenantInfo()
@@ -14,12 +14,11 @@ export default function BookingSuccess() {
     // Get booking data from navigation state
     const bookingData = location.state?.booking as BookingResponse | undefined
     if (!bookingData) {
-      // Redirect back to dashboard if no booking data
-      navigate('/rider/dashboard', { replace: true })
+      navigate(guestMode ? '/' : '/rider/dashboard', { replace: true })
       return
     }
     setBooking(bookingData)
-  }, [location.state, navigate])
+  }, [location.state, navigate, guestMode])
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A'

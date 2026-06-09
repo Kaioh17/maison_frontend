@@ -65,6 +65,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       if (currentBodyTheme !== theme) {
         body.setAttribute('data-theme', theme)
       }
+
     } catch (error) {
       console.warn('Theme: Error applying theme on mount:', error)
     }
@@ -128,7 +129,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
         setIsDark(theme === 'dark')
         setIsLight(theme === 'light')
       }
-      
+
       setIsInitialized(true)
     } catch (error) {
       console.warn('Theme: Error applying theme:', error)

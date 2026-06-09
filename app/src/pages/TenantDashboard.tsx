@@ -9,6 +9,7 @@ import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
 import QRCode from 'qrcode'
 import VehicleEditModal from '@components/VehicleEditModal'
+import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { useBookingSearch } from '@hooks/useBookingSearch'
 import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight } from '@phosphor-icons/react'
@@ -192,6 +193,7 @@ function RatingStar({
 
 type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
 type OverviewLinkKey = 'rider' | 'driver' | 'landing'
+type TenantPageThemeMode = 'dark' | 'light'
 type OverviewLinkQrState = {
   loading: boolean
   imageDataUrl: string | null
@@ -386,6 +388,7 @@ export default function TenantDashboard() {
   const [savingRates, setSavingRates] = useState<{ [key: string]: boolean }>({})
   const [newDriver, setNewDriver] = useState<OnboardDriver>({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
   const [showAddDriver, setShowAddDriver] = useState(false)
+  const [showBookRideModal, setShowBookRideModal] = useState(false)
   const [addDriverError, setAddDriverError] = useState<string | null>(null)
   const [isCreatingDriver, setIsCreatingDriver] = useState(false)
   const [tenantConfig, setTenantConfig] = useState<TenantConfigResponse | null>(null)
@@ -484,6 +487,7 @@ export default function TenantDashboard() {
   })
   const [overviewLinksOpen, setOverviewLinksOpen] = useState(false)
   const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
+  const [isBookRideHovered, setIsBookRideHovered] = useState(false)
   const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
   const [isSaveRateHovered, setIsSaveRateHovered] = useState(false)
   const [isAddCategoryHovered, setIsAddCategoryHovered] = useState(false)
@@ -523,7 +527,18 @@ export default function TenantDashboard() {
 
   // Sync theme with tenant settings
   useTenantTheme(tenantConfig?.branding?.theme)
-  const { isLight: lightMode } = useTheme()
+  const { theme, setTheme, isLight: lightMode } = useTheme()
+  const [tenantPageThemeMode, setTenantPageThemeMode] = useState<TenantPageThemeMode>('dark')
+  const isCustomThemeActive = false
+
+  useEffect(() => {
+    setTenantPageThemeMode(theme === 'light' ? 'light' : 'dark')
+  }, [theme])
+
+  const handleTenantThemeModeChange = useCallback((mode: TenantPageThemeMode) => {
+    setTheme(mode)
+    setTenantPageThemeMode(mode)
+  }, [setTheme])
 
   const load = async () => {
     setLoading(true)
@@ -2052,7 +2067,11 @@ export default function TenantDashboard() {
             }}>
               Welcome back, {info?.first_name}
             </div>
-            <ThemeToggle />
+            <ThemeToggle
+              mode="segmented"
+              value={tenantPageThemeMode}
+              onChange={handleTenantThemeModeChange}
+            />
           </div>
           <button
             type="button"
@@ -2395,6 +2414,29 @@ export default function TenantDashboard() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
+            {(() => {
+              const overviewCardBg = isCustomThemeActive ? 'var(--bw-bg-secondary)' : (lightMode ? '#ffffff' : '#1c1a2e')
+              const overviewCardBorder = isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640')
+              const overviewCardShadow = isCustomThemeActive ? 'none' : (lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none')
+              const overviewPrimaryText = isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#1a1a1a' : '#ffffff')
+              const overviewMutedText = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? '#64748b' : '#7c7a92')
+              const overviewMutedAltText = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? '#64748b' : '#6b6885')
+              const overviewBodyText = isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#334155' : '#cbd5e1')
+              const overviewInsetBg = isCustomThemeActive ? 'var(--bw-bg)' : (lightMode ? '#f1f5f9' : 'rgba(0,0,0,0.35)')
+              const overviewInsetBorder = isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.08)')
+              const overviewDivider = isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid rgba(15, 13, 26, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)')
+              const overviewRowDivider = isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid rgba(15, 13, 26, 0.07)' : '1px solid rgba(255, 255, 255, 0.07)')
+              const overviewPillBg = isCustomThemeActive ? 'var(--bw-bg-hover)' : (lightMode ? 'rgba(108, 99, 232, 0.12)' : 'rgba(108, 99, 232, 0.22)')
+              const overviewPillBorder = isCustomThemeActive ? '1px solid var(--bw-border-strong)' : (lightMode ? '1px solid rgba(108, 99, 232, 0.28)' : '1px solid rgba(108, 99, 232, 0.4)')
+              const overviewAvatarBg = isCustomThemeActive ? 'var(--bw-bg-hover)' : (lightMode ? 'rgba(108, 99, 232, 0.12)' : '#261e3a')
+              const overviewAvatarText = isCustomThemeActive ? 'var(--bw-accent)' : (lightMode ? 'var(--bw-accent)' : '#9b8fb8')
+              const overviewChartInsetBg = isCustomThemeActive ? 'var(--bw-bg)' : (lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)')
+              const overviewChartInsetBorder = isCustomThemeActive ? '1px dashed var(--bw-border-strong)' : (lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858')
+              const overviewChartBar = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? 'rgba(15, 13, 26, 0.16)' : 'rgba(255, 255, 255, 0.16)')
+              const overviewChartStroke = isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#0f0d1a' : '#ffffff')
+
+              return (
+                <>
             {/* Overview KPIs — split grid (4 + 3), left-border accents; ≤768px carousel */}
             {(() => {
               type OverviewKpiAccent = 'green' | 'amber' | 'purple' | 'neutral'
@@ -2442,17 +2484,30 @@ export default function TenantDashboard() {
                 ? { green: '#16a34a', amber: '#d97706', purple: '#7c3aed', neutral: '#64748b' }
                 : { green: '#22c55e', amber: '#f59e0b', purple: '#7c3aed', neutral: '#94a3b8' }
 
-              const surfaceBg = lightMode ? '#ffffff' : '#1c1a2e'
-              const kpiCardEdgeBorder = lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640'
-              const valueColor = lightMode ? '#0f172a' : '#fafafa'
-              const labelColor = lightMode ? '#64748b' : '#a1a1aa'
-              const subColor = lightMode ? '#94a3b8' : '#71717a'
+              const kpiAccentBorder = isCustomThemeActive
+                ? {
+                    green: 'var(--bw-accent)',
+                    amber: 'var(--bw-accent-hover)',
+                    purple: 'var(--bw-accent)',
+                    neutral: 'var(--bw-border-strong)',
+                  }
+                : accentBorder
+
+              const surfaceBg = isCustomThemeActive
+                ? 'var(--bw-bg-secondary)'
+                : (lightMode ? '#ffffff' : '#1c1a2e')
+              const kpiCardEdgeBorder = isCustomThemeActive
+                ? '1px solid var(--bw-border)'
+                : (lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640')
+              const valueColor = isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#0f172a' : '#fafafa')
+              const labelColor = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? '#64748b' : '#a1a1aa')
+              const subColor = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? '#94a3b8' : '#71717a')
 
               const kpiCardShell = (accent: OverviewKpiAccent): React.CSSProperties => ({
                 padding: '14px 16px',
                 borderRadius: 8,
                 border: kpiCardEdgeBorder,
-                borderLeft: `2px solid ${accentBorder[accent]}`,
+                borderLeft: `2px solid ${kpiAccentBorder[accent]}`,
                 backgroundColor: surfaceBg,
                 textAlign: 'left',
                 boxSizing: 'border-box',
@@ -2719,17 +2774,17 @@ export default function TenantDashboard() {
               const riderLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/riders/login') : ''
               const driverLoginUrl = tenantSlug ? getTenantAppUrl(tenantSlug, '/driver/login') : ''
               const linkRowBorder: React.CSSProperties = {
-                borderBottom: lightMode ? '1px solid rgba(15, 13, 26, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+                borderBottom: overviewDivider,
               }
               const muted: React.CSSProperties = {
                 fontSize: 12,
-                color: lightMode ? '#64748b' : '#7c7a92',
+                color: overviewMutedText,
                 fontFamily: '"Work Sans", sans-serif',
               }
               const labelStyle: React.CSSProperties = {
                 fontSize: 13,
                 fontWeight: 600,
-                color: lightMode ? '#1a1a1a' : '#ffffff',
+                color: overviewPrimaryText,
                 fontFamily: '"Work Sans", sans-serif',
                 minWidth: isMobile ? undefined : 108,
               }
@@ -2738,14 +2793,14 @@ export default function TenantDashboard() {
                 minWidth: 0,
                 fontSize: 12,
                 fontFamily: 'ui-monospace, monospace',
-                color: lightMode ? '#334155' : '#cbd5e1',
+                color: overviewBodyText,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 padding: '8px 10px',
                 borderRadius: 8,
-                backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0,0,0,0.35)',
-                border: lightMode ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.08)',
+                backgroundColor: overviewInsetBg,
+                border: overviewInsetBorder,
               }
               const btnOutline: React.CSSProperties = {
                 display: 'inline-flex',
@@ -2756,9 +2811,9 @@ export default function TenantDashboard() {
                 fontWeight: 600,
                 fontFamily: '"Work Sans", sans-serif',
                 borderRadius: 8,
-                border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
-                background: lightMode ? '#ffffff' : 'transparent',
-                color: lightMode ? '#334155' : '#e2e8f0',
+                border: overviewInsetBorder,
+                background: isCustomThemeActive ? 'var(--bw-bg-secondary)' : (lightMode ? '#ffffff' : 'transparent'),
+                color: overviewBodyText,
                 cursor: 'pointer',
                 textDecoration: 'none',
                 flexShrink: 0,
@@ -2768,17 +2823,17 @@ export default function TenantDashboard() {
                 fontSize: 'clamp(16px, 2.2vw, 18px)',
                 fontWeight: 600,
                 fontFamily: '"Work Sans", sans-serif',
-                color: lightMode ? '#1a1a1a' : '#ffffff',
+                color: overviewPrimaryText,
               }
               return (
                 <div
                   className="bw-card"
                   style={{
                     padding: 'clamp(16px, 2.5vw, 22px)',
-                    border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
-                    backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                    border: overviewCardBorder,
+                    backgroundColor: overviewCardBg,
                     borderRadius: '12px',
-                    boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                    boxShadow: overviewCardShadow,
                     marginBottom: 'clamp(16px, 3vw, 24px)',
                   }}
                 >
@@ -2807,7 +2862,7 @@ export default function TenantDashboard() {
                         size={22}
                         style={{
                           flexShrink: 0,
-                          color: lightMode ? '#64748b' : '#7c7a92',
+                          color: overviewMutedText,
                           transform: overviewLinksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                           transition: 'transform 0.2s ease',
                         }}
@@ -2821,7 +2876,7 @@ export default function TenantDashboard() {
                     <>
                       <p style={{ ...muted, margin: tenantSlug ? '12px 0 0 0' : '8px 0 0 0', lineHeight: 1.45 }}>
                         White-label URLs for your tenant slug{' '}
-                        <strong style={{ color: lightMode ? '#1a1a1a' : '#ffffff' }}>{tenantSlug || '—'}</strong>.
+                        <strong style={{ color: overviewPrimaryText }}>{tenantSlug || '—'}</strong>.
                         Open your public landing page and share rider and driver login URLs with your team and customers.
                       </p>
                       {!tenantSlug ? (
@@ -2901,7 +2956,7 @@ export default function TenantDashboard() {
                                     onClick={() => copyTenantOverviewLink(row.key, row.url)}
                                     style={{
                                       ...btnOutline,
-                                      border: lightMode ? '1px solid rgba(108, 99, 232, 0.35)' : '1px solid rgba(108, 99, 232, 0.45)',
+                                      border: overviewPillBorder,
                                       color: 'var(--bw-accent)',
                                     }}
                                   >
@@ -2915,7 +2970,7 @@ export default function TenantDashboard() {
                                     style={{
                                       ...btnOutline,
                                       background: qrState.loading
-                                        ? (lightMode ? '#f8fafc' : 'rgba(124, 122, 146, 0.2)')
+                                        ? (isCustomThemeActive ? 'var(--bw-bg)' : (lightMode ? '#f8fafc' : 'rgba(124, 122, 146, 0.2)'))
                                         : btnOutline.background,
                                       cursor: qrState.loading ? 'not-allowed' : 'pointer',
                                       opacity: qrState.loading ? 0.8 : 1,
@@ -2935,7 +2990,7 @@ export default function TenantDashboard() {
                                     flexDirection: 'column',
                                     alignItems: 'flex-start',
                                     gap: 8,
-                                    borderTop: lightMode ? '1px solid rgba(15, 13, 26, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderTop: overviewDivider,
                                     paddingTop: 10,
                                   }}
                                 >
@@ -2947,7 +3002,7 @@ export default function TenantDashboard() {
                                       maxWidth: 168,
                                       height: 'auto',
                                       borderRadius: 8,
-                                      border: lightMode ? '1px solid #e2e8f0' : '1px solid #2a2640',
+                                      border: overviewInsetBorder,
                                       backgroundColor: '#ffffff',
                                     }}
                                   />
@@ -2977,10 +3032,10 @@ export default function TenantDashboard() {
               const overviewBookingRows = buildOverviewBookingRows(bookings)
               const cardBase: React.CSSProperties = {
                 padding: isMobile ? '12px clamp(10px, 3vw, 14px)' : 'clamp(14px, 2.2vw, 20px)',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
-                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                border: overviewCardBorder,
+                backgroundColor: overviewCardBg,
                 borderRadius: '12px',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                boxShadow: overviewCardShadow,
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: isMobile ? 'auto' : 'clamp(260px, 32vw, 340px)',
@@ -2998,12 +3053,12 @@ export default function TenantDashboard() {
                 padding: '4px 9px',
                 borderRadius: 6,
                 fontFamily: '"Work Sans", sans-serif',
-                backgroundColor: lightMode ? 'rgba(108, 99, 232, 0.12)' : 'rgba(108, 99, 232, 0.22)',
+                backgroundColor: overviewPillBg,
                 color: 'var(--bw-accent)',
-                border: lightMode ? '1px solid rgba(108, 99, 232, 0.28)' : '1px solid rgba(108, 99, 232, 0.4)'
+                border: overviewPillBorder
               }
               const rowDivider: React.CSSProperties = {
-                borderBottom: lightMode ? '1px solid rgba(15, 13, 26, 0.07)' : '1px solid rgba(255, 255, 255, 0.07)'
+                borderBottom: overviewRowDivider
               }
               return (
                 <div
@@ -3045,7 +3100,7 @@ export default function TenantDashboard() {
                         fontSize: isMobile ? 'clamp(14px, 4vw, 16px)' : 'clamp(15px, 2vw, 17px)',
                         fontWeight: 600,
                         fontFamily: '"Work Sans", sans-serif',
-                        color: lightMode ? '#1a1a1a' : '#ffffff',
+                        color: overviewPrimaryText,
                         minWidth: 0,
                         flex: isMobile ? '1 1 auto' : undefined
                       }}>
@@ -3063,7 +3118,7 @@ export default function TenantDashboard() {
                           padding: '16px 8px',
                           fontSize: 12,
                           fontWeight: 400,
-                          color: lightMode ? '#64748b' : '#7c7a92',
+                          color: overviewMutedText,
                           fontFamily: '"Work Sans", sans-serif',
                           textAlign: 'center'
                         }}>
@@ -3091,8 +3146,8 @@ export default function TenantDashboard() {
                                 width: 36,
                                 height: 36,
                                 borderRadius: '50%',
-                                backgroundColor: lightMode ? 'rgba(108, 99, 232, 0.12)' : '#261e3a',
-                                color: lightMode ? 'var(--bw-accent)' : '#9b8fb8',
+                                backgroundColor: overviewAvatarBg,
+                                color: overviewAvatarText,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -3107,7 +3162,7 @@ export default function TenantDashboard() {
                                 <div style={{
                                   fontSize: 12,
                                   fontWeight: 500,
-                                  color: lightMode ? '#1a1a1a' : '#ffffff',
+                                  color: overviewPrimaryText,
                                   fontFamily: '"Work Sans", sans-serif',
                                   lineHeight: 1.25
                                 }}>
@@ -3116,7 +3171,7 @@ export default function TenantDashboard() {
                                 <div style={{
                                   fontSize: isMobile ? 11 : 10,
                                   fontWeight: 400,
-                                  color: lightMode ? '#64748b' : '#7c7a92',
+                                  color: overviewMutedText,
                                   fontFamily: '"Work Sans", sans-serif',
                                   marginTop: 2,
                                   overflow: isMobile ? 'visible' : 'hidden',
@@ -3176,13 +3231,36 @@ export default function TenantDashboard() {
                         fontSize: isMobile ? 'clamp(14px, 4vw, 16px)' : 'clamp(15px, 2vw, 17px)',
                         fontWeight: 600,
                         fontFamily: '"Work Sans", sans-serif',
-                        color: lightMode ? '#1a1a1a' : '#ffffff',
+                        color: overviewPrimaryText,
                         minWidth: 0,
                         flex: isMobile ? '1 1 auto' : undefined
                       }}>
                         Recent bookings
                       </h3>
-                      <span style={headerPill}>Today</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowBookRideModal(true)
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            fontFamily: '"Work Sans", sans-serif',
+                            borderRadius: 6,
+                            border: '1px solid var(--bw-accent)',
+                            backgroundColor: 'transparent',
+                            color: 'var(--bw-accent)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Schedule ride
+                        </button>
+                        <span style={headerPill}>Today</span>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                       {overviewBookingRows.length === 0 ? (
@@ -3194,7 +3272,7 @@ export default function TenantDashboard() {
                           padding: '16px 8px',
                           fontSize: 12,
                           fontWeight: 400,
-                          color: lightMode ? '#64748b' : '#7c7a92',
+                          color: overviewMutedText,
                           fontFamily: '"Work Sans", sans-serif',
                           textAlign: 'center'
                         }}>
@@ -3219,20 +3297,20 @@ export default function TenantDashboard() {
                                 width: 32,
                                 height: 32,
                                 borderRadius: 6,
-                                backgroundColor: lightMode ? '#f1f5f9' : 'rgba(255,255,255,0.06)',
+                                backgroundColor: overviewInsetBg,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 flexShrink: 0,
-                                border: lightMode ? '1px solid #e2e8f0' : '1px solid rgba(255,255,255,0.08)'
+                                border: overviewInsetBorder
                               }}>
-                                <MapPin size={16} weight="duotone" color={lightMode ? '#64748b' : '#9ca3af'} />
+                                <MapPin size={16} weight="duotone" color={overviewMutedText} />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{
                                   fontSize: isMobile ? 13 : 12,
                                   fontWeight: 500,
-                                  color: lightMode ? '#1a1a1a' : '#ffffff',
+                                  color: overviewPrimaryText,
                                   fontFamily: '"Work Sans", sans-serif',
                                   lineHeight: 1.25,
                                   wordBreak: isMobile ? 'break-word' : undefined,
@@ -3243,7 +3321,7 @@ export default function TenantDashboard() {
                                 <div style={{
                                   fontSize: isMobile ? 11 : 10,
                                   fontWeight: 400,
-                                  color: lightMode ? '#64748b' : '#7c7a92',
+                                  color: overviewMutedText,
                                   fontFamily: '"Work Sans", sans-serif',
                                   marginTop: 2,
                                   overflow: isMobile ? 'visible' : 'hidden',
@@ -3331,7 +3409,7 @@ export default function TenantDashboard() {
                           fontSize: isMobile ? 'clamp(14px, 4vw, 16px)' : 'clamp(15px, 2vw, 17px)',
                           fontWeight: 600,
                           fontFamily: '"Work Sans", sans-serif',
-                          color: lightMode ? '#1a1a1a' : '#ffffff',
+                          color: overviewPrimaryText,
                           minWidth: 0,
                           lineHeight: 1.2
                         }}>
@@ -3341,7 +3419,7 @@ export default function TenantDashboard() {
                       <span style={{
                         fontSize: isMobile ? 10 : 11,
                         fontWeight: 500,
-                        color: lightMode ? '#64748b' : '#6b6885',
+                        color: overviewMutedAltText,
                         fontFamily: '"Work Sans", sans-serif',
                         letterSpacing: '0.02em',
                         flexShrink: 0
@@ -3360,12 +3438,12 @@ export default function TenantDashboard() {
                         margin: '0 0 10px 0',
                         padding: isMobile ? '8px 10px' : '10px 12px',
                         borderRadius: 8,
-                        backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0, 0, 0, 0.38)',
+                        backgroundColor: overviewInsetBg,
                         borderLeft: '3px solid #7c3aed',
                         fontSize: isMobile ? 11 : 12,
                         lineHeight: 1.5,
                         fontWeight: 400,
-                        color: lightMode ? '#334155' : '#e2e8f0',
+                        color: overviewBodyText,
                         fontFamily: '"Work Sans", sans-serif',
                         wordBreak: 'break-word',
                         overflowWrap: 'anywhere'
@@ -3376,12 +3454,12 @@ export default function TenantDashboard() {
                         margin: '0 0 14px 0',
                         padding: isMobile ? '8px 10px' : '10px 12px',
                         borderRadius: 8,
-                        backgroundColor: lightMode ? '#f1f5f9' : 'rgba(0, 0, 0, 0.38)',
+                        backgroundColor: overviewInsetBg,
                         borderLeft: '3px solid #7c3aed',
                         fontSize: isMobile ? 11 : 12,
                         lineHeight: 1.5,
                         fontWeight: 400,
-                        color: lightMode ? '#334155' : '#e2e8f0',
+                        color: overviewBodyText,
                         fontFamily: '"Work Sans", sans-serif',
                         wordBreak: 'break-word',
                         overflowWrap: 'anywhere'
@@ -3392,7 +3470,7 @@ export default function TenantDashboard() {
                         marginTop: 'auto',
                         fontSize: isMobile ? 11 : 12,
                         fontWeight: 400,
-                        color: lightMode ? '#64748b' : '#6b6885',
+                        color: overviewMutedAltText,
                         fontFamily: '"Work Sans", sans-serif',
                         textDecoration: 'underline',
                         textUnderlineOffset: 3,
@@ -3424,10 +3502,10 @@ export default function TenantDashboard() {
               {/* Revenue — last 7 days */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
-                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                border: overviewCardBorder,
+                backgroundColor: overviewCardBg,
                 borderRadius: '12px',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                boxShadow: overviewCardShadow,
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 'clamp(220px, 28vw, 300px)'
@@ -3445,19 +3523,19 @@ export default function TenantDashboard() {
                     fontSize: 'clamp(15px, 2vw, 18px)',
                     fontWeight: 500,
                     fontFamily: '"Work Sans", sans-serif',
-                    color: lightMode ? '#1a1a1a' : '#ffffff'
+                    color: overviewPrimaryText
                   }}>
                     Revenue — last 7 days
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <Lock size={18} weight="duotone" style={{ color: lightMode ? '#94a3b8' : '#6b6885' }} aria-hidden />
+                    <Lock size={18} weight="duotone" style={{ color: overviewMutedAltText }} aria-hidden />
                     <span style={{
                       fontSize: 'clamp(10px, 1.2vw, 11px)',
                       fontWeight: 500,
                       letterSpacing: '0.04em',
                       textTransform: 'uppercase' as const,
-                      color: lightMode ? '#64748b' : '#6b6885',
-                      border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
+                      color: overviewMutedAltText,
+                      border: overviewChartInsetBorder,
                       borderRadius: 6,
                       padding: '4px 8px',
                       fontFamily: '"Work Sans", sans-serif'
@@ -3471,8 +3549,8 @@ export default function TenantDashboard() {
                   flex: 1,
                   minHeight: 'clamp(160px, 20vw, 220px)',
                   borderRadius: 8,
-                  border: lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858',
-                  backgroundColor: lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)',
+                  border: overviewChartInsetBorder,
+                  backgroundColor: overviewChartInsetBg,
                   padding: 'clamp(16px, 3vw, 24px)'
                 }}>
                   <div style={{
@@ -3492,7 +3570,7 @@ export default function TenantDashboard() {
                           maxWidth: 44,
                           height: `${Math.round(h * 100)}%`,
                           borderRadius: 4,
-                          backgroundColor: lightMode ? 'rgba(15, 13, 26, 0.16)' : 'rgba(255, 255, 255, 0.16)'
+                          backgroundColor: overviewChartBar
                         }}
                       />
                     ))}
@@ -3508,7 +3586,7 @@ export default function TenantDashboard() {
                     <span style={{
                       fontSize: 'clamp(13px, 2vw, 15px)',
                       fontWeight: 400,
-                      color: lightMode ? '#64748b' : '#6b6885',
+                      color: overviewMutedAltText,
                       fontFamily: '"Work Sans", sans-serif'
                     }}>
                       Coming soon
@@ -3520,10 +3598,10 @@ export default function TenantDashboard() {
               {/* Ride volume */}
               <div className="bw-card" style={{
                 padding: 'clamp(16px, 2.5vw, 24px)',
-                border: lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640',
-                backgroundColor: lightMode ? '#ffffff' : '#1c1a2e',
+                border: overviewCardBorder,
+                backgroundColor: overviewCardBg,
                 borderRadius: '12px',
-                boxShadow: lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                boxShadow: overviewCardShadow,
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 'clamp(220px, 28vw, 300px)'
@@ -3541,19 +3619,19 @@ export default function TenantDashboard() {
                     fontSize: 'clamp(15px, 2vw, 18px)',
                     fontWeight: 500,
                     fontFamily: '"Work Sans", sans-serif',
-                    color: lightMode ? '#1a1a1a' : '#ffffff'
+                    color: overviewPrimaryText
                   }}>
                     Ride volume
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <Lock size={18} weight="duotone" style={{ color: lightMode ? '#94a3b8' : '#6b6885' }} aria-hidden />
+                    <Lock size={18} weight="duotone" style={{ color: overviewMutedAltText }} aria-hidden />
                     <span style={{
                       fontSize: 'clamp(10px, 1.2vw, 11px)',
                       fontWeight: 500,
                       letterSpacing: '0.04em',
                       textTransform: 'uppercase' as const,
-                      color: lightMode ? '#64748b' : '#6b6885',
-                      border: lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858',
+                      color: overviewMutedAltText,
+                      border: overviewChartInsetBorder,
                       borderRadius: 6,
                       padding: '4px 8px',
                       fontFamily: '"Work Sans", sans-serif'
@@ -3567,8 +3645,8 @@ export default function TenantDashboard() {
                   flex: 1,
                   minHeight: 'clamp(160px, 20vw, 220px)',
                   borderRadius: 8,
-                  border: lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858',
-                  backgroundColor: lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)',
+                  border: overviewChartInsetBorder,
+                  backgroundColor: overviewChartInsetBg,
                   padding: 'clamp(16px, 3vw, 24px)',
                   overflow: 'hidden'
                 }}>
@@ -3587,7 +3665,7 @@ export default function TenantDashboard() {
                   >
                     <polyline
                       fill="none"
-                      stroke={lightMode ? '#0f0d1a' : '#ffffff'}
+                      stroke={overviewChartStroke}
                       strokeWidth="2"
                       strokeOpacity={0.17}
                       strokeLinecap="round"
@@ -3600,7 +3678,7 @@ export default function TenantDashboard() {
                       y1="44"
                       x2="120"
                       y2="44"
-                      stroke={lightMode ? '#0f0d1a' : '#ffffff'}
+                      stroke={overviewChartStroke}
                       strokeWidth="1.5"
                       strokeOpacity={0.12}
                       vectorEffect="non-scaling-stroke"
@@ -3617,7 +3695,7 @@ export default function TenantDashboard() {
                     <span style={{
                       fontSize: 'clamp(13px, 2vw, 15px)',
                       fontWeight: 400,
-                      color: lightMode ? '#64748b' : '#6b6885',
+                      color: overviewMutedAltText,
                       fontFamily: '"Work Sans", sans-serif'
                     }}>
                       Coming soon
@@ -3626,6 +3704,9 @@ export default function TenantDashboard() {
                 </div>
               </div>
             </div>
+                </>
+              )
+            })()}
 
           </div>
         )}
@@ -4508,11 +4589,73 @@ export default function TenantDashboard() {
             <div className="bw-content-header" style={{
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
-              justifyContent: 'flex-end',
+              justifyContent: 'space-between',
               alignItems: isMobile ? 'flex-start' : 'center',
               marginBottom: 'clamp(16px, 3vw, 24px)',
               gap: 'clamp(12px, 2vw, 16px)'
             }}>
+              <div style={{ minWidth: 0 }}>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: isMobile ? 'clamp(20px, 4vw, 24px)' : '24px',
+                  fontWeight: 600,
+                  fontFamily: '"Work Sans", sans-serif',
+                  color: 'var(--bw-text)',
+                }}>
+                  Bookings
+                </h2>
+                <p style={{
+                  margin: '6px 0 0 0',
+                  fontSize: 'clamp(13px, 1.8vw, 14px)',
+                  color: 'var(--bw-muted)',
+                  fontFamily: '"Work Sans", sans-serif',
+                }}>
+                  Schedule rides for customers—they confirm via email, no login required.
+                </p>
+              </div>
+              <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: 'clamp(12px, 2vw, 16px)',
+                width: isMobile ? '100%' : 'auto',
+              }}>
+              <button
+                type="button"
+                className={`bw-btn bw-btn-action ${isBookRideHovered ? 'custom-hover-border' : ''}`}
+                onClick={() => setShowBookRideModal(true)}
+                onMouseEnter={() => setIsBookRideHovered(true)}
+                onMouseLeave={() => setIsBookRideHovered(false)}
+                style={{
+                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
+                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
+                  width: isMobile ? '100%' : 'auto',
+                  justifyContent: 'center',
+                  borderRadius: 7,
+                  backgroundColor: 'transparent',
+                  border: isMobile
+                    ? `2px dashed ${isBookRideHovered ? '#7c3aed' : lightMode ? '#94a3b8' : 'rgba(255,255,255,0.22)'}`
+                    : undefined,
+                  borderColor: !isMobile && isBookRideHovered ? 'var(--bw-accent)' : undefined,
+                  color: isBookRideHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : lightMode ? '#334155' : 'var(--bw-text)',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                } as React.CSSProperties}
+              >
+                <Plus
+                  style={{
+                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
+                  }}
+                  aria-hidden
+                />
+                <span>Schedule ride for customer</span>
+              </button>
               <div style={{ 
                 display: 'flex', 
                 gap: 'clamp(8px, 1.5vw, 12px)', 
@@ -4539,6 +4682,7 @@ export default function TenantDashboard() {
                     </>
                   )}
                 </span>
+              </div>
               </div>
             </div>
 
@@ -4863,8 +5007,24 @@ export default function TenantDashboard() {
                       <div className="bw-empty-subtext" style={{
                         fontSize: 'clamp(14px, 2vw, 16px)',
                         color: 'var(--bw-muted)',
-                        fontFamily: '"Work Sans", sans-serif'
-                      }}>Bookings will appear here once riders start using your service</div>
+                        fontFamily: '"Work Sans", sans-serif',
+                        marginBottom: 'clamp(16px, 2vw, 20px)',
+                      }}>Schedule a ride for a customer, or wait for riders to book through your site.</div>
+                      <button
+                        type="button"
+                        className="bw-btn bw-btn-primary"
+                        onClick={() => setShowBookRideModal(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontFamily: '"Work Sans", sans-serif',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Plus size={18} aria-hidden />
+                        Schedule ride for customer
+                      </button>
                     </div>
                   ) : (
                     filteredBookings.map((booking, idx) => (
@@ -5135,7 +5295,23 @@ export default function TenantDashboard() {
                         <Calendar size={32} />
                       </div>
                       <div className="bw-empty-text">No bookings yet</div>
-                      <div className="bw-empty-subtext">Bookings will appear here once riders start using your service</div>
+                      <div className="bw-empty-subtext">Schedule a ride for a customer, or wait for riders to book through your site.</div>
+                      <button
+                        type="button"
+                        className="bw-btn bw-btn-primary"
+                        onClick={() => setShowBookRideModal(true)}
+                        style={{
+                          marginTop: 16,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontFamily: '"Work Sans", sans-serif',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Plus size={18} aria-hidden />
+                        Schedule ride for customer
+                      </button>
                     </div>
                   ) : (
                     filteredBookings.map((booking, idx) => (
@@ -7038,6 +7214,16 @@ export default function TenantDashboard() {
           </div>
         </div>
       )}
+
+      <TenantBookRideModal
+        open={showBookRideModal}
+        onClose={() => setShowBookRideModal(false)}
+        vehicles={vehicles}
+        isMobile={isMobile}
+        onSuccess={() => {
+          void load()
+        }}
+      />
 
       {/* Vehicle Edit Modal */}
       {showVehicleEditModal && editingVehicleId && (

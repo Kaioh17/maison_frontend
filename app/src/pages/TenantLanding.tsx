@@ -92,8 +92,14 @@ export default function TenantLanding() {
 
   const companyName = storefront?.tenant_name?.trim() || slug || 'Our service'
 
+  const isBookRideCta = (action?: StorefrontAction | null) => {
+    if (!action?.label) return false
+    return /\bbook(?:\s+a)?\s+ride\b/i.test(action.label)
+  }
+
   const resolveRoute = (action?: StorefrontAction | null) => {
     if (!action?.route) return '#'
+    if (isBookRideCta(action)) return '/riders/login'
     const routeMap: Record<string, string> = {
       rider_login: '/riders/login',
       rider_signup: '/riders/register',

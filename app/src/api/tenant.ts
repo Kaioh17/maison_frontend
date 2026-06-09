@@ -232,6 +232,44 @@ export async function getTenantBookingById(bookingId: number) {
   return data
 }
 
+export type TenantCreateBookingPayload = {
+  vehicle_id: number
+  country: string
+  service_type: 'airport' | 'hourly' | 'dropoff'
+  pickup_location: string
+  pickup_time: string
+  dropoff_location?: string
+  coordinates: {
+    plat: number
+    plon: number
+    dlat: number
+    dlon: number
+  }
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone_no?: string
+  rider_id?: number
+  airport_service?: 'to_airport' | 'from_airport'
+  hours?: number
+  notes?: string
+}
+
+export async function tenantBookRide(payload: TenantCreateBookingPayload) {
+  const { data } = await http.post<StandardResponse<BookingResponse>>('/v1/tenant/book/ride', payload)
+  return data
+}
+
+export type TenantRiderEmailOption = {
+  id: number
+  email: string
+}
+
+export async function getTenantRiderEmails() {
+  const { data } = await http.get<StandardResponse<TenantRiderEmailOption[]>>('/v1/tenant/riders')
+  return data
+}
+
 export async function onboardDriver(payload: OnboardDriver) {
   const { data } = await http.post<StandardResponse<OnboardDriverResponse>>('/v1/tenant/onboard', payload)
   return data
