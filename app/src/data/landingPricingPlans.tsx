@@ -40,7 +40,7 @@ export const LANDING_PRICING_PLANS: LandingPricingPlanDisplay[] = [
       </>
     ),
     period: '/month',
-    description: 'Ideal for growing businesses',
+    description: 'For operators running multiple vehicles who want full booking control without limits.',
     popular: true,
     features: [
       { text: 'Up to 5 vehicles', included: true },
@@ -63,7 +63,7 @@ export const LANDING_PRICING_PLANS: LandingPricingPlanDisplay[] = [
       </>
     ),
     period: '/month',
-    description: 'For large fleets and enterprises',
+    description: 'For established fleets that need unlimited capacity and white-glove support.',
     features: [
       { text: 'Unlimited vehicles', included: true },
       { text: 'Unlimited drivers', included: true },

@@ -57,6 +57,7 @@ function useFinePointerHover() {
 const SNAP_SECTION_LABELS = [
   'Hero',
   'Platform',
+  'How it works',
   'Drivers',
   'Rider experience',
   'Mission',
@@ -72,7 +73,18 @@ const footerLinkClass =
   'transition-colors duration-200 hover:text-[#7c3aed] focus-visible:outline-none focus-visible:text-[#7c3aed]'
 
 const smoothScrollToSection = (id: string) => {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const el = document.getElementById(id)
+  if (!el) return
+  const snapContainer = el.closest('.landing-snap-page')
+  if (snapContainer instanceof HTMLElement) {
+    const top =
+      el.getBoundingClientRect().top -
+      snapContainer.getBoundingClientRect().top +
+      snapContainer.scrollTop
+    snapContainer.scrollTo({ top, behavior: 'smooth' })
+  } else {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 }
 
 type HeroParticle = {
@@ -387,7 +399,7 @@ function HeroSlide() {
             className="mt-3 max-w-[21rem] text-[15px] leading-snug text-white/65 sm:max-w-xl sm:text-[16px] md:mt-4 md:text-[17px]"
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
-            One platform for bookings, drivers, payments, and your brand.
+            Your branded booking link, your drivers, your rates — no aggregator fees, no middlemen.
           </motion.p>
           <motion.div
             {...fadeInUp}
@@ -512,7 +524,7 @@ function PlatformSlide() {
             className="mb-5 max-w-[42rem] text-[14px] leading-relaxed text-[#9ca3af] sm:text-[15px] md:mb-8 md:text-[16px]"
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
-            Onboard in days, not months. Maison is an active MVP — founding operators help steer what we build next.
+            Stop duct-taping your business together with WhatsApp and spreadsheets. Get a platform built for operators like you — not aggregators, not enterprises.
           </motion.p>
           <motion.div
             variants={staggerChildren}
@@ -566,7 +578,121 @@ function PlatformSlide() {
   )
 }
 
-// Slide 3: Driver Experience
+// Slide 3: How It Works
+function HowItWorksSlide() {
+  const steps = [
+    {
+      num: '01',
+      Icon: RocketLaunch,
+      title: 'Claim your platform',
+      description:
+        'Sign up and get a branded booking URL at yourname.usemaison.io — live in minutes, no dev work required.',
+    },
+    {
+      num: '02',
+      Icon: SlidersHorizontal,
+      title: 'Configure your fleet',
+      description:
+        'Add vehicles, set your rates, and upload your logo. Your booking page reflects your brand from day one.',
+    },
+    {
+      num: '03',
+      Icon: LinkIcon,
+      title: 'Share your link',
+      description:
+        'Send riders your booking URL. They book directly with you — no app download, no marketplace cut.',
+    },
+    {
+      num: '04',
+      Icon: CreditCard,
+      title: 'Get paid',
+      description:
+        'Assign drivers, track rides in real time, and receive payments straight to your account.',
+    },
+  ] as const
+
+  return (
+    <section
+      id="how-it-works"
+      className="landing-snap-section flex items-center justify-center bg-[#0d0d16]"
+      data-nav-theme="dark"
+    >
+      <div className="mx-auto box-border w-full max-w-[1280px] px-5">
+        <motion.div
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, margin: '-100px' }}
+          variants={staggerChildren}
+        >
+          <motion.div variants={fadeInUp} className="mb-8 md:mb-12">
+            <p
+              className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7c5cfc]"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              How Maison works
+            </p>
+            <h2
+              className="text-[clamp(1.75rem,6vw,3rem)] font-light leading-tight text-white"
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
+            >
+              Up and running in a day.
+            </h2>
+          </motion.div>
+
+          <motion.div
+            variants={staggerChildren}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-5 lg:gap-6"
+          >
+            {steps.map((step) => {
+              const Icon = step.Icon
+              return (
+                <motion.div key={step.num} variants={fadeInUp}>
+                  <div
+                    className="h-full rounded-[10px] p-5 md:p-6"
+                    style={{
+                      backgroundColor: 'rgba(124, 92, 252, 0.06)',
+                      border: '1px solid rgba(124, 92, 252, 0.18)',
+                    }}
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <span
+                        className="text-[11px] font-bold tabular-nums text-[#7c5cfc]/55"
+                        style={{ fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.06em' }}
+                      >
+                        {step.num}
+                      </span>
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px]"
+                        style={{ backgroundColor: 'rgba(124, 92, 252, 0.18)' }}
+                        aria-hidden
+                      >
+                        <Icon className="h-4 w-4 text-[#7c5cfc]" weight="regular" />
+                      </div>
+                    </div>
+                    <h3
+                      className="mb-2 text-[15px] font-semibold leading-snug text-white md:text-[16px]"
+                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                    >
+                      {step.title}
+                    </h3>
+                    <p
+                      className="text-[13px] leading-relaxed text-[#9ca3af]"
+                      style={{ fontFamily: "'Work Sans', sans-serif" }}
+                    >
+                      {step.description}
+                    </p>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+// Slide 4: Driver Experience
 function DriverExperienceSlide() {
   const hoverPointer = useFinePointerHover()
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -1002,7 +1128,7 @@ function PricingSlide() {
             className="text-sm text-slate-500 mb-6 max-w-2xl mx-auto"
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
-            Enterprise-grade security. No long-term contracts. Cancel anytime. 
+            Priced for operators at every stage. Start free, upgrade when your bookings need the headroom. No long-term contracts.
           </motion.p>
         </motion.div>
 
@@ -1141,7 +1267,14 @@ function MissionValuesSlide() {
               className="text-[14px] md:text-[18px] text-gray-300 leading-snug md:leading-relaxed mb-4 md:mb-8"
               style={{ fontFamily: "'Work Sans', sans-serif" }}
             >
-              Maison is a modular platform designed to help local operators reclaim their brand from marketplace "taxes." We believe that independent limo and black car businesses shouldn't have to surrender their identity, customer relationships, or pricing control to third-party platforms that extract value without adding it. Our architecture gives you the tools to build, scale, and operate your business on your terms—with your branding, your pricing, and your operational standards front and center. That includes billing you can grow into: free to try, transparent when you scale. We ship as an active MVP and improve weekly with real operator feedback.
+              Independent limo and black car operators shouldn't have to surrender their brand, their customer relationships, or their pricing control to platforms that extract value without adding it.
+            </motion.p>
+            <motion.p
+              variants={fadeInUp}
+              className="text-[14px] md:text-[16px] text-gray-400 leading-snug md:leading-relaxed mb-4 md:mb-8"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Maison gives you the infrastructure to run your business on your terms — your branding, your pricing, your standards. Free to start. Transparent as you scale. Built weekly with real operator feedback.
             </motion.p>
           </motion.div>
 
@@ -1424,7 +1557,13 @@ export default function Landing() {
     const root = scrollRootRef.current
     if (!root) return
     const sections = root.querySelectorAll<HTMLElement>('.landing-snap-section')
-    sections[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const section = sections[index]
+    if (!section) return
+    const top =
+      section.getBoundingClientRect().top -
+      root.getBoundingClientRect().top +
+      root.scrollTop
+    root.scrollTo({ top, behavior: 'smooth' })
   }, [])
 
   const scrollToSectionById = useCallback((id: string) => {
@@ -1483,6 +1622,7 @@ export default function Landing() {
       <div ref={scrollRootRef} className="landing-snap-page scroll-smooth">
         <HeroSlide />
         <PlatformSlide />
+        <HowItWorksSlide />
         <DriverExperienceSlide />
         <RiderBookingSlide />
         <MissionValuesSlide />
