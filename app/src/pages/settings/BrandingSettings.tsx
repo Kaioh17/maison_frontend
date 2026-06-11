@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBrandingData } from '@api/tenantSettings'
 import { useNavigate } from 'react-router-dom'
-import { Palette, Save, Edit, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Palette, FloppyDisk, PencilSimple, X, CaretDown, CaretUp } from '@phosphor-icons/react'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
 export default function BrandingSettings() {
@@ -438,11 +438,11 @@ export default function BrandingSettings() {
                 transition: 'all 0.2s ease'
               } as React.CSSProperties}
             >
-              <Edit className="w-4 h-4" style={{ 
+              <PencilSimple className="w-4 h-4" style={{ 
                 width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                 height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
               }} />
-              <span>Edit</span>
+              <span>PencilSimple</span>
             </button>
           ) : (
             <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
@@ -496,11 +496,11 @@ export default function BrandingSettings() {
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <Save className="w-4 h-4" style={{ 
+                <FloppyDisk className="w-4 h-4" style={{ 
                   width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                   height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
                 }} />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
+                <span>{saving ? 'Saving...' : 'FloppyDisk'}</span>
               </button>
             </div>
           )}
@@ -574,9 +574,9 @@ export default function BrandingSettings() {
                 </span>
               </div>
               {colorsOpen ? (
-                <ChevronUp style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
+                <CaretUp style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
               ) : (
-                <ChevronDown style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
+                <CaretDown style={{ width: 20, height: 20, color: 'var(--bw-muted)', flexShrink: 0 }} />
               )}
             </button>
             {colorsOpen && (

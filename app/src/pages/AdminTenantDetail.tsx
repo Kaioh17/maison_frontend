@@ -8,21 +8,21 @@ import {
 import { AUTH_API_KEY } from '@config'
 import {
   ArrowLeft,
-  BadgeCheck,
-  Banknote,
-  Building2,
+  SealCheck,
+  Money,
+  Buildings,
   Car,
   CreditCard,
-  KeyRound,
-  Loader2,
-  Mail,
+  Key,
+  CircleNotch,
+  Envelope,
   Palette,
   Receipt,
-  Settings as SettingsIcon,
-  Tags,
+  Gear as SettingsIcon,
+  Tag,
   User,
   Users,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
 import { AxiosError } from 'axios'
 
 async function errMessage(e: unknown): Promise<string> {
@@ -218,11 +218,11 @@ export default function AdminTenantDetail() {
               className="inline-flex items-center gap-2 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50 disabled:pointer-events-none transition-colors"
             >
               {reminderBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <CircleNotch className="h-4 w-4 animate-spin" />
               ) : (
-                <Mail className="h-4 w-4" />
+                <Envelope className="h-4 w-4" />
               )}
-              Send Stripe reminder
+              PaperPlaneTilt Stripe reminder
             </button>
             {reminderNote && (
               <span
@@ -240,7 +240,7 @@ export default function AdminTenantDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {!hasApiKey && (
           <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.07] px-4 py-3 flex gap-3 items-start">
-            <KeyRound className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+            <Key className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
             <p className="text-sm text-rose-200/80">
               Missing <code className="text-rose-100/90">VITE_API_KEY</code> — admin requests need the{' '}
               <code className="text-rose-100/90">X-API-Key</code> header.
@@ -256,7 +256,7 @@ export default function AdminTenantDetail() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <CircleNotch className="h-5 w-5 animate-spin" />
             Loading tenant…
           </div>
         ) : !detail ? (
@@ -267,11 +267,11 @@ export default function AdminTenantDetail() {
               <RecordGrid record={detail.account as unknown as Record<string, unknown>} />
             </Section>
 
-            <Section title="Business profile" icon={<Building2 className="h-4 w-4 text-sky-400/90" />}>
+            <Section title="Business profile" icon={<Buildings className="h-4 w-4 text-sky-400/90" />}>
               {detail.profile ? <RecordGrid record={detail.profile} /> : <p className="text-sm text-slate-500">No profile.</p>}
             </Section>
 
-            <Section title="Stats" icon={<BadgeCheck className="h-4 w-4 text-emerald-400/90" />}>
+            <Section title="Stats" icon={<SealCheck className="h-4 w-4 text-emerald-400/90" />}>
               {detail.stats ? <RecordGrid record={detail.stats} /> : <p className="text-sm text-slate-500">No stats.</p>}
             </Section>
 
@@ -287,7 +287,7 @@ export default function AdminTenantDetail() {
               {detail.pricing ? <RecordGrid record={detail.pricing} /> : <p className="text-sm text-slate-500">No pricing.</p>}
             </Section>
 
-            <Section title="Booking pricing" icon={<Tags className="h-4 w-4 text-amber-300/90" />} count={detail.counts.booking_pricing}>
+            <Section title="Booking pricing" icon={<Tag className="h-4 w-4 text-amber-300/90" />} count={detail.counts.booking_pricing}>
               <RecordList items={detail.booking_pricing} emptyLabel="No per-service booking pricing." />
             </Section>
 
@@ -307,11 +307,11 @@ export default function AdminTenantDetail() {
               <RecordList items={detail.bookings} emptyLabel="No bookings." />
             </Section>
 
-            <Section title="Payouts" icon={<Banknote className="h-4 w-4 text-emerald-400/90" />} count={detail.counts.payouts}>
+            <Section title="Payouts" icon={<Money className="h-4 w-4 text-emerald-400/90" />} count={detail.counts.payouts}>
               <RecordList items={detail.payouts} emptyLabel="No payouts." />
             </Section>
 
-            <Section title="Transactions" icon={<Banknote className="h-4 w-4 text-amber-400/90" />} count={detail.counts.transactions}>
+            <Section title="Transactions" icon={<Money className="h-4 w-4 text-amber-400/90" />} count={detail.counts.transactions}>
               <RecordList items={detail.transactions} emptyLabel="No transactions." />
             </Section>
           </>

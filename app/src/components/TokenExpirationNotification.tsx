@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, X } from 'lucide-react'
+import { WarningCircle, X } from '@phosphor-icons/react'
 import { useAuthStore } from '@store/auth'
 import { jwtDecode } from 'jwt-decode'
 import { refreshTenantToken } from '@api/auth'
@@ -136,7 +136,7 @@ export default function TokenExpirationNotification() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-        <AlertCircle className="w-5 h-5" style={{ flexShrink: 0 }} />
+        <WarningCircle className="w-5 h-5" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, marginBottom: '4px', fontSize: '15px' }}>
             {isExpired

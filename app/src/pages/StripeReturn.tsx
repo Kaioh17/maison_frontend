@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, Home, Heart } from 'lucide-react'
+import { CheckCircle, House, Heart } from '@phosphor-icons/react'
 
 export default function StripeReturn() {
   const navigate = useNavigate()
@@ -119,7 +119,7 @@ export default function StripeReturn() {
             e.currentTarget.style.boxShadow = 'none'
           }}
         >
-          <Home size={18} />
+          <House size={18} />
           <span>Return to Dashboard</span>
         </button>
       </div>

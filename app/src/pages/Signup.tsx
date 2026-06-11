@@ -1,5 +1,5 @@
 import { FormEvent, useState, useEffect, useRef } from 'react'
-import { Info, Eye, EyeOff } from 'lucide-react'
+import { Info, Eye, EyeSlash } from '@phosphor-icons/react'
 import { createTenant } from '@api/tenant'
 import { loginTenant } from '@api/auth'
 import { createCheckoutSession } from '@api/subscription'
@@ -747,7 +747,7 @@ export default function Signup() {
                           onClick={() => setShowPassword(!showPassword)} 
                           style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff', cursor: 'pointer' }}
                         >
-                          {showPassword ? <EyeOff className="signup-toggle-icon" size={16} /> : <Eye className="signup-toggle-icon" size={16} />}
+                          {showPassword ? <EyeSlash className="signup-toggle-icon" size={16} /> : <Eye className="signup-toggle-icon" size={16} />}
                         </button>
                       </div>
                       <span

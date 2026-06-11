@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, CheckCircle, WarningCircle, Image as ImageIcon } from '@phosphor-icons/react'
 import { getVehicleImageTypes, updateVehicleImage } from '@api/vehicles'
 
 interface ImageUploadPanelProps {
@@ -202,7 +202,7 @@ export default function ImageUploadPanel({
             alignItems: 'center',
             gap: '8px'
           }}>
-            <AlertCircle size={16} />
+            <WarningCircle size={16} />
             {error}
           </div>
         )}

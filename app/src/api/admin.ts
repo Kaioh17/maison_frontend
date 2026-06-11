@@ -100,6 +100,27 @@ export async function getAdminTenantDetail(tenantId: number) {
   return data
 }
 
+export type ComposeEmailBody = {
+  to_tenant_id: number
+  from_alias: string
+  subject: string
+  body: string
+}
+
+export async function composeEmailToTenant(payload: ComposeEmailBody) {
+  const { data } = await http.post<StandardResponse<{ tenant_id: number; to: string }>>(
+    '/v1/admin/email/compose',
+    payload,
+    {
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    }
+  )
+  return data
+}
+
 export async function sendStripeCompletionReminder(tenantId: number) {
   const { data } = await http.post<StandardResponse<{ tenant_id: number; email: string }>>(
     `/v1/admin/tenants/${tenantId}/stripe-reminder`,
@@ -122,6 +143,21 @@ export async function deleteAdminTenant(tenantId: number) {
       },
     }
   )
+  return data
+}
+
+export type AdminLogsData = {
+  log_file: string
+  lines: string[]
+  total_lines: number
+  environment: string
+}
+
+export async function getAdminLogs(tail = 200) {
+  const { data } = await http.get<StandardResponse<AdminLogsData>>('/v1/admin/logs', {
+    params: { tail },
+    headers: { Accept: 'application/json' },
+  })
   return data
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react'
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, CircleNotch } from '@phosphor-icons/react'
 import {
   getLocationSuggestions,
   getAirportSuggestions,
@@ -265,7 +265,7 @@ export default function LocationAutocomplete({
               alignItems: 'center',
             }}
           >
-            <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--bw-text)', opacity: 0.6 }} />
+            <CircleNotch size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--bw-text)', opacity: 0.6 }} />
           </div>
         )}
       </div>

@@ -63,7 +63,22 @@ body {
   --bw-success: #1E7F4A; /* Muted success color */
   --bw-warning: #B8871B; /* Muted warning color */
   --bw-error: #C5483D; /* Muted error color */
-  
+  /* Status pill tokens */
+  --bw-status-active-bg: rgba(34, 197, 94, 0.14);
+  --bw-status-active-text: #4ade80;
+  --bw-status-pending-bg: rgba(245, 158, 11, 0.14);
+  --bw-status-pending-text: #fbbf24;
+  --bw-status-done-bg: rgba(148, 163, 184, 0.10);
+  --bw-status-done-text: #94a3b8;
+  --bw-status-cancelled-bg: rgba(248, 113, 113, 0.14);
+  --bw-status-cancelled-text: #f87171;
+  --bw-status-assigned-bg: rgba(108, 99, 232, 0.16);
+  --bw-status-assigned-text: #a78bfa;
+  --bw-status-confirmed-bg: rgba(59, 130, 246, 0.14);
+  --bw-status-confirmed-text: #60a5fa;
+  --bw-status-default-bg: rgba(148, 163, 184, 0.10);
+  --bw-status-default-text: #94a3b8;
+
   /* Typography */
   --fs-h1: 56px; /* sm:42 */
   --fs-h2: 28px;
@@ -102,6 +117,21 @@ body {
   --bw-bg-secondary: #ffffff; /* white */
   --bw-accent: #6c63e8; /* Muted indigo accent */
   --bw-accent-hover: #7068cc; /* Accent hover */
+  /* Status pill tokens */
+  --bw-status-active-bg: rgba(22, 163, 74, 0.10);
+  --bw-status-active-text: #15803d;
+  --bw-status-pending-bg: rgba(217, 119, 6, 0.10);
+  --bw-status-pending-text: #b45309;
+  --bw-status-done-bg: rgba(100, 116, 139, 0.10);
+  --bw-status-done-text: #475569;
+  --bw-status-cancelled-bg: rgba(220, 38, 38, 0.10);
+  --bw-status-cancelled-text: #dc2626;
+  --bw-status-assigned-bg: rgba(108, 99, 232, 0.10);
+  --bw-status-assigned-text: #6c63e8;
+  --bw-status-confirmed-bg: rgba(37, 99, 235, 0.10);
+  --bw-status-confirmed-text: #2563eb;
+  --bw-status-default-bg: rgba(100, 116, 139, 0.10);
+  --bw-status-default-text: #475569;
 
   --rider-surface-elevated: #ffffff;
   --rider-surface-inset: #f1f5f9;
@@ -131,6 +161,21 @@ body {
     --bw-bg-secondary: #ffffff; /* white */
     --bw-accent: #6c63e8; /* Muted indigo accent */
     --bw-accent-hover: #7068cc; /* Accent hover */
+    /* Status pill tokens */
+    --bw-status-active-bg: rgba(22, 163, 74, 0.10);
+    --bw-status-active-text: #15803d;
+    --bw-status-pending-bg: rgba(217, 119, 6, 0.10);
+    --bw-status-pending-text: #b45309;
+    --bw-status-done-bg: rgba(100, 116, 139, 0.10);
+    --bw-status-done-text: #475569;
+    --bw-status-cancelled-bg: rgba(220, 38, 38, 0.10);
+    --bw-status-cancelled-text: #dc2626;
+    --bw-status-assigned-bg: rgba(108, 99, 232, 0.10);
+    --bw-status-assigned-text: #6c63e8;
+    --bw-status-confirmed-bg: rgba(37, 99, 235, 0.10);
+    --bw-status-confirmed-text: #2563eb;
+    --bw-status-default-bg: rgba(100, 116, 139, 0.10);
+    --bw-status-default-text: #475569;
 
     --rider-surface-elevated: #ffffff;
     --rider-surface-inset: #f1f5f9;
@@ -164,6 +209,21 @@ body {
     --bw-success: #1E7F4A; /* Muted success color */
     --bw-warning: #B8871B; /* Muted warning color */
     --bw-error: #C5483D; /* Muted error color */
+    /* Status pill tokens */
+    --bw-status-active-bg: rgba(34, 197, 94, 0.14);
+    --bw-status-active-text: #4ade80;
+    --bw-status-pending-bg: rgba(245, 158, 11, 0.14);
+    --bw-status-pending-text: #fbbf24;
+    --bw-status-done-bg: rgba(148, 163, 184, 0.10);
+    --bw-status-done-text: #94a3b8;
+    --bw-status-cancelled-bg: rgba(248, 113, 113, 0.14);
+    --bw-status-cancelled-text: #f87171;
+    --bw-status-assigned-bg: rgba(108, 99, 232, 0.16);
+    --bw-status-assigned-text: #a78bfa;
+    --bw-status-confirmed-bg: rgba(59, 130, 246, 0.14);
+    --bw-status-confirmed-text: #60a5fa;
+    --bw-status-default-bg: rgba(148, 163, 184, 0.10);
+    --bw-status-default-text: #94a3b8;
 
     --rider-surface-elevated: #13131f;
     --rider-surface-inset: #0d0d12;
@@ -792,6 +852,28 @@ button.bw-btn-action.custom-hover-border:hover {
   text-align: center;
 }
 
+/* Skeleton loading blocks */
+.bw-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background-color: var(--bw-bg-secondary);
+}
+.bw-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--bw-border), transparent);
+  animation: bw-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes bw-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bw-skeleton::after { animation: none; }
+}
+
 /* Header */
 .bw-header {
   border-bottom: 1px solid var(--bw-border);
@@ -1047,3 +1129,88 @@ body[data-theme="dark"] {
   white-space: nowrap;
   max-width: 90vw;
 } 
+/* ============================================================
+   Shared button system (DASHBOARD_MODERNIZATION.md §3)
+   One look per variant across every dashboard stage. Colors are
+   --bw-* vars only (white-label safe); hover/active/focus are CSS,
+   never per-button useState flags.
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-family: "Work Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, transform 0.1s ease;
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--bw-accent);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-block {
+  width: 100%;
+}
+
+.btn-primary {
+  background-color: var(--bw-accent);
+  color: #ffffff;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--bw-accent-hover);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border-color: var(--bw-border);
+  color: var(--bw-text);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bw-bg-hover);
+}
+
+.btn-destructive {
+  background-color: var(--bw-error);
+  color: #ffffff;
+}
+.btn-destructive:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--bw-text);
+  border-color: transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--bw-bg-hover);
+}
+
+/* Online/active pulse dot animation */
+@keyframes bw-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.8); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bw-pulse-dot {
+    animation: bw-pulse-dot 2s ease-in-out infinite;
+  }
+}

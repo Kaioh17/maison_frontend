@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { KeyRound, Loader2, Lock, Mail, User } from 'lucide-react'
+import { Key, CircleNotch, Lock, Envelope, User } from '@phosphor-icons/react'
 import { createAdminAccount, type CreateAdminAccountData } from '@api/admin'
 import { AUTH_API_KEY } from '@config'
 import { getApiErrorMessage } from '@utils/apiError'
@@ -101,7 +101,7 @@ function AdminCreateAccountForm() {
 
         {!hasApiKey && (
           <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/[0.07] px-3 py-2 text-xs text-rose-200 flex gap-2 items-start">
-            <KeyRound className="h-4 w-4 shrink-0 mt-0.5" />
+            <Key className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
               Set <code className="text-rose-100/90">VITE_API_KEY</code> in{' '}
               <code className="text-rose-100/90">.env</code> so the request sends{' '}
@@ -114,7 +114,7 @@ function AdminCreateAccountForm() {
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Envelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="email"
                 name="email"
@@ -181,7 +181,7 @@ function AdminCreateAccountForm() {
             disabled={busy || !hasApiKey}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/35 bg-amber-500/15 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy ? <CircleNotch className="h-4 w-4 animate-spin" /> : null}
             Create account
           </button>
         </form>

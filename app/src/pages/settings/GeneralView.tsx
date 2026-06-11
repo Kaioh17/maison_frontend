@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { User, Building, CreditCard, TrendingUp } from 'lucide-react'
+import { User, Buildings, CreditCard, TrendUp } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { upgradeSubscription } from '@api/subscription'
@@ -189,7 +189,7 @@ export default function GeneralView() {
             padding: 'clamp(16px, 2.5vw, 24px)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(12px, 2vw, 16px)' }}>
-              <Building className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+              <Buildings className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
               <h3 style={{ 
                 margin: 0,
                 fontSize: 'clamp(16px, 2.5vw, 20px)',
@@ -297,7 +297,7 @@ export default function GeneralView() {
             padding: 'clamp(16px, 2.5vw, 24px)'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(12px, 2vw, 16px)' }}>
-              <TrendingUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+              <TrendUp className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
               <h3 style={{ 
                 margin: 0,
                 fontSize: 'clamp(16px, 2.5vw, 20px)',

@@ -7,12 +7,12 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
-import QRCode from 'qrcode'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
+import { TenantDashboardSkeleton } from '@components/Skeleton'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, type IconWeight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -69,6 +69,56 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
   display: flex;
 }
+.bw.tenant-dashboard-layout .tenant-dashboard-bottombar {
+  display: none;
+}
+@media (max-width: 768px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-bottombar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background-color: var(--bw-bg);
+    background-color: color-mix(in srgb, var(--bw-bg) 88%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    backdrop-filter: saturate(180%) blur(14px);
+    border-top: 1px solid var(--bw-border);
+    box-sizing: border-box;
+  }
+  /* keep page content clear of the fixed bar */
+  .bw.tenant-dashboard-layout .tenant-dashboard-main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-bottombar button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--bw-muted);
+  font-size: 10px;
+  font-family: "Work Sans", sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-bottombar button:active {
+  transform: scale(0.94);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-bottombar button.is-active {
+  color: var(--bw-accent);
+}
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
   display: flex;
 }
@@ -122,10 +172,13 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card {
   cursor: pointer;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card:hover {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.bw.tenant-dashboard-layout .tenant-overview-nav-card:active {
+  transform: scale(0.98);
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card:focus-visible {
   outline: 2px solid var(--bw-accent, #6c63e8);
@@ -136,6 +189,29 @@ const TENANT_DASHBOARD_LAYOUT_CSS = `
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
+}
+/* Dashboard-wide modernizers: steady digits, softer cards, sticky mobile header */
+.bw.tenant-dashboard-layout {
+  font-variant-numeric: tabular-nums;
+}
+.bw.tenant-dashboard-layout .bw-card {
+  border-radius: 16px;
+}
+@media (max-width: 768px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-left: clamp(-32px, -3vw, -16px);
+    margin-right: clamp(-32px, -3vw, -16px);
+    padding-left: clamp(16px, 3vw, 32px);
+    padding-right: clamp(16px, 3vw, 32px);
+    padding-top: calc(max(env(safe-area-inset-top), 0px) + 10px);
+    background-color: var(--bw-bg);
+    background-color: color-mix(in srgb, var(--bw-bg) 88%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    backdrop-filter: saturate(180%) blur(12px);
+  }
 }
 .bw.tenant-dashboard-layout .tenant-driver-table-row {
   transition: background-color 0.15s ease;
@@ -406,8 +482,8 @@ export default function TenantDashboard() {
   const [showVehicleEditModal, setShowVehicleEditModal] = useState(false)
   const [tooltipVehicleId, setTooltipVehicleId] = useState<number | null>(null)
 
-  // Sidebar state
-  const [isMenuOpen, setIsMenuOpen] = useState(true)
+  // Sidebar state (mobile gets the bottom tab bar instead, so the drawer starts closed there)
+  const [isMenuOpen, setIsMenuOpen] = useState(() => window.innerWidth > 768)
   
   // Mobile breakpoint state (behavioral: KPI carousel, stacked controls, etc. — still ≤768px)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -558,7 +634,17 @@ export default function TenantDashboard() {
       
       const bookingsPromise = getTenantBookings(Object.keys(bookingParams).length > 0 ? bookingParams : undefined)
       const tenantConfigPromise = getTenantConfig('all')
-      
+
+      // tenant_id is already in the JWT (auth store), so categories don't need to wait for getTenantInfo.
+      // Errors are captured here so the promise is safe even if Promise.all below rejects first.
+      const storeTenantId = Number(useAuthStore.getState().tenantId)
+      const vehicleCategoriesPromise = Number.isFinite(storeTenantId) && storeTenantId > 0
+        ? getVehicleCategoriesByTenant(storeTenantId).catch((vcError) => {
+            console.error('Failed to load vehicle categories:', vcError)
+            return null
+          })
+        : null
+
       const [i, d, v, b, tc, analysisData] = await Promise.all([
         tenantInfoPromise,
         driversPromise,
@@ -567,23 +653,17 @@ export default function TenantDashboard() {
         tenantConfigPromise,
         analysisPromise,
       ])
-      
+
       if (i.data) {
         setInfo(i.data)
-        
-        // Fetch vehicle categories using tenant_id after we have tenant info
+
         try {
-          const tenantId = i.data.id
-          if (tenantId) {
-            const vc = await getVehicleCategoriesByTenant(tenantId)
-            if (vc.data !== undefined) {
-              setVehicleCategories(vc.data || [])
-            } else {
-              setVehicleCategories([])
-            }
-          } else {
-            setVehicleCategories([])
-          }
+          const vc = vehicleCategoriesPromise
+            ? await vehicleCategoriesPromise
+            : i.data.id
+              ? await getVehicleCategoriesByTenant(i.data.id)
+              : null
+          setVehicleCategories(vc?.data || [])
         } catch (vcError) {
           console.error('Failed to load vehicle categories:', vcError)
           setVehicleCategories([])
@@ -679,6 +759,11 @@ export default function TenantDashboard() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Crossing into the mobile breakpoint: close the drawer so the bottom tab bar takes over
+  useEffect(() => {
+    if (isMobile) setIsMenuOpen(false)
+  }, [isMobile])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1477,7 +1562,7 @@ export default function TenantDashboard() {
     }
   }
 
-  const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ size?: number | string; style?: React.CSSProperties }> }> = [
+  const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }> = [
     { id: 'overview', label: 'Overview', icon: TrendUp },
     { id: 'drivers', label: 'Drivers', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
@@ -1613,6 +1698,8 @@ export default function TenantDashboard() {
     }))
 
     try {
+      // qrcode is only needed when a QR is actually generated — keep it out of the dashboard chunk
+      const { default: QRCode } = await import('qrcode')
       const imageDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 320 })
       setOverviewLinkQrState(prev => ({
         ...prev,
@@ -1646,8 +1733,8 @@ export default function TenantDashboard() {
 
   if (loading) {
     return (
-      <div className="bw bw-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <div className="bw-loading">Loading dashboard...</div>
+      <div className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)' }}>
+        <TenantDashboardSkeleton />
       </div>
     )
   }
@@ -2142,6 +2229,36 @@ export default function TenantDashboard() {
         )}
       </div>
 
+      {/* Mobile bottom tab bar (replaces the hamburger; "Menu" opens the drawer for settings/account actions) */}
+      <nav className="tenant-dashboard-bottombar" aria-label="Primary">
+        {tabs.filter((tab) => tab.id !== 'settings').map((tab) => {
+          const IconComponent = tab.icon
+          const isActive = activeTab === tab.id && !isMenuOpen
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              className={isActive ? 'is-active' : undefined}
+              onClick={() => handleTabClick(tab.id)}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <IconComponent size={22} weight={isActive ? 'fill' : 'regular'} aria-hidden />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          className={isMenuOpen ? 'is-active' : undefined}
+          onClick={() => setIsMenuOpen((open) => !open)}
+          aria-expanded={isMenuOpen}
+          aria-controls="tenant-dashboard-nav"
+        >
+          <List size={22} weight={isMenuOpen ? 'bold' : 'regular'} aria-hidden />
+          <span>Menu</span>
+        </button>
+      </nav>
+
       {/* Main Content Area */}
       <div className="tenant-dashboard-main" style={{
         flex: 1,
@@ -2158,7 +2275,7 @@ export default function TenantDashboard() {
           boxSizing: 'border-box'
         }}>
           {/* Top Bar with Sidebar Toggle */}
-          <div style={{ 
+          <div className="tenant-dashboard-topbar" style={{
             marginBottom: 'clamp(16px, 3vw, 32px)',
             paddingBottom: 'clamp(12px, 2vw, 16px)',
             borderBottom: '1px solid var(--bw-border)',
@@ -2168,32 +2285,6 @@ export default function TenantDashboard() {
             gap: '12px',
             flexWrap: 'wrap'
           }}>
-            {isMobile && (
-              <button
-                type="button"
-                className="bw-menu tenant-dashboard-menu-btn"
-                onClick={() => setIsMenuOpen((open) => !open)}
-                aria-label={isMenuOpen ? 'Retract menu' : 'Expand menu'}
-                aria-expanded={isMenuOpen}
-                aria-controls="tenant-dashboard-nav"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '8px',
-                  minWidth: '40px',
-                  minHeight: '40px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--bw-text)'
-                }}
-              >
-                <SidebarSimple size={20} weight="bold" aria-hidden />
-              </button>
-            )}
-
             {activeTab === 'overview' ? (
               <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{

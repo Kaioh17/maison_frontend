@@ -3,25 +3,30 @@ import {
   listAdminTenants,
   deleteAdminTenant,
   forceVerifyTenant,
+  getAdminLogs,
   type AdminTenantRow,
+  type AdminLogsData,
 } from '@api/admin'
 import { AUTH_API_KEY } from '@config'
 import { MAIN_DOMAIN } from '@config/host'
 import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
+  Pulse,
+  Warning,
+  ChartBar,
   Cloud,
   Database,
-  KeyRound,
-  Loader2,
-  Radio,
-  RefreshCw,
-  Server,
-  Trash2,
-} from 'lucide-react'
+  Key,
+  CircleNotch,
+  Envelope,
+  Broadcast,
+  ArrowClockwise,
+  HardDrive,
+  Trash,
+  FileText,
+} from '@phosphor-icons/react'
 import { AxiosError } from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
+import AdminComposeEmail from '@components/AdminComposeEmail'
 
 function formatWhen(iso: string) {
   try {
@@ -54,7 +59,7 @@ const comingSoon: SoonCard[] = [
     title: 'Platform analytics',
     description:
       'Signups, bookings, GMV, and cohort funnels across tenants — exportable and filterable.',
-    icon: <BarChart3 className="h-5 w-5 text-cyan-400/90" />,
+    icon: <ChartBar className="h-5 w-5 text-cyan-400/90" />,
   },
   {
     title: 'Infrastructure cost & usage',
@@ -70,17 +75,17 @@ const comingSoon: SoonCard[] = [
   {
     title: 'Webhooks & event stream',
     description: 'Replayable delivery of tenant lifecycle and billing events for downstream systems.',
-    icon: <Radio className="h-5 w-5 text-violet-400/90" />,
+    icon: <Broadcast className="h-5 w-5 text-violet-400/90" />,
   },
   {
     title: 'Health & SLOs',
     description: 'Synthetic checks, error budgets, and dependency status for on-call.',
-    icon: <Activity className="h-5 w-5 text-rose-400/90" />,
+    icon: <Pulse className="h-5 w-5 text-rose-400/90" />,
   },
   {
     title: 'Rate limits & quotas',
     description: 'Per-tenant throttles and fair-use caps with override workflows.',
-    icon: <Server className="h-5 w-5 text-sky-400/90" />,
+    icon: <HardDrive className="h-5 w-5 text-sky-400/90" />,
   },
 ]
 
@@ -97,6 +102,28 @@ export default function DeveloperOperations() {
   const [forceBusy, setForceBusy] = useState(false)
   const [forceConfirm, setForceConfirm] = useState('')
   const [forceAck, setForceAck] = useState(false)
+  const [composeOpen, setComposeOpen] = useState(false)
+
+  const [logs, setLogs] = useState<AdminLogsData | null>(null)
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError, setLogsError] = useState<string | null>(null)
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true)
+    setLogsError(null)
+    try {
+      const res = await getAdminLogs(200)
+      setLogs(res.data ?? null)
+    } catch (e) {
+      setLogsError(await errMessage(e))
+    } finally {
+      setLogsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadLogs()
+  }, [loadLogs])
 
   const hasApiKey = Boolean(AUTH_API_KEY)
 
@@ -213,6 +240,15 @@ export default function DeveloperOperations() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setComposeOpen(true)}
+              disabled={rows.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            >
+              <Envelope className="h-4 w-4" />
+              Compose email
+            </button>
             <Link
               to="/tools/qr-studio"
               className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 transition-colors"
@@ -225,7 +261,7 @@ export default function DeveloperOperations() {
               disabled={loading || refreshing}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.08] disabled:opacity-50 transition-colors"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <ArrowClockwise className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
@@ -234,7 +270,7 @@ export default function DeveloperOperations() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 flex flex-wrap gap-3 items-start">
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+          <Warning className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-100/90 space-y-1">
             <p className="font-medium text-amber-100">
               Admin console on <code className="text-amber-200/95">admin.{MAIN_DOMAIN}</code>. Sign in at{' '}
@@ -248,7 +284,7 @@ export default function DeveloperOperations() {
 
         {!hasApiKey && (
           <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.07] px-4 py-3 flex gap-3 items-start">
-            <KeyRound className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+            <Key className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-rose-100">Missing API key</p>
               <p className="text-rose-200/75 mt-1">
@@ -280,7 +316,7 @@ export default function DeveloperOperations() {
           <div className="overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <CircleNotch className="h-5 w-5 animate-spin" />
                 Loading tenants…
               </div>
             ) : sorted.length === 0 ? (
@@ -345,7 +381,7 @@ export default function DeveloperOperations() {
                             disabled={Boolean(r.is_verified)}
                             className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                           >
-                            <AlertTriangle className="h-3.5 w-3.5" />
+                            <Warning className="h-3.5 w-3.5" />
                             Force verify
                           </button>
                         <button
@@ -356,7 +392,7 @@ export default function DeveloperOperations() {
                           }}
                           className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/35 bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash className="h-3.5 w-3.5" />
                           Delete
                         </button>
                         </div>
@@ -366,6 +402,55 @@ export default function DeveloperOperations() {
                 </tbody>
               </table>
             )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/[0.08] bg-[#11161d] shadow-xl shadow-black/40 overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-slate-400" />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                Server logs
+              </h2>
+              {logs && (
+                <span className="text-xs font-mono text-slate-500">
+                  {logs.log_file}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {logs && (
+                <span className="text-xs text-slate-500 tabular-nums">
+                  Showing last 200 of {logs.total_lines.toLocaleString()} lines
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={loadLogs}
+                disabled={logsLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/[0.08] disabled:opacity-50 transition-colors"
+              >
+                <ArrowClockwise className={`h-3.5 w-3.5 ${logsLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 sm:px-6 py-4">
+            {logsLoading && !logs ? (
+              <div className="flex items-center justify-center py-12 text-slate-500 gap-2">
+                <CircleNotch className="h-5 w-5 animate-spin" />
+                Loading logs…
+              </div>
+            ) : logsError ? (
+              <div className="rounded-lg border border-rose-500/25 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+                {logsError}
+              </div>
+            ) : logs ? (
+              <pre className="max-h-[28rem] overflow-y-auto overflow-x-auto rounded-lg bg-black/40 border border-white/[0.06] px-4 py-3 text-xs font-mono text-slate-300 leading-relaxed whitespace-pre">
+                {logs.lines.join('\n') || '(empty log file)'}
+              </pre>
+            ) : null}
           </div>
         </section>
 
@@ -399,6 +484,13 @@ export default function DeveloperOperations() {
         </section>
       </div>
 
+      {composeOpen && (
+        <AdminComposeEmail
+          tenants={sorted}
+          onClose={() => setComposeOpen(false)}
+        />
+      )}
+
       {deleteTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
@@ -409,7 +501,7 @@ export default function DeveloperOperations() {
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141a22] shadow-2xl shadow-black/60 p-6 space-y-4">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-rose-500/15 border border-rose-500/25">
-                <AlertTriangle className="h-5 w-5 text-rose-400" />
+                <Warning className="h-5 w-5 text-rose-400" />
               </div>
               <div>
                 <h3
@@ -464,9 +556,9 @@ export default function DeveloperOperations() {
                 className="inline-flex items-center gap-2 rounded-lg border border-rose-500/40 bg-rose-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-40 disabled:pointer-events-none"
               >
                 {deleteBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <CircleNotch className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Trash2 className="h-4 w-4" />
+                  <Trash className="h-4 w-4" />
                 )}
                 Delete tenant
               </button>
@@ -485,7 +577,7 @@ export default function DeveloperOperations() {
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141a22] shadow-2xl shadow-black/60 p-6 space-y-4">
             <div className="flex items-start gap-3">
               <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/25">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
+                <Warning className="h-5 w-5 text-amber-400" />
               </div>
               <div>
                 <h3
@@ -553,9 +645,9 @@ export default function DeveloperOperations() {
                 className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-40 disabled:pointer-events-none"
               >
                 {forceBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <CircleNotch className="h-4 w-4 animate-spin" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4" />
+                  <Warning className="h-4 w-4" />
                 )}
                 Force verify tenant
               </button>

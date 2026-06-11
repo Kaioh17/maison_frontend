@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Globe, Loader2 } from 'lucide-react'
+import { Globe, CircleNotch } from '@phosphor-icons/react'
 import countriesData from '../data/countries.json'
 
 // Type assertion for JSON import

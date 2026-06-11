@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Home, AlertCircle } from 'lucide-react'
+import { House, WarningCircle } from '@phosphor-icons/react'
 
 export default function NotFound() {
   return (
@@ -31,7 +31,7 @@ export default function NotFound() {
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <AlertCircle size={40} style={{ color: '#ef4444' }} />
+            <WarningCircle size={40} style={{ color: '#ef4444' }} />
           </div>
         </div>
         
@@ -88,8 +88,8 @@ export default function NotFound() {
             e.currentTarget.style.opacity = '1'
           }}
         >
-          <Home size={18} />
-          Go to Home
+          <House size={18} />
+          Go to House
         </Link>
       </div>
     </div>

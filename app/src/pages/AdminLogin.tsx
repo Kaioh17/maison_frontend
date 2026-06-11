@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
+import { Eye, EyeSlash, CircleNotch, Lock, Envelope } from '@phosphor-icons/react'
 import { loginAdmin } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -62,7 +62,7 @@ function AdminLoginForm() {
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <Envelope className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input
                 type="email"
                 name="email"
@@ -96,7 +96,7 @@ function AdminLoginForm() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-white/5"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeSlash className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
@@ -112,7 +112,7 @@ function AdminLoginForm() {
             disabled={busy}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-amber-500/35 bg-amber-500/15 py-2.5 text-sm font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50 disabled:pointer-events-none transition-colors"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy ? <CircleNotch className="h-4 w-4 animate-spin" /> : null}
             Sign in
           </button>
         </form>

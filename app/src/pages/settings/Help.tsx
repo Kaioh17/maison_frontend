@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { HelpCircle, Mail, Book, AlertCircle, CreditCard, FileText, ChevronRight, Smartphone } from 'lucide-react'
+import { Question, Envelope, Book, WarningCircle, CreditCard, FileText, CaretRight, DeviceMobile } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { TENANT_SUPPORT_EMAIL } from '@config'
@@ -80,7 +80,7 @@ export default function Help() {
     {
       title: 'Common issues',
       description: 'Login problems, Stripe payments, wrong prices, and driver access—quick fixes.',
-      icon: AlertCircle,
+      icon: WarningCircle,
       path: '/tenant/settings/help/troubleshooting'
     },
     {
@@ -138,7 +138,7 @@ export default function Help() {
           marginBottom: 'clamp(16px, 3vw, 24px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(12px, 2vw, 16px)' }}>
-            <HelpCircle className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+            <Question className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
             <h3 style={{ 
               margin: 0,
               fontSize: 'clamp(16px, 2.5vw, 20px)',
@@ -190,7 +190,7 @@ export default function Help() {
                 backgroundColor: '#ffffff'
               }}
             >
-              <Mail className="w-4 h-4" style={{ width: '18px', height: '18px' }} />
+              <Envelope className="w-4 h-4" style={{ width: '18px', height: '18px' }} />
               Email Support
             </a>
           </div>
@@ -257,7 +257,7 @@ export default function Help() {
                       {card.title}
                     </h3>
                   </div>
-                  <ChevronRight className="w-5 h-5" style={{ color: 'var(--bw-muted)', flexShrink: 0 }} />
+                  <CaretRight className="w-5 h-5" style={{ color: 'var(--bw-muted)', flexShrink: 0 }} />
                 </div>
                 <p style={{
                   margin: 0,
@@ -306,12 +306,12 @@ export default function Help() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-              <Smartphone className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+              <DeviceMobile className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
               <h3 style={{ margin: 0, fontSize: 'clamp(16px, 2.5vw, 20px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
                 Install Maison as an app on your phone
               </h3>
             </div>
-            <ChevronRight
+            <CaretRight
               className="w-5 h-5"
               style={{
                 color: 'var(--bw-muted)',
@@ -324,7 +324,7 @@ export default function Help() {
           {installGuideOpen && (
             <div id="install-web-app-content" style={{ marginTop: 12 }}>
               <p style={{ margin: '0 0 16px 0', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.5 }}>
-                Save the Maison web app to your home screen for one-tap access like a native app.
+                FloppyDisk the Maison web app to your home screen for one-tap access like a native app.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'clamp(12px, 2vw, 16px)' }}>
                 <div>
@@ -334,7 +334,7 @@ export default function Help() {
                   <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
                     <li>Open Maison in Safari.</li>
                     <li>Tap the Share icon (square with arrow).</li>
-                    <li>Choose Add to Home Screen.</li>
+                    <li>Choose Add to House Screen.</li>
                     <li>Tap Add.</li>
                   </ol>
                 </div>
@@ -345,7 +345,7 @@ export default function Help() {
                   <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
                     <li>Open Maison in Chrome.</li>
                     <li>Tap the three-dot menu.</li>
-                    <li>Tap Install app or Add to Home screen.</li>
+                    <li>Tap Install app or Add to House screen.</li>
                     <li>Confirm Install/Add.</li>
                   </ol>
                 </div>

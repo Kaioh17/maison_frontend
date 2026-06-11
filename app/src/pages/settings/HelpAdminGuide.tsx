@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen } from 'lucide-react'
+import { ArrowLeft, BookOpen } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
@@ -177,7 +177,7 @@ export default function HelpAdminGuide() {
           </div>
 
           <div className="bw-container" style={{ padding: '0 clamp(16px, 2vw, 24px) clamp(24px, 4vw, 40px)' }}>
-            <Section title="Home and bookings">
+            <Section title="House and bookings">
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 <li style={{ marginBottom: '8px' }}>
                   <strong>Overview</strong> shows a snapshot of your operation.
@@ -199,7 +199,7 @@ export default function HelpAdminGuide() {
                 <strong>Rates / Vehicle rates</strong> control what riders see and pay. After you change prices, double-check a test booking so amounts look right.
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Pricing settings</strong> (under Settings) cover deposits, fees, and related rules. Save after each change.
+                <strong>Pricing settings</strong> (under Settings) cover deposits, fees, and related rules. FloppyDisk after each change.
               </p>
             </Section>
 

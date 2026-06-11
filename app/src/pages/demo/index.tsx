@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
 import { Link } from 'react-router-dom'
 import ThemeToggle from '@components/ThemeToggle'
-import QRCode from 'qrcode'
 import {
   Car,
   Users,
@@ -110,6 +109,7 @@ export default function DemoDashboard() {
     }))
 
     try {
+      const { default: QRCode } = await import('qrcode')
       const imageDataUrl = await QRCode.toDataURL(url, {
         margin: 1,
         width: 320,

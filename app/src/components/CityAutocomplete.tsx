@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin } from '@phosphor-icons/react'
 import usaData from '../data/USA.json'
 
 // Type assertion for JSON import

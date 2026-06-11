@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { getVehicleCategoriesByTenant, createVehicleCategory, type VehicleCategoryResponse } from '@api/vehicles'
 import { useNavigate } from 'react-router-dom'
-import { Car, Plus, Edit, Save, X } from 'lucide-react'
+import { Car, Plus, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
@@ -210,7 +210,7 @@ export default function VehicleConfiguration() {
         overflowX: 'hidden',
         boxSizing: 'border-box'
       }}>
-        {/* Add/Edit Form */}
+        {/* Add/PencilSimple Form */}
         {(isAdding || editingId) && (
           <div className="bw-card" style={{ 
             backgroundColor: 'var(--bw-bg-secondary)',
@@ -226,7 +226,7 @@ export default function VehicleConfiguration() {
               fontWeight: 400,
               color: 'var(--bw-text)'
             }}>
-              {editingId ? 'Edit Vehicle Category' : 'Add Vehicle Category'}
+              {editingId ? 'PencilSimple Vehicle Category' : 'Add Vehicle Category'}
             </h3>
             <div style={{ 
               display: 'grid', 
@@ -322,8 +322,8 @@ export default function VehicleConfiguration() {
                   borderRadius: 7
                 }}
               >
-                <Save className="w-4 h-4" style={{ width: '18px', height: '18px', marginRight: '8px' }} />
-                {saving ? 'Saving...' : 'Save'}
+                <FloppyDisk className="w-4 h-4" style={{ width: '18px', height: '18px', marginRight: '8px' }} />
+                {saving ? 'Saving...' : 'FloppyDisk'}
               </button>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function VehicleConfiguration() {
                     borderRadius: 7
                   }}
                 >
-                  <Edit className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+                  <PencilSimple className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
                 </button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.5vw, 12px)' }}>

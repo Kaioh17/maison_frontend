@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Car, ArrowLeft, Plus, XCircle } from 'lucide-react'
+import { Car, ArrowLeft, Plus, XCircle } from '@phosphor-icons/react'
 import { addVehicle, getVehicleCategories } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
 import ImageUploadPanel from '@components/ImageUploadPanel'

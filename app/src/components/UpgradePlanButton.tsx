@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp } from '@phosphor-icons/react'
 
 interface UpgradePlanButtonProps {
   currentPlan?: string

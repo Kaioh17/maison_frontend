@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, X, ExternalLink } from 'lucide-react'
+import { WarningCircle, X, ArrowSquareOut } from '@phosphor-icons/react'
 import { useAuthStore } from '@store/auth'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
@@ -92,7 +92,7 @@ export default function AccountVerificationNotification() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '300px' }}>
-        <AlertCircle className="w-5 h-5" style={{ flexShrink: 0 }} />
+        <WarningCircle className="w-5 h-5" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 600, marginBottom: '4px', fontSize: '15px' }}>
             Complete Your Account Setup
@@ -158,7 +158,7 @@ export default function AccountVerificationNotification() {
           }}
         >
           {isSettingUp ? 'Setting up...' : 'Complete Account Setup'}
-          {!isSettingUp && <ExternalLink className="w-4 h-4" />}
+          {!isSettingUp && <ArrowSquareOut className="w-4 h-4" />}
         </button>
         <button
           onClick={() => setShowNotification(false)}

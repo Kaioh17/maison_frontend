@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { Building, Save, Edit, X } from 'lucide-react'
+import { Buildings, FloppyDisk, PencilSimple, X } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
@@ -163,11 +163,11 @@ export default function CompanyInformation() {
                 transition: 'all 0.2s ease'
               } as React.CSSProperties}
             >
-              <Edit className="w-4 h-4" style={{ 
+              <PencilSimple className="w-4 h-4" style={{ 
                 width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                 height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
               }} />
-              <span>Edit</span>
+              <span>PencilSimple</span>
             </button>
           ) : (
             <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
@@ -221,11 +221,11 @@ export default function CompanyInformation() {
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <Save className="w-4 h-4" style={{ 
+                <FloppyDisk className="w-4 h-4" style={{ 
                   width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
                   height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
                 }} />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
+                <span>{saving ? 'Saving...' : 'FloppyDisk'}</span>
               </button>
             </div>
           )}
@@ -246,7 +246,7 @@ export default function CompanyInformation() {
           padding: 'clamp(16px, 2.5vw, 24px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(16px, 2.5vw, 24px)' }}>
-            <Building className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
+            <Buildings className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
             <h3 style={{ 
               margin: 0,
               fontSize: 'clamp(16px, 2.5vw, 20px)',

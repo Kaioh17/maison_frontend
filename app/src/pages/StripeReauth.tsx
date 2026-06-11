@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight } from 'lucide-react'
+import { WarningCircle, ArrowRight } from '@phosphor-icons/react'
 
 export default function StripeReauth() {
   const navigate = useNavigate()
@@ -41,7 +41,7 @@ export default function StripeReauth() {
             justifyContent: 'center',
             boxShadow: '0 4px 20px rgba(245, 158, 11, 0.3)'
           }}>
-            <AlertCircle 
+            <WarningCircle 
               size={70} 
               style={{ 
                 color: '#ffffff',

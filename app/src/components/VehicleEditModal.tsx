@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, Upload, CheckCircle, AlertCircle, Car, Image as ImageIcon, Trash, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { X, Upload, CheckCircle, WarningCircle, Car, Image as ImageIcon, Trash, CaretLeft, CaretRight, User } from '@phosphor-icons/react'
 import { getVehicleById, updateVehicleImage, getVehicleImageTypes } from '@api/vehicles'
 import type { VehicleResponse } from '@api/vehicles'
 
@@ -228,7 +228,7 @@ export default function VehicleEditModal({
         position: 'relative',
         borderRadius: 'clamp(8px, 1.5vw, 12px)'
       }}>
-        {/* Edit Vehicle Header at Top */}
+        {/* PencilSimple Vehicle Header at Top */}
         <div className="bw-card-header" style={{
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
@@ -246,7 +246,7 @@ export default function VehicleEditModal({
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 200,
                 lineHeight: 1.2
-              }}>Edit Vehicle</h3>
+              }}>PencilSimple Vehicle</h3>
               <p className="small-muted" style={{ 
                 margin: 'clamp(4px, 1vw, 8px) 0 0 0',
                 fontFamily: 'Work Sans, sans-serif',
@@ -336,7 +336,7 @@ export default function VehicleEditModal({
             color: '#dc2626',
             fontFamily: 'Work Sans, sans-serif'
           }}>
-            <AlertCircle size={48} style={{ 
+            <WarningCircle size={48} style={{ 
               width: isMobile ? 'clamp(32px, 5vw, 48px)' : 48,
               height: isMobile ? 'clamp(32px, 5vw, 48px)' : 48,
               marginBottom: 'clamp(12px, 2vw, 16px)', 
@@ -574,7 +574,7 @@ export default function VehicleEditModal({
                           opacity: carouselIndex === 0 ? 0.5 : 1
                         }}
                       >
-                        <ChevronLeft size={20} style={{ 
+                        <CaretLeft size={20} style={{ 
                           width: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
                           height: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
                           fontWeight: 300 
@@ -609,7 +609,7 @@ export default function VehicleEditModal({
                           opacity: carouselIndex >= allowedImageTypes.length - (isMobile ? 2 : 4) ? 0.5 : 1
                         }}
                       >
-                        <ChevronRight size={20} style={{ 
+                        <CaretRight size={20} style={{ 
                           width: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
                           height: isMobile ? 'clamp(16px, 2.5vw, 20px)' : 20,
                           fontWeight: 300 

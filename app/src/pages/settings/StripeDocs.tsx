@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { CreditCard, ExternalLink, ArrowLeft } from 'lucide-react'
+import { CreditCard, ArrowSquareOut, ArrowLeft } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
@@ -431,7 +431,7 @@ export default function StripeDocs() {
                       }}>
                         {resource.title}
                       </h3>
-                      <ExternalLink className="w-4 h-4" style={{ width: '16px', height: '16px', color: 'var(--bw-accent)', flexShrink: 0 }} />
+                      <ArrowSquareOut className="w-4 h-4" style={{ width: '16px', height: '16px', color: 'var(--bw-accent)', flexShrink: 0 }} />
                     </div>
                     <p style={{
                       margin: 0,

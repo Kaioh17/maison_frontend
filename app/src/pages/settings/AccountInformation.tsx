@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { User, Save, Edit, X, CreditCard, ArrowUp } from 'lucide-react'
+import { User, FloppyDisk, PencilSimple, X, CreditCard, ArrowUp } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
@@ -315,8 +315,8 @@ export default function AccountInformation() {
                 transition: 'all 0.2s ease'
               } as React.CSSProperties}
             >
-              <Edit className="w-4 h-4" style={{ width: 18, height: 18 }} />
-              <span>Edit</span>
+              <PencilSimple className="w-4 h-4" style={{ width: 18, height: 18 }} />
+              <span>PencilSimple</span>
             </button>
           ) : (
             <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
@@ -367,8 +367,8 @@ export default function AccountInformation() {
                   transition: 'all 0.2s ease'
                 } as React.CSSProperties}
               >
-                <Save className="w-4 h-4" style={{ width: 18, height: 18 }} />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
+                <FloppyDisk className="w-4 h-4" style={{ width: 18, height: 18 }} />
+                <span>{saving ? 'Saving...' : 'FloppyDisk'}</span>
               </button>
             </div>
           )}
@@ -555,8 +555,8 @@ export default function AccountInformation() {
                   borderColor: mobileEditHovered ? 'var(--bw-accent)' : 'var(--bw-border)'
                 }}
               >
-                <Edit style={{ width: 16, height: 16 }} aria-hidden />
-                <span>Edit</span>
+                <PencilSimple style={{ width: 16, height: 16 }} aria-hidden />
+                <span>PencilSimple</span>
               </button>
               {showUpgrade ? (
                 <button
@@ -610,8 +610,8 @@ export default function AccountInformation() {
                   opacity: saving ? 0.7 : 1
                 }}
               >
-                <Save style={{ width: 16, height: 16 }} aria-hidden />
-                <span>{saving ? 'Saving...' : 'Save'}</span>
+                <FloppyDisk style={{ width: 16, height: 16 }} aria-hidden />
+                <span>{saving ? 'Saving...' : 'FloppyDisk'}</span>
               </button>
             </>
           )}

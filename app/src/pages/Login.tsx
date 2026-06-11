@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Eye, EyeSlash, Envelope, Lock, ArrowRight } from '@phosphor-icons/react'
 import { loginTenant } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -157,7 +157,7 @@ export default function AuthPage() {
   //         </p>
   //         <Link to="/" style={{ textDecoration: 'none' }}>
   //           <button className="bw-btn" style={{ padding: '12px 24px', fontFamily: 'Work Sans, sans-serif' }}>
-  //             Go to Home
+  //             Go to House
   //           </button>
   //         </Link>
   //       </div>
@@ -371,7 +371,7 @@ export default function AuthPage() {
               <label className="small-muted login-label" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ position: 'relative', marginTop: 6 }}>
-                  <Mail className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
+                  <Envelope className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
                   <input
                     id="email"
                     name="email"
@@ -409,7 +409,7 @@ export default function AuthPage() {
                 <Lock className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
                 <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
                 <button type="button" aria-label="Toggle password" className="login-toggle-btn" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff' }}>
-                  {showPassword ? <EyeOff className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
+                  {showPassword ? <EyeSlash className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
                 </button>
               </div>
 

@@ -59,7 +59,11 @@ const DemoStripeRedirect = lazy(() => import('@pages/demo/StripeRedirect'))
 const About = lazy(() => import('@pages/About'))
 const Login = lazy(() => import('@pages/Login'))
 const Signup = lazy(() => import('@pages/Signup'))
-const TenantDashboard = lazy(() => import('@pages/TenantDashboard'))
+const TenantShell = lazy(() => import('@pages/tenant/TenantShell'))
+const OverviewTab = lazy(() => import('@pages/tenant/OverviewTab'))
+const DriversTab = lazy(() => import('@pages/tenant/DriversTab'))
+const BookingsTab = lazy(() => import('@pages/tenant/BookingsTab'))
+const VehiclesTab = lazy(() => import('@pages/tenant/VehiclesTab'))
 const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
 const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
@@ -187,45 +191,19 @@ export default function App() {
         }
       />
       <Route
-        path="/tenant/overview"
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantDashboard />
+              <TenantShell />
             </ProtectedRoute>
           </TenantRouteBlock>
         }
-      />
-      <Route
-        path="/tenant/drivers"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantDashboard />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/bookings"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantDashboard />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/vehicles"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantDashboard />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
+      >
+        <Route path="/tenant/overview" element={<OverviewTab />} />
+        <Route path="/tenant/drivers" element={<DriversTab />} />
+        <Route path="/tenant/bookings" element={<BookingsTab />} />
+        <Route path="/tenant/vehicles" element={<VehiclesTab />} />
+      </Route>
       <Route
         path="/tenant/rates"
         element={

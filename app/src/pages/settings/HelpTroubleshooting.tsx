@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Wrench } from 'lucide-react'
+import { ArrowLeft, Wrench } from '@phosphor-icons/react'
 import UpgradePlanButton from '@components/UpgradePlanButton'
 import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
 
@@ -140,11 +140,11 @@ export default function HelpTroubleshooting() {
     },
     {
       q: 'Prices look wrong on the booking page',
-      a: 'Open Vehicle rates and Pricing settings. Save each screen after edits, then open a fresh booking in a private browser window to confirm.'
+      a: 'Open Vehicle rates and Pricing settings. FloppyDisk each screen after edits, then open a fresh booking in a private browser window to confirm.'
     },
     {
       q: 'A driver never got access or the wrong company shows',
-      a: 'Send the driver your branded driver login link (same subdomain as riders). New drivers must finish registration. If the site shows another company, the link is for the wrong address—double-check the URL.'
+      a: 'PaperPlaneTilt the driver your branded driver login link (same subdomain as riders). New drivers must finish registration. If the site shows another company, the link is for the wrong address—double-check the URL.'
     },
     {
       q: 'Something worked yesterday and today it doesn’t',

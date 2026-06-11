@@ -4,7 +4,7 @@ import { clientsClaim } from 'workbox-core'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { precacheAndRoute } from 'workbox-precaching'
 import { registerRoute } from 'workbox-routing'
-import { CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst, NetworkOnly, StaleWhileRevalidate } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<string | { url: string; revision?: string | null }>
@@ -15,7 +15,13 @@ self.addEventListener('install', () => {
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clientsClaim())
+  event.waitUntil(
+    Promise.all([
+      clientsClaim(),
+      // superseded by maison-api-v2 (stale-while-revalidate) below
+      caches.delete('maison-api-v1'),
+    ]),
+  )
 })
 
 function isApiRequest(url: URL, request: Request): boolean {
@@ -59,16 +65,38 @@ registerRoute(
 // existed from an older deploy.
 precacheAndRoute(self.__WB_MANIFEST, { cleanupOutdatedCaches: true })
 
-/** Network-first for API traffic; failures pass through (no stale auth JSON). */
+/** Auth endpoints must never be served stale — network-first with a short timeout. */
+function isAuthApiRequest(url: URL): boolean {
+  return /\/v1\/auth(\/|$)/.test(url.pathname)
+}
+
 registerRoute(
-  ({ url, request }) => isApiRequest(url, request),
+  ({ url, request }) => isApiRequest(url, request) && isAuthApiRequest(url),
   new NetworkFirst({
-    cacheName: 'maison-api-v1',
-    networkTimeoutSeconds: 10,
+    cacheName: 'maison-auth-v1',
+    networkTimeoutSeconds: 4,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 20,
+        maxAgeSeconds: 60 * 60,
+      }),
+    ],
+  }),
+)
+
+/**
+ * Other API GETs: stale-while-revalidate so repeat visits paint instantly from
+ * cache while a fresh copy is fetched in the background. The short maxAge
+ * bounds how old served data can be; mutations are non-GET and never cached.
+ */
+registerRoute(
+  ({ url, request }) => isApiRequest(url, request) && !isAuthApiRequest(url),
+  new StaleWhileRevalidate({
+    cacheName: 'maison-api-v2',
     plugins: [
       new ExpirationPlugin({
         maxEntries: 80,
-        maxAgeSeconds: 24 * 60 * 60,
+        maxAgeSeconds: 5 * 60,
       }),
     ],
   }),
@@ -101,7 +129,7 @@ registerRoute(
   ({ request }) => request.mode === 'navigate',
   new NetworkFirst({
     cacheName: 'maison-nav-v1',
-    networkTimeoutSeconds: 5,
+    networkTimeoutSeconds: 3,
     plugins: [
       {
         handlerDidError: async () => {
