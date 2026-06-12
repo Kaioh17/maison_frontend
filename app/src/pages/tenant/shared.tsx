@@ -124,6 +124,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 @media (max-width: 768px) {
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
     width: 100vw;
+    height: calc(100vh - 64px - env(safe-area-inset-bottom, 0px));
     transform: translateX(-100%);
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
@@ -179,12 +180,24 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
   transition: color 0.15s ease, transform 0.1s ease;
+  position: relative;
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button:active {
   transform: scale(0.94);
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button.is-active {
   color: var(--bw-accent);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-bottombar button.is-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 2px;
+  border-radius: 0 0 3px 3px;
+  background-color: var(--bw-accent);
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar-close {
   display: flex;

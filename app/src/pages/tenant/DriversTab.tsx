@@ -346,40 +346,11 @@ export default function DriversTab() {
             >
               <button
                 type="button"
-                className={`bw-btn bw-btn-action ${isAddDriverHovered ? 'custom-hover-border' : ''}`}
+                className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                 onClick={() => setShowAddDriver(true)}
-                onMouseEnter={() => setIsAddDriverHovered(true)}
-                onMouseLeave={() => setIsAddDriverHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  backgroundColor: 'transparent',
-                  border: isMobile
-                    ? `2px dashed ${isAddDriverHovered ? '#7c3aed' : lightMode ? '#94a3b8' : 'rgba(255,255,255,0.22)'}`
-                    : undefined,
-                  borderColor: !isMobile && isAddDriverHovered ? 'var(--bw-accent)' : undefined,
-                  color: isAddDriverHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : lightMode ? '#334155' : 'var(--bw-text)',
-                  transition: 'all 0.2s ease',
-                } as React.CSSProperties}
               >
-                <Plus
-                  className="w-4 h-4"
-                  style={{
-                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                    color: isAddDriverHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : 'inherit',
-                  }}
-                  aria-hidden
-                />
-                <span>Add Driver</span>
+                <Plus size={18} aria-hidden />
+                Add Driver
               </button>
             </div>
 
@@ -510,8 +481,17 @@ export default function DriversTab() {
                       <div className="bw-empty-subtext" style={{
                         fontSize: 'clamp(14px, 2vw, 16px)',
                         color: 'var(--bw-muted)',
-                        fontFamily: '"Work Sans", sans-serif'
-                      }}>Add your first driver to get started</div>
+                        fontFamily: '"Work Sans", sans-serif',
+                        marginBottom: 'clamp(16px, 2vw, 20px)',
+                      }}>Add your first driver to start assigning rides.</div>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setShowAddDriver(true)}
+                      >
+                        <Plus size={18} aria-hidden />
+                        Add Driver
+                      </button>
                     </div>
                   ) : filteredDriversForList.length === 0 ? (
                     <div className="bw-empty-state" style={{
@@ -924,29 +904,13 @@ export default function DriversTab() {
                           {inHouse ? (
                             <button
                               type="button"
+                              className="btn btn-secondary btn-block"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openAssignVehicleToDriver(driver.id)
                               }}
-                              style={{
-                                width: '100%',
-                                padding: 'clamp(13px, 2.5vw, 16px) clamp(20px, 4vw, 24px)',
-                                fontSize: 'clamp(14px, 2vw, 15px)',
-                                fontFamily: '"Work Sans", sans-serif',
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 10,
-                                borderRadius: 8,
-                                backgroundColor: 'transparent',
-                                border: '2px solid #10b981',
-                                color: '#10b981',
-                                cursor: 'pointer',
-                                boxSizing: 'border-box',
-                              }}
                             >
-                              <Car style={{ width: 20, height: 20 }} aria-hidden />
+                              <Car size={18} aria-hidden />
                               Assign vehicle
                             </button>
                           ) : null}
@@ -1008,7 +972,15 @@ export default function DriversTab() {
                         <User size={32} />
                       </div>
                       <div className="bw-empty-text">No drivers yet</div>
-                      <div className="bw-empty-subtext">Add your first driver to get started</div>
+                      <div className="bw-empty-subtext" style={{ marginBottom: 16 }}>Add your first driver to start assigning rides.</div>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setShowAddDriver(true)}
+                      >
+                        <Plus size={18} aria-hidden />
+                        Add Driver
+                      </button>
                     </div>
                   ) : filteredDriversForList.length === 0 ? (
                     <div className="bw-empty-state">
@@ -1172,25 +1144,10 @@ export default function DriversTab() {
                           {driver.driver_type === 'in_house' ? (
                             <button
                               type="button"
-                              className="bw-btn"
+                              className="btn btn-secondary"
                               onClick={() => openAssignVehicleToDriver(driver.id)}
-                              style={{
-                                padding: '9px 14px',
-                                fontSize: '13px',
-                                fontFamily: '"Work Sans", sans-serif',
-                                fontWeight: 600,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                borderRadius: 7,
-                                backgroundColor: 'transparent',
-                                border: '2px solid #10b981',
-                                color: '#10b981',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                              }}
                             >
-                              <Car style={{ width: 16, height: 16 }} aria-hidden />
+                              <Car size={16} aria-hidden />
                               Assign vehicle
                             </button>
                           ) : null}
@@ -1372,64 +1329,24 @@ export default function DriversTab() {
               </div>
             </div>
             <div className="bw-modal-footer">
-              <button 
-                className={`bw-btn-outline ${isCancelAddDriverHovered ? 'custom-hover-border' : ''}`}
+              <button
+                type="button"
+                className={`btn btn-secondary${isMobile ? ' btn-block' : ''}`}
                 onClick={() => {
                   setShowAddDriver(false)
                   setAddDriverError(null)
                   setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
                 }}
-                onMouseEnter={() => setIsCancelAddDriverHovered(true)}
-                onMouseLeave={() => setIsCancelAddDriverHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isCancelAddDriverHovered ? '2px solid var(--bw-accent)' : undefined,
-                  borderColor: isCancelAddDriverHovered ? 'var(--bw-accent)' : undefined,
-                  color: isCancelAddDriverHovered ? 'var(--bw-accent)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAddDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                  Cancel
-                </span>
+                Cancel
               </button>
-              <button 
-                className={`bw-btn bw-btn-action ${isCreateDriverHovered ? 'custom-hover-border' : ''}`}
+              <button
+                type="button"
+                className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                 onClick={createDriver}
                 disabled={isCreatingDriver}
-                onMouseEnter={() => setIsCreateDriverHovered(true)}
-                onMouseLeave={() => setIsCreateDriverHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isCreateDriverHovered ? '2px solid var(--bw-accent)' : undefined,
-                  borderColor: isCreateDriverHovered ? 'var(--bw-accent)' : undefined,
-                  color: isCreateDriverHovered ? 'var(--bw-accent)' : undefined,
-                  transition: 'all 0.2s ease',
-                  opacity: isCreatingDriver ? 0.6 : 1,
-                  cursor: isCreatingDriver ? 'not-allowed' : 'pointer'
-                } as React.CSSProperties}
               >
-                <span style={{ color: isCreateDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                  {isCreatingDriver ? 'Adding...' : 'Create Driver'}
-                </span>
+                {isCreatingDriver ? 'Adding...' : 'Create Driver'}
               </button>
             </div>
           </div>
@@ -1569,7 +1486,8 @@ export default function DriversTab() {
               flexWrap: isMobile ? 'wrap' : 'nowrap'
             }}>
               <button
-                className={`bw-btn-outline ${isCancelAssignVehicleToDriverHovered ? 'custom-hover-border' : ''}`}
+                type="button"
+                className={`btn btn-secondary${isMobile ? ' btn-block' : ''}`}
                 onClick={() => {
                   if (!isAssigning) {
                     setShowAssignVehicleToDriver(false)
@@ -1578,61 +1496,17 @@ export default function DriversTab() {
                     setAssignVehicleToDriverError(null)
                   }
                 }}
-                onMouseEnter={() => !isAssigning && setIsCancelAssignVehicleToDriverHovered(true)}
-                onMouseLeave={() => setIsCancelAssignVehicleToDriverHovered(false)}
                 disabled={isAssigning}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isCancelAssignVehicleToDriverHovered ? '2px solid var(--bw-accent)' : undefined,
-                  borderColor: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : undefined,
-                  color: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAssignVehicleToDriverHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                  Cancel
-                </span>
+                Cancel
               </button>
               <button
-                className={`bw-btn ${isConfirmAssignVehicleToDriverHovered ? 'custom-hover-border' : ''}`}
+                type="button"
+                className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                 onClick={confirmAssignVehicleToDriver}
-                onMouseEnter={() => !isAssigning && setIsConfirmAssignVehicleToDriverHovered(true)}
-                onMouseLeave={() => setIsConfirmAssignVehicleToDriverHovered(false)}
                 disabled={isAssigning || !selectedVehicleIdForDriverAssign}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  backgroundColor: isConfirmAssignVehicleToDriverHovered ? 'transparent' : '#10b981',
-                  border: '2px solid #10b981',
-                  borderColor: '#10b981',
-                  color: isConfirmAssignVehicleToDriverHovered ? '#10b981' : '#ffffff',
-                  boxShadow: isConfirmAssignVehicleToDriverHovered ? 'inset 0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                  transform: isConfirmAssignVehicleToDriverHovered ? 'scale(0.98)' : 'scale(1)',
-                  opacity: (!selectedVehicleIdForDriverAssign || isAssigning) ? 0.5 : 1,
-                  cursor: (!selectedVehicleIdForDriverAssign || isAssigning) ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
               >
-                <span style={{ color: isConfirmAssignVehicleToDriverHovered ? '#10b981' : '#ffffff' }}>
-                  {isAssigning ? 'Assigning...' : 'Assign vehicle'}
-                </span>
+                {isAssigning ? 'Assigning...' : 'Assign vehicle'}
               </button>
             </div>
           </div>

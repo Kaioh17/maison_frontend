@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Question, Envelope, Book, WarningCircle, CreditCard, FileText, CaretRight, DeviceMobile } from '@phosphor-icons/react'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { TENANT_SUPPORT_EMAIL } from '@config'
 
 export default function Help() {
@@ -68,8 +67,6 @@ export default function Help() {
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-
   const docCards = [
     {
       title: 'Operator guide',
@@ -92,17 +89,7 @@ export default function Help() {
   ]
 
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-      {/* Main Content */}
-      <div style={{ 
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-        transition: 'margin-left 0.3s ease',
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
+    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
         {/* Header */}
         <div style={{ 
           width: '100%',
@@ -324,7 +311,7 @@ export default function Help() {
           {installGuideOpen && (
             <div id="install-web-app-content" style={{ marginTop: 12 }}>
               <p style={{ margin: '0 0 16px 0', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.5 }}>
-                FloppyDisk the Maison web app to your home screen for one-tap access like a native app.
+                Save the Maison web app to your home screen for one-tap access like a native app.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'clamp(12px, 2vw, 16px)' }}>
                 <div>
@@ -334,7 +321,7 @@ export default function Help() {
                   <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
                     <li>Open Maison in Safari.</li>
                     <li>Tap the Share icon (square with arrow).</li>
-                    <li>Choose Add to House Screen.</li>
+                    <li>Choose Add to Home Screen.</li>
                     <li>Tap Add.</li>
                   </ol>
                 </div>
@@ -355,15 +342,7 @@ export default function Help() {
         </div>
       </div>
 
-        {/* Upgrade Plan Button */}
-        <UpgradePlanButton 
-          currentPlan={currentPlan}
-          onUpgradeClick={() => navigate('/tenant/settings/plans')}
-          isMobile={isMobile}
-        />
       </div>
-      </SettingsMenuBar>
-    </div>
   )
 }
 

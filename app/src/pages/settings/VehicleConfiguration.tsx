@@ -1,11 +1,28 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { getVehicleCategoriesByTenant, createVehicleCategory, type VehicleCategoryResponse } from '@api/vehicles'
-import { useNavigate } from 'react-router-dom'
 import { Car, Plus, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
+
+const ACCENT = 'rgba(155, 97, 209, 0.81)'
+
+function hoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.borderColor = ACCENT
+  e.currentTarget.style.color = ACCENT
+  e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
+}
+function unhoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.borderColor = ''
+  e.currentTarget.style.color = ''
+  e.currentTarget.style.backgroundColor = ''
+}
+function hoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.opacity = '0.85'
+}
+function unhoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.opacity = ''
+}
 
 export default function VehicleConfiguration() {
   const [info, setInfo] = useState<any>(null)
@@ -16,7 +33,7 @@ export default function VehicleConfiguration() {
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
-  const navigate = useNavigate()
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const [formData, setFormData] = useState({
     vehicle_category: '',
@@ -24,11 +41,9 @@ export default function VehicleConfiguration() {
   })
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   useEffect(() => {
@@ -55,10 +70,6 @@ export default function VehicleConfiguration() {
     loadData()
   }, [])
 
-  const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
   const handleAdd = () => {
     setFormData({ vehicle_category: '', vehicle_flat_rate: 0 })
     setIsAdding(true)
@@ -82,41 +93,40 @@ export default function VehicleConfiguration() {
 
   const handleSave = async () => {
     if (!formData.vehicle_category || formData.vehicle_flat_rate <= 0) {
-      alert('Please fill in all fields with valid values')
+      setSaveMsg({ ok: false, text: 'Please fill in a category name and a rate above $0.' })
       return
     }
 
     try {
       setSaving(true)
       if (editingId) {
-        // Update existing category - using PATCH if available, otherwise POST
         await http.patch(`/v1/vehicles/category/${editingId}`, {
           vehicle_category: formData.vehicle_category,
           vehicle_flat_rate: formData.vehicle_flat_rate
         })
       } else {
-        // Create new category
         const response = await createVehicleCategory({
           vehicle_category: formData.vehicle_category,
           vehicle_flat_rate: formData.vehicle_flat_rate,
-          seating_capacity: 4 // Default seating capacity
+          seating_capacity: 4
         })
         if (response.data) {
           setCategories(prev => [...prev, response.data])
         }
       }
-      
-      // Reload categories
+
       if (info?.id) {
         const cats = await getVehicleCategoriesByTenant(info.id)
         setCategories(cats.data || [])
       }
-      
+
+      const msg = editingId ? 'Vehicle category updated.' : 'Vehicle category created.'
       handleCancel()
-      alert(editingId ? 'Vehicle category updated successfully!' : 'Vehicle category created successfully!')
+      setSaveMsg({ ok: true, text: msg })
+      setTimeout(() => setSaveMsg(null), 4000)
     } catch (error: any) {
       console.error('Failed to save:', error)
-      alert('Failed to save vehicle category. Please try again.')
+      setSaveMsg({ ok: false, text: 'Failed to save. Please try again.' })
     } finally {
       setSaving(false)
     }
@@ -124,305 +134,270 @@ export default function VehicleConfiguration() {
 
   if (loading) {
     return (
-      <div className="bw bw-container" style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '60vh',
-        padding: 'clamp(16px, 3vw, 24px) 0'
-      }}>
-        <div className="bw-loading" style={{
-          fontSize: 'clamp(14px, 2vw, 16px)',
-          fontFamily: '"Work Sans", sans-serif',
-          color: 'var(--bw-muted)'
-        }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '60vh' }}>
+        <span style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
           Loading...
-        </div>
+        </span>
       </div>
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
+  const sectionCard: React.CSSProperties = {
+    backgroundColor: 'var(--bw-bg-secondary)',
+    border: '1px solid var(--bw-border)',
+    borderRadius: 10,
+    padding: isMobile ? '16px' : '20px 24px',
+    marginBottom: 12
+  }
+
+  const sectionHeading: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8,
+    marginBottom: 16, paddingBottom: 12,
+    borderBottom: '1px solid var(--bw-border)'
+  }
+
+  const sectionTitle: React.CSSProperties = {
+    margin: 0, fontSize: 13, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
+    letterSpacing: '0.03em', textTransform: 'uppercase'
+  }
+
+  const outlineBtnStyle: React.CSSProperties = {
+    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
+    border: '1px solid var(--bw-border)', backgroundColor: '#ffffff',
+    color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 7,
+    cursor: 'pointer',
+    transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
+  }
+
+  const primaryBtnStyle: React.CSSProperties = {
+    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
+    border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
+    display: 'flex', alignItems: 'center', gap: 7,
+    cursor: 'pointer', transition: 'opacity 0.15s ease'
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', fontSize: 14,
+    fontFamily: '"Work Sans", sans-serif', fontWeight: 400, borderRadius: 6,
+    color: 'var(--bw-text)', backgroundColor: 'var(--bw-bg)',
+    border: '1px solid var(--bw-border)', boxSizing: 'border-box'
+  }
+
+  const fieldLabel: React.CSSProperties = {
+    display: 'block', fontSize: 12, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
+    marginBottom: 4, letterSpacing: '0.02em'
+  }
 
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-      {/* Main Content */}
-      <div style={{ 
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-        transition: 'margin-left 0.3s ease',
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
-        {/* Header */}
-        <div style={{ 
-          width: '100%',
-          maxWidth: '100%',
-          padding: `clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)`,
-          marginBottom: 'clamp(24px, 4vw, 32px)',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: 'clamp(12px, 2vw, 16px)' }}>
-            <h1 style={{ 
-              fontSize: 'clamp(24px, 4vw, 32px)', 
-              margin: 0,
-              fontFamily: '"DM Sans", sans-serif',
-              fontWeight: 200,
-              color: 'var(--bw-text)'
-            }}>
-              Vehicle Configuration
-            </h1>
-          {!isAdding && !editingId && (
-            <button
-              className="bw-btn bw-btn-action"
-              onClick={handleAdd}
-              style={{
-                padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                borderRadius: 7,
-                backgroundColor: 'var(--bw-accent)',
-                color: '#ffffff',
-                border: 'none',
-                transition: 'all 0.2s ease'
-              } as React.CSSProperties}
-            >
-              <Plus className="w-4 h-4" style={{ 
-                width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-              }} />
-              <span>Add Category</span>
-            </button>
-          )}
-        </div>
-        </div>
+    <div style={{
+      maxWidth: '100%',
+      overflowX: 'hidden',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      minHeight: 0
+    }}>
 
-        {/* Content Container */}
-      <div className="bw-container" style={{ 
-        padding: '0 clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)',
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
-        {/* Add/PencilSimple Form */}
-        {(isAdding || editingId) && (
-          <div className="bw-card" style={{ 
-            backgroundColor: 'var(--bw-bg-secondary)',
-            border: '1px solid var(--bw-border)',
-            borderRadius: 'clamp(8px, 1.5vw, 12px)',
-            padding: 'clamp(16px, 2.5vw, 24px)',
-            marginBottom: 'clamp(16px, 3vw, 24px)'
-          }}>
-            <h3 style={{ 
-              margin: '0 0 clamp(16px, 2.5vw, 24px) 0',
-              fontSize: 'clamp(16px, 2.5vw, 20px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 400,
-              color: 'var(--bw-text)'
+          {/* Scrollable body */}
+          <div
+            className="bw-container"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: isMobile ? '16px' : '24px 28px 32px',
+              maxWidth: 720,
+              boxSizing: 'border-box'
+            }}
+          >
+            {/* Page header */}
+            <div style={{
+              display: 'flex', alignItems: 'flex-start',
+              justifyContent: 'space-between', gap: 16, marginBottom: 24
             }}>
-              {editingId ? 'PencilSimple Vehicle Category' : 'Add Vehicle Category'}
-            </h3>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-              gap: 'clamp(16px, 2vw, 24px)',
-              width: '100%',
-              maxWidth: '100%'
-            }}>
-              <div className="bw-form-group">
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+              <div>
+                <h1 style={{
+                  margin: '0 0 4px', fontSize: 17, fontWeight: 500,
+                  fontFamily: '"DM Sans", sans-serif', color: 'var(--bw-text)'
                 }}>
-                  Vehicle Category
-                </label>
-                <input
-                  type="text"
-                  value={formData.vehicle_category}
-                  onChange={(e) => handleInputChange('vehicle_category', e.target.value)}
-                  className="bw-input"
-                  placeholder="e.g., Sedan, SUV, Luxury"
-                  style={{
-                    width: '100%',
-                    padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    borderRadius: 0,
-                    color: 'var(--bw-text)',
-                    backgroundColor: 'var(--bw-bg)',
-                    border: '1px solid var(--bw-border)'
-                  }}
-                />
-              </div>
-              <div className="bw-form-group">
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
+                  Vehicle Configuration
+                </h1>
+                <p style={{
+                  margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
                 }}>
-                  Flat Rate ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.vehicle_flat_rate}
-                  onChange={(e) => handleInputChange('vehicle_flat_rate', parseFloat(e.target.value) || 0)}
-                  className="bw-input"
-                  placeholder="0.00"
-                  style={{
-                    width: '100%',
-                    padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    borderRadius: 0,
-                    color: 'var(--bw-text)',
-                    backgroundColor: 'var(--bw-bg)',
-                    border: '1px solid var(--bw-border)'
-                  }}
-                />
+                  Manage vehicle categories and their flat rates.
+                </p>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', marginTop: 'clamp(16px, 2.5vw, 24px)', flexWrap: 'wrap' }}>
-              <button
-                className="bw-btn-outline"
-                onClick={handleCancel}
-                disabled={saving}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  borderRadius: 7
-                }}
-              >
-                <X className="w-4 h-4" style={{ width: '18px', height: '18px', marginRight: '8px' }} />
-                Cancel
-              </button>
-              <button
-                className="bw-btn bw-btn-action"
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  borderRadius: 7
-                }}
-              >
-                <FloppyDisk className="w-4 h-4" style={{ width: '18px', height: '18px', marginRight: '8px' }} />
-                {saving ? 'Saving...' : 'FloppyDisk'}
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Categories List */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-          gap: 'clamp(16px, 2vw, 24px)',
-          width: '100%',
-          maxWidth: '100%'
-        }}>
-          {categories.map((category) => (
-            <div key={category.id} className="bw-card" style={{ 
-              backgroundColor: 'var(--bw-bg-secondary)',
-              border: '1px solid var(--bw-border)',
-              borderRadius: 'clamp(8px, 1.5vw, 12px)',
-              padding: 'clamp(16px, 2.5vw, 24px)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'clamp(12px, 2vw, 16px)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-                  <Car className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-                  <h3 style={{ 
-                    margin: 0,
-                    fontSize: 'clamp(16px, 2.5vw, 20px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 400,
-                    color: 'var(--bw-text)'
-                  }}>
-                    {category.vehicle_category}
-                  </h3>
-                </div>
-                <button
-                  className="bw-btn-outline"
-                  onClick={() => handleEdit(category)}
-                  disabled={editingId !== null || isAdding}
-                  style={{
-                    padding: '8px 12px',
-                    fontSize: '12px',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 600,
-                    borderRadius: 7
-                  }}
-                >
-                  <PencilSimple className="w-4 h-4" style={{ width: '16px', height: '16px' }} />
+              {!isAdding && !editingId && (
+                <button style={primaryBtnStyle} onClick={handleAdd}
+                  onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                  <Plus size={16} aria-hidden /> Add Category
                 </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontWeight: 300,
-                    color: 'var(--bw-muted)',
-                    fontFamily: '"Work Sans", sans-serif'
-                  }}>
-                    Flat Rate:
-                  </span>
-                  <span style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontWeight: 300,
-                    fontFamily: '"Work Sans", sans-serif',
-                    color: 'var(--bw-text)'
-                  }}>
-                    ${category.vehicle_flat_rate}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'clamp(11px, 1.3vw, 12px)', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif' }}>
-                  <span>Created: {new Date(category.created_on).toLocaleDateString()}</span>
-                </div>
-              </div>
+              )}
             </div>
-          ))}
-          {categories.length === 0 && !isAdding && (
-            <div className="bw-card" style={{ 
-              backgroundColor: 'var(--bw-bg-secondary)',
-              border: '1px solid var(--bw-border)',
-              borderRadius: 'clamp(8px, 1.5vw, 12px)',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              textAlign: 'center',
-              gridColumn: 'span 2'
-            }}>
-              <p style={{ color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif' }}>
-                No vehicle categories found. Click "Add Category" to create one.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
 
-        {/* Upgrade Plan Button */}
-        <UpgradePlanButton 
-          currentPlan={currentPlan}
-          onUpgradeClick={() => navigate('/tenant/settings/plans')}
-          isMobile={isMobile}
-        />
-      </div>
-      </SettingsMenuBar>
-    </div>
+            {/* ── Add / Edit form card ─────────────────────── */}
+            {(isAdding || editingId) && (
+              <div style={sectionCard}>
+                <div style={sectionHeading}>
+                  <Car size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
+                  <h2 style={sectionTitle}>
+                    {editingId ? 'Edit Vehicle Category' : 'Add Vehicle Category'}
+                  </h2>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: isMobile ? 16 : '16px 24px',
+                  marginBottom: 20
+                }}>
+                  <div>
+                    <label style={fieldLabel}>Vehicle Category</label>
+                    <input
+                      type="text"
+                      value={formData.vehicle_category}
+                      onChange={e => setFormData(p => ({ ...p, vehicle_category: e.target.value }))}
+                      className="bw-input"
+                      placeholder="e.g., Sedan, SUV, Luxury"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={fieldLabel}>Flat Rate ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.vehicle_flat_rate}
+                      onChange={e => setFormData(p => ({ ...p, vehicle_flat_rate: parseFloat(e.target.value) || 0 }))}
+                      className="bw-input"
+                      placeholder="0.00"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={outlineBtnStyle} onClick={handleCancel} disabled={saving}
+                    onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                    <X size={16} aria-hidden /> Cancel
+                  </button>
+                  <button
+                    style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
+                    onClick={handleSave} disabled={saving}
+                    onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                    <FloppyDisk size={16} aria-hidden />
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Save feedback */}
+            {saveMsg && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                backgroundColor: saveMsg.ok ? 'rgba(30, 127, 74, 0.08)' : 'rgba(197, 72, 61, 0.08)',
+                border: `1px solid ${saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)'}`,
+                color: saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)',
+                fontSize: 13, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, marginBottom: 12
+              }}>
+                {saveMsg.text}
+              </div>
+            )}
+
+            {/* ── Vehicle list card ────────────────────────── */}
+            <div style={sectionCard}>
+              <div style={sectionHeading}>
+                <Car size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
+                <h2 style={sectionTitle}>Vehicle Categories</h2>
+              </div>
+
+              {categories.length === 0 ? (
+                <p style={{
+                  margin: 0, fontSize: 14, fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300, color: 'var(--bw-muted)', textAlign: 'center',
+                  padding: '24px 0'
+                }}>
+                  No vehicle categories yet. Click "Add Category" to create one.
+                </p>
+              ) : (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: 12
+                }}>
+                  {categories.map(category => (
+                    <div key={category.id} style={{
+                      backgroundColor: 'var(--bw-bg)',
+                      border: '1px solid var(--bw-border)',
+                      borderRadius: 8,
+                      padding: '14px 16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Car size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
+                          <span style={{ fontSize: 14, fontWeight: 500, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-text)' }}>
+                            {category.vehicle_category}
+                          </span>
+                        </div>
+                        <button
+                          style={{
+                            padding: '6px 12px', fontSize: 12, fontWeight: 500,
+                            fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
+                            border: '1px solid var(--bw-border)', backgroundColor: 'transparent',
+                            color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 5,
+                            cursor: editingId !== null || isAdding ? 'not-allowed' : 'pointer',
+                            opacity: editingId !== null || isAdding ? 0.4 : 1,
+                            transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
+                          }}
+                          onClick={() => handleEdit(category)}
+                          disabled={editingId !== null || isAdding}
+                          onMouseEnter={e => {
+                            if (editingId === null && !isAdding) {
+                              e.currentTarget.style.borderColor = ACCENT
+                              e.currentTarget.style.color = ACCENT
+                              e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = ''
+                            e.currentTarget.style.color = ''
+                            e.currentTarget.style.backgroundColor = ''
+                          }}
+                        >
+                          <PencilSimple size={13} aria-hidden />
+                          Edit
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
+                          Flat Rate
+                        </span>
+                        <span style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
+                          ${category.vehicle_flat_rate}
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        <span style={{ fontSize: 11, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
+                          Created {new Date(category.created_on).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
   )
 }
-

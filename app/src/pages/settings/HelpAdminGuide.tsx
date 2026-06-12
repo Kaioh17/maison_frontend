@@ -2,8 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpen } from '@phosphor-icons/react'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 
 function Section({
   title,
@@ -102,21 +101,8 @@ export default function HelpAdminGuide() {
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-        <div
-          style={{
-            marginLeft: isMobile ? '0' : menuIsOpen ? '20%' : '64px',
-            transition: 'margin-left 0.3s ease',
-            width: isMobile ? '100%' : menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)',
-            maxWidth: '100%',
-            overflowX: 'hidden',
-            boxSizing: 'border-box'
-          }}
-        >
+    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
           <div
             style={{
               width: '100%',
@@ -241,13 +227,6 @@ export default function HelpAdminGuide() {
             </Section>
           </div>
 
-          <UpgradePlanButton
-            currentPlan={currentPlan}
-            onUpgradeClick={() => navigate('/tenant/settings/plans')}
-            isMobile={isMobile}
-          />
         </div>
-      </SettingsMenuBar>
-    </div>
   )
 }

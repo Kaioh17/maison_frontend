@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate } from 'react-router-dom'
 import { CreditCard, ArrowSquareOut, ArrowLeft } from '@phosphor-icons/react'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 
 export default function StripeDocs() {
   const [info, setInfo] = useState<any>(null)
@@ -54,20 +53,8 @@ export default function StripeDocs() {
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-      {/* Main Content */}
-      <div style={{ 
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-        transition: 'margin-left 0.3s ease',
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
+    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
         {/* Header */}
         <div style={{ 
           width: '100%',
@@ -476,15 +463,7 @@ export default function StripeDocs() {
           </div>
         </div>
 
-        {/* Upgrade Plan Button */}
-        <UpgradePlanButton 
-          currentPlan={currentPlan}
-          onUpgradeClick={() => navigate('/tenant/settings/plans')}
-          isMobile={isMobile}
-        />
       </div>
-      </SettingsMenuBar>
-    </div>
   )
 }
 

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { upgradeSubscription } from '@api/subscription'
-import { useNavigate } from 'react-router-dom'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { getStripeSubscriptionPriceId } from '@config'
 
 export default function Plans() {
@@ -13,8 +11,6 @@ export default function Plans() {
   const { isOpen: menuIsOpen } = useSettingsMenu()
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
   const [upgradeError, setUpgradeError] = useState<string | null>(null)
-  const navigate = useNavigate()
-
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768)
@@ -160,17 +156,7 @@ export default function Plans() {
   )
 
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-      {/* Main Content */}
-      <div style={{ 
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-        transition: 'margin-left 0.3s ease',
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
+    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
         {/* Header */}
         <div style={{ 
           width: '100%',
@@ -371,15 +357,7 @@ export default function Plans() {
         </div>
       </div>
 
-        {/* Upgrade Plan Button - Only show if not fleet */}
-        <UpgradePlanButton 
-          currentPlan={currentPlan}
-          onUpgradeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          isMobile={isMobile}
-        />
       </div>
-      </SettingsMenuBar>
-    </div>
   )
 }
 

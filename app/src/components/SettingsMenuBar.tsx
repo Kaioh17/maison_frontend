@@ -10,43 +10,59 @@ interface MenuItem {
   submenu?: MenuItem[]
 }
 
-const menuItems: MenuItem[] = [
-  { path: '/tenant/settings/general', label: 'General View', icon: Gear },
-  { path: '/tenant/settings/account', label: 'Account Information', icon: User },
-  { path: '/tenant/settings/company', label: 'Company Information', icon: Building },
-  { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings', icon: Wrench },
-  { path: '/tenant/settings/feedback-forms', label: 'Feedback forms', icon: ChatCircle },
-  { path: '/tenant/settings/branding', label: 'Branding Settings', icon: Palette },
-  { path: '/tenant/settings/pricing', label: 'Pricing Settings', icon: CurrencyDollar },
-  { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration', icon: Car },
-  { path: '/tenant/settings/plans', label: 'Plans', icon: CreditCard },
-  { 
-    path: '/tenant/settings/help', 
-    label: 'Help', 
-    icon: Question,
-    submenu: [
-      { path: '/tenant/settings/help/admin', label: 'Operator guide', icon: BookOpen },
-      { path: '/tenant/settings/help/troubleshooting', label: 'Common issues', icon: WarningCircle },
-      { path: '/tenant/settings/help/stripe', label: 'Stripe integration', icon: CreditCard }
+interface MenuGroup {
+  label?: string
+  items: MenuItem[]
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    items: [
+      { path: '/tenant/settings/general', label: 'Overview', icon: Gear },
+      { path: '/tenant/settings/account', label: 'Account', icon: User },
+      { path: '/tenant/settings/company', label: 'Business Profile', icon: Building },
+    ]
+  },
+  {
+    label: 'Configure',
+    items: [
+      { path: '/tenant/settings/tenant-settings', label: 'Booking Settings', icon: Wrench },
+      { path: '/tenant/settings/pricing', label: 'Pricing', icon: CurrencyDollar },
+      { path: '/tenant/settings/vehicle-config', label: 'Vehicle Classes', icon: Car },
+      { path: '/tenant/settings/branding', label: 'Branding', icon: Palette },
+      { path: '/tenant/settings/feedback-forms', label: 'Feedback Forms', icon: ChatCircle },
+    ]
+  },
+  {
+    label: 'Admin',
+    items: [
+      { path: '/tenant/settings/plans', label: 'Subscription', icon: CreditCard },
+      {
+        path: '/tenant/settings/help',
+        label: 'Help',
+        icon: Question,
+        submenu: [
+          { path: '/tenant/settings/help/admin', label: 'Operator guide', icon: BookOpen },
+          { path: '/tenant/settings/help/troubleshooting', label: 'Common issues', icon: WarningCircle },
+          { path: '/tenant/settings/help/stripe', label: 'Stripe integration', icon: CreditCard }
+        ]
+      }
     ]
   }
 ]
+
+const menuItems: MenuItem[] = menuGroups.flatMap(g => g.items)
 
 interface SettingsMenuContextType {
   isOpen: boolean
   isMobile: boolean
   toggleMenu: () => void
-  /** When true, the floating mobile menu button is hidden (page provides an inline header). */
-  suppressMobileFloatingMenu: boolean
-  setSuppressMobileFloatingMenu: (value: boolean) => void
 }
 
 const SettingsMenuContext = createContext<SettingsMenuContextType>({
   isOpen: false,
   isMobile: false,
-  toggleMenu: () => {},
-  suppressMobileFloatingMenu: false,
-  setSuppressMobileFloatingMenu: () => {}
+  toggleMenu: () => {}
 })
 
 export const useSettingsMenu = () => useContext(SettingsMenuContext)
@@ -59,7 +75,6 @@ interface SettingsMenuBarProps {
 export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  const [suppressMobileFloatingMenu, setSuppressMobileFloatingMenu] = useState(false)
   const [loadingStripeLink, setLoadingStripeLink] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
@@ -144,9 +159,7 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
       value={{
         isOpen,
         isMobile,
-        toggleMenu,
-        suppressMobileFloatingMenu,
-        setSuppressMobileFloatingMenu
+        toggleMenu
       }}
     >
       {/* Overlay when menu is open on mobile */}
@@ -166,37 +179,6 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
         />
       )}
 
-      {/* Hamburger Button - Fixed position on mobile (hidden when a page renders an inline header) */}
-      {isMobile && !suppressMobileFloatingMenu && (
-        <button
-          onClick={toggleMenu}
-          style={{
-            position: 'fixed',
-            top: 'clamp(16px, 3vw, 24px)',
-            left: isOpen ? 'calc(80% + clamp(16px, 3vw, 24px))' : 'clamp(16px, 3vw, 24px)',
-            zIndex: 1001,
-            padding: 'clamp(8px, 1.5vw, 12px)',
-            backgroundColor: 'transparent',
-            border: 'none',
-            outline: 'none',
-            boxShadow: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            borderRadius: 'clamp(4px, 0.8vw, 8px)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'left 0.3s ease'
-          }}
-          aria-label="Toggle menu"
-        >
-          {isOpen ? (
-            <X size="clamp(20px, 2.5vw, 24px)" style={{ color: 'var(--bw-text)' }} />
-          ) : (
-            <List size="clamp(20px, 2.5vw, 24px)" style={{ color: 'var(--bw-text)' }} />
-          )}
-        </button>
-      )}
 
       {/* Vertical Menu Bar */}
       <div
@@ -350,128 +332,158 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
         {/* Navigation Menu */}
         <nav style={{
           flex: 1,
-          padding: isOpen ? 'clamp(12px, 1.5vw, 20px) 0' : 'clamp(12px, 1.5vw, 20px) 0',
+          padding: isOpen ? 'clamp(8px, 1.2vw, 12px) 0' : 'clamp(8px, 1.2vw, 12px) 0',
           display: 'flex',
           flexDirection: 'column',
-          gap: '4px',
+          gap: '2px',
           alignItems: isOpen ? 'stretch' : 'center'
         }}>
-          {menuItems.map((item) => {
-            const IconComponent = item.icon
-            const isActive = location.pathname === item.path || (item.submenu && item.submenu.some(sub => location.pathname === sub.path))
-            const isExpanded = expandedMenus.has(item.path)
-            const hasSubmenu = item.submenu && item.submenu.length > 0
-            
-            return (
-              <div key={item.path}>
-                <button
-                  onClick={() => handleMenuClick(item.path, hasSubmenu)}
-                  title={!isOpen ? item.label : undefined}
-                  style={{
-                    width: isOpen ? '100%' : '48px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: isOpen ? 'space-between' : 'center',
-                    gap: isOpen ? '12px' : '0',
-                    padding: isOpen 
-                      ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' 
-                      : 'clamp(12px, 1.5vw, 16px)',
-                    backgroundColor: isActive ? 'var(--bw-bg-hover)' : 'transparent',
-                    border: 'none',
-                    borderLeft: isActive ? '3px solid var(--bw-accent)' : '3px solid transparent',
-                    color: 'var(--bw-text)',
-                    cursor: 'pointer',
-                    fontSize: 'clamp(13px, 1.5vw, 15px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: isActive ? 500 : 300,
-                    textAlign: 'left',
-                    transition: 'all 0.2s ease',
-                    borderRadius: isOpen ? '0' : 'clamp(4px, 0.8vw, 8px)',
-                    margin: isOpen ? '0' : '0 8px'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isOpen ? '12px' : '0', flex: 1 }}>
-                    <IconComponent size={18} style={{ flexShrink: 0 }} />
-                    {isOpen && <span>{item.label}</span>}
-                  </div>
-                  {isOpen && hasSubmenu && (
-                    <CaretRight 
-                      size={16}
-                      style={{ 
-                        width: '16px', 
-                        height: '16px', 
-                        flexShrink: 0,
-                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
-                      }} 
-                    />
+          {menuGroups.map((group, groupIdx) => (
+            <div key={groupIdx}>
+              {/* Group separator + label (only when menu is open and not the first group) */}
+              {isOpen && groupIdx > 0 && (
+                <div style={{
+                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 2vw, 24px) clamp(4px, 0.8vw, 6px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  {group.label && (
+                    <span style={{
+                      fontSize: 11,
+                      fontFamily: '"Work Sans", sans-serif',
+                      fontWeight: 500,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--bw-muted)',
+                      opacity: 0.6,
+                      userSelect: 'none'
+                    }}>
+                      {group.label}
+                    </span>
                   )}
-                </button>
-                {/* Submenu */}
-                {isOpen && hasSubmenu && isExpanded && (
-                  <div style={{
-                    paddingLeft: 'clamp(30px, 4vw, 40px)',
-                    paddingTop: '4px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '2px'
-                  }}>
-                    {item.submenu!.map((subItem) => {
-                      const SubIconComponent = subItem.icon
-                      const isSubActive = location.pathname === subItem.path
-                      return (
-                        <button
-                          key={subItem.path}
-                          onClick={() => handleMenuClick(subItem.path)}
+                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }} />
+                </div>
+              )}
+              {/* Collapsed: just show a thin divider between groups */}
+              {!isOpen && groupIdx > 0 && (
+                <div style={{
+                  margin: '6px 12px',
+                  height: '1px',
+                  backgroundColor: 'var(--bw-border)',
+                  opacity: 0.5
+                }} />
+              )}
+              {group.items.map((item) => {
+                const IconComponent = item.icon
+                const isActive = location.pathname === item.path || (item.submenu && item.submenu.some(sub => location.pathname === sub.path))
+                const isExpanded = expandedMenus.has(item.path)
+                const hasSubmenu = item.submenu && item.submenu.length > 0
+
+                return (
+                  <div key={item.path}>
+                    <button
+                      onClick={() => handleMenuClick(item.path, hasSubmenu)}
+                      title={!isOpen ? item.label : undefined}
+                      style={{
+                        width: isOpen ? '100%' : '48px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: isOpen ? 'space-between' : 'center',
+                        gap: isOpen ? '12px' : '0',
+                        padding: isOpen
+                          ? 'clamp(10px, 1.4vw, 14px) clamp(16px, 2vw, 24px)'
+                          : 'clamp(10px, 1.4vw, 14px)',
+                        backgroundColor: isActive ? 'var(--bw-bg-hover)' : 'transparent',
+                        border: 'none',
+                        borderLeft: isActive ? '3px solid var(--bw-accent)' : '3px solid transparent',
+                        color: 'var(--bw-text)',
+                        cursor: 'pointer',
+                        fontSize: 'clamp(13px, 1.5vw, 14px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: isActive ? 500 : 300,
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease',
+                        borderRadius: isOpen ? '0' : 'clamp(4px, 0.8vw, 8px)',
+                        margin: isOpen ? '0' : '0 8px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isOpen ? '12px' : '0', flex: 1 }}>
+                        <IconComponent size={18} style={{ flexShrink: 0 }} />
+                        {isOpen && <span>{item.label}</span>}
+                      </div>
+                      {isOpen && hasSubmenu && (
+                        <CaretRight
+                          size={16}
                           style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: 'clamp(10px, 1.5vw, 12px) clamp(16px, 2vw, 24px)',
-                            backgroundColor: isSubActive ? 'var(--bw-bg-hover)' : 'transparent',
-                            border: 'none',
-                            borderLeft: isSubActive ? '2px solid var(--bw-accent)' : '2px solid transparent',
-                            color: 'var(--bw-text)',
-                            cursor: 'pointer',
-                            fontSize: 'clamp(12px, 1.4vw, 14px)',
-                            fontFamily: '"Work Sans", sans-serif',
-                            fontWeight: isSubActive ? 500 : 300,
-                            textAlign: 'left',
-                            transition: 'all 0.2s ease',
-                            borderRadius: '0'
+                            width: '16px',
+                            height: '16px',
+                            flexShrink: 0,
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease'
                           }}
-                          onMouseEnter={(e) => {
-                            if (!isSubActive) {
-                              e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isSubActive) {
-                              e.currentTarget.style.backgroundColor = 'transparent'
-                            }
-                          }}
-                        >
-                          <SubIconComponent size={14} style={{ flexShrink: 0 }} />
-                          <span>{subItem.label}</span>
-                        </button>
-                      )
-                    })}
+                        />
+                      )}
+                    </button>
+                    {/* Submenu */}
+                    {isOpen && hasSubmenu && isExpanded && (
+                      <div style={{
+                        paddingLeft: 'clamp(30px, 4vw, 40px)',
+                        paddingTop: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}>
+                        {item.submenu!.map((subItem) => {
+                          const SubIconComponent = subItem.icon
+                          const isSubActive = location.pathname === subItem.path
+                          return (
+                            <button
+                              key={subItem.path}
+                              onClick={() => handleMenuClick(subItem.path)}
+                              style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: 'clamp(9px, 1.4vw, 11px) clamp(16px, 2vw, 24px)',
+                                backgroundColor: isSubActive ? 'var(--bw-bg-hover)' : 'transparent',
+                                border: 'none',
+                                borderLeft: isSubActive ? '2px solid var(--bw-accent)' : '2px solid transparent',
+                                color: 'var(--bw-text)',
+                                cursor: 'pointer',
+                                fontSize: 'clamp(12px, 1.4vw, 13px)',
+                                fontFamily: '"Work Sans", sans-serif',
+                                fontWeight: isSubActive ? 500 : 300,
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease',
+                                borderRadius: '0'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSubActive) e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSubActive) e.currentTarget.style.backgroundColor = 'transparent'
+                              }}
+                            >
+                              <SubIconComponent size={14} style={{ flexShrink: 0 }} />
+                              <span>{subItem.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Sticky Stripe Dashboard Button at Bottom */}
@@ -537,7 +549,76 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
           transition: 'width 0.3s ease'
         }} />
       )}
-      {children}
+
+      {/*
+        On mobile all pages get a shared sticky header so the hamburger is always in document
+        flow and never overlaps the page title in the content area below.
+      */}
+      {isMobile ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          minHeight: 0
+        }}>
+          <header
+            style={{
+              position: 'sticky',
+              top: 0,
+              zIndex: 997,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 16px',
+              backgroundColor: 'var(--bw-bg)',
+              borderBottom: '0.5px solid var(--bw-border)',
+              flexShrink: 0
+            }}
+          >
+            <button
+              type="button"
+              onClick={toggleMenu}
+              aria-label={isOpen ? 'Close menu' : 'Open menu'}
+              style={{
+                padding: 0,
+                width: 20,
+                height: 20,
+                flex: '0 0 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                boxShadow: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                cursor: 'pointer',
+                color: 'var(--bw-text)'
+              }}
+            >
+              {isOpen
+                ? <X size={20} aria-hidden />
+                : <List size={20} aria-hidden />
+              }
+            </button>
+            <span style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 17,
+              fontWeight: 500,
+              fontFamily: '"DM Sans", sans-serif',
+              color: 'var(--bw-text)',
+              lineHeight: 1.25
+            }}>
+              Settings
+            </span>
+          </header>
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </SettingsMenuContext.Provider>
   )
 }

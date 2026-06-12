@@ -79,6 +79,7 @@ const BookingComplete = lazy(() => import('@pages/BookingComplete'))
 const BookingFailed = lazy(() => import('@pages/BookingFailed'))
 const VehicleRates = lazy(() => import('@pages/VehicleRates'))
 const TenantSettings = lazy(() => import('@pages/TenantSettings'))
+const SettingsLayout = lazy(() => import('@pages/settings/SettingsLayout'))
 const GeneralView = lazy(() => import('@pages/settings/GeneralView'))
 const AccountInformation = lazy(() => import('@pages/settings/AccountInformation'))
 const CompanyInformation = lazy(() => import('@pages/settings/CompanyInformation'))
@@ -216,144 +217,32 @@ export default function App() {
       />
       <Route
         path="/tenant/settings"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
+        element={<Navigate to="/tenant/settings/general" replace />}
       />
+      {/* Settings layout — SettingsMenuBar mounts once; only Outlet content swaps on navigation */}
       <Route
-        path="/tenant/settings/general"
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <GeneralView />
+              <SettingsLayout />
             </ProtectedRoute>
           </TenantRouteBlock>
         }
-      />
-      <Route
-        path="/tenant/settings/account"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <AccountInformation />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/company"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <CompanyInformation />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/tenant-settings"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/branding"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <BrandingSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/feedback-forms"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <FeedbackFormsSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/pricing"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <PricingSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/vehicle-config"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <VehicleConfiguration />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/plans"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <Plans />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/help"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <Help />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/help/stripe"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <StripeDocs />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/help/admin"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <HelpAdminGuide />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
-      <Route
-        path="/tenant/settings/help/troubleshooting"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <HelpTroubleshooting />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
+      >
+        <Route path="/tenant/settings/general" element={<GeneralView />} />
+        <Route path="/tenant/settings/account" element={<AccountInformation />} />
+        <Route path="/tenant/settings/company" element={<CompanyInformation />} />
+        <Route path="/tenant/settings/tenant-settings" element={<TenantSettings />} />
+        <Route path="/tenant/settings/branding" element={<BrandingSettings />} />
+        <Route path="/tenant/settings/feedback-forms" element={<FeedbackFormsSettings />} />
+        <Route path="/tenant/settings/pricing" element={<PricingSettings />} />
+        <Route path="/tenant/settings/vehicle-config" element={<VehicleConfiguration />} />
+        <Route path="/tenant/settings/plans" element={<Plans />} />
+        <Route path="/tenant/settings/help" element={<Help />} />
+        <Route path="/tenant/settings/help/stripe" element={<StripeDocs />} />
+        <Route path="/tenant/settings/help/admin" element={<HelpAdminGuide />} />
+        <Route path="/tenant/settings/help/troubleshooting" element={<HelpTroubleshooting />} />
+      </Route>
       <Route
         path="/tenant/return"
         element={

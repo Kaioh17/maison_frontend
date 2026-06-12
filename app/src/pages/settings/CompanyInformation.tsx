@@ -1,10 +1,71 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
-import { useNavigate } from 'react-router-dom'
 import { Buildings, FloppyDisk, PencilSimple, X } from '@phosphor-icons/react'
-import UpgradePlanButton from '@components/UpgradePlanButton'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
+
+const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
+
+const ACCENT = 'rgba(155, 97, 209, 0.81)'
+
+function hoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.borderColor = ACCENT
+  e.currentTarget.style.color = ACCENT
+  e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
+}
+function unhoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.borderColor = ''
+  e.currentTarget.style.color = ''
+  e.currentTarget.style.backgroundColor = ''
+}
+function hoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.opacity = '0.85'
+}
+function unhoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
+  e.currentTarget.style.opacity = ''
+}
+
+function Field({
+  label, helper, editing, type = 'text', value, onChange
+}: {
+  label: string; helper?: string; editing?: boolean
+  type?: string; value: string; onChange?: (v: string) => void
+}) {
+  return (
+    <div>
+      <label style={{
+        display: 'block', fontSize: 12, fontWeight: 500,
+        fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
+        marginBottom: 4, letterSpacing: '0.02em'
+      }}>
+        {label}
+      </label>
+      {editing ? (
+        <>
+          <input type={type} value={value} onChange={e => onChange?.(e.target.value)}
+            className="bw-input"
+            style={{
+              width: '100%', padding: '10px 12px', fontSize: 14,
+              fontFamily: '"Work Sans", sans-serif', fontWeight: 400, borderRadius: 6,
+              color: 'var(--bw-text)', backgroundColor: 'var(--bw-bg)',
+              border: '1px solid var(--bw-border)', boxSizing: 'border-box'
+            }} />
+          {helper && (
+            <p style={{ margin: '4px 0 0', fontSize: 12, fontFamily: '"Work Sans", sans-serif',
+              fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4 }}>
+              {helper}
+            </p>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 400,
+          color: value ? 'var(--bw-text)' : 'var(--bw-muted)', padding: '10px 0' }}>
+          {value || <span style={{ color: 'var(--bw-muted)' }}>—</span>}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function CompanyInformation() {
   const [info, setInfo] = useState<any>(null)
@@ -12,11 +73,8 @@ export default function CompanyInformation() {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const { isOpen: menuIsOpen } = useSettingsMenu()
-  const [isEditHovered, setIsEditHovered] = useState(false)
-  const [isSaveHovered, setIsSaveHovered] = useState(false)
-  const [isCancelHovered, setIsCancelHovered] = useState(false)
-  const navigate = useNavigate()
 
   const [editedData, setEditedData] = useState({
     company_name: '',
@@ -26,11 +84,9 @@ export default function CompanyInformation() {
   })
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    const onResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   useEffect(() => {
@@ -53,14 +109,9 @@ export default function CompanyInformation() {
     loadData()
   }, [])
 
-  const handleInputChange = (field: string, value: string) => {
-    setEditedData(prev => ({ ...prev, [field]: value }))
-  }
-
   const handleSave = async () => {
     try {
       setSaving(true)
-      // Update company information via tenant profile endpoint
       await http.patch('/v1/tenant/', {
         company_name: editedData.company_name,
         slug: editedData.slug,
@@ -70,10 +121,11 @@ export default function CompanyInformation() {
       const tenantInfo = await getTenantInfo()
       setInfo(tenantInfo.data)
       setIsEditing(false)
-      alert('Company information updated successfully!')
+      setSaveMsg({ ok: true, text: 'Business profile updated.' })
+      setTimeout(() => setSaveMsg(null), 4000)
     } catch (error: any) {
       console.error('Failed to update:', error)
-      alert('Failed to update company information. Please try again.')
+      setSaveMsg({ ok: false, text: 'Failed to save. Please try again.' })
     } finally {
       setSaving(false)
     }
@@ -91,238 +143,216 @@ export default function CompanyInformation() {
 
   if (loading) {
     return (
-      <div className="bw bw-container" style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: '60vh',
-        padding: 'clamp(16px, 3vw, 24px) 0'
-      }}>
-        <div className="bw-loading" style={{
-          fontSize: 'clamp(14px, 2vw, 16px)',
-          fontFamily: '"Work Sans", sans-serif',
-          color: 'var(--bw-muted)'
-        }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '60vh' }}>
+        <span style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
           Loading...
-        </div>
+        </span>
       </div>
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
+  const mobileBarBtnBase: React.CSSProperties = {
+    flex: '1 1 0', minWidth: 0, minHeight: 44,
+    fontSize: 14, fontWeight: 500, fontFamily: '"Work Sans", sans-serif',
+    borderRadius: 7, cursor: 'pointer', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+    border: 'none', transition: 'opacity 0.15s ease'
+  }
+
+  const sectionCard: React.CSSProperties = {
+    backgroundColor: 'var(--bw-bg-secondary)',
+    border: '1px solid var(--bw-border)',
+    borderRadius: 10,
+    padding: isMobile ? '16px' : '20px 24px',
+    marginBottom: 12
+  }
+
+  const sectionHeading: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8,
+    marginBottom: 16, paddingBottom: 12,
+    borderBottom: '1px solid var(--bw-border)'
+  }
+
+  const sectionTitle: React.CSSProperties = {
+    margin: 0, fontSize: 13, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
+    letterSpacing: '0.03em', textTransform: 'uppercase'
+  }
+
+  const outlineBtnStyle: React.CSSProperties = {
+    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
+    border: '1px solid var(--bw-border)', backgroundColor: '#ffffff',
+    color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 7,
+    cursor: 'pointer',
+    transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
+  }
+
+  const primaryBtnStyle: React.CSSProperties = {
+    padding: '10px 20px', fontSize: 14, fontWeight: 500,
+    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
+    border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
+    display: 'flex', alignItems: 'center', gap: 7,
+    cursor: 'pointer', transition: 'opacity 0.15s ease'
+  }
 
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-      {/* Main Content */}
-      <div style={{ 
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-        transition: 'margin-left 0.3s ease',
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
-        {/* Header */}
-        <div style={{ 
-          width: '100%',
-          maxWidth: '100%',
-          padding: `clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)`,
-          marginBottom: 'clamp(24px, 4vw, 32px)',
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: 'clamp(12px, 2vw, 16px)' }}>
-            <h1 style={{ 
-              fontSize: 'clamp(24px, 4vw, 32px)', 
-              margin: 0,
-              fontFamily: '"DM Sans", sans-serif',
-              fontWeight: 200,
-              color: 'var(--bw-text)'
+    <div style={{
+      maxWidth: '100%',
+      overflowX: 'hidden',
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+      minHeight: 0
+    }}>
+
+          {/* Scrollable body */}
+          <div
+            className="bw-container"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: isMobile
+                ? `16px 16px ${MOBILE_SCROLL_BOTTOM_PAD}`
+                : '24px 28px 32px',
+              maxWidth: 720,
+              boxSizing: 'border-box'
+            }}
+          >
+            {/* Page header */}
+            <div style={{
+              display: 'flex', alignItems: 'flex-start',
+              justifyContent: 'space-between', gap: 16, marginBottom: 24
             }}>
-              Company Information
-            </h1>
-          {!isEditing ? (
-            <button
-              className={`bw-btn-outline ${isEditHovered ? 'custom-hover-border' : ''}`}
-              onClick={() => setIsEditing(true)}
-              onMouseEnter={() => setIsEditHovered(true)}
-              onMouseLeave={() => setIsEditHovered(false)}
+              <div>
+                <h1 style={{
+                  margin: '0 0 4px', fontSize: 17, fontWeight: 500,
+                  fontFamily: '"DM Sans", sans-serif', color: 'var(--bw-text)'
+                }}>
+                  Business Profile
+                </h1>
+                <p style={{
+                  margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
+                }}>
+                  Your company name, city, and the slug that appears in your booking URLs.
+                </p>
+              </div>
+
+              {!isMobile && (
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  {isEditing ? (
+                    <>
+                      <button style={outlineBtnStyle} onClick={handleCancel} disabled={saving}
+                        onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                        <X size={16} aria-hidden /> Cancel
+                      </button>
+                      <button
+                        style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
+                        onClick={handleSave} disabled={saving}
+                        onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                        <FloppyDisk size={16} aria-hidden />
+                        {saving ? 'Saving…' : 'Save Changes'}
+                      </button>
+                    </>
+                  ) : (
+                    <button style={outlineBtnStyle} onClick={() => setIsEditing(true)}
+                      onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                      <PencilSimple size={16} aria-hidden /> Edit
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── Company Details card ─────────────────────────── */}
+            <div style={sectionCard}>
+              <div style={sectionHeading}>
+                <Buildings size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
+                <h2 style={sectionTitle}>Company Details</h2>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: isMobile ? 16 : '16px 24px'
+              }}>
+                <Field label="Company Name" value={editedData.company_name}
+                  helper="The name displayed to riders on booking pages and emails."
+                  editing={isEditing}
+                  onChange={v => setEditedData(p => ({ ...p, company_name: v }))} />
+                <Field label="Slug" value={editedData.slug}
+                  helper="Your unique URL identifier — e.g. ridez in ridez.yourdomain.com."
+                  editing={isEditing}
+                  onChange={v => setEditedData(p => ({ ...p, slug: v }))} />
+                <Field label="City" value={editedData.city}
+                  helper="Primary city of operations."
+                  editing={isEditing}
+                  onChange={v => setEditedData(p => ({ ...p, city: v }))} />
+                <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+                  <Field label="Address" value={editedData.address}
+                    helper="Street address for business records."
+                    editing={isEditing}
+                    onChange={v => setEditedData(p => ({ ...p, address: v }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Save feedback */}
+            {saveMsg && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                backgroundColor: saveMsg.ok ? 'rgba(30, 127, 74, 0.08)' : 'rgba(197, 72, 61, 0.08)',
+                border: `1px solid ${saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)'}`,
+                color: saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)',
+                fontSize: 13, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, marginBottom: 12
+              }}>
+                {saveMsg.text}
+              </div>
+            )}
+
+          </div>
+
+          {/* Mobile bottom action bar */}
+          {isMobile && (
+            <div
+              role="toolbar"
+              aria-label="Business profile actions"
               style={{
-                padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                borderRadius: 7,
-                border: isEditHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                borderColor: isEditHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                color: isEditHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                backgroundColor: isEditHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                transition: 'all 0.2s ease'
-              } as React.CSSProperties}
+                position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 997,
+                padding: '10px 16px',
+                paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+                borderTop: '0.5px solid var(--bw-border)', backgroundColor: 'var(--bw-bg)',
+                display: 'flex', gap: 10, boxSizing: 'border-box'
+              }}
             >
-              <PencilSimple className="w-4 h-4" style={{ 
-                width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-              }} />
-              <span>PencilSimple</span>
-            </button>
-          ) : (
-            <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap' }}>
-              <button
-                className={`bw-btn-outline ${isCancelHovered ? 'custom-hover-border' : ''}`}
-                onClick={handleCancel}
-                onMouseEnter={() => setIsCancelHovered(true)}
-                onMouseLeave={() => setIsCancelHovered(false)}
-                disabled={saving}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  borderRadius: 7,
-                  border: isCancelHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-                  borderColor: isCancelHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  color: isCancelHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-                  backgroundColor: isCancelHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <X className="w-4 h-4" style={{ 
-                  width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                  height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-                }} />
-                <span>Cancel</span>
-              </button>
-              <button
-                className={`bw-btn bw-btn-action ${isSaveHovered ? 'custom-hover-border' : ''}`}
-                onClick={handleSave}
-                onMouseEnter={() => !saving && setIsSaveHovered(true)}
-                onMouseLeave={() => setIsSaveHovered(false)}
-                disabled={saving}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  borderRadius: 7,
-                  backgroundColor: isSaveHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-                  color: isSaveHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
-                  border: isSaveHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-                  borderColor: isSaveHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
-              >
-                <FloppyDisk className="w-4 h-4" style={{ 
-                  width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px', 
-                  height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-                }} />
-                <span>{saving ? 'Saving...' : 'FloppyDisk'}</span>
-              </button>
+              {!isEditing ? (
+                <button type="button" onClick={() => setIsEditing(true)}
+                  style={{ ...mobileBarBtnBase, backgroundColor: 'transparent',
+                    border: '0.5px solid var(--bw-border)', color: 'var(--bw-text)' }}>
+                  <PencilSimple size={16} aria-hidden /> Edit
+                </button>
+              ) : (
+                <>
+                  <button type="button" onClick={handleCancel} disabled={saving}
+                    style={{ ...mobileBarBtnBase, backgroundColor: 'transparent',
+                      border: '0.5px solid var(--bw-border)', color: 'var(--bw-text)',
+                      opacity: saving ? 0.6 : 1 }}>
+                    <X size={16} aria-hidden /> Cancel
+                  </button>
+                  <button type="button" onClick={handleSave} disabled={saving}
+                    style={{ ...mobileBarBtnBase, backgroundColor: 'var(--bw-accent)',
+                      color: '#ffffff', opacity: saving ? 0.7 : 1,
+                      cursor: saving ? 'not-allowed' : 'pointer' }}>
+                    <FloppyDisk size={16} aria-hidden />
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
-        </div>
-
-        {/* Content Container */}
-      <div className="bw-container" style={{ 
-        padding: '0 clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)',
-        maxWidth: '100%',
-        overflowX: 'hidden',
-        boxSizing: 'border-box'
-      }}>
-        <div className="bw-card" style={{ 
-          backgroundColor: 'var(--bw-bg-secondary)',
-          border: '1px solid var(--bw-border)',
-          borderRadius: 'clamp(8px, 1.5vw, 12px)',
-          padding: 'clamp(16px, 2.5vw, 24px)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(16px, 2.5vw, 24px)' }}>
-            <Buildings className="w-5 h-5" style={{ color: 'var(--bw-text)' }} />
-            <h3 style={{ 
-              margin: 0,
-              fontSize: 'clamp(16px, 2.5vw, 20px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 400,
-              color: 'var(--bw-text)'
-            }}>
-              Company Details
-            </h3>
-          </div>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-            gap: 'clamp(16px, 2vw, 24px)',
-            width: '100%',
-            maxWidth: '100%'
-          }}>
-            {[
-              { label: 'Company Name', field: 'company_name', type: 'text' },
-              { label: 'Slug', field: 'slug', type: 'text' },
-              { label: 'City', field: 'city', type: 'text' },
-              { label: 'Address', field: 'address', type: 'text' }
-            ].map((item) => (
-              <div key={item.field} className="bw-form-group" style={{ gridColumn: item.field === 'address' ? (isMobile ? 'span 1' : 'span 2') : 'span 1' }}>
-                <label className="bw-form-label small-muted" style={{
-                  fontSize: 'clamp(11px, 1.3vw, 13px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300,
-                  color: 'var(--bw-muted)',
-                  marginBottom: 'clamp(4px, 0.8vw, 6px)'
-                }}>
-                  {item.label}
-                </label>
-                {isEditing ? (
-                  <input
-                    type={item.type}
-                    value={editedData[item.field as keyof typeof editedData]}
-                    onChange={(e) => handleInputChange(item.field, e.target.value)}
-                    className="bw-input"
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-                      fontFamily: '"Work Sans", sans-serif',
-                      borderRadius: 0,
-                      color: 'var(--bw-text)',
-                      backgroundColor: 'var(--bw-bg)',
-                      border: '1px solid var(--bw-border)'
-                    }}
-                  />
-                ) : (
-                  <div style={{
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
-                    color: 'var(--bw-text)',
-                    padding: 'clamp(12px, 2vw, 16px) 0'
-                  }}>
-                    {editedData[item.field as keyof typeof editedData] || 'N/A'}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-        {/* Upgrade Plan Button */}
-        <UpgradePlanButton 
-          currentPlan={currentPlan}
-          onUpgradeClick={() => navigate('/tenant/settings/plans')}
-          isMobile={isMobile}
-        />
-      </div>
-      </SettingsMenuBar>
-    </div>
   )
 }
-

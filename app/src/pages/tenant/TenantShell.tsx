@@ -13,7 +13,7 @@ import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { TenantDashboardSkeleton } from '@components/Skeleton'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, type IconWeight } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -2206,26 +2206,26 @@ export default function TenantShell() {
                     alignItems: 'center',
                     gap: isMenuOpen ? '12px' : '0',
                     padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
-                    backgroundColor: isActive 
-                      ? (lightMode && tab.id === 'overview' ? 'var(--bw-accent)' : lightMode ? 'rgba(108, 99, 232, 0.1)' : 'var(--bw-bg-hover)')
+                    backgroundColor: isActive
+                      ? (lightMode ? 'rgba(108, 99, 232, 0.09)' : 'rgba(108, 99, 232, 0.16)')
                       : 'transparent',
                     border: 'none',
-                    borderLeft: isMenuOpen ? (isActive ? (lightMode && tab.id === 'overview' ? '3px solid var(--bw-accent)' : '2px solid var(--bw-accent)') : '2px solid transparent') : 'none',
-                    color: isActive && lightMode && tab.id === 'overview' ? '#ffffff' : 'var(--bw-text)',
+                    borderLeft: isMenuOpen ? (isActive ? '3px solid var(--bw-accent)' : '3px solid transparent') : 'none',
+                    color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'var(--bw-text)',
                     cursor: 'pointer',
                     fontSize: 'clamp(13px, 1.5vw, 15px)',
                     fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300,
+                    fontWeight: isActive ? 500 : 300,
                     textAlign: isMenuOpen ? 'left' : 'center',
                     transition: 'all 0.2s ease',
                     justifyContent: isMenuOpen ? 'space-between' : 'center',
-                    boxShadow: isActive && tab.id === 'overview' && !lightMode ? '0 0 12px rgba(108, 99, 232, 0.22)' : 'none',
+                    boxShadow: 'none',
                     position: 'relative'
                   }}
                   title={!isMenuOpen ? tab.label : undefined}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
+                      e.currentTarget.style.backgroundColor = lightMode ? 'rgba(108, 99, 232, 0.05)' : 'rgba(255, 255, 255, 0.04)'
                     }
                   }}
                   onMouseLeave={(e) => {
@@ -2235,7 +2235,7 @@ export default function TenantShell() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMenuOpen ? '12px' : '0', flex: 1, justifyContent: isMenuOpen ? 'flex-start' : 'center' }}>
-                    <IconComponent size={18} style={{ flexShrink: 0 }} />
+                    <IconComponent size={18} style={{ flexShrink: 0, color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'inherit' }} />
                     {isMenuOpen && <span>{tab.label}</span>}
                   </div>
                   {isMenuOpen && isSettings && (
@@ -2350,100 +2350,196 @@ export default function TenantShell() {
           </a>
         </nav>
 
-        {/* Footer Section in Sidebar */}
+        {/* Footer Section in Sidebar - Expanded */}
         {isMenuOpen && (
           <div style={{
             padding: 'clamp(12px, 1.5vw, 20px)',
             borderTop: '1px solid var(--bw-border)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '10px',
+            flexShrink: 0
           }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: '12px'
-          }}>
+            {/* User identity row */}
             <div style={{
-              fontSize: 'clamp(11px, 1.2vw, 13px)',
-              color: 'var(--bw-muted)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '4px 0 8px'
             }}>
-              Welcome back, {info?.first_name}
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--bw-accent) 0%, rgba(108, 99, 232, 0.55) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#ffffff',
+                letterSpacing: '0.02em',
+                fontFamily: '"Work Sans", sans-serif'
+              }}>
+                {info?.first_name?.[0]?.toUpperCase() || 'T'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 'clamp(12px, 1.3vw, 14px)',
+                  fontWeight: 500,
+                  color: 'var(--bw-text)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.3
+                }}>
+                  {info?.first_name || 'Admin'}
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--bw-muted)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300,
+                  letterSpacing: '0.03em'
+                }}>
+                  Operator
+                </div>
+              </div>
+              <ThemeToggle
+                mode="segmented"
+                value={tenantPageThemeMode}
+                onChange={handleTenantThemeModeChange}
+              />
             </div>
-            <ThemeToggle
-              mode="segmented"
-              value={tenantPageThemeMode}
-              onChange={handleTenantThemeModeChange}
-            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (isMobile) setIsMenuOpen(false)
+                setShowDriverModeConfirm(true)
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
+                backgroundColor: 'var(--bw-accent)',
+                border: 'none',
+                color: '#ffffff',
+                cursor: 'pointer',
+                fontSize: 'clamp(13px, 1.5vw, 15px)',
+                fontFamily: '"Work Sans", sans-serif',
+                fontWeight: 400,
+                borderRadius: 7,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
+              }}
+            >
+              Switch to Driver Mode
+            </button>
+            <button
+              onClick={() => {
+                if (isMobile) setIsMenuOpen(false)
+                useAuthStore.getState().logout()
+              }}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--bw-border)',
+                color: 'var(--bw-text)',
+                cursor: 'pointer',
+                fontSize: 'clamp(13px, 1.5vw, 15px)',
+                fontFamily: '"Work Sans", sans-serif',
+                fontWeight: 300,
+                borderRadius: 7,
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+            >
+              <SignOut size={15} style={{ flexShrink: 0 }} aria-hidden />
+              Logout
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              if (isMobile) setIsMenuOpen(false)
-              setShowDriverModeConfirm(true)
-            }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
-              backgroundColor: 'var(--bw-accent)',
-              border: 'none',
-              color: '#ffffff',
-              cursor: 'pointer',
-              fontSize: 'clamp(13px, 1.5vw, 15px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 400,
-              borderRadius: 7,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
-            }}
-          >
-            Switch to Driver Mode
-          </button>
-          <button
-            onClick={() => {
-              if (isMobile) setIsMenuOpen(false)
-              useAuthStore.getState().logout()
-            }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
-              backgroundColor: 'transparent',
-              border: '1px solid var(--bw-border)',
-              color: 'var(--bw-text)',
-              cursor: 'pointer',
-              fontSize: 'clamp(13px, 1.5vw, 15px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300,
-              borderRadius: 7,
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            Logout
-          </button>
+        )}
+
+        {/* Footer Section in Sidebar - Collapsed (desktop icon-only rail) */}
+        {!isMenuOpen && (
+          <div style={{
+            padding: '12px 0',
+            borderTop: '1px solid var(--bw-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 0
+          }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--bw-accent) 0%, rgba(108, 99, 232, 0.55) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#ffffff',
+                fontFamily: '"Work Sans", sans-serif',
+                cursor: 'default',
+                userSelect: 'none'
+              }}
+              title={`${info?.first_name || 'Admin'} · Operator`}
+            >
+              {info?.first_name?.[0]?.toUpperCase() || 'T'}
+            </div>
+            <button
+              onClick={() => useAuthStore.getState().logout()}
+              title="Logout"
+              style={{
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--bw-border)',
+                borderRadius: '8px',
+                color: 'var(--bw-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
+                e.currentTarget.style.color = 'var(--bw-text)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = 'var(--bw-muted)'
+              }}
+            >
+              <SignOut size={16} aria-hidden />
+            </button>
           </div>
         )}
       </div>

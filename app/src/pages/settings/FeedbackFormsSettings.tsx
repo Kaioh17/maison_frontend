@@ -7,7 +7,7 @@ import {
   type TenantConfigResponse,
   type TenantSettingsData
 } from '@api/tenantSettings'
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 import {
   ChatCircle,
   SteeringWheel,
@@ -192,8 +192,9 @@ export default function FeedbackFormsSettings() {
   const [driverUrl, setDriverUrl] = useState('')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  const { isOpen: menuIsOpen, setSuppressMobileFloatingMenu } = useSettingsMenu()
+  const { isOpen: menuIsOpen } = useSettingsMenu()
 
   const [hoverEdit, setHoverEdit] = useState(false)
   const [hoverSave, setHoverSave] = useState(false)
@@ -204,11 +205,6 @@ export default function FeedbackFormsSettings() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-
-  useEffect(() => {
-    setSuppressMobileFloatingMenu(isMobile)
-    return () => setSuppressMobileFloatingMenu(false)
-  }, [isMobile, setSuppressMobileFloatingMenu])
 
   useEffect(() => {
     const load = async () => {
@@ -243,7 +239,7 @@ export default function FeedbackFormsSettings() {
       zelleNumberFromApi(tenantConfig.settings.zelle_number)
     )
     if (zelleErr) {
-      alert(zelleErr)
+      setSaveMsg({ ok: false, text: zelleErr })
       return
     }
 
@@ -306,10 +302,11 @@ export default function FeedbackFormsSettings() {
         setDriverUrl(refreshed.settings.driver_feedback_form ?? '')
       }
       setEditing(false)
-      alert('Feedback form links updated successfully!')
+      setSaveMsg({ ok: true, text: 'Feedback form links updated.' })
+      setTimeout(() => setSaveMsg(null), 4000)
     } catch (e) {
       console.error('Failed to save feedback form links:', e)
-      alert('Failed to save feedback form links. Please try again.')
+      setSaveMsg({ ok: false, text: 'Failed to save. Please try again.' })
     } finally {
       setSaving(false)
     }
@@ -342,19 +339,15 @@ export default function FeedbackFormsSettings() {
   }
 
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-      <SettingsMenuBar>
-        <div
-          style={{
-            marginLeft: isMobile ? '0' : menuIsOpen ? '20%' : '64px',
-            transition: 'margin-left 0.3s ease',
-            width: isMobile ? '100%' : menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)',
-            maxWidth: '100%',
-            overflowX: 'hidden',
-            boxSizing: 'border-box',
-            paddingBottom: isMobile ? MOBILE_SCROLL_BOTTOM_PAD : undefined
-          }}
-        >
+    <div
+      style={{
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        boxSizing: 'border-box',
+        flex: 1,
+        paddingBottom: isMobile ? MOBILE_SCROLL_BOTTOM_PAD : undefined
+      }}
+    >
           <div
             style={{
               maxWidth: 920,
@@ -815,10 +808,24 @@ export default function FeedbackFormsSettings() {
               >
                 Clear a field and save to remove that link from your tenant settings.
               </p>
+
+              {saveMsg && (
+                <div style={{
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  borderRadius: 6,
+                  backgroundColor: saveMsg.ok ? 'rgba(30, 127, 74, 0.08)' : 'rgba(197, 72, 61, 0.08)',
+                  border: `1px solid ${saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)'}`,
+                  color: saveMsg.ok ? 'var(--bw-success)' : 'var(--bw-error)',
+                  fontSize: 13,
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 400
+                }}>
+                  {saveMsg.text}
+                </div>
+              )}
             </section>
           </div>
         </div>
-      </SettingsMenuBar>
-    </div>
   )
 }

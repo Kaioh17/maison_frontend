@@ -32,17 +32,13 @@ import {
 
 } from '@api/tenantSettings'
 
-import { upgradeSubscription } from '@api/subscription'
-
 import { useAuthStore } from '@store/auth'
 
 import { useNavigate } from 'react-router-dom'
 
-import { Gear, User, Building, MapPin, Phone, Envelope, Shield, CreditCard, CurrencyDollar, Clock, Car, Palette, FloppyDisk, Pencil, CaretDown, CaretUp, XCircle, ArrowUp } from '@phosphor-icons/react'
+import { Gear, User, Building, MapPin, Phone, Envelope, Shield, CreditCard, CurrencyDollar, Clock, Car, Palette, FloppyDisk, Pencil, CaretDown, CaretUp, XCircle } from '@phosphor-icons/react'
 
-import UpgradePlanButton from '@components/UpgradePlanButton'
-
-import SettingsMenuBar, { useSettingsMenu } from '@components/SettingsMenuBar'
+import { useSettingsMenu } from '@components/SettingsMenuBar'
 
 import {
 
@@ -187,16 +183,6 @@ export default function TenantSettings() {
   const [showAddServiceInput, setShowAddServiceInput] = useState(false)
 
   
-
-  // Upgrade subscription state
-
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
-
-  const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
-
-  const [upgradeError, setUpgradeError] = useState<string | null>(null)
-
-
 
   useEffect(() => {
 
@@ -1704,73 +1690,6 @@ export default function TenantSettings() {
 
 
 
-  const handleUpgradePlan = async (plan: { product_type: string; price_id: string }) => {
-
-    setUpgradingPlan(plan.product_type)
-
-    setUpgradeError(null)
-
-
-
-    try {
-
-      const response = await upgradeSubscription({
-
-        price_id: plan.price_id,
-
-        product_type: plan.product_type
-
-      })
-
-
-
-      if (response.success) {
-
-        // Close modal and show success - checkout will handle itself
-
-        setShowUpgradeModal(false)
-
-        alert('Subscription upgrade initiated successfully!')
-
-        // Reload data to reflect the new subscription
-
-        const [tenantInfo, config] = await Promise.all([
-
-          getTenantInfo(),
-
-          getTenantConfig('all')
-
-        ])
-
-        setInfo(tenantInfo.data)
-
-        setTenantConfig(config)
-
-        if (config.settings) setEditedSettings(config.settings)
-
-        if (config.pricing) setEditedPricing(config.pricing)
-
-        if (config.branding) setEditedBranding(config.branding)
-
-      } else {
-
-        setUpgradeError(response.error || 'Failed to upgrade subscription')
-
-        setUpgradingPlan(null)
-
-      }
-
-    } catch (err: any) {
-
-      setUpgradeError(err?.response?.data?.error || err?.message || 'Failed to upgrade subscription')
-
-      setUpgradingPlan(null)
-
-    }
-
-  }
-
-
 
   if (loading) {
 
@@ -1814,27 +1733,7 @@ export default function TenantSettings() {
 
   return (
 
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
-
-      <SettingsMenuBar>
-
-      {/* Main Content */}
-
-      <div style={{ 
-
-        marginLeft: isMobile ? '0' : (menuIsOpen ? '20%' : '64px'),
-
-        transition: 'margin-left 0.3s ease',
-
-        width: isMobile ? '100%' : (menuIsOpen ? 'calc(100% - 20%)' : 'calc(100% - 64px)'),
-
-        maxWidth: '100%',
-
-        overflowX: 'hidden',
-
-        boxSizing: 'border-box'
-
-      }}>
+    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
 
         {/* Header - Left aligned */}
 
@@ -1866,7 +1765,7 @@ export default function TenantSettings() {
 
           }}>
 
-            Tenant Settings
+            Booking Settings
 
           </h1>
 
@@ -1956,7 +1855,7 @@ export default function TenantSettings() {
 
             }}>
 
-              Tenant Settings
+              Booking Settings
 
             </h3>
 
@@ -5281,10 +5180,6 @@ export default function TenantSettings() {
       </div>
 
       </div>
-
-      </SettingsMenuBar>
-
-    </div>
 
   )
 

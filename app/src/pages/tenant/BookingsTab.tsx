@@ -370,39 +370,11 @@ export default function BookingsTab() {
               }}>
               <button
                 type="button"
-                className={`bw-btn bw-btn-action ${isBookRideHovered ? 'custom-hover-border' : ''}`}
+                className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                 onClick={() => setShowBookRideModal(true)}
-                onMouseEnter={() => setIsBookRideHovered(true)}
-                onMouseLeave={() => setIsBookRideHovered(false)}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  backgroundColor: 'transparent',
-                  border: isMobile
-                    ? `2px dashed ${isBookRideHovered ? '#7c3aed' : lightMode ? '#94a3b8' : 'rgba(255,255,255,0.22)'}`
-                    : undefined,
-                  borderColor: !isMobile && isBookRideHovered ? 'var(--bw-accent)' : undefined,
-                  color: isBookRideHovered ? (isMobile ? '#7c3aed' : 'var(--bw-accent)') : lightMode ? '#334155' : 'var(--bw-text)',
-                  transition: 'all 0.2s ease',
-                  flexShrink: 0,
-                } as React.CSSProperties}
               >
-                <Plus
-                  style={{
-                    width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                    height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-                  }}
-                  aria-hidden
-                />
-                <span>Schedule ride for customer</span>
+                <Plus size={18} aria-hidden />
+                Schedule ride
               </button>
               <div style={{ 
                 display: 'flex', 
@@ -813,19 +785,19 @@ export default function BookingsTab() {
                           }}>
                             #{booking.id}
                           </div>
-                          <div style={{
-                            padding: '4px 12px',
-                            borderRadius: '8px',
-                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
-                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
-                            color: getStatusColorHex(booking.booking_status),
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            borderRadius: 999,
                             fontSize: 'clamp(11px, 1.8vw, 12px)',
                             fontFamily: '"Work Sans", sans-serif',
-                            fontWeight: 500,
-                            display: 'inline-block'
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                            background: `var(--bw-status-${booking.booking_status === 'completed' ? 'done' : (booking.booking_status || 'default')}-bg, var(--bw-status-default-bg))`,
+                            color: `var(--bw-status-${booking.booking_status === 'completed' ? 'done' : (booking.booking_status || 'default')}-text, var(--bw-status-default-text))`,
                           }}>
                             {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
-                          </div>
+                          </span>
                         </div>
 
                         {/* Customer Name */}
@@ -1028,12 +1000,15 @@ export default function BookingsTab() {
               ) : (
                 /* Desktop Table Layout */
                 <div className="bw-table">
-                  <div className="bw-table-header">
-                    <div className="bw-table-cell">Booking ID</div>
+                  <div
+                    className="bw-table-header"
+                    style={{ gridTemplateColumns: '80px 2fr 1fr 1fr 1.4fr 100px 80px' }}
+                  >
+                    <div className="bw-table-cell">ID</div>
                     <div className="bw-table-cell">Customer & Route</div>
-                    <div className="bw-table-cell">Service Details</div>
+                    <div className="bw-table-cell">Service</div>
                     <div className="bw-table-cell">Date & Time</div>
-                    <div className="bw-table-cell">Driver & Vehicle</div>
+                    <div className="bw-table-cell">Driver / Vehicle</div>
                     <div className="bw-table-cell">Status</div>
                     <div className="bw-table-cell">Fare</div>
                   </div>
@@ -1063,54 +1038,44 @@ export default function BookingsTab() {
                     </div>
                   ) : (
                     filteredBookings.map((booking, idx) => (
-                      <div 
-                        key={booking.id || `booking-${idx}`} 
+                      <div
+                        key={booking.id || `booking-${idx}`}
                         className="bw-table-row"
                         onClick={() => booking.id && handleBookingClick(booking.id)}
-                        style={{ cursor: 'pointer' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent'
-                        }}
+                        style={{ cursor: 'pointer', gridTemplateColumns: '80px 2fr 1fr 1fr 1.4fr 100px 80px' }}
                       >
-                        <div className="bw-table-cell">
-                          <div style={{ fontWeight: '600', color: '#374151' }}>
-                            #{booking.id}
-                          </div>
+                        <div className="bw-table-cell" style={{ fontWeight: 600, color: 'var(--bw-text)', fontSize: 13 }}>
+                          #{booking.id}
                         </div>
                         <div className="bw-table-cell">
                           <div className="bw-route-info">
-                            <div style={{ marginBottom: '4px' }}>
-                              <span style={{ fontWeight: '500', color: '#111827' }}>
-                                {booking.customer_name || 'Anonymous Customer'}
-                              </span>
+                            <div style={{ marginBottom: 4, fontWeight: 600, color: 'var(--bw-text)', fontSize: 13 }}>
+                              {booking.customer_name || 'Anonymous Customer'}
                             </div>
                             {booking.customer_phone && (
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
-                                <span style={{ fontWeight: '500' }}>Phone:</span> {booking.customer_phone}
+                              <div style={{ fontSize: 12, color: 'var(--bw-muted)', marginBottom: 3 }}>
+                                {booking.customer_phone}
                               </div>
                             )}
-                            <div className="bw-route-item" style={{ fontSize: '12px', color: '#6b7280' }}>
-                              <MapPin size={12} />
-                              <span style={{ marginLeft: '4px' }}>From: {booking.pickup_location}</span>
+                            <div className="bw-route-item" style={{ fontSize: 12, color: 'var(--bw-muted)' }}>
+                              <MapPin size={12} aria-hidden />
+                              <span style={{ marginLeft: 4 }}>From: {booking.pickup_location}</span>
                             </div>
                             {booking.dropoff_location && (
-                              <div className="bw-route-item" style={{ fontSize: '12px', color: '#6b7280' }}>
-                                <MapPin size={12} />
-                                <span style={{ marginLeft: '4px' }}>To: {booking.dropoff_location}</span>
+                              <div className="bw-route-item" style={{ fontSize: 12, color: 'var(--bw-muted)' }}>
+                                <MapPin size={12} aria-hidden />
+                                <span style={{ marginLeft: 4 }}>To: {booking.dropoff_location}</span>
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="bw-table-cell">
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span className="bw-badge bw-badge-secondary" style={{ fontSize: '11px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span className="bw-badge bw-badge-secondary" style={{ fontSize: 11 }}>
                               {booking.service_type || 'Standard'}
                             </span>
                             {booking.estimated_duration && (
-                              <span style={{ fontSize: '11px', color: '#6b7280' }}>
+                              <span style={{ fontSize: 11, color: 'var(--bw-muted)' }}>
                                 Est: {booking.estimated_duration} min
                               </span>
                             )}
@@ -1118,53 +1083,47 @@ export default function BookingsTab() {
                         </div>
                         <div className="bw-table-cell">
                           <div className="bw-datetime-info">
-                            <div style={{ fontWeight: '500', color: '#111827' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--bw-text)', fontSize: 13 }}>
                               {new Date(booking.pickup_time).toLocaleDateString()}
                             </div>
-                            <div className="bw-text-muted" style={{ fontSize: '12px' }}>
+                            <div style={{ fontSize: 12, color: 'var(--bw-muted)' }}>
                               {new Date(booking.pickup_time).toLocaleTimeString()}
                             </div>
                             {booking.dropoff_time && (
-                              <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                              <div style={{ fontSize: 11, color: 'var(--bw-muted)', marginTop: 2 }}>
                                 Drop: {new Date(booking.dropoff_time).toLocaleTimeString()}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="bw-table-cell">
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ fontSize: '12px' }}>
-                              <span style={{ fontWeight: '500' }}>Driver:</span> {booking.driver_name && booking.driver_name !== 'None' ? booking.driver_name : 'No assigned driver'}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                            <div style={{ color: booking.driver_name && booking.driver_name !== 'None' ? 'var(--bw-text)' : 'var(--bw-muted)' }}>
+                              {booking.driver_name && booking.driver_name !== 'None' ? booking.driver_name : 'No driver assigned'}
                             </div>
                             {booking.driver_phone && (
-                              <div style={{ fontSize: '12px' }}>
-                                <span style={{ fontWeight: '500' }}>Driver Phone:</span> {booking.driver_phone}
-                              </div>
+                              <div style={{ color: 'var(--bw-muted)' }}>{booking.driver_phone}</div>
                             )}
-                            <div style={{ fontSize: '12px' }}>
-                              <span style={{ fontWeight: '500' }}>Vehicle:</span> {booking.vehicle || 'N/A'}
-                            </div>
+                            <div style={{ color: 'var(--bw-muted)' }}>{booking.vehicle || 'No vehicle'}</div>
                           </div>
                         </div>
                         <div className="bw-table-cell">
-                          <div style={{
-                            padding: '4px 12px',
-                            borderRadius: '8px',
-                            backgroundColor: getStatusColorHex(booking.booking_status) + '20',
-                            border: `1px solid ${getStatusColorHex(booking.booking_status)}`,
-                            color: getStatusColorHex(booking.booking_status),
-                            fontSize: '12px',
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            fontSize: 11,
                             fontFamily: '"Work Sans", sans-serif',
-                            fontWeight: 500,
-                            display: 'inline-block'
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                            background: `var(--bw-status-${booking.booking_status === 'completed' ? 'done' : (booking.booking_status || 'default')}-bg, var(--bw-status-default-bg))`,
+                            color: `var(--bw-status-${booking.booking_status === 'completed' ? 'done' : (booking.booking_status || 'default')}-text, var(--bw-status-default-text))`,
                           }}>
                             {booking.booking_status?.charAt(0).toUpperCase() + booking.booking_status?.slice(1)}
-                          </div>
+                          </span>
                         </div>
-                        <div className="bw-table-cell">
-                          <div style={{ fontWeight: '600', color: '#059669' }}>
-                            ${booking.estimated_price || '0.00'}
-                          </div>
+                        <div className="bw-table-cell" style={{ fontWeight: 700, color: 'var(--bw-status-active-text)', fontSize: 14 }}>
+                          ${booking.estimated_price || '0.00'}
                         </div>
                       </div>
                     ))
@@ -1317,20 +1276,20 @@ export default function BookingsTab() {
                           #{selectedBooking.id}
                         </div>
                       </div>
-                      <div style={{
-                        padding: '4px 12px',
-                        borderRadius: '8px',
-                        backgroundColor: getStatusColorHex(selectedBooking.booking_status) + '20',
-                        border: `1px solid ${getStatusColorHex(selectedBooking.booking_status)}`,
-                        color: getStatusColorHex(selectedBooking.booking_status),
-                        fontSize: 'clamp(11px, 1.8vw, 12px)',
-                        fontFamily: '"Work Sans", sans-serif',
-                        fontWeight: 500,
+                      <span style={{
                         display: 'inline-block',
-                        textTransform: 'capitalize'
+                        padding: '5px 12px',
+                        borderRadius: 999,
+                        fontSize: 'clamp(11px, 1.8vw, 13px)',
+                        fontFamily: '"Work Sans", sans-serif',
+                        fontWeight: 600,
+                        letterSpacing: '0.02em',
+                        textTransform: 'capitalize',
+                        background: `var(--bw-status-${selectedBooking.booking_status === 'completed' ? 'done' : (selectedBooking.booking_status || 'default')}-bg, var(--bw-status-default-bg))`,
+                        color: `var(--bw-status-${selectedBooking.booking_status === 'completed' ? 'done' : (selectedBooking.booking_status || 'default')}-text, var(--bw-status-default-text))`,
                       }}>
                         {selectedBooking.booking_status}
-                      </div>
+                      </span>
                     </div>
 
                     {/* Customer Information */}
@@ -1911,7 +1870,8 @@ export default function BookingsTab() {
               borderTop: '1px solid var(--bw-border)'
             }}>
               <button
-                className={`bw-btn-outline ${isCancelAssignBookingHovered ? 'custom-hover-border' : ''}`}
+                type="button"
+                className={`btn btn-secondary${isMobile ? ' btn-block' : ''}`}
                 onClick={() => {
                   if (!assigningDriver) {
                     setShowAssignDriverToBooking(false)
@@ -1919,114 +1879,37 @@ export default function BookingsTab() {
                     setShowOverrideConfirm(false)
                   }
                 }}
-                onMouseEnter={() => !assigningDriver && setIsCancelAssignBookingHovered(true)}
-                onMouseLeave={() => setIsCancelAssignBookingHovered(false)}
                 disabled={assigningDriver}
-                style={{
-                  padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                  fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                  width: isMobile ? '100%' : 'auto',
-                  justifyContent: 'center',
-                  borderRadius: 7,
-                  border: isCancelAssignBookingHovered ? '2px solid var(--bw-accent)' : undefined,
-                  borderColor: isCancelAssignBookingHovered ? 'var(--bw-accent)' : undefined,
-                  color: isCancelAssignBookingHovered ? 'var(--bw-accent)' : undefined,
-                  transition: 'all 0.2s ease'
-                } as React.CSSProperties}
               >
-                <span style={{ color: isCancelAssignBookingHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                  {showOverrideConfirm ? 'Cancel' : 'Close'}
-                </span>
+                {showOverrideConfirm ? 'Cancel' : 'Close'}
               </button>
               {showOverrideConfirm ? (
                 <>
                   <button
-                    className={`bw-btn-outline ${isBackOverrideHovered ? 'custom-hover-border' : ''}`}
+                    type="button"
+                    className={`btn btn-secondary${isMobile ? ' btn-block' : ''}`}
                     onClick={() => setShowOverrideConfirm(false)}
-                    onMouseEnter={() => !assigningDriver && setIsBackOverrideHovered(true)}
-                    onMouseLeave={() => setIsBackOverrideHovered(false)}
                     disabled={assigningDriver}
-                    style={{
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                      width: isMobile ? '100%' : 'auto',
-                      justifyContent: 'center',
-                      borderRadius: 7,
-                      border: isBackOverrideHovered ? '2px solid var(--bw-accent)' : undefined,
-                      borderColor: isBackOverrideHovered ? 'var(--bw-accent)' : undefined,
-                      color: isBackOverrideHovered ? 'var(--bw-accent)' : undefined,
-                      transition: 'all 0.2s ease'
-                    } as React.CSSProperties}
                   >
-                    <span style={{ color: isBackOverrideHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                      Back
-                    </span>
+                    Back
                   </button>
                   <button
-                    className={`bw-btn bw-btn-action ${isOverrideConfirmHovered ? 'custom-hover-border' : ''}`}
+                    type="button"
+                    className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                     onClick={handleAssignDriverToBooking}
-                    onMouseEnter={() => !assigningDriver && !selectedDriverForBooking && setIsOverrideConfirmHovered(true)}
-                    onMouseLeave={() => setIsOverrideConfirmHovered(false)}
                     disabled={assigningDriver || !selectedDriverForBooking}
-                    style={{
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                      fontFamily: '"Work Sans", sans-serif',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                      width: isMobile ? '100%' : 'auto',
-                      justifyContent: 'center',
-                      borderRadius: 7,
-                      border: isOverrideConfirmHovered ? '2px solid var(--bw-accent)' : undefined,
-                      borderColor: isOverrideConfirmHovered ? 'var(--bw-accent)' : undefined,
-                      color: isOverrideConfirmHovered ? 'var(--bw-accent)' : undefined,
-                      transition: 'all 0.2s ease'
-                    } as React.CSSProperties}
                   >
-                    <span style={{ color: isOverrideConfirmHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                      {assigningDriver ? 'Assigning...' : 'Yes, Override'}
-                    </span>
+                    {assigningDriver ? 'Assigning...' : 'Yes, Override'}
                   </button>
                 </>
               ) : (
                 <button
-                  className={`bw-btn bw-btn-action ${isAssignDriverToBookingHovered ? 'custom-hover-border' : ''}`}
+                  type="button"
+                  className={`btn btn-primary${isMobile ? ' btn-block' : ''}`}
                   onClick={handleAssignDriverToBooking}
-                  onMouseEnter={() => !assigningDriver && !selectedDriverForBooking && setIsAssignDriverToBookingHovered(true)}
-                  onMouseLeave={() => setIsAssignDriverToBookingHovered(false)}
                   disabled={assigningDriver || !selectedDriverForBooking}
-                  style={{
-                    padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-                    width: isMobile ? '100%' : 'auto',
-                    justifyContent: 'center',
-                    borderRadius: 7,
-                    border: isAssignDriverToBookingHovered ? '2px solid var(--bw-accent)' : undefined,
-                    borderColor: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : undefined,
-                    color: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : undefined,
-                    transition: 'all 0.2s ease'
-                  } as React.CSSProperties}
                 >
-                  <span style={{ color: isAssignDriverToBookingHovered ? 'var(--bw-accent)' : 'inherit' }}>
-                    {assigningDriver ? 'Assigning...' : 'Assign Driver'}
-                  </span>
+                  {assigningDriver ? 'Assigning...' : 'Assign Driver'}
                 </button>
               )}
             </div>
