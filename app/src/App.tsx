@@ -104,6 +104,9 @@ const AdminTenantDetail = lazy(() => import('@pages/AdminTenantDetail'))
 const AdminLogin = lazy(() => import('@pages/AdminLogin'))
 const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
 const TempQrEditor = lazy(() => import('@pages/TempQrEditor'))
+const ForgotPassword = lazy(() => import('@pages/ForgotPassword'))
+const Terms = lazy(() => import('@pages/Terms'))
+const Privacy = lazy(() => import('@pages/Privacy'))
 
 function PageFallback() {
   const location = useLocation()
@@ -162,6 +165,9 @@ export default function App() {
       />
       <Route path="/about" element={<SubdomainBlock><About /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
+      <Route path="/forgot-password" element={<SubdomainBlock><ForgotPassword /></SubdomainBlock>} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />
       <Route path="/demo/stripe-redirect" element={<SubdomainBlock><DemoStripeRedirect /></SubdomainBlock>} />
       <Route path="/tools/qr-studio" element={<TempQrEditor />} />

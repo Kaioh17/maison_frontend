@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { WarningCircle, X, ArrowSquareOut } from '@phosphor-icons/react'
 import { useAuthStore } from '@store/auth'
 import { getTenantInfo } from '@api/tenant'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { setupStripeAccount } from '@api/tenantSettings'
 
 export default function AccountVerificationNotification() {
   const { accessToken, role } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [showNotification, setShowNotification] = useState(false)
   const [isVerified, setIsVerified] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -64,7 +65,7 @@ export default function AccountVerificationNotification() {
     navigate('/tenant/settings/account')
   }
 
-  if (!showNotification || isLoading || isVerified) return null
+  if (!showNotification || isLoading || isVerified || location.pathname === '/signup') return null
 
   // Orange color similar to Postman (#FF6C37 or similar)
   const orangeColor = '#FF6C37'

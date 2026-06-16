@@ -236,19 +236,18 @@ export default function AuthPage() {
       <main className="bw" aria-label="Auth" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
         <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
           {/* Left side - Image (70%) */}
-          <div 
+          <div
             className="login-image-container"
-            style={{ 
-              width: '70%', 
-              height: '100%', 
+            style={{
+              width: '70%',
+              height: '100%',
               position: 'relative',
               backgroundColor: heroUrls[0] ? 'transparent' : '#f3f4f6',
               display: 'flex',
-              alignItems: 'flex-start',
+              alignItems: 'center',
               justifyContent: 'center',
               padding: '48px',
-              paddingTop: '120px'
-            }} 
+            }}
           >
             <div style={{ position: 'absolute', inset: 0 }}>
               {heroUrls.map((url, i) =>
@@ -270,7 +269,7 @@ export default function AuthPage() {
                 ) : null
               )}
             </div>
-            {/* Tint: Maison page background at ~60% opacity (replaces former rgba(0,0,0,0.6)) */}
+            {/* Tint: Maison page background at ~60% opacity */}
             <div style={{
               position: 'absolute',
               top: 0,
@@ -280,7 +279,18 @@ export default function AuthPage() {
               backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
               zIndex: 1,
               pointerEvents: 'none',
-            }}></div>
+            }} />
+            {/* Bottom gradient so tagline always reads over any photo */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '55%',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)',
+              zIndex: 1,
+              pointerEvents: 'none',
+            }} />
             <div style={{
               color: 'white',
               textAlign: 'center',
@@ -314,23 +324,23 @@ export default function AuthPage() {
           </div>
 
           {/* Right side - Login Form (30%) */}
-          <div 
-            role="form" 
+          <div
+            role="form"
             aria-labelledby="auth-title"
             className="login-form-container"
-            style={{ 
-              width: '30%', 
-              height: '100%', 
+            style={{
+              width: '30%',
+              height: '100%',
               position: 'relative',
-              display: 'flex', 
+              display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center', 
-              justifyContent: 'center',
+              alignItems: 'center',
               padding: '24px',
               backgroundColor: 'var(--bw-bg)',
-              overflowY: 'auto'
+              overflowY: 'auto',
             }}
           >
+            {/* Logo */}
             <div
               className="login-logo"
               style={{
@@ -349,112 +359,111 @@ export default function AuthPage() {
                 />
               </div>
             </div>
-            <h2 className="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Welcome back</h2>
-            <p className="small-muted login-subtitle" style={{ marginTop: 6, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300 }}>Sign in to continue</p>
 
-            {error && (
-              <div className="login-error" style={{ 
-                marginTop: 16, 
-                padding: '12px', 
-                backgroundColor: '#fee2e2', 
-                border: '1px solid #fecaca', 
-                borderRadius: '4px',
-                color: '#dc2626',
-                fontSize: '14px',
-                fontFamily: 'Work Sans, sans-serif'
-              }}>
-                {error}
-              </div>
-            )}
+            {/* Main form content — centered in available space below the logo */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: '72px' }}>
+              <h2 className="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200, textAlign: 'center' }}>Welcome back</h2>
+              <p className="small-muted login-subtitle" style={{ marginTop: 8, marginBottom: 0, fontSize: 16, fontFamily: 'Work Sans, sans-serif', fontWeight: 300, textAlign: 'center' }}>Sign in to continue</p>
 
-            <form onSubmit={handleSubmit} style={{ marginTop: 16, width: '100%' }}>
-              <label className="small-muted login-label" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ position: 'relative', marginTop: 6 }}>
-                  <Envelope className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="bw-input login-input"
-                    value={formData.email}
-                    aria-invalid={formData.email.length > 0 && !!loginEmailFormatError}
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
-                    placeholder="you@email.com"
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
-                  {EMAIL_FORMAT_HINT}
-                </p>
-                {loginEmailFormatError && (
-                  <div
-                    role="alert"
-                    style={{
-                      marginTop: 6,
-                      fontSize: 13,
-                      fontFamily: 'Work Sans, sans-serif',
-                      color: '#dc2626',
-                    }}
-                  >
-                    {loginEmailFormatError}
-                  </div>
-                )}
-              </div>
-
-              <label className="small-muted login-label" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
-              <div style={{ position: 'relative', marginTop: 6 }}>
-                <Lock className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#000000' : undefined }} />
-                <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
-                <button type="button" aria-label="Toggle password" className="login-toggle-btn" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff' }}>
-                  {showPassword ? <EyeSlash className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
-                </button>
-              </div>
-
-              <button 
-                className="bw-btn login-button" 
-                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-                disabled={isLoading}
-              >
-                <span>{isLoading ? 'Signing in...' : 'Sign in'}</span>
-                {!isLoading && <ArrowRight size={16} aria-hidden />}
-              </button>
-
-              <div style={{ marginTop: 24, width: '100%' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  marginBottom: 16,
-                  gap: 12
+              {error && (
+                <div className="login-error" style={{
+                  marginTop: 20,
+                  padding: '12px',
+                  backgroundColor: 'rgba(197, 72, 61, 0.12)',
+                  border: '1px solid rgba(197, 72, 61, 0.3)',
+                  borderRadius: '4px',
+                  color: 'var(--bw-error)',
+                  fontSize: '14px',
+                  fontFamily: 'Work Sans, sans-serif',
+                  width: '100%',
                 }}>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
-                  <span className="small-muted login-divider-text" style={{ fontSize: '12px', fontFamily: 'Work Sans, sans-serif' }}>or</span>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }}></div>
+                  {error}
                 </div>
-                <p className="small-muted login-link-text" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
-                  Don't have an account?
-                </p>
-                <Link to="/signup" style={{ textDecoration: 'none', display: 'block' }}>
-                  <button 
-                    className="bw-btn login-button" 
-                    style={{ 
-                      width: '100%', 
-                      borderRadius: 0, 
-                      padding: '14px 24px', 
-                      background: 'var(--bw-bg)',
-                      color: 'var(--bw-fg)',
-                      border: '1px solid var(--bw-fg)',
-                      fontFamily: 'Work Sans, sans-serif', 
-                      fontWeight: 500 
-                    }} 
+              )}
+
+              <form onSubmit={handleSubmit} style={{ marginTop: 24, width: '100%' }}>
+                <label className="small-muted login-label" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ position: 'relative', marginTop: 6 }}>
+                    <Envelope className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .6 }} />
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      className="bw-input login-input"
+                      value={formData.email}
+                      aria-invalid={formData.email.length > 0 && !!loginEmailFormatError}
+                      style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                      placeholder="you@email.com"
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
+                    {EMAIL_FORMAT_HINT}
+                  </p>
+                  {loginEmailFormatError && (
+                    <div role="alert" style={{ marginTop: 6, fontSize: 13, fontFamily: 'Work Sans, sans-serif', color: 'var(--bw-error)' }}>
+                      {loginEmailFormatError}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <label className="small-muted login-label" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
+                  <Link
+                    to="/forgot-password"
+                    style={{ fontSize: 12, fontFamily: 'Work Sans, sans-serif', color: 'var(--bw-muted)', textDecoration: 'underline', flexShrink: 0 }}
                   >
-                    Create account
+                    Forgot password?
+                  </Link>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Lock className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .6 }} />
+                  <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
+                  <button type="button" aria-label="Toggle password" className="login-toggle-btn" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: 'var(--bw-muted)', cursor: 'pointer' }}>
+                    {showPassword ? <EyeSlash className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
                   </button>
-                </Link>
-              </div>
-            </form>
+                </div>
+
+                <button
+                  className="bw-btn login-button"
+                  style={{ width: '100%', marginTop: 20, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
+                  disabled={isLoading}
+                >
+                  <span>{isLoading ? 'Signing in...' : 'Sign in'}</span>
+                  {!isLoading && <ArrowRight size={16} aria-hidden />}
+                </button>
+
+                <div style={{ marginTop: 28, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, gap: 12 }}>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }} />
+                    <span className="small-muted login-divider-text" style={{ fontSize: '12px', fontFamily: 'Work Sans, sans-serif' }}>or</span>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--bw-border)' }} />
+                  </div>
+                  <p className="small-muted login-link-text" style={{ textAlign: 'center', marginBottom: 12, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
+                    Don't have an account?
+                  </p>
+                  <Link to="/signup" style={{ textDecoration: 'none', display: 'block' }}>
+                    <button
+                      className="bw-btn-outline login-button"
+                      style={{ width: '100%', borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
+                    >
+                      Create account
+                    </button>
+                  </Link>
+                </div>
+              </form>
+            </div>
+
+            {/* Legal footer — always at the bottom of the panel */}
+            <p style={{ fontSize: 11, fontFamily: 'Work Sans, sans-serif', color: 'var(--bw-muted)', textAlign: 'center', margin: '16px 0 8px 0', lineHeight: 1.6, opacity: 0.75, flexShrink: 0 }}>
+              By signing in, you agree to Maison's{' '}
+              <Link to="/terms" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Terms of Service</Link>
+              {' '}and{' '}
+              <Link to="/privacy" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Privacy Policy</Link>.
+            </p>
           </div>
         </div>
       </main>

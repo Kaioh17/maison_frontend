@@ -203,7 +203,10 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
         {/* Header */}
         {isOpen && (
           <div style={{
-            padding: 'clamp(16px, 2vw, 24px)',
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + clamp(16px, 2vw, 24px))',
+            paddingRight: 'clamp(16px, 2vw, 24px)',
+            paddingBottom: 'clamp(16px, 2vw, 24px)',
+            paddingLeft: 'clamp(16px, 2vw, 24px)',
             borderBottom: '1px solid var(--bw-border)',
             display: 'flex',
             alignItems: 'center',
@@ -570,7 +573,10 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
               display: 'flex',
               alignItems: 'center',
               gap: 12,
-              padding: '12px 16px',
+              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+              paddingRight: '16px',
+              paddingBottom: '12px',
+              paddingLeft: '16px',
               backgroundColor: 'var(--bw-bg)',
               borderBottom: '0.5px solid var(--bw-border)',
               flexShrink: 0
