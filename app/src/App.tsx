@@ -64,6 +64,7 @@ const OverviewTab = lazy(() => import('@pages/tenant/OverviewTab'))
 const DriversTab = lazy(() => import('@pages/tenant/DriversTab'))
 const BookingsTab = lazy(() => import('@pages/tenant/BookingsTab'))
 const VehiclesTab = lazy(() => import('@pages/tenant/VehiclesTab'))
+const FeedbackTab = lazy(() => import('@pages/tenant/FeedbackTab'))
 const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
 const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
@@ -107,6 +108,7 @@ const TempQrEditor = lazy(() => import('@pages/TempQrEditor'))
 const ForgotPassword = lazy(() => import('@pages/ForgotPassword'))
 const Terms = lazy(() => import('@pages/Terms'))
 const Privacy = lazy(() => import('@pages/Privacy'))
+const Subprocessors = lazy(() => import('@pages/Subprocessors'))
 
 function PageFallback() {
   const location = useLocation()
@@ -168,6 +170,9 @@ export default function App() {
       <Route path="/forgot-password" element={<SubdomainBlock><ForgotPassword /></SubdomainBlock>} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      {/* Not wrapped in SubdomainBlock, matching /terms and /privacy: the legal
+          pages must stay reachable from an Operator's branded subdomain too. */}
+      <Route path="/subprocessors" element={<Subprocessors />} />
       <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />
       <Route path="/demo/stripe-redirect" element={<SubdomainBlock><DemoStripeRedirect /></SubdomainBlock>} />
       <Route path="/tools/qr-studio" element={<TempQrEditor />} />
@@ -210,6 +215,7 @@ export default function App() {
         <Route path="/tenant/drivers" element={<DriversTab />} />
         <Route path="/tenant/bookings" element={<BookingsTab />} />
         <Route path="/tenant/vehicles" element={<VehiclesTab />} />
+        <Route path="/tenant/feedback" element={<FeedbackTab />} />
       </Route>
       <Route
         path="/tenant/rates"

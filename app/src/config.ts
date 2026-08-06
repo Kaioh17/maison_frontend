@@ -26,15 +26,20 @@ export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 
-export type SubscriptionPlanKey = 'starter' | 'growth' | 'fleet'
+export type SubscriptionPlanKey = 'free' | 'growth' | 'fleet'
 
 /**
  * Stripe subscription Price IDs from `.env`:
- * `VITE_STRIPE_PRICE_STARTER`, `VITE_STRIPE_PRICE_GROWTH`, `VITE_STRIPE_PRICE_FLEET`.
+ * `VITE_STRIPE_PRICE_GROWTH`, `VITE_STRIPE_PRICE_FLEET`.
+ *
+ * `free` maps to `''` on purpose -- it is the tier a tenant holds by *not*
+ * subscribing, so there is nothing to check out. Callers must treat an empty
+ * price id as "not purchasable" rather than sending it to Stripe; the backend
+ * rejects an unknown price id anyway (`app/domain/billing.py`).
  */
 export function getStripeSubscriptionPriceId(plan: SubscriptionPlanKey): string {
   const ids: Record<SubscriptionPlanKey, string> = {
-    starter: import.meta.env.VITE_STRIPE_PRICE_STARTER ?? '',
+    free: '',
     growth: import.meta.env.VITE_STRIPE_PRICE_GROWTH ?? '',
     fleet: import.meta.env.VITE_STRIPE_PRICE_FLEET ?? '',
   }

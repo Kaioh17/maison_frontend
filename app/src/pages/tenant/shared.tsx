@@ -1,6 +1,6 @@
 /**
  * Shared module-scope pieces of the tenant dashboard, extracted from the old
- * TenantDashboard.tsx monolith (Phase B split — see DASHBOARD_MODERNIZATION.md).
+ * TenantDashboard.tsx monolith (Phase B split — see the maison-ui skill §4).
  * Used by TenantShell and the per-tab route components.
  */
 import { useState } from 'react'
@@ -347,7 +347,7 @@ export function RatingStar({
   )
 }
 
-export type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings'
+export type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings' | 'feedback'
 export type OverviewLinkKey = 'rider' | 'driver' | 'landing'
 export type TenantPageThemeMode = 'dark' | 'light'
 export type OverviewLinkQrState = {

@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
-import { getVehicleCategoriesByTenant, createVehicleCategory, type VehicleCategoryResponse } from '@api/vehicles'
+import { getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, type VehicleCategoryResponse } from '@api/vehicles'
 import { Car, Plus, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
-import { http } from '@api/http'
 
 const ACCENT = 'rgba(155, 97, 209, 0.81)'
 
@@ -100,7 +99,7 @@ export default function VehicleConfiguration() {
     try {
       setSaving(true)
       if (editingId) {
-        await http.patch(`/v1/vehicles/category/${editingId}`, {
+        await setVehicleRates({
           vehicle_category: formData.vehicle_category,
           vehicle_flat_rate: formData.vehicle_flat_rate
         })

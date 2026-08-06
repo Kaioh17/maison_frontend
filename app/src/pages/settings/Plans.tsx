@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { getTenantInfo } from '@api/tenant'
-import { upgradeSubscription } from '@api/subscription'
+import { getPlanLimits, upgradeSubscription, type PlanLimitsResponse } from '@api/subscription'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
-import { getStripeSubscriptionPriceId } from '@config'
+import { getStripeSubscriptionPriceId, type SubscriptionPlanKey } from '@config'
+import { buildPlanDisplays } from '@data/landingPricingPlans'
 
 export default function Plans() {
-  const [info, setInfo] = useState<any>(null)
+  const [limits, setLimits] = useState<PlanLimitsResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const { isOpen: menuIsOpen } = useSettingsMenu()
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
@@ -19,18 +20,24 @@ export default function Plans() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const tenantInfo = await getTenantInfo()
-        setInfo(tenantInfo.data)
-      } catch (error) {
-        console.error('Failed to load data:', error)
-      } finally {
-        setLoading(false)
+  const loadLimits = async () => {
+    try {
+      const res = await getPlanLimits()
+      if (res.success && res.data) {
+        setLimits(res.data)
+        setLoadError(null)
+      } else {
+        setLoadError(res.error || 'Failed to load plans')
       }
+    } catch {
+      setLoadError('Failed to load plans')
+    } finally {
+      setLoading(false)
     }
-    loadData()
+  }
+
+  useEffect(() => {
+    loadLimits()
   }, [])
 
   const handleUpgradePlan = async (plan: { product_type: string; price_id: string }) => {
@@ -45,8 +52,7 @@ export default function Plans() {
 
       if (response.success) {
         alert('Subscription upgrade initiated successfully!')
-        const tenantInfo = await getTenantInfo()
-        setInfo(tenantInfo.data)
+        await loadLimits()
         setUpgradingPlan(null)
       } else {
         setUpgradeError(response.error || 'Failed to upgrade subscription')
@@ -78,76 +84,18 @@ export default function Plans() {
     )
   }
 
-  const pricingPlans = [
-    {
-      name: 'Starter',
-      product_type: 'starter',
-      price: '$0.00',
-      period: '/month',
-      description: 'Perfect for solo drivers and small fleets. We charge a percentage on payments made on app higher than $50.',
-      price_id: getStripeSubscriptionPriceId('starter'),
-      features: [
-        { text: 'Up to 1 vehicle', included: true },
-        { text: 'Up to 1 driver', included: true },
-        { text: 'Basic booking system', included: true },
-        { text: 'Email support', included: true }
-      ]
-    },
-    {
-      name: 'Growth',
-      product_type: 'growth',
-      price: (
-        <>
-          <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: '0.35em' }}>
-            $299.<span style={{ fontSize: '0.58em' }}>99</span>
-          </span>
-          <span style={{ color: 'var(--bw-accent)' }}>
-            $99.<span style={{ fontSize: '0.58em' }}>99</span>
-          </span>
-        </>
-      ),
-      period: '/month',
-      description: 'Ideal for growing businesses',
-      popular: true,
-      price_id: getStripeSubscriptionPriceId('growth'),
-      features: [
-        { text: 'Up to 5 vehicles', included: true },
-        { text: 'Up to 7 drivers', included: true },
-        { text: 'Advanced booking system', included: true },
-        { text: 'Email & phone support', included: true },
-        { text: 'Custom branding', included: true },
-        { text: 'Advanced analytics', included: true }
-      ]
-    },
-    {
-      name: 'Fleet',
-      product_type: 'fleet',
-      price: (
-        <>
-          <span style={{ textDecoration: 'line-through', opacity: 0.55, marginRight: '0.35em' }}>
-            $399.<span style={{ fontSize: '0.58em' }}>99</span>
-          </span>
-          <span style={{ color: 'var(--bw-accent)' }}>
-            $299.<span style={{ fontSize: '0.58em' }}>99</span>
-          </span>
-        </>
-      ),
-      period: '/month',
-      description: 'For large fleets and enterprises',
-      price_id: getStripeSubscriptionPriceId('fleet'),
-      features: [
-        { text: 'Unlimited vehicles', included: true },
-        { text: 'Unlimited drivers', included: true },
-        { text: 'Enterprise booking system', included: true },
-        { text: '24/7 dedicated support', included: true },
-        { text: 'Custom branding', included: true },
-        { text: 'Advanced analytics', included: true }
-      ]
-    }
-  ]
+  // The ladder comes from the server: names, order, limits and take rate are
+  // whatever `/subscription/limits` reports, so this page can never advertise a
+  // quota the backend won't honour. Only price and marketing copy are local,
+  // because the dollar amount lives in Stripe rather than in PLAN_REGISTRY.
+  const catalog = limits?.catalog ?? []
+  const pricingPlans = buildPlanDisplays(catalog).map((plan) => ({
+    ...plan,
+    price_id: getStripeSubscriptionPriceId(plan.product_type),
+  }))
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-  const planOrder = ['starter', 'growth', 'fleet']
+  const currentPlan = limits?.plan?.toLowerCase() || 'free'
+  const planOrder = catalog.map((c) => c.name.toLowerCase())
 
   const CheckIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--bw-success)' }}>
@@ -183,6 +131,42 @@ export default function Plans() {
         overflowX: 'hidden',
         boxSizing: 'border-box'
       }}>
+        {loadError && (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 'clamp(16px, 3vw, 24px)',
+              padding: 'clamp(12px, 2vw, 16px)',
+              border: '1px solid var(--bw-border)',
+              borderRadius: 'clamp(4px, 0.8vw, 8px)',
+              fontSize: 'clamp(12px, 1.5vw, 14px)',
+              fontFamily: '"Work Sans", sans-serif',
+              color: 'var(--bw-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap'
+            }}
+          >
+            <span>{loadError}. Plan details are unavailable right now.</span>
+            <button
+              className="bw-btn-outline"
+              onClick={() => { setLoading(true); loadLimits() }}
+              style={{
+                fontSize: 'clamp(12px, 1.5vw, 14px)',
+                padding: '8px 16px',
+                fontFamily: '"Work Sans", sans-serif',
+                fontWeight: 600,
+                borderRadius: 7,
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {upgradeError && (
           <div style={{
             marginBottom: 'clamp(16px, 3vw, 24px)',

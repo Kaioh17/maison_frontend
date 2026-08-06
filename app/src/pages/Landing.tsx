@@ -1,10 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import MaisonWordmark from '@components/MaisonWordmark'
 import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
-import { LANDING_PRICING_PLANS, isPopularPlan } from '@data/landingPricingPlans'
+import { LANDING_PRICING_PLANS, isPopularPlan, buildPlanDisplays } from '@data/landingPricingPlans'
+import { getPublicPlans, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
 import {
@@ -1033,6 +1034,33 @@ function PricingSlide() {
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredIndex = LANDING_PRICING_PLANS.findIndex(isPopularPlan)
   const [activeIndex, setActiveIndex] = useState(featuredIndex >= 0 ? featuredIndex : 0)
+  const [catalog, setCatalog] = useState<PlanCatalogEntry[] | null>(null)
+  const [foundingSlotsLeft, setFoundingSlotsLeft] = useState<number | null>(null)
+
+  // The public catalogue endpoint needs no auth, which is the whole point: this
+  // marketing page renders the same prices, limits and take rate that the
+  // signed-in app does. On failure the static fallback stands in rather than
+  // leaving the pricing section blank.
+  useEffect(() => {
+    let cancelled = false
+    getPublicPlans()
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data?.length) setCatalog(res.data)
+        setFoundingSlotsLeft(foundingOperatorSlotsRemaining(res))
+      })
+      .catch(() => {
+        /* keep the static fallback */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const plans = useMemo(
+    () => (catalog ? buildPlanDisplays(catalog) : LANDING_PRICING_PLANS),
+    [catalog]
+  )
 
   useEffect(() => {
     const root = carouselRef.current
@@ -1130,6 +1158,25 @@ function PricingSlide() {
           >
             Priced for operators at every stage. Start free, upgrade when your bookings need the headroom. No long-term contracts.
           </motion.p>
+          {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
+            <motion.p
+              variants={fadeInUp}
+              className="text-sm font-medium mb-2"
+              style={{ color: '#7c5cfc', fontFamily: "'Work Sans', sans-serif" }}
+            >
+              🎉 Only a few founding operator spots left — sign up
+              now and your subscription is free.
+            </motion.p>
+          ) : null}
+          {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
+            <motion.p
+              variants={fadeInUp}
+              className="text-xs text-slate-400 mb-2"
+              style={{ fontFamily: "'Work Sans', sans-serif" }}
+            >
+              Applies to the plan you choose today — upgrading later bills full price for the new plan.
+            </motion.p>
+          ) : null}
         </motion.div>
 
         <motion.div
@@ -1139,7 +1186,7 @@ function PricingSlide() {
           transition={{ duration: 0.45 }}
         >
           <div ref={carouselRef} className="pricing-carousel -mx-5 md:mx-0">
-            {LANDING_PRICING_PLANS.map((plan, index) => (
+            {plans.map((plan, index) => (
               <div
                 key={plan.name}
                 data-index={index}
@@ -1203,13 +1250,13 @@ function PricingSlide() {
           </div>
 
           <div className="dots" role="tablist" aria-label="Pricing plans">
-            {LANDING_PRICING_PLANS.map((_, i) => (
+            {plans.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 role="tab"
                 aria-selected={i === activeIndex}
-                aria-label={`${LANDING_PRICING_PLANS[i].name} plan`}
+                aria-label={`${plans[i].name} plan`}
                 className={`dot${i === activeIndex ? ' active' : ''}`}
                 onClick={() => scrollToPlan(i)}
               />

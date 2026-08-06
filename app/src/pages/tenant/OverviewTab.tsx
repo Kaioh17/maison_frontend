@@ -28,6 +28,7 @@ import {
 } from '@utils/zelleContact'
 import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
 import { useOutletContext } from 'react-router-dom'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import type { TenantShellCtx } from './TenantShell'
 import {
   TENANT_DASHBOARD_LAYOUT_CSS,
@@ -63,6 +64,8 @@ export default function OverviewTab() {
     setVehicleCategories,
     analysis,
     setAnalysis,
+    analysisLoading,
+    analysisError,
     loading,
     setLoading,
     bookingStatusFilter,
@@ -359,7 +362,7 @@ export default function OverviewTab() {
               const overviewAvatarBg = isCustomThemeActive ? 'var(--bw-bg-hover)' : (lightMode ? 'rgba(108, 99, 232, 0.12)' : '#261e3a')
               const overviewAvatarText = isCustomThemeActive ? 'var(--bw-accent)' : (lightMode ? 'var(--bw-accent)' : '#9b8fb8')
               const overviewChartInsetBg = isCustomThemeActive ? 'var(--bw-bg)' : (lightMode ? 'rgba(241, 245, 249, 0.45)' : 'rgba(15, 13, 26, 0.4)')
-              const overviewChartInsetBorder = isCustomThemeActive ? '1px dashed var(--bw-border-strong)' : (lightMode ? '1px dashed #cbd5e1' : '1px dashed #3d3858')
+              const overviewChartInsetBorder = isCustomThemeActive ? '1px solid var(--bw-border-strong)' : (lightMode ? '1px solid #cbd5e1' : '1px solid #3d3858')
               const overviewChartBar = isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? 'rgba(15, 13, 26, 0.16)' : 'rgba(255, 255, 255, 0.16)')
               const overviewChartStroke = isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#0f0d1a' : '#ffffff')
 
@@ -400,16 +403,17 @@ export default function OverviewTab() {
               const deltaPositive = delta >= 0
               const deltaAmt = '$' + Math.abs(Math.round(delta)).toLocaleString('en-US')
 
-              // 7-day sparkline — revenue per day from bookings data
-              const sparkData: number[] = []
-              for (let i = 6; i >= 0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0)
-                const dEnd = new Date(d); dEnd.setHours(23, 59, 59, 999)
-                sparkData.push(bookings.filter(b => { const t = new Date(b.pickup_time); return t >= d && t <= dEnd }).reduce((s, b) => s + Number(b.estimated_price ?? 0), 0))
-              }
+              // 7-day sparkline — same API series the revenue bar chart below uses,
+              // so the two revenue visuals on this screen can never disagree.
+              const sparkData: number[] = (analysis?.revenue_last_7_days ?? []).map(d => Number(d.revenue ?? 0))
+              const hasSpark = sparkData.length > 1
               const sparkMax = Math.max(...sparkData, 1)
-              const sparkPts = sparkData.map((v, i) => `${((i / 6) * 96).toFixed(1)},${(28 - (v / sparkMax) * 24).toFixed(1)}`).join(' ')
-              const areaD = 'M' + sparkData.map((v, i) => `${((i / 6) * 96).toFixed(1)},${(28 - (v / sparkMax) * 24).toFixed(1)}`).join(' L') + ' L96,28 L0,28 Z'
+              const sparkX = (i: number) => ((i / (sparkData.length - 1)) * 96).toFixed(1)
+              const sparkY = (v: number) => (28 - (v / sparkMax) * 24).toFixed(1)
+              const sparkPts = hasSpark ? sparkData.map((v, i) => `${sparkX(i)},${sparkY(v)}`).join(' ') : ''
+              const areaD = hasSpark
+                ? 'M' + sparkData.map((v, i) => `${sparkX(i)},${sparkY(v)}`).join(' L') + ' L96,28 L0,28 Z'
+                : ''
 
               const sparkColor = isCustomThemeActive ? 'var(--bw-accent)' : (lightMode ? '#6c63e8' : '#a78bfa')
               const positiveColor = isCustomThemeActive ? 'var(--bw-accent)' : (lightMode ? '#16a34a' : '#4ade80')
@@ -482,6 +486,7 @@ export default function OverviewTab() {
                       )}
                     </div>
                     <div style={{ flexShrink: 0, width: isMobile ? 80 : 120, height: isMobile ? 36 : 44 }}>
+                      {hasSpark && (
                       <svg viewBox="0 0 96 28" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }} aria-hidden>
                         <defs>
                           <linearGradient id="bw-spark-fill" x1="0" y1="0" x2="0" y2="1">
@@ -492,6 +497,7 @@ export default function OverviewTab() {
                         <path d={areaD} fill="url(#bw-spark-fill)" />
                         <polyline fill="none" stroke={sparkColor} strokeWidth="2" points={sparkPts} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                       </svg>
+                      )}
                     </div>
                   </div>
 
@@ -1285,19 +1291,9 @@ export default function OverviewTab() {
               )
             })()}
 
-            {/* Charts row — placeholders (coming soon) */}
-            <div
-              className="tenant-dashboard-charts-row"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 13fr) minmax(0, 7fr)',
-                gap: 'clamp(12px, 2vw, 20px)',
-                marginBottom: 'clamp(16px, 3vw, 24px)',
-                opacity: 0.56
-              }}
-            >
-              {/* Revenue — last 7 days */}
-              <div className="bw-card" style={{
+            {/* Charts row — revenue + ride volume, last 7 days */}
+            {(() => {
+              const chartCardStyle: React.CSSProperties = {
                 padding: 'clamp(16px, 2.5vw, 24px)',
                 border: overviewCardBorder,
                 backgroundColor: overviewCardBg,
@@ -1306,201 +1302,134 @@ export default function OverviewTab() {
                 display: 'flex',
                 flexDirection: 'column',
                 minHeight: 'clamp(220px, 28vw, 300px)'
-              } as React.CSSProperties}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  marginBottom: 'clamp(12px, 2vw, 16px)',
-                  flexWrap: 'wrap'
-                }}>
-                  <h3 style={{
-                    margin: 0,
-                    fontSize: 'clamp(15px, 2vw, 18px)',
-                    fontWeight: 500,
-                    fontFamily: '"Work Sans", sans-serif',
-                    color: overviewPrimaryText
-                  }}>
-                    Revenue — last 7 days
-                  </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <Lock size={18} weight="duotone" style={{ color: overviewMutedAltText }} aria-hidden />
-                    <span style={{
-                      fontSize: 'clamp(10px, 1.2vw, 11px)',
-                      fontWeight: 500,
-                      letterSpacing: '0.04em',
-                      textTransform: 'uppercase' as const,
-                      color: overviewMutedAltText,
-                      border: overviewChartInsetBorder,
-                      borderRadius: 6,
-                      padding: '4px 8px',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>
-                      Coming soon
-                    </span>
-                  </div>
-                </div>
-                <div style={{
-                  position: 'relative',
-                  flex: 1,
-                  minHeight: 'clamp(160px, 20vw, 220px)',
-                  borderRadius: 8,
-                  border: overviewChartInsetBorder,
-                  backgroundColor: overviewChartInsetBg,
-                  padding: 'clamp(16px, 3vw, 24px)'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    justifyContent: 'center',
-                    gap: 'clamp(6px, 1.5vw, 10px)',
-                    height: '100%',
-                    minHeight: 120,
-                    paddingBottom: 4
-                  }}>
-                    {[0.45, 0.72, 0.55, 0.88, 0.62, 0.95, 0.5].map((h, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          flex: 1,
-                          maxWidth: 44,
-                          height: `${Math.round(h * 100)}%`,
-                          borderRadius: 4,
-                          backgroundColor: overviewChartBar
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none'
-                  }}>
-                    <span style={{
-                      fontSize: 'clamp(13px, 2vw, 15px)',
-                      fontWeight: 400,
-                      color: overviewMutedAltText,
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>
-                      Coming soon
-                    </span>
-                  </div>
-                </div>
-              </div>
+              }
+              const chartHeadingStyle: React.CSSProperties = {
+                margin: 0,
+                fontSize: 'clamp(15px, 2vw, 18px)',
+                fontWeight: 500,
+                fontFamily: '"Work Sans", sans-serif',
+                color: overviewPrimaryText
+              }
+              const chartInsetStyle: React.CSSProperties = {
+                flex: 1,
+                minHeight: 'clamp(160px, 20vw, 220px)',
+                borderRadius: 8,
+                border: overviewChartInsetBorder,
+                backgroundColor: overviewChartInsetBg,
+                overflow: 'hidden'
+              }
+              const chartCenter: React.CSSProperties = {
+                height: '100%',
+                minHeight: 160,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }
+              const chartMessageStyle: React.CSSProperties = {
+                fontSize: 'clamp(13px, 2vw, 15px)',
+                fontWeight: 400,
+                color: overviewMutedAltText,
+                fontFamily: '"Work Sans", sans-serif'
+              }
+              const axisTick = { fontSize: 11, fill: overviewMutedText, fontFamily: '"Work Sans", sans-serif' }
+              const tooltipStyle: React.CSSProperties = {
+                fontSize: 12,
+                fontFamily: '"Work Sans", sans-serif',
+                borderRadius: 6,
+                border: overviewChartInsetBorder,
+                backgroundColor: overviewCardBg,
+                color: overviewPrimaryText
+              }
 
-              {/* Ride volume */}
-              <div className="bw-card" style={{
-                padding: 'clamp(16px, 2.5vw, 24px)',
-                border: overviewCardBorder,
-                backgroundColor: overviewCardBg,
-                borderRadius: '12px',
-                boxShadow: overviewCardShadow,
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: 'clamp(220px, 28vw, 300px)'
-              } as React.CSSProperties}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  marginBottom: 'clamp(12px, 2vw, 16px)',
-                  flexWrap: 'wrap'
-                }}>
-                  <h3 style={{
-                    margin: 0,
-                    fontSize: 'clamp(15px, 2vw, 18px)',
-                    fontWeight: 500,
-                    fontFamily: '"Work Sans", sans-serif',
-                    color: overviewPrimaryText
-                  }}>
-                    Ride volume
-                  </h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <Lock size={18} weight="duotone" style={{ color: overviewMutedAltText }} aria-hidden />
-                    <span style={{
-                      fontSize: 'clamp(10px, 1.2vw, 11px)',
-                      fontWeight: 500,
-                      letterSpacing: '0.04em',
-                      textTransform: 'uppercase' as const,
-                      color: overviewMutedAltText,
-                      border: overviewChartInsetBorder,
-                      borderRadius: 6,
-                      padding: '4px 8px',
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>
-                      Coming soon
-                    </span>
+              // Loading, error, locked and no-data all render inside the inset so
+              // the card never changes height as the 30s refetch cycles.
+              const renderChart = (series: unknown[] | null | undefined, chart: React.ReactNode) => {
+                if (analysisLoading) {
+                  return (
+                    <div style={chartCenter}>
+                      <div style={{ width: '80%', height: 8, borderRadius: 4, backgroundColor: overviewChartBar }} />
+                    </div>
+                  )
+                }
+                if (analysisError) {
+                  return <div style={chartCenter}><span style={chartMessageStyle}>Couldn't load analytics</span></div>
+                }
+                if (analysis?.analytics_locked) {
+                  return (
+                    <div style={chartCenter}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: 16, textAlign: 'center' }}>
+                        <Lock size={22} weight="duotone" style={{ color: overviewMutedAltText }} aria-hidden />
+                        <span style={chartMessageStyle}>Advanced analytics is available on Growth and Fleet</span>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => navigate('/tenant/settings/plans')}
+                          style={{ padding: '8px 16px', minHeight: 36, borderRadius: 10, fontSize: 13 }}
+                        >
+                          Upgrade plan
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+                if (!series || series.length === 0) {
+                  return <div style={chartCenter}><span style={chartMessageStyle}>No rides yet</span></div>
+                }
+                return <ResponsiveContainer width="100%" height="100%" minHeight={160}>{chart as any}</ResponsiveContainer>
+              }
+
+              return (
+                <div
+                  className="tenant-dashboard-charts-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 13fr) minmax(0, 7fr)',
+                    gap: 'clamp(12px, 2vw, 20px)',
+                    marginBottom: 'clamp(16px, 3vw, 24px)'
+                  }}
+                >
+                  {/* Revenue — last 7 days */}
+                  <div className="bw-card" style={chartCardStyle}>
+                    <div style={{ marginBottom: 'clamp(12px, 2vw, 16px)' }}>
+                      <h3 style={chartHeadingStyle}>Revenue — last 7 days</h3>
+                    </div>
+                    <div style={chartInsetStyle}>
+                      {renderChart(
+                        analysis?.revenue_last_7_days,
+                        <BarChart data={analysis?.revenue_last_7_days ?? undefined} margin={{ top: 16, right: 16, left: 0, bottom: 4 }}>
+                          <XAxis dataKey="date" tick={axisTick} axisLine={false} tickLine={false} />
+                          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${v}`} width={48} />
+                          <Tooltip
+                            cursor={{ fill: overviewChartBar, fillOpacity: 0.3 }}
+                            contentStyle={tooltipStyle}
+                            formatter={(v) => [`$${Math.round(Number(v)).toLocaleString('en-US')}`, 'Revenue']}
+                          />
+                          <Bar dataKey="revenue" fill="var(--bw-accent)" radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ride volume */}
+                  <div className="bw-card" style={chartCardStyle}>
+                    <div style={{ marginBottom: 'clamp(12px, 2vw, 16px)' }}>
+                      <h3 style={chartHeadingStyle}>Ride volume</h3>
+                    </div>
+                    <div style={chartInsetStyle}>
+                      {renderChart(
+                        analysis?.ride_volume_last_7_days,
+                        <LineChart data={analysis?.ride_volume_last_7_days ?? undefined} margin={{ top: 16, right: 16, left: 0, bottom: 4 }}>
+                          <XAxis dataKey="date" tick={axisTick} axisLine={false} tickLine={false} />
+                          <YAxis tick={axisTick} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={(v) => [Number(v), 'Rides']} />
+                          <Line type="monotone" dataKey="count" stroke="var(--bw-accent)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                        </LineChart>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div style={{
-                  position: 'relative',
-                  flex: 1,
-                  minHeight: 'clamp(160px, 20vw, 220px)',
-                  borderRadius: 8,
-                  border: overviewChartInsetBorder,
-                  backgroundColor: overviewChartInsetBg,
-                  padding: 'clamp(16px, 3vw, 24px)',
-                  overflow: 'hidden'
-                }}>
-                  <svg
-                    viewBox="0 0 120 48"
-                    preserveAspectRatio="none"
-                    style={{
-                      position: 'absolute',
-                      left: 'clamp(16px, 3vw, 24px)',
-                      right: 'clamp(16px, 3vw, 24px)',
-                      bottom: 'clamp(16px, 3vw, 24px)',
-                      height: 'clamp(72px, 12vw, 100px)',
-                      width: 'calc(100% - 2 * clamp(16px, 3vw, 24px))'
-                    }}
-                    aria-hidden
-                  >
-                    <polyline
-                      fill="none"
-                      stroke={overviewChartStroke}
-                      strokeWidth="2"
-                      strokeOpacity={0.17}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      vectorEffect="non-scaling-stroke"
-                      points="0,38 18,32 34,36 48,24 60,28 74,18 88,22 102,12 120,16"
-                    />
-                    <line
-                      x1="0"
-                      y1="44"
-                      x2="120"
-                      y2="44"
-                      stroke={overviewChartStroke}
-                      strokeWidth="1.5"
-                      strokeOpacity={0.12}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none'
-                  }}>
-                    <span style={{
-                      fontSize: 'clamp(13px, 2vw, 15px)',
-                      fontWeight: 400,
-                      color: overviewMutedAltText,
-                      fontFamily: '"Work Sans", sans-serif'
-                    }}>
-                      Coming soon
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+              )
+            })()}
                 </>
               )
             })()}

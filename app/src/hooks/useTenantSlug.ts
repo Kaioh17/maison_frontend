@@ -7,6 +7,10 @@ import { extractSubdomain, getMainDomain } from '@utils/subdomain'
  * Fallback: Reads from path params for backward compatibility
  */
 export function useTenantSlug(): string | null {
+  // Called unconditionally: hooks must run in the same order every render, and the
+  // subdomain check below returns early. Only read after the subdomain path misses.
+  const params = useParams<{ slug?: string }>()
+
   // Try to get slug from subdomain first
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
@@ -16,8 +20,7 @@ export function useTenantSlug(): string | null {
       return subdomain
     }
   }
-  
+
   // Fallback to path parameters for backward compatibility (during migration)
-  const params = useParams<{ slug?: string }>()
   return params.slug || null
 }

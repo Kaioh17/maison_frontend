@@ -1,6 +1,12 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { CheckCircle, XCircle } from '@phosphor-icons/react'
-import { LANDING_PRICING_PLANS, isPopularPlan, type LandingPricingPlanDisplay } from '@data/landingPricingPlans'
+import { getPlanLimits, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
+import {
+  LANDING_PRICING_PLANS,
+  isPopularPlan,
+  buildPlanDisplays,
+  type LandingPricingPlanDisplay,
+} from '@data/landingPricingPlans'
 import '../pages/landing-pricing.css'
 
 type Props = {
@@ -13,6 +19,37 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredIndex = LANDING_PRICING_PLANS.findIndex(isPopularPlan)
   const [activeIndex, setActiveIndex] = useState(featuredIndex >= 0 ? featuredIndex : 0)
+  const [catalog, setCatalog] = useState<PlanCatalogEntry[] | null>(null)
+  const [foundingSlotsLeft, setFoundingSlotsLeft] = useState<number | null>(null)
+
+  // Both mount points for this component (Signup's plan step, and
+  // SubscriptionSelection) render only after the tenant is logged in, so the
+  // tenant-JWT limits call is available here. A failure is non-fatal: the
+  // static copy in LANDING_PRICING_PLANS stands in, because blocking plan
+  // selection on a limits fetch would strand a tenant mid-signup.
+  useEffect(() => {
+    let cancelled = false
+    getPlanLimits()
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data?.catalog?.length) setCatalog(res.data.catalog)
+        setFoundingSlotsLeft(foundingOperatorSlotsRemaining(res))
+      })
+      .catch(() => {
+        /* keep the static fallback */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Limits, take rate and price all come from the server when we have it, so
+  // these cards cannot disagree with the marketing page or with what is
+  // enforced at charge time. Only marketing copy is local.
+  const plans = useMemo(
+    () => (catalog ? buildPlanDisplays(catalog) : LANDING_PRICING_PLANS),
+    [catalog]
+  )
 
   useEffect(() => {
     const root = carouselRef.current
@@ -87,12 +124,26 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
 
   return (
     <div className="landing-pricing w-full box-border">
+      {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
+        <p
+          className="text-center text-sm mb-6"
+          style={{ color: '#7c5cfc', fontFamily: "'Work Sans', sans-serif" }}
+        >
+          🎉 Only a few founding operator spots left — free
+          subscription, card required. We'll email your code after signup.
+        </p>
+      ) : null}
+      {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
+        <p className="text-center text-xs text-gray-500 mb-6 -mt-4">
+          Applies to the plan you choose today — upgrading later bills full price for the new plan.
+        </p>
+      ) : null}
       <div
         ref={carouselRef}
         className="pricing-carousel -mx-1 md:mx-0 max-w-full"
         style={{ marginLeft: 0, marginRight: 0 }}
       >
-        {LANDING_PRICING_PLANS.map((plan, index) => (
+        {plans.map((plan, index) => (
           <div
             key={plan.name}
             data-index={index}
@@ -134,7 +185,11 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
                 }`}
                 style={{ fontFamily: "'Work Sans', sans-serif" }}
               >
-                {loadingProductType === plan.product_type ? 'Processing…' : 'Select plan'}
+                {loadingProductType === plan.product_type
+                  ? 'Processing…'
+                  : plan.product_type === 'free'
+                    ? 'Start free'
+                    : 'Select plan'}
               </button>
             </div>
             <div className="border-t border-gray-800 pt-6">
@@ -161,13 +216,13 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
       </div>
 
       <div className="dots" role="tablist" aria-label="Pricing plans">
-        {LANDING_PRICING_PLANS.map((_, i) => (
+        {plans.map((_, i) => (
           <button
             key={i}
             type="button"
             role="tab"
             aria-selected={i === activeIndex}
-            aria-label={`${LANDING_PRICING_PLANS[i].name} plan`}
+            aria-label={`${plans[i].name} plan`}
             className={`dot${i === activeIndex ? ' active' : ''}`}
             onClick={() => scrollToPlan(i)}
           />

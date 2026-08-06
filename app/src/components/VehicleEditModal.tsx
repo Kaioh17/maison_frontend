@@ -246,7 +246,7 @@ export default function VehicleEditModal({
                 fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 200,
                 lineHeight: 1.2
-              }}>PencilSimple Vehicle</h3>
+              }}>Vehicle</h3>
               <p className="small-muted" style={{ 
                 margin: 'clamp(4px, 1vw, 8px) 0 0 0',
                 fontFamily: 'Work Sans, sans-serif',

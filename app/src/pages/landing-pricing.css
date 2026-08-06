@@ -115,36 +115,9 @@
   }
 }
 
-.landing-pricing .old{
-  position: relative;
-  display: inline-block;
-}
+/* `.old` / `.new` (struck-through promo pricing) were removed along with the
+   promo itself -- list prices are now quoted directly. */
 
-.landing-pricing .old::after{
-  content: "";
-  position: absolute;
-  left: -10%;
-  top: 50%;
-  width: 120%;
-  height: 2px;
-  /* background: currentColor;  */
-  transform: rotate(0deg);
-  background: rgba(255, 255, 255, 0.8);
-}
-.landing-pricing .old{
-  color: #7c5cfc;
-  font-weight: 700;
-  font-size: 0.5em; /* because .price-amount is huge */
-  margin-left: 0.25em;
-  opacity: 0.45;
-}
-.landing-pricing .new{
-  color: currentColor;
-  
-  font-weight: 700;
-  /* font-size: 0.5em; because .price-amount is huge */
-  margin-left: 0.05em;
-}
 .landing-pricing .cent{
   color: currentColor;
   font-weight: 700;

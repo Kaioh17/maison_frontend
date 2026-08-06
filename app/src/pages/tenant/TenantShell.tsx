@@ -13,7 +13,7 @@ import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { TenantDashboardSkeleton } from '@components/Skeleton'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -31,7 +31,6 @@ import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
 import { Outlet } from 'react-router-dom'
 import {
   TENANT_DASHBOARD_LAYOUT_CSS,
-  TENANT_FEEDBACK_FORM_URL,
   starFillPercent,
   RatingStar,
   VehicleImageCard,
@@ -1208,6 +1207,7 @@ function useShellState() {
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'vehicles', label: 'Vehicles', icon: Car },
     { id: 'settings', label: 'Settings', icon: Gear },
+    { id: 'feedback', label: 'Feedback', icon: ChatCircleDots },
   ]
 
   // Determine active tab from URL or internal state
@@ -1219,6 +1219,7 @@ function useShellState() {
     if (path === '/tenant/vehicles') return 'vehicles'
     if (path === '/tenant/overview' || path === '/tenant') return 'overview'
     if (path.startsWith('/tenant/settings')) return 'settings'
+    if (path === '/tenant/feedback') return 'feedback'
     // Default to overview if path doesn't match
     return 'overview'
   }
@@ -1374,6 +1375,8 @@ function useShellState() {
   return {
     info,
     setInfo,
+    analysisLoading: analysisQuery.isLoading,
+    analysisError: analysisQuery.isError,
     drivers,
     setDrivers,
     vehicles,
@@ -2309,45 +2312,6 @@ export default function TenantShell() {
               </div>
             )
           })}
-          <a
-            href={TENANT_FEEDBACK_FORM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              if (isMobile) setIsMenuOpen(false)
-            }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: isMenuOpen ? '12px' : '0',
-              padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              borderLeft: isMenuOpen ? '2px solid transparent' : 'none',
-              color: 'var(--bw-text)',
-              cursor: 'pointer',
-              fontSize: 'clamp(13px, 1.5vw, 15px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300,
-              textAlign: isMenuOpen ? 'left' : 'center',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              boxSizing: 'border-box',
-              justifyContent: isMenuOpen ? 'flex-start' : 'center'
-            }}
-            title={!isMenuOpen ? 'Feedback' : undefined}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = lightMode ? 'rgba(0, 0, 0, 0.02)' : 'var(--bw-bg-hover)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }}
-          >
-            <ChatCircleDots size={18} style={{ flexShrink: 0 }} aria-hidden />
-            {isMenuOpen && <span style={{ flex: 1 }}>Feedback</span>}
-            {isMenuOpen && <ArrowSquareOut size={16} style={{ flexShrink: 0, opacity: 0.7 }} aria-hidden />}
-          </a>
         </nav>
 
         {/* Footer Section in Sidebar - Expanded */}

@@ -25,7 +25,7 @@ export function getCachedSlugVerification(slug: string): SlugCacheEntry | null {
 
   try {
     const cacheKey = `${CACHE_PREFIX}${slug}`
-    let cached = sessionStorage.getItem(cacheKey)
+    const cached = sessionStorage.getItem(cacheKey)
     if (!cached) {
       const legacy = sessionStorage.getItem(`${CACHE_PREFIX_LEGACY}${slug}`)
       if (legacy) {

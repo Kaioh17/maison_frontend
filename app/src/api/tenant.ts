@@ -493,6 +493,16 @@ export type OnboardDriverResponse = OnboardDriver & {
 
 export type AssignDriver = { driver_id: number }
 
+export type DailyRevenue = {
+  date: string
+  revenue: number
+}
+
+export type DailyRideCount = {
+  date: string
+  count: number
+}
+
 export type TenantAnalysisData = {
   completed_rides: number
   pending_rides: number
@@ -502,6 +512,9 @@ export type TenantAnalysisData = {
   total_vehicles: number
   total_bookings: number
   todays_revenue: number
+  revenue_last_7_days?: DailyRevenue[] | null
+  ride_volume_last_7_days?: DailyRideCount[] | null
+  analytics_locked?: boolean
 }
 
 export async function getTenantAnalysis() {

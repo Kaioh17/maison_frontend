@@ -11,7 +11,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Shared dashboard button (DASHBOARD_MODERNIZATION.md §3): one look per variant
+ * Shared dashboard button (maison-ui skill §2): one look per variant
  * at every stage. All colors come from `--bw-*` vars so tenant branding flows
  * through; hover/active/focus/disabled are pure CSS (`.btn` in styles.css) —
  * no hover useState flags.
