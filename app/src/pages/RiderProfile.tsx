@@ -1,14 +1,140 @@
 import React, { useState, useEffect } from 'react'
-import { User, Envelope, Phone, MapPin, Calendar, Shield, SignOut, Pencil, FloppyDisk, X } from '@phosphor-icons/react'
+import { ArrowLeft, User, MapPin, Shield, SignOut, Pencil, FloppyDisk, X } from '@phosphor-icons/react'
 import { getUserInfo, type UserResponse } from '@api/user'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
-import { loginRider } from '@api/auth'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 import StateAutocomplete from '@components/StateAutocomplete'
 import CityAutocomplete from '@components/CityAutocomplete'
+
+const FONT_BODY = 'Work Sans, sans-serif'
+const FONT_HEADING = 'DM Sans, sans-serif'
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: 'var(--rider-surface-elevated)',
+  borderRadius: 12,
+  padding: 'clamp(16px, 3vw, 20px)',
+  boxShadow: 'var(--rider-shell-shadow)',
+}
+
+const sectionTitleStyle: React.CSSProperties = {
+  margin: '0 0 4px 0',
+  fontSize: 'clamp(14px, 2.3vw, 16px)',
+  fontWeight: 500,
+  color: 'var(--bw-text)',
+  fontFamily: FONT_BODY,
+  letterSpacing: '-0.01em',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+}
+
+// Reusable field row used in both view and edit modes.
+function FieldRow({
+  label,
+  value,
+  isEditing,
+  editNode,
+  first = false,
+}: {
+  label: string
+  value: string
+  isEditing: boolean
+  editNode?: React.ReactNode
+  first?: boolean
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: isEditing ? 'center' : 'baseline',
+        gap: 12,
+        padding: '13px 0',
+        borderTop: first ? 'none' : '1px solid var(--rider-hairline)',
+        flexWrap: 'wrap',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: 'var(--bw-text)',
+          opacity: 0.55,
+          fontFamily: FONT_BODY,
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      {isEditing && editNode ? (
+        editNode
+      ) : (
+        <span
+          style={{
+            fontSize: 'clamp(13px, 2.2vw, 14px)',
+            color: 'var(--bw-text)',
+            fontFamily: FONT_BODY,
+            fontWeight: 300,
+            textAlign: 'right',
+            wordBreak: 'break-word',
+          }}
+        >
+          {value || '—'}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function InlineInput({
+  name,
+  type = 'text',
+  value,
+  onChange,
+  autoComplete,
+  maxLength,
+}: {
+  name: string
+  type?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  autoComplete?: string
+  maxLength?: number
+}) {
+  return (
+    <input
+      name={name}
+      type={type}
+      value={value}
+      onChange={onChange}
+      autoComplete={autoComplete}
+      maxLength={maxLength}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        maxWidth: 280,
+        background: 'var(--rider-surface-inset)',
+        border: '1px solid var(--bw-border)',
+        borderRadius: 8,
+        padding: '8px 12px',
+        color: 'var(--bw-text)',
+        fontSize: 'clamp(13px, 2vw, 14px)',
+        fontFamily: FONT_BODY,
+        outline: 'none',
+        boxShadow: 'var(--rider-field-inset-glow)',
+        transition: 'border-color 0.15s ease',
+      }}
+      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--bw-focus)' }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--bw-border)' }}
+    />
+  )
+}
+
 export default function RiderProfile() {
   useFavicon()
   const [userInfo, setUserInfo] = useState<UserResponse | null>(null)
@@ -19,11 +145,10 @@ export default function RiderProfile() {
   const [editedData, setEditedData] = useState<Partial<UserResponse>>({})
   const navigate = useNavigate()
   const { isAuthenticated, role, logout } = useAuthStore()
-  const { tenantInfo, slug } = useTenantInfo()
+  const { tenantInfo } = useTenantInfo()
 
   useEffect(() => {
     if (!isAuthenticated || role !== 'rider') {
-      // Riders must use subdomain-based login
       navigate('/riders/login', { replace: true })
       return
     }
@@ -41,8 +166,9 @@ export default function RiderProfile() {
       } else {
         setError('Failed to load user information')
       }
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to load user information')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string }
+      setError(e.response?.data?.detail || e.message || 'Failed to load user information')
     } finally {
       setIsLoading(false)
     }
@@ -54,17 +180,15 @@ export default function RiderProfile() {
   }
 
   const handleSave = async () => {
-    // Note: Update endpoint not provided in API spec, so this is a placeholder
-    // In a real implementation, you would call an update API endpoint here
     try {
       setIsSaving(true)
       setError('')
-      // TODO: Implement update API call when endpoint is available
-      // await updateUserInfo(editedData)
+      // TODO: call update API endpoint when available
       setUserInfo({ ...userInfo!, ...editedData } as UserResponse)
       setIsEditing(false)
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Failed to update profile')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string }
+      setError(e.response?.data?.detail || e.message || 'Failed to update profile')
     } finally {
       setIsSaving(false)
     }
@@ -78,58 +202,73 @@ export default function RiderProfile() {
 
   const handleLogout = () => {
     logout()
-    // Login URL - subdomain handles tenant context
     navigate('/riders/login', { replace: true })
+  }
+
+  const autocompleteStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    maxWidth: 280,
+    background: 'var(--rider-surface-inset)',
+    border: '1px solid var(--bw-border)',
+    borderRadius: 8,
+    padding: '8px 12px',
+    color: 'var(--bw-text)',
+    fontSize: 'clamp(13px, 2vw, 14px)',
+    fontFamily: FONT_BODY,
+    boxShadow: 'var(--rider-field-inset-glow)',
   }
 
   if (isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: 'var(--bw-bg)'
-      }}>
-        <div style={{ 
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          backgroundColor: 'var(--bw-bg)',
           color: 'var(--bw-text)',
-          fontFamily: 'Work Sans, sans-serif',
-          fontSize: 'clamp(14px, 2vw, 16px)'
-        }}>
-          Loading profile...
-        </div>
+          fontFamily: FONT_BODY,
+          fontSize: 14,
+          opacity: 0.65,
+        }}
+      >
+        Loading profile…
       </div>
     )
   }
 
   if (!userInfo) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        backgroundColor: 'var(--bw-bg)',
-        padding: 'clamp(16px, 3vw, 24px)'
-      }}>
-        <div style={{ 
-          color: 'var(--bw-error)',
-          fontFamily: 'Work Sans, sans-serif',
-          fontSize: 'clamp(14px, 2vw, 16px)',
-          marginBottom: 'clamp(12px, 2vw, 16px)'
-        }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          backgroundColor: 'var(--bw-bg)',
+          padding: 24,
+          fontFamily: FONT_BODY,
+          gap: 16,
+        }}
+      >
+        <p style={{ color: 'var(--bw-error, #ef4444)', fontSize: 14, margin: 0, textAlign: 'center' }}>
           {error || 'Failed to load profile'}
-        </div>
-        <button 
-          className="bw-btn" 
+        </p>
+        <button
           onClick={loadUserInfo}
-          style={{ 
-            borderRadius: 0, 
-            padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-            fontFamily: 'Work Sans, sans-serif', 
+          style={{
+            padding: '10px 20px',
+            backgroundColor: 'var(--rider-primary)',
+            color: 'var(--rider-on-primary)',
+            border: 'none',
+            borderRadius: 8,
+            fontFamily: FONT_BODY,
             fontWeight: 500,
-            fontSize: 'clamp(14px, 2.5vw, 16px)'
+            fontSize: 14,
+            cursor: 'pointer',
           }}
         >
           Retry
@@ -138,383 +277,373 @@ export default function RiderProfile() {
     )
   }
 
-  const displayData = isEditing ? editedData : userInfo
+  const d = isEditing ? editedData : userInfo
 
   return (
-    <main className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)', padding: 'clamp(16px, 3vw, 24px)' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Company Logo/Name */}
-        {tenantInfo && (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'flex-start',
+    <main
+      style={{
+        minHeight: '100vh',
+        backgroundColor: 'var(--bw-bg)',
+        padding: 'clamp(16px, 3vw, 24px)',
+        fontFamily: FONT_BODY,
+      }}
+    >
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+
+        {/* Page header */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: 'clamp(12px, 2vw, 16px)'
-          }}>
-            {tenantInfo.logo_url ? (
-              <img 
-                src={tenantInfo.logo_url} 
-                alt={tenantInfo.company_name || 'Company Logo'}
-                style={{
-                  maxHeight: 'clamp(40px, 5vw, 50px)',
-                  maxWidth: 'clamp(120px, 20vw, 180px)',
-                  objectFit: 'contain'
-                }}
-              />
-            ) : (
-              <h1 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3vw, 28px)',
-                fontWeight: 600,
+            marginBottom: 'clamp(20px, 3.5vw, 28px)',
+            paddingBottom: 'clamp(14px, 2.5vw, 18px)',
+            borderBottom: '1px solid var(--bw-border)',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          {/* Left: back link + title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+            <Link
+              to="/rider/dashboard"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 12px',
+                backgroundColor: 'transparent',
                 color: 'var(--bw-text)',
-                fontFamily: 'DM Sans, sans-serif'
-              }}>
-                {tenantInfo.company_name}
-              </h1>
-            )}
-          </div>
-        )}
-        {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: 'clamp(24px, 4vw, 32px)',
-          flexWrap: 'wrap',
-          gap: 'clamp(12px, 2vw, 16px)'
-        }}>
-          <div>
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: 'clamp(28px, 5vw, 40px)', 
-              fontFamily: 'DM Sans, sans-serif', 
-              fontWeight: 200,
-              color: 'var(--bw-text)'
-            }}>
-              Profile
-            </h1>
-            <p className="small-muted" style={{ 
-              marginTop: 'clamp(4px, 1vw, 6px)', 
-              fontSize: 'clamp(14px, 2vw, 16px)', 
-              fontFamily: 'Work Sans, sans-serif', 
-              fontWeight: 300,
-              color: 'var(--bw-text)',
-              opacity: 0.8
-            }}>
-              {tenantInfo ? `${tenantInfo.company_name} - Manage your account information` : 'Manage your account information'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)', flexWrap: 'wrap', alignItems: 'center' }}>
-            {!isEditing ? (
-              <button 
-                className="bw-btn" 
-                onClick={() => setIsEditing(true)}
-                style={{ 
-                  borderRadius: 0, 
-                  padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-                  fontFamily: 'Work Sans, sans-serif', 
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'clamp(6px, 1vw, 8px)',
-                  fontSize: 'clamp(14px, 2.5vw, 16px)'
+                border: '1px solid var(--bw-border)',
+                borderRadius: 6,
+                fontSize: 'clamp(13px, 2vw, 14px)',
+                fontFamily: FONT_BODY,
+                fontWeight: 300,
+                textDecoration: 'none',
+                flexShrink: 0,
+              }}
+            >
+              <ArrowLeft size={15} />
+              Dashboard
+            </Link>
+            <div style={{ minWidth: 0 }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: 'clamp(22px, 4vw, 30px)',
+                  fontWeight: 200,
+                  fontFamily: FONT_HEADING,
+                  color: 'var(--bw-text)',
+                  lineHeight: 1.1,
                 }}
               >
-                <Pencil size={16} />
-                Edit Profile
-              </button>
+                Profile
+              </h1>
+              {tenantInfo?.company_name && (
+                <p
+                  style={{
+                    margin: '3px 0 0',
+                    fontSize: 'clamp(12px, 1.9vw, 13px)',
+                    color: 'var(--bw-text)',
+                    opacity: 0.55,
+                    fontFamily: FONT_BODY,
+                    fontWeight: 300,
+                  }}
+                >
+                  {tenantInfo.company_name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right: action buttons */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+            {!isEditing ? (
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: 'clamp(9px, 1.8vw, 11px) clamp(14px, 2.5vw, 18px)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontFamily: FONT_BODY,
+                    fontWeight: 600,
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Pencil size={15} />
+                  Edit
+                </button>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: 'clamp(9px, 1.8vw, 11px) clamp(14px, 2.5vw, 18px)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--bw-text)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: 8,
+                    fontFamily: FONT_BODY,
+                    fontWeight: 300,
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <SignOut size={15} />
+                  Sign out
+                </button>
+              </>
             ) : (
               <>
-                <button 
-                  className="bw-btn" 
+                <button
                   onClick={handleCancel}
                   disabled={isSaving}
-                  style={{ 
-                    borderRadius: 0, 
-                    padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-                    fontFamily: 'Work Sans, sans-serif', 
-                    fontWeight: 600,
-                    background: 'var(--bw-bg)',
-                    color: 'var(--bw-fg)',
-                    border: '1px solid var(--bw-fg)',
-                    display: 'flex',
+                  style={{
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 'clamp(6px, 1vw, 8px)',
-                    fontSize: 'clamp(14px, 2.5vw, 16px)'
+                    gap: 7,
+                    padding: 'clamp(9px, 1.8vw, 11px) clamp(14px, 2.5vw, 18px)',
+                    backgroundColor: 'transparent',
+                    color: 'var(--bw-text)',
+                    border: '1px solid var(--bw-border)',
+                    borderRadius: 8,
+                    fontFamily: FONT_BODY,
+                    fontWeight: 300,
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.6 : 1,
                   }}
                 >
-                  <X size={16} style={{ width: 'clamp(14px, 2vw, 16px)', height: 'clamp(14px, 2vw, 16px)' }} />
+                  <X size={15} />
                   Cancel
                 </button>
-                <button 
-                  className="bw-btn" 
+                <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  style={{ 
-                    borderRadius: 0, 
-                    padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-                    fontFamily: 'Work Sans, sans-serif', 
-                    fontWeight: 600,
-                    display: 'flex',
+                  style={{
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 'clamp(6px, 1vw, 8px)',
-                    fontSize: 'clamp(14px, 2.5vw, 16px)'
+                    gap: 7,
+                    padding: 'clamp(9px, 1.8vw, 11px) clamp(14px, 2.5vw, 18px)',
+                    backgroundColor: 'var(--rider-primary)',
+                    color: 'var(--rider-on-primary)',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontFamily: FONT_BODY,
+                    fontWeight: 600,
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    cursor: isSaving ? 'not-allowed' : 'pointer',
+                    opacity: isSaving ? 0.7 : 1,
                   }}
                 >
-                  <FloppyDisk size={16} />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  <FloppyDisk size={15} />
+                  {isSaving ? 'Saving…' : 'Save changes'}
                 </button>
               </>
             )}
-            <button 
-              className="bw-btn" 
-              onClick={handleLogout}
-              style={{ 
-                borderRadius: 0, 
-                padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-                fontFamily: 'Work Sans, sans-serif', 
-                fontWeight: 500,
-                background: 'var(--bw-bg)',
-                color: 'var(--bw-fg)',
-                border: '1px solid var(--bw-fg)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'clamp(6px, 1vw, 8px)',
-                fontSize: 'clamp(14px, 2.5vw, 16px)'
-              }}
-            >
-              <SignOut size={16} />
-              Logout
-            </button>
           </div>
         </div>
 
+        {/* Error banner */}
         {error && (
-          <div style={{ 
-            marginBottom: 'clamp(16px, 3vw, 24px)', 
-            padding: 'clamp(10px, 2vw, 12px)', 
-            backgroundColor: 'rgba(197, 72, 61, 0.1)', 
-            border: '1px solid var(--bw-error)', 
-            borderRadius: '4px',
-            color: 'var(--bw-error)',
-            fontSize: 'clamp(13px, 2vw, 14px)',
-            fontFamily: 'Work Sans, sans-serif'
-          }}>
+          <div
+            role="alert"
+            style={{
+              marginBottom: 'clamp(14px, 2.5vw, 20px)',
+              padding: '10px 14px',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              border: '1px solid #ef4444',
+              borderRadius: 8,
+              color: '#ef4444',
+              fontSize: 13,
+              fontFamily: FONT_BODY,
+            }}
+          >
             {error}
           </div>
         )}
 
-        {/* Profile Card */}
-        <div className="bw-card" style={{ marginBottom: 'clamp(16px, 3vw, 24px)' }}>
-          <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
-              <div className="bw-card-icon">
-                <User size={20} />
-              </div>
-              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Personal Information</h3>
-            </div>
-          </div>
-          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>First Name:</span>
-              {isEditing ? (
-                <input
+        {/* Personal Information */}
+        <div style={{ ...cardStyle, marginBottom: 'clamp(12px, 2vw, 16px)' }}>
+          <h3 style={sectionTitleStyle}>
+            <User size={16} style={{ opacity: 0.7 }} />
+            Personal Information
+          </h3>
+          <div style={{ marginTop: 4 }}>
+            <FieldRow
+              label="First name"
+              value={userInfo.first_name}
+              isEditing={isEditing}
+              first
+              editNode={
+                <InlineInput
                   name="first_name"
-                  type="text"
-                  value={displayData.first_name || ''}
+                  value={d.first_name || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  autoComplete="given-name"
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.first_name}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Last Name:</span>
-              {isEditing ? (
-                <input
+              }
+            />
+            <FieldRow
+              label="Last name"
+              value={userInfo.last_name}
+              isEditing={isEditing}
+              editNode={
+                <InlineInput
                   name="last_name"
-                  type="text"
-                  value={displayData.last_name || ''}
+                  value={d.last_name || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  autoComplete="family-name"
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.last_name}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Email:</span>
-              {isEditing ? (
-                <input
+              }
+            />
+            <FieldRow
+              label="Email"
+              value={userInfo.email}
+              isEditing={isEditing}
+              editNode={
+                <InlineInput
                   name="email"
                   type="email"
-                  value={displayData.email || ''}
+                  value={d.email || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  autoComplete="email"
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.email}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Phone:</span>
-              {isEditing ? (
-                <input
+              }
+            />
+            <FieldRow
+              label="Phone"
+              value={userInfo.phone_no}
+              isEditing={isEditing}
+              editNode={
+                <InlineInput
                   name="phone_no"
                   type="tel"
-                  value={displayData.phone_no || ''}
+                  value={d.phone_no || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  autoComplete="tel"
+                  maxLength={14}
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.phone_no}</span>
-              )}
-            </div>
+              }
+            />
           </div>
         </div>
 
-        {/* Address Card */}
-        <div className="bw-card" style={{ marginBottom: 'clamp(16px, 3vw, 24px)' }}>
-          <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
-              <div className="bw-card-icon">
-                <MapPin size={20} />
-              </div>
-              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Address Information</h3>
-            </div>
-          </div>
-          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
-            <div className="bw-info-item" style={{ gridColumn: 'span 2' }}>
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Address:</span>
-              {isEditing ? (
-                <input
+        {/* Address */}
+        <div style={{ ...cardStyle, marginBottom: 'clamp(12px, 2vw, 16px)' }}>
+          <h3 style={sectionTitleStyle}>
+            <MapPin size={16} style={{ opacity: 0.7 }} />
+            Address
+          </h3>
+          <div style={{ marginTop: 4 }}>
+            <FieldRow
+              label="Street"
+              value={userInfo.address || ''}
+              isEditing={isEditing}
+              first
+              editNode={
+                <InlineInput
                   name="address"
-                  type="text"
-                  value={displayData.address || ''}
+                  value={d.address || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
+                  autoComplete="street-address"
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.address || 'Not provided'}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>City:</span>
-              {isEditing ? (
-                <CityAutocomplete
-                  value={displayData.city || ''}
-                  onChange={(value) => setEditedData({ ...editedData, city: value })}
-                  selectedState={displayData.state || ''}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
-                />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.city || 'Not provided'}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>State:</span>
-              {isEditing ? (
-                <StateAutocomplete
-                  value={displayData.state || ''}
-                  onChange={(value) => setEditedData({ ...editedData, state: value, city: '' })}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
-                />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.state || 'Not provided'}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Country:</span>
-              {isEditing ? (
-                <CountryAutocomplete
-                  value={displayData.country || ''}
-                  onChange={(value) => setEditedData({ ...editedData, country: value })}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0 }}
-                />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.country || 'Not provided'}</span>
-              )}
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Postal Code:</span>
-              {isEditing ? (
-                <input
+              }
+            />
+            <FieldRow
+              label="City"
+              value={userInfo.city || ''}
+              isEditing={isEditing}
+              editNode={
+                isEditing ? (
+                  <CityAutocomplete
+                    value={d.city || ''}
+                    onChange={(value) => setEditedData({ ...editedData, city: value })}
+                    selectedState={d.state || ''}
+                    placeholder="City"
+                    className=""
+                    style={autocompleteStyle}
+                  />
+                ) : undefined
+              }
+            />
+            <FieldRow
+              label="State"
+              value={userInfo.state || ''}
+              isEditing={isEditing}
+              editNode={
+                isEditing ? (
+                  <StateAutocomplete
+                    value={d.state || ''}
+                    onChange={(value) => setEditedData({ ...editedData, state: value, city: '' })}
+                    placeholder="State"
+                    className=""
+                    style={autocompleteStyle}
+                  />
+                ) : undefined
+              }
+            />
+            <FieldRow
+              label="Country"
+              value={userInfo.country || ''}
+              isEditing={isEditing}
+              editNode={
+                isEditing ? (
+                  <CountryAutocomplete
+                    value={d.country || ''}
+                    onChange={(value) => setEditedData({ ...editedData, country: value })}
+                    placeholder="Country"
+                    className=""
+                    style={autocompleteStyle}
+                  />
+                ) : undefined
+              }
+            />
+            <FieldRow
+              label="Postal code"
+              value={userInfo.postal_code || ''}
+              isEditing={isEditing}
+              editNode={
+                <InlineInput
                   name="postal_code"
-                  type="text"
-                  value={displayData.postal_code || ''}
+                  value={d.postal_code || ''}
                   onChange={handleInputChange}
-                  className="bw-input"
-                  style={{ padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px) clamp(12px, 2vw, 16px) clamp(38px, 5vw, 44px)', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontSize: 'clamp(13px, 2vw, 14px)' }}
-                  maxLength={5}
+                  maxLength={10}
                 />
-              ) : (
-                <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.postal_code || 'Not provided'}</span>
-              )}
-            </div>
+              }
+            />
           </div>
         </div>
 
-        {/* Account Details Card */}
-        <div className="bw-card">
-          <div className="bw-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(10px, 1.5vw, 12px)' }}>
-              <div className="bw-card-icon">
-                <Shield size={20} />
-              </div>
-              <h3 style={{ margin: 0, fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(16px, 2.5vw, 18px)' }}>Account Details</h3>
-            </div>
-          </div>
-          <div className="bw-info-grid" style={{ fontFamily: 'Work Sans, sans-serif' }}>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Role:</span>
-              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300,fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.role}</span>
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Tier:</span>
-              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>{userInfo.tier || 'N/A'}</span>
-            </div>
-            <div className="bw-info-item">
-              <span className="bw-info-label" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 'clamp(12px, 1.8vw, 13px)' }}>Member Since:</span>
-              <span className="bw-info-value" style={{ fontFamily: 'Work Sans, sans-serif', fontWeight: 300, fontSize: 'clamp(13px, 2vw, 14px)' }}>
-                {new Date(userInfo.created_on).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </span>
-            </div>
+        {/* Account Details — read-only */}
+        <div style={cardStyle}>
+          <h3 style={sectionTitleStyle}>
+            <Shield size={16} style={{ opacity: 0.7 }} />
+            Account
+          </h3>
+          <div style={{ marginTop: 4 }}>
+            <FieldRow label="Role" value={userInfo.role} isEditing={false} first />
+            <FieldRow label="Tier" value={userInfo.tier || 'Standard'} isEditing={false} />
+            <FieldRow
+              label="Member since"
+              value={new Date(userInfo.created_on).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+              isEditing={false}
+            />
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <div style={{ marginTop: 'clamp(24px, 4vw, 32px)', display: 'flex', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-          <Link to="/rider/dashboard" style={{ textDecoration: 'none' }}>
-            <button 
-              className="bw-btn" 
-              style={{ 
-                borderRadius: 0, 
-                padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)', 
-                fontFamily: 'Work Sans, sans-serif', 
-                fontWeight: 500,
-                background: 'var(--bw-bg)',
-                color: 'var(--bw-fg)',
-                border: '1px solid var(--bw-fg)',
-                fontSize: 'clamp(14px, 2.5vw, 16px)'
-              }}
-            >
-              Back to Dashboard
-            </button>
-          </Link>
-        </div>
       </div>
     </main>
   )

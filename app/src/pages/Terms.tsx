@@ -274,12 +274,12 @@ const sections: { title: string; content: ReactNode }[] = [
           If you have questions or concerns about these Terms or the Service, please contact us:
         </p>
         <ul>
-          <li><strong>Email:</strong> legal@getmaison.com</li>
-          <li><strong>Support:</strong> support@getmaison.com</li>
+          <li><strong>Email:</strong> legal@usemaison.io</li>
+          <li><strong>Support:</strong> support@usemaison.io</li>
           <li><strong>Mailing address:</strong> Maison Technologies, Inc., Legal Department, [Address on file]</li>
         </ul>
         <p>
-          For billing inquiries, log in to your account and visit the Plans &amp; Billing section, or email support@getmaison.com with your account information.
+          For billing inquiries, log in to your account and visit the Plans &amp; Billing section, or email support@usemaison.io with your account information.
         </p>
       </>
     ),

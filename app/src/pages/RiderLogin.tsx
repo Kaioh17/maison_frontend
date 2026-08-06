@@ -37,6 +37,60 @@ function useMediaQuery(query: string): boolean {
   return matches
 }
 
+// Subtle road-geometry SVG decor — concentric arcs from below the frame
+// suggesting an aerial road view, city grid lines at very low opacity.
+function BackgroundDecor({ palette }: { palette: RiderAuthPalette }) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: '-10%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '140%',
+          height: '65%',
+          background: `radial-gradient(ellipse at center, ${palette.brandTint} 0%, transparent 68%)`,
+        }}
+      />
+      <svg
+        viewBox="0 0 800 520"
+        preserveAspectRatio="xMidYMid slice"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0.055,
+        }}
+      >
+        {/* Concentric arcs from below — aerial road / horizon */}
+        <circle cx="400" cy="640" r="310" fill="none" stroke="white" strokeWidth="1" />
+        <circle cx="400" cy="640" r="450" fill="none" stroke="white" strokeWidth="0.8" />
+        <circle cx="400" cy="640" r="590" fill="none" stroke="white" strokeWidth="0.6" />
+        <circle cx="400" cy="640" r="730" fill="none" stroke="white" strokeWidth="0.5" />
+        {/* Vertical city-grid lines */}
+        <line x1="160" y1="0" x2="160" y2="520" stroke="white" strokeWidth="0.5" opacity="0.5" />
+        <line x1="320" y1="0" x2="320" y2="520" stroke="white" strokeWidth="0.5" opacity="0.5" />
+        <line x1="480" y1="0" x2="480" y2="520" stroke="white" strokeWidth="0.5" opacity="0.5" />
+        <line x1="640" y1="0" x2="640" y2="520" stroke="white" strokeWidth="0.5" opacity="0.5" />
+        {/* Two diagonal spurs */}
+        <line x1="0" y1="300" x2="400" y2="640" stroke="white" strokeWidth="0.6" opacity="0.35" />
+        <line x1="800" y1="300" x2="400" y2="640" stroke="white" strokeWidth="0.6" opacity="0.35" />
+      </svg>
+    </div>
+  )
+}
+
 interface BrandMarkProps {
   companyName: string
   logoUrl?: string | null
@@ -51,15 +105,15 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
         <img
           src={logoUrl}
           alt={companyName}
-          width={140}
-          height={32}
+          width={180}
+          height={44}
           loading="eager"
           decoding="async"
           style={{
             display: 'block',
             margin: '0 auto',
-            maxHeight: 32,
-            maxWidth: 180,
+            maxHeight: 44,
+            maxWidth: 220,
             objectFit: 'contain',
           }}
         />
@@ -70,11 +124,11 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 10,
           color: palette.text,
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
-          letterSpacing: '0.18em',
+          letterSpacing: '0.22em',
           textTransform: 'uppercase',
           fontFamily: FONT_STACK,
         }}
@@ -82,11 +136,12 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
         <span
           aria-hidden
           style={{
-            width: 8,
-            height: 8,
+            width: 9,
+            height: 9,
             borderRadius: 9999,
             background: palette.brand,
             display: 'inline-block',
+            flexShrink: 0,
           }}
         />
         <span>{companyName}</span>
@@ -94,19 +149,20 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
     )
   }
 
+  // Mobile
   if (logoUrl) {
     return (
       <img
         src={logoUrl}
         alt={companyName}
-        width={48}
-        height={48}
+        width={64}
+        height={64}
         loading="eager"
         decoding="async"
         style={{
           display: 'block',
-          maxWidth: 48,
-          maxHeight: 48,
+          maxWidth: 64,
+          maxHeight: 64,
           objectFit: 'contain',
         }}
       />
@@ -116,8 +172,10 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
   return (
     <span
       style={{
-        fontSize: 16,
-        fontWeight: 500,
+        fontSize: 15,
+        fontWeight: 600,
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
         color: palette.text,
         fontFamily: FONT_STACK,
       }}
@@ -145,9 +203,10 @@ function PrimaryButton({ isLoading, label, loadingLabel, palette }: PrimaryButto
         color: palette.buttonText,
         border: 0,
         borderRadius: 8,
-        padding: '12px 16px',
+        padding: '13px 16px',
         fontSize: 14,
         fontWeight: 500,
+        letterSpacing: '0.02em',
         fontFamily: FONT_STACK,
         cursor: isLoading ? 'not-allowed' : 'pointer',
         opacity: isLoading ? 0.7 : 1,
@@ -350,6 +409,7 @@ function DesktopLayout({
     fontFamily: FONT_STACK,
     outline: 'none',
     boxSizing: 'border-box',
+    boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.25)',
   }
 
   return (
@@ -357,7 +417,6 @@ function DesktopLayout({
       aria-label="Rider Login"
       style={{
         margin: 0,
-        padding: 24,
         minHeight: '100vh',
         background: palette.bg,
         display: 'flex',
@@ -365,160 +424,202 @@ function DesktopLayout({
         justifyContent: 'center',
         fontFamily: FONT_STACK,
         color: palette.text,
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ width: '100%', maxWidth: 320, textAlign: 'center' }}>
-        <div style={{ marginBottom: 32 }}>
+      <BackgroundDecor palette={palette} />
+
+      {/* Centred content column */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          maxWidth: 400,
+          padding: '24px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        {/* Logo — prominent, breathing room below */}
+        <div style={{ marginBottom: 44 }}>
           <BrandMark companyName={companyName} logoUrl={logoUrl} variant="desktop" palette={palette} />
         </div>
 
-        <h1
+        {/* Elevated form card */}
+        <div
           style={{
-            margin: 0,
-            fontSize: 22,
-            fontWeight: 500,
-            color: palette.text,
-            fontFamily: FONT_STACK,
-            letterSpacing: '-0.01em',
+            width: '100%',
+            background: 'rgba(255,255,255,0.04)',
+            backdropFilter: 'blur(28px)',
+            WebkitBackdropFilter: 'blur(28px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+            padding: '40px 36px',
+            boxShadow:
+              '0 32px 64px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(255,255,255,0.05) inset',
           }}
         >
-          Welcome back
-        </h1>
-        <p
-          style={{
-            margin: '6px 0 0',
-            fontSize: 13,
-            color: palette.muted,
-            fontFamily: FONT_STACK,
-          }}
-        >
-          Sign in to your account
-        </p>
-
-        {error && <ErrorBanner message={error} palette={palette} />}
-
-        <form
-          onSubmit={onSubmit}
-          style={{ marginTop: 28, textAlign: 'left' }}
-          aria-describedby={error ? undefined : 'email-hint'}
-        >
-          <div style={{ marginBottom: 16 }}>
-            <label htmlFor="email" style={labelStyle}>
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="you@email.com"
-              value={formData.email}
-              onChange={onInputChange}
-              aria-invalid={formData.email.length > 0 && !!emailFormatError}
-              aria-describedby="email-hint"
-              style={inputStyle}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = palette.brand
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = palette.inputBorder
-              }}
-            />
-            <p
-              id="email-hint"
+          <div style={{ textAlign: 'center', marginBottom: 28 }}>
+            <h1
               style={{
-                margin: '6px 2px 0',
-                fontSize: 11,
-                color: palette.muted,
+                margin: 0,
+                fontSize: 26,
+                fontWeight: 300,
+                color: palette.text,
                 fontFamily: FONT_STACK,
+                letterSpacing: '0.02em',
               }}
             >
-              {EMAIL_FORMAT_HINT}
+              Welcome back
+            </h1>
+            <p
+              style={{
+                margin: '8px 0 0',
+                fontSize: 13,
+                color: palette.muted,
+                fontFamily: FONT_STACK,
+                letterSpacing: '0.01em',
+              }}
+            >
+              Sign in to your account
             </p>
-            {emailFormatError && (
-              <div
-                role="alert"
-                style={{
-                  marginTop: 4,
-                  fontSize: 12,
-                  color: palette.error,
-                  fontFamily: FONT_STACK,
-                }}
-              >
-                {emailFormatError}
-              </div>
-            )}
           </div>
 
-          <div>
-            <label htmlFor="password" style={labelStyle}>
-              Password
-            </label>
-            <div style={{ position: 'relative' }}>
+          {error && <ErrorBanner message={error} palette={palette} />}
+
+          <form
+            onSubmit={onSubmit}
+            style={{ textAlign: 'left' }}
+            aria-describedby={error ? undefined : 'email-hint'}
+          >
+            <div style={{ marginBottom: 16 }}>
+              <label htmlFor="email" style={labelStyle}>
+                Email
+              </label>
               <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
-                placeholder="••••••••"
-                value={formData.password}
+                placeholder="you@email.com"
+                value={formData.email}
                 onChange={onInputChange}
-                style={{ ...inputStyle, paddingRight: 40 }}
+                aria-invalid={formData.email.length > 0 && !!emailFormatError}
+                aria-describedby="email-hint"
+                style={inputStyle}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = palette.brand
+                  e.currentTarget.style.boxShadow =
+                    `inset 0 1px 4px rgba(0,0,0,0.25), 0 0 0 2px ${palette.brandTint}`
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = palette.inputBorder
+                  e.currentTarget.style.boxShadow = 'inset 0 1px 4px rgba(0,0,0,0.25)'
                 }}
               />
-              <button
-                type="button"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword(!showPassword)}
+              <p
+                id="email-hint"
                 style={{
-                  position: 'absolute',
-                  right: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 0,
+                  margin: '6px 2px 0',
+                  fontSize: 11,
                   color: palette.muted,
-                  cursor: 'pointer',
-                  padding: 4,
-                  display: 'inline-flex',
-                  alignItems: 'center',
+                  fontFamily: FONT_STACK,
                 }}
               >
-                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-              </button>
+                {EMAIL_FORMAT_HINT}
+              </p>
+              {emailFormatError && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: 4,
+                    fontSize: 12,
+                    color: palette.error,
+                    fontFamily: FONT_STACK,
+                  }}
+                >
+                  {emailFormatError}
+                </div>
+              )}
             </div>
-          </div>
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              margin: '12px 0 20px',
-            }}
-          >
-            <Link
-              to="/riders/forgot-password"
+            <div>
+              <label htmlFor="password" style={labelStyle}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={onInputChange}
+                  style={{ ...inputStyle, paddingRight: 40 }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = palette.brand
+                    e.currentTarget.style.boxShadow =
+                      `inset 0 1px 4px rgba(0,0,0,0.25), 0 0 0 2px ${palette.brandTint}`
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = palette.inputBorder
+                    e.currentTarget.style.boxShadow = 'inset 0 1px 4px rgba(0,0,0,0.25)'
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: 10,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 0,
+                    color: palette.muted,
+                    cursor: 'pointer',
+                    padding: 4,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div
               style={{
-                fontSize: 12,
-                color: palette.brand,
-                textDecoration: 'none',
-                fontFamily: FONT_STACK,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                margin: '12px 0 22px',
               }}
             >
-              Forgot password?
-            </Link>
-          </div>
+              <Link
+                to="/riders/forgot-password"
+                style={{
+                  fontSize: 12,
+                  color: palette.brand,
+                  textDecoration: 'none',
+                  fontFamily: FONT_STACK,
+                }}
+              >
+                Forgot password?
+              </Link>
+            </div>
 
-          <PrimaryButton isLoading={isLoading} label="Sign in" loadingLabel="Signing in…" palette={palette} />
-        </form>
+            <PrimaryButton isLoading={isLoading} label="Sign in" loadingLabel="Signing in…" palette={palette} />
+          </form>
+        </div>
 
+        {/* Sign-up link sits below the card, outside it */}
         <p
           style={{
             marginTop: 24,
@@ -562,131 +663,171 @@ function MobileLayout({
         background: palette.bg,
         color: palette.text,
         fontFamily: FONT_STACK,
-        padding:
-          'calc(env(safe-area-inset-top, 0px) + 32px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px)',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      <BackgroundDecor palette={palette} />
+
+      {/* Brand zone: upper ~35% of viewport with real breathing room */}
       <div
         style={{
+          position: 'relative',
+          zIndex: 1,
+          flex: '0 0 35vh',
+          minHeight: 160,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          textAlign: 'center',
-          marginBottom: 28,
+          justifyContent: 'center',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          gap: 10,
         }}
       >
         <BrandMark companyName={companyName} logoUrl={logoUrl} variant="mobile" palette={palette} />
-        <p
+      </div>
+
+      {/* Form panel: frosted card anchored to bottom, rounded top */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          flex: 1,
+          background: 'rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(28px)',
+          WebkitBackdropFilter: 'blur(28px)',
+          borderTop: '1px solid rgba(255,255,255,0.09)',
+          borderRadius: '24px 24px 0 0',
+          padding: `28px 24px calc(env(safe-area-inset-bottom, 0px) + 32px)`,
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.35)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 22,
+              fontWeight: 300,
+              color: palette.text,
+              fontFamily: FONT_STACK,
+              letterSpacing: '0.02em',
+            }}
+          >
+            Welcome back
+          </h1>
+          <p
+            style={{
+              margin: '6px 0 0',
+              fontSize: 13,
+              color: palette.muted,
+              fontFamily: FONT_STACK,
+            }}
+          >
+            Sign in to continue
+          </p>
+        </div>
+
+        {error && <ErrorBanner message={error} palette={palette} />}
+
+        <form
+          onSubmit={onSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          <FloatingField
+            id="email"
+            name="email"
+            label="Email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@email.com"
+            value={formData.email}
+            onChange={onInputChange}
+            aria-invalid={formData.email.length > 0 && !!emailFormatError}
+            palette={palette}
+          />
+          {emailFormatError && (
+            <div
+              role="alert"
+              style={{
+                fontSize: 12,
+                color: palette.error,
+                fontFamily: FONT_STACK,
+                marginTop: -4,
+              }}
+            >
+              {emailFormatError}
+            </div>
+          )}
+
+          <FloatingField
+            id="password"
+            name="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={onInputChange}
+            palette={palette}
+            adornment={
+              <button
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  color: palette.muted,
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }}
+              >
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+              </button>
+            }
+          />
+
+          <div style={{ marginTop: 8 }}>
+            <PrimaryButton
+              isLoading={isLoading}
+              label="Sign in"
+              loadingLabel="Signing in…"
+              palette={palette}
+            />
+          </div>
+        </form>
+
+        <div
           style={{
-            margin: '8px 0 0',
+            marginTop: 24,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             fontSize: 13,
-            color: palette.muted,
             fontFamily: FONT_STACK,
           }}
         >
-          Sign in to continue
-        </p>
-      </div>
-
-      {error && <ErrorBanner message={error} palette={palette} />}
-
-      <form
-        onSubmit={onSubmit}
-        style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}
-      >
-        <FloatingField
-          id="email"
-          name="email"
-          label="Email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="you@email.com"
-          value={formData.email}
-          onChange={onInputChange}
-          aria-invalid={formData.email.length > 0 && !!emailFormatError}
-          palette={palette}
-        />
-        {emailFormatError && (
-          <div
-            role="alert"
-            style={{
-              fontSize: 12,
-              color: palette.error,
-              fontFamily: FONT_STACK,
-              marginTop: -4,
-            }}
+          <Link
+            to="/riders/forgot-password"
+            style={{ color: palette.brand, textDecoration: 'none' }}
           >
-            {emailFormatError}
-          </div>
-        )}
-
-        <FloatingField
-          id="password"
-          name="password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="current-password"
-          required
-          placeholder="••••••••"
-          value={formData.password}
-          onChange={onInputChange}
-          palette={palette}
-          adornment={
-            <button
-              type="button"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                background: 'transparent',
-                border: 0,
-                color: palette.muted,
-                cursor: 'pointer',
-                padding: 4,
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
-            >
-              {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
-            </button>
-          }
-        />
-
-        <div style={{ marginTop: 8 }}>
-          <PrimaryButton
-            isLoading={isLoading}
-            label="Sign in"
-            loadingLabel="Signing in…"
-            palette={palette}
-          />
+            Forgot password?
+          </Link>
+          <Link
+            to="/riders/register"
+            style={{ color: palette.brand, textDecoration: 'none' }}
+          >
+            Sign up
+          </Link>
         </div>
-      </form>
-
-      <div
-        style={{
-          marginTop: 28,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: 13,
-          fontFamily: FONT_STACK,
-        }}
-      >
-        <Link
-          to="/riders/forgot-password"
-          style={{ color: palette.brand, textDecoration: 'none' }}
-        >
-          Forgot password?
-        </Link>
-        <Link
-          to="/riders/register"
-          style={{ color: palette.brand, textDecoration: 'none' }}
-        >
-          Sign up
-        </Link>
       </div>
     </main>
   )
@@ -736,7 +877,10 @@ function FloatingField({
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        transition: 'border-color 0.15s ease',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+        boxShadow: focused
+          ? `inset 0 1px 3px rgba(0,0,0,0.2), 0 0 0 2px ${palette.brandTint}`
+          : 'inset 0 1px 3px rgba(0,0,0,0.2)',
       }}
     >
       <label htmlFor={id} style={{ flex: 1, display: 'block', cursor: 'text' }}>
