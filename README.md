@@ -194,9 +194,9 @@ To test tenant-specific subdomains locally:
 
 ## 📚 Documentation
 
-- [Responsive UI Template Guide](./app/RESPONSIVE_UI_TEMPLATE.md) - Complete component documentation
-- [Mobile Responsiveness Guide](./app/MOBILE_RESPONSIVENESS_GUIDE.md) - Mobile-specific features
-- [Network Deployment Guide](./app/NETWORK_DEPLOYMENT.md) - Network setup instructions
+- [maison-ui skill](../.claude/skills/maison-ui/SKILL.md) - **Authoritative** frontend UI conventions: tokens, buttons, primitives, dashboard structure, typography, icons, responsive rules
+- [Historical design docs](../.claude/skills/maison-ui/references/) - Superseded source docs, kept for context
+- [CLAUDE.md](./CLAUDE.md) - Architecture, commands, environment variables
 
 ## 🤝 Contributing
 

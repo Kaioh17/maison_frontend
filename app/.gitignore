@@ -1,4 +1,21 @@
 nginx.conf
 dist/assets
+
+# tsc build artifacts — vite.config.js would shadow vite.config.ts if emitted
+vite.config.js
+vite.config.d.ts
+*.tsbuildinfo
+
+# test output
+coverage/
+
 Dockerfile.prod
 loaderio-5b5f034a403b111499fd5696e7ca7a00.txt
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

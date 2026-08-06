@@ -11,9 +11,25 @@ npm run dev           # Dev server on port 3000 (WSL: use dev:network for cross-
 npm run dev:network   # Dev server bound to 0.0.0.0 (mobile testing)
 npm run build         # tsc -b && vite build
 npm run preview       # Preview production build on port 3000
+
+npm run lint          # ESLint (flat config). Exits 0 today; conventions are warnings
+npm run lint:fix      # Auto-fix
+npm run test          # Vitest + jsdom, single run
+npm run test:watch    # Vitest watch mode
+npm run typecheck     # tsc for app (tsconfig.json) + tests (tsconfig.test.json)
 ```
 
-No lint or test scripts are configured.
+`vite.config.js` / `vite.config.d.ts` / `*.tsbuildinfo` are gitignored build artifacts.
+If a `vite.config.js` ever reappears it **shadows `vite.config.ts`** — Vite resolves
+`.js` first — so delete it rather than editing it.
+
+## UI conventions
+
+Frontend UI work is governed by the **`maison-ui` skill**
+(`.claude/skills/maison-ui/SKILL.md` at the workspace root): `--bw-*` token contract,
+the shared `Button` / `StatusPill` / `Skeleton` primitives, tenant dashboard structure
+under `src/pages/tenant/`, typography, Phosphor icons, and responsive rules. It
+supersedes the older design docs, which now live in that skill's `references/`.
 
 ### Local Subdomain Testing
 
@@ -97,3 +113,5 @@ Configured via `vite-tsconfig-paths` + `tsconfig.json`:
 ### Styling
 
 Tailwind CSS + PostCSS. No CSS modules — component-level styles use Tailwind classes and CSS custom properties for tenant theming (`--bw-*` variables set by `RiderBrandedShell`). Page-level CSS files exist for the landing pages (e.g., `landing.css`, `tenant-landing.css`).
+
+See the `maison-ui` skill before writing UI. The short version: never hardcode a hex color — `--bw-*` is what makes white-labeling work — and use `@components/Button` rather than a hand-rolled `<button>` with hover state.

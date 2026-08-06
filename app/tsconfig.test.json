@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Scoped to tests on purpose. Setting `types` in the app tsconfig would stop
+    // TypeScript auto-including the rest of node_modules/@types, which changes
+    // inference in app code (recharts, notably). Tests get the globals; the app
+    // build keeps its default type resolution.
+    // `vite/client` must be listed explicitly: naming `types` at all disables
+    // automatic @types inclusion, and app modules under test read import.meta.env.
+    "types": ["vitest/globals", "@testing-library/jest-dom", "vite/client", "node"]
+  },
+  "include": ["src/**/__tests__/**/*", "src/**/*.test.ts", "src/**/*.test.tsx", "src/setupTests.ts", "src/env.d.ts", "vitest.config.ts"],
+  "exclude": []
+}
