@@ -21,13 +21,19 @@ export type CheckoutSessionResponse = {
   sub_total: number
 }
 
-/** `data` payload for `PATCH /v1/subscription/` (upgrade / change plan). */
-export type SubscriptionUpgradeResponse = {
-  subscription_id: string
+/**
+ * `data` payload for `PATCH /v1/subscription/` when the tenant already has a
+ * subscription. Never bills directly -- `portal_url` is a Stripe Billing
+ * Portal session scoped to confirming this one price change (card on file +
+ * prorated amount shown by Stripe itself). See directives.md
+ * billing-confirm-2026-08. A tenant with no subscription yet gets a
+ * `CheckoutSessionResponse` instead (nothing to update).
+ */
+export type PortalSessionResponse = {
+  portal_url: string
   tenant_id: number
   customer_id: string
   product_type: string
-  status: string
 }
 
 export type QuotaUsage = {
@@ -99,8 +105,16 @@ export async function createCheckoutSession(payload: CreateCheckoutSessionReques
   return data
 }
 
+/**
+ * Returns a redirect URL, never a completed upgrade -- `portal_url`
+ * (existing subscription) or `Checkout_session_url` (first paid plan). The
+ * caller must send the tenant there to confirm before anything bills.
+ */
 export async function upgradeSubscription(payload: CreateCheckoutSessionRequest) {
-  const { data } = await http.patch<StandardResponse<SubscriptionUpgradeResponse>>('/v1/subscription/', payload)
+  const { data } = await http.patch<StandardResponse<PortalSessionResponse | CheckoutSessionResponse>>(
+    '/v1/subscription/',
+    payload
+  )
   return data
 }
 

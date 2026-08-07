@@ -40,7 +40,17 @@ export default function Plans() {
     loadLimits()
   }, [])
 
-  const handleUpgradePlan = async (plan: { product_type: string; price_id: string }) => {
+  const handleUpgradePlan = async (plan: { product_type: string; price_id: string; name: string }) => {
+    // Safety pop-up before anything touches billing. What actually confirms
+    // the card and the prorated amount is Stripe's own Billing Portal screen
+    // below -- this is just "did you mean to click that" for a real charge.
+    // See directives.md billing-confirm-2026-08.
+    const currentPlanName = pricingPlans.find((p) => p.product_type === currentPlan)?.name ?? currentPlan
+    const confirmed = window.confirm(
+      `Move from ${currentPlanName} to ${plan.name}?\n\nYou'll confirm the card on file and the exact prorated amount on Stripe's page before anything is charged.`
+    )
+    if (!confirmed) return
+
     setUpgradingPlan(plan.product_type)
     setUpgradeError(null)
 
@@ -50,16 +60,21 @@ export default function Plans() {
         product_type: plan.product_type
       })
 
-      if (response.success) {
-        alert('Subscription upgrade initiated successfully!')
-        await loadLimits()
-        setUpgradingPlan(null)
+      // Never a completed upgrade -- always a redirect to confirm on Stripe's
+      // side: a Billing Portal URL for an existing subscription, a Checkout
+      // URL for a tenant's first paid plan.
+      const redirectUrl = response.success && response.data
+        ? ('portal_url' in response.data ? response.data.portal_url : response.data.Checkout_session_url)
+        : null
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl
       } else {
-        setUpgradeError(response.error || 'Failed to upgrade subscription')
+        setUpgradeError(response.error || 'Failed to start plan change')
         setUpgradingPlan(null)
       }
     } catch (err: any) {
-      setUpgradeError(err?.response?.data?.error || err?.message || 'Failed to upgrade subscription')
+      setUpgradeError(err?.response?.data?.error || err?.message || 'Failed to start plan change')
       setUpgradingPlan(null)
     }
   }

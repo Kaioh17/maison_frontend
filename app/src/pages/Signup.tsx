@@ -236,13 +236,8 @@ export default function Signup() {
   }
 
   const handleSelectPlan = async (plan: LandingPricingPlanDisplay) => {
-    // Free has no Stripe price -- it is the tier you hold by not subscribing.
-    // Sending its empty price_id to checkout would just earn a 400, so this
-    // lands where "Skip for now" does.
-    if (plan.product_type === 'free') {
-      window.location.href = '/tenant/overview'
-      return
-    }
+    // Free is a real $0 Checkout session like every other tier -- it still
+    // collects a card (see create_checkout_session's payment_method_collection).
     setPlanCheckoutLoading(plan.product_type)
     setPlanCheckoutError(null)
     try {

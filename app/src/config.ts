@@ -30,16 +30,15 @@ export type SubscriptionPlanKey = 'free' | 'growth' | 'fleet'
 
 /**
  * Stripe subscription Price IDs from `.env`:
- * `VITE_STRIPE_PRICE_GROWTH`, `VITE_STRIPE_PRICE_FLEET`.
+ * `VITE_STRIPE_PRICE_FREE`, `VITE_STRIPE_PRICE_GROWTH`, `VITE_STRIPE_PRICE_FLEET`.
  *
- * `free` maps to `''` on purpose -- it is the tier a tenant holds by *not*
- * subscribing, so there is nothing to check out. Callers must treat an empty
- * price id as "not purchasable" rather than sending it to Stripe; the backend
- * rejects an unknown price id anyway (`app/domain/billing.py`).
+ * `free` is a real $0 recurring price like every other tier -- it goes
+ * through the same Checkout Session so a card still gets collected
+ * (`payment_method_collection: 'always'` in `create_checkout_session`).
  */
 export function getStripeSubscriptionPriceId(plan: SubscriptionPlanKey): string {
   const ids: Record<SubscriptionPlanKey, string> = {
-    free: '',
+    free: import.meta.env.VITE_STRIPE_PRICE_FREE ?? '',
     growth: import.meta.env.VITE_STRIPE_PRICE_GROWTH ?? '',
     fleet: import.meta.env.VITE_STRIPE_PRICE_FLEET ?? '',
   }

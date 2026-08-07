@@ -11,7 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_API_PROXY?: string
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string
 
-  readonly VITE_STRIPE_PRICE_STARTER?: string
+  readonly VITE_STRIPE_PRICE_FREE?: string
   readonly VITE_STRIPE_PRICE_GROWTH?: string
   readonly VITE_STRIPE_PRICE_FLEET?: string
   /** Optional override for {@link TENANT_SUPPORT_EMAIL} (tenant dashboard / help). */

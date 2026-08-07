@@ -25,12 +25,8 @@ export default function SubscriptionSelection() {
   }
 
   const handleSelectPlan = async (plan: typeof LANDING_PRICING_PLANS[0]) => {
-    // Free has no Stripe price -- it is the tier you hold by not subscribing,
-    // so there is nothing to check out. Go straight to the dashboard.
-    if (plan.product_type === 'free') {
-      navigate('/tenant/overview')
-      return
-    }
+    // Free is a real $0 Checkout session like every other tier -- it still
+    // collects a card (see create_checkout_session's payment_method_collection).
     setLoading(plan.product_type)
     setError(null)
 

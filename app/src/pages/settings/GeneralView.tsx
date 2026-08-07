@@ -221,10 +221,20 @@ export default function GeneralView() {
                 </div>
                 <div style={rowStyle}>
                   <span style={rowLabel}>Plan</span>
-                  <StatusBadge
-                    ok={currentPlan !== 'free'}
-                    label={currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
-                  />
+                  {/* Not a StatusBadge: "free" isn't a problem state, it's just a
+                      tier -- a Warning triangle there read as something being
+                      wrong. Every tier bills through Stripe now, so a plain
+                      CreditCard badge is accurate for all of them. */}
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 10px', borderRadius: 100,
+                    fontSize: 12, fontWeight: 500, fontFamily: '"Work Sans", sans-serif',
+                    backgroundColor: 'rgba(108, 99, 232, 0.1)',
+                    color: 'var(--bw-accent)'
+                  }}>
+                    <CreditCard weight="fill" size={13} aria-hidden />
+                    {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                  </span>
                 </div>
                 <div style={rowStyle}>
                   <span style={rowLabel}>Status</span>
