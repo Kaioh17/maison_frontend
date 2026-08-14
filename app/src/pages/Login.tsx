@@ -5,8 +5,6 @@ import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
-import MaisonWordmark from '@components/MaisonWordmark'
 
 const LOGIN_HERO_INTERVAL_MS = 60_000
 const LOGIN_HERO_FADE_MS = 1_400
@@ -176,15 +174,6 @@ export default function AuthPage() {
             width: 100% !important;
             padding: 16px !important;
           }
-          .login-logo {
-            top: 16px !important;
-            left: 16px !important;
-          }
-          .login-logo img {
-            height: 37px !important;
-            width: auto !important;
-            max-width: min(300px, 88vw) !important;
-          }
           .login-title {
             font-size: 28px !important;
           }
@@ -340,26 +329,6 @@ export default function AuthPage() {
               overflowY: 'auto',
             }}
           >
-            {/* Logo */}
-            <div
-              className="login-logo"
-              style={{
-                position: 'absolute',
-                top: '24px',
-                left: '24px',
-                zIndex: 10,
-                lineHeight: 1,
-              }}
-            >
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
-                <MaisonDarkModeLogo height={52} />
-                <MaisonWordmark
-                  color={null}
-                  style={{ fontSize: '1.5rem', display: 'inline-block', verticalAlign: 'middle' }}
-                />
-              </div>
-            </div>
-
             {/* Main form content — centered in available space below the logo */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', paddingTop: '72px' }}>
               <h2 className="login-title" style={{ margin: 0, fontSize: 40, fontFamily: 'DM Sans, sans-serif', fontWeight: 200, textAlign: 'center' }}>Welcome back</h2>
@@ -469,4 +438,4 @@ export default function AuthPage() {
       </main>
     </>
   )
-} 
+}

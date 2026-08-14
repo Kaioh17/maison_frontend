@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, getTenantRiderEmails, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData, type TenantRiderEmailOption } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
 import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
@@ -76,6 +76,12 @@ function useShellState() {
     queryKey: ['tenant', 'vehicles'],
     queryFn: () => getTenantVehicles().then(r => r.data ?? []),
   })
+  const ridersQuery = useQuery({
+    queryKey: ['tenant', 'riders'],
+    queryFn: () => getTenantRiderEmails().then(r => r.data ?? []),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+  })
   const bookingsQuery = useQuery({
     queryKey: ['tenant', 'bookings', { bookingStatusFilter, serviceTypeFilter, vehicleIdFilter }],
     queryFn: () => {
@@ -106,17 +112,19 @@ function useShellState() {
   const info: any = infoQuery.data ?? null
   const drivers: DriverResponse[] = driversQuery.data ?? []
   const vehicles: VehicleResponse[] = vehiclesQuery.data ?? []
+  const riders: TenantRiderEmailOption[] = ridersQuery.data ?? []
   const bookings: BookingResponse[] = bookingsQuery.data ?? []
   const vehicleCategories: any[] = vehicleCategoriesQuery.data ?? []
   const analysis: TenantAnalysisData | null = analysisQuery.data ?? null
   const tenantConfig: TenantConfigResponse | null = configQuery.data ?? null
 
   // Combined first-load gate
-  const loading = infoQuery.isLoading || driversQuery.isLoading || vehiclesQuery.isLoading || bookingsQuery.isLoading
+  const loading = infoQuery.isLoading || driversQuery.isLoading || vehiclesQuery.isLoading || bookingsQuery.isLoading || ridersQuery.isLoading
 
   // No-op setters kept for context shape compatibility (data is managed by query cache)
   const setInfo = useCallback((_v: any) => {}, [])
   const setDrivers = useCallback((_v: DriverResponse[]) => {}, [])
+  const setRiders = useCallback((_v: TenantRiderEmailOption[]) => {}, [])
   const setVehicles = useCallback((_v: VehicleResponse[]) => {}, [])
   const setAnalysis = useCallback((_v: TenantAnalysisData | null) => {}, [])
   const setLoading = useCallback((_v: boolean) => {}, [])
@@ -598,6 +606,7 @@ function useShellState() {
   }
 
   const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(120px, 1.1fr)'
+  const ridersTableGridColumns = 'minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.7fr)'
 
   const saveVehicleRate = async (categoryName: string, newRate: number) => {
     try {
@@ -1204,6 +1213,7 @@ function useShellState() {
   const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }> = [
     { id: 'overview', label: 'Overview', icon: TrendUp },
     { id: 'drivers', label: 'Drivers', icon: Users },
+    { id: 'riders', label: 'Riders', icon: User },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'vehicles', label: 'Vehicles', icon: Car },
     { id: 'settings', label: 'Settings', icon: Gear },
@@ -1215,6 +1225,7 @@ function useShellState() {
     // Determine from URL
     const path = location.pathname
     if (path === '/tenant/drivers') return 'drivers'
+    if (path === '/tenant/riders') return 'riders'
     if (path === '/tenant/bookings') return 'bookings'
     if (path === '/tenant/vehicles') return 'vehicles'
     if (path === '/tenant/overview' || path === '/tenant') return 'overview'
@@ -1379,6 +1390,8 @@ function useShellState() {
     analysisError: analysisQuery.isError,
     drivers,
     setDrivers,
+    riders,
+    setRiders,
     vehicles,
     setVehicles,
     bookings,
@@ -1605,6 +1618,7 @@ function useShellState() {
     confirmAssignVehicleToDriver,
     openAssignVehicleToDriver,
     driversTableGridColumns,
+    ridersTableGridColumns,
     saveVehicleRate,
     getStatusColor,
     getStatusColorHex,
@@ -1679,6 +1693,8 @@ export default function TenantShell() {
     setInfo,
     drivers,
     setDrivers,
+    riders,
+    setRiders,
     vehicles,
     setVehicles,
     bookings,
@@ -1905,6 +1921,7 @@ export default function TenantShell() {
     confirmAssignVehicleToDriver,
     openAssignVehicleToDriver,
     driversTableGridColumns,
+    ridersTableGridColumns,
     saveVehicleRate,
     getStatusColor,
     getStatusColorHex,

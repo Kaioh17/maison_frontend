@@ -17,8 +17,6 @@ import {
   isPasswordPolicyValid,
   PASSWORD_POLICY_HINT,
 } from '@utils/passwordPolicy'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
-import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -297,15 +295,6 @@ export default function Signup() {
           .signup-main-container {
             flex-direction: column !important;
           }
-          .signup-logo {
-            top: 16px !important;
-            left: 16px !important;
-          }
-          .signup-logo img {
-            height: 39px !important;
-            width: auto !important;
-            max-width: min(300px, 88vw) !important;
-          }
           .signup-title {
             font-size: 28px !important;
           }
@@ -379,12 +368,6 @@ export default function Signup() {
           }
           .signup-modal-code {
             font-size: 12px !important;
-          }
-          .signup-mobile-logo-flow {
-            position: static !important;
-            top: auto !important;
-            left: auto !important;
-            margin-bottom: 1.5rem !important;
           }
           .signup-mobile-form-container-inner {
             align-items: stretch !important;
@@ -495,26 +478,6 @@ export default function Signup() {
             boxSizing: 'border-box',
           }}
         >
-          {!isMobileSignup && (
-            <div
-              className="signup-logo"
-              style={{
-                position: 'absolute',
-                top: '24px',
-                left: '24px',
-                zIndex: 10,
-                lineHeight: 1,
-              }}
-            >
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
-                <MaisonDarkModeLogo height={52} />
-                <MaisonWordmark
-                  color={null}
-                  style={{ fontSize: '1.5rem', display: 'inline-block', verticalAlign: 'middle' }}
-                />
-              </div>
-            </div>
-          )}
           <div
             style={{
               width: '100%',
@@ -562,23 +525,6 @@ export default function Signup() {
                   }}
                 />
               ))}
-            </div>
-          )}
-          {isMobileSignup && (
-            <div
-              className="signup-logo signup-mobile-logo-flow"
-              style={{
-                lineHeight: 1,
-                alignSelf: 'flex-start',
-              }}
-            >
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.625rem' }}>
-                <MaisonDarkModeLogo height={39} />
-                <MaisonWordmark
-                  color={null}
-                  style={{ fontSize: '1.2rem', display: 'inline-block', verticalAlign: 'middle' }}
-                />
-              </div>
             </div>
           )}
           <h1

@@ -56,6 +56,8 @@ export default function OverviewTab() {
     setInfo,
     drivers,
     setDrivers,
+    riders,
+    setRiders,
     vehicles,
     setVehicles,
     bookings,
@@ -502,7 +504,7 @@ export default function OverviewTab() {
                   </div>
 
                   {/* 2×2 stat tile grid (1×4 on desktop) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))', gap: 'clamp(8px, 1.5vw, 12px)', marginBottom: 'clamp(10px, 2vw, 14px)' }}>
                     <div
                       className="bw-card tenant-overview-nav-card"
                       role="button" tabIndex={0} aria-label="View active bookings"
@@ -545,6 +547,16 @@ export default function OverviewTab() {
                     >
                       <div style={statLabel}>Completion rate</div>
                       <div style={statValue}>{completionRate}%</div>
+                    </div>
+                    <div
+                      className="bw-card tenant-overview-nav-card"
+                      role="button" tabIndex={0} aria-label="View riders"
+                      onClick={() => handleTabClick('riders')}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTabClick('riders') } }}
+                      style={statCard}
+                    >
+                      <div style={statLabel}>Riders</div>
+                      <div style={statValue}>{riders.length}</div>
                     </div>
                   </div>
 

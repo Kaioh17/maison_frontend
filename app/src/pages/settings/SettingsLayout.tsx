@@ -3,7 +3,7 @@ import SettingsMenuBar from '@components/SettingsMenuBar'
 
 export default function SettingsLayout() {
   return (
-    <div className="bw" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="bw settings-shell">
       <SettingsMenuBar>
         <Outlet />
       </SettingsMenuBar>

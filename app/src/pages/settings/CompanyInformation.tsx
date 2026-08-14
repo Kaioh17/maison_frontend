@@ -3,27 +3,9 @@ import { getTenantInfo } from '@api/tenant'
 import { Buildings, FloppyDisk, PencilSimple, X } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { http } from '@api/http'
+import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
-
-const ACCENT = 'rgba(155, 97, 209, 0.81)'
-
-function hoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ACCENT
-  e.currentTarget.style.color = ACCENT
-  e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-}
-function unhoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ''
-  e.currentTarget.style.color = ''
-  e.currentTarget.style.backgroundColor = ''
-}
-function hoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = '0.85'
-}
-function unhoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = ''
-}
 
 function Field({
   label, helper, editing, type = 'text', value, onChange
@@ -32,7 +14,7 @@ function Field({
   type?: string; value: string; onChange?: (v: string) => void
 }) {
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <label style={{
         display: 'block', fontSize: 12, fontWeight: 500,
         fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
@@ -59,7 +41,7 @@ function Field({
         </>
       ) : (
         <div style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 400,
-          color: value ? 'var(--bw-text)' : 'var(--bw-muted)', padding: '10px 0' }}>
+          color: value ? 'var(--bw-text)' : 'var(--bw-muted)', padding: '10px 0', overflowWrap: 'anywhere' }}>
           {value || <span style={{ color: 'var(--bw-muted)' }}>—</span>}
         </div>
       )}
@@ -160,6 +142,8 @@ export default function CompanyInformation() {
   }
 
   const sectionCard: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
     backgroundColor: 'var(--bw-bg-secondary)',
     border: '1px solid var(--bw-border)',
     borderRadius: 10,
@@ -179,25 +163,10 @@ export default function CompanyInformation() {
     letterSpacing: '0.03em', textTransform: 'uppercase'
   }
 
-  const outlineBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: '1px solid var(--bw-border)', backgroundColor: '#ffffff',
-    color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer',
-    transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
-  }
-
-  const primaryBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
-    display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer', transition: 'opacity 0.15s ease'
-  }
-
   return (
-    <div style={{
+    <>
+      <style>{SETTINGS_BTN_CSS}</style>
+      <div style={{
       maxWidth: '100%',
       overflowX: 'hidden',
       boxSizing: 'border-box',
@@ -221,45 +190,44 @@ export default function CompanyInformation() {
               boxSizing: 'border-box'
             }}
           >
-            {/* Page header */}
+            {/* Page header — title and description are direct children, no title-only wrapper div.
+                The h1 is desktop-only: the mobile top bar (SettingsMenuBar) already shows the
+                section title there, so repeating it here would be a second heading. */}
             <div style={{
-              display: 'flex', alignItems: 'flex-start',
-              justifyContent: 'space-between', gap: 16, marginBottom: 24
+              display: 'grid', gridTemplateColumns: '1fr auto',
+              columnGap: 16, marginBottom: 24
             }}>
-              <div>
+              {!isMobile && (
                 <h1 style={{
+                  gridColumn: 1, gridRow: 1,
                   margin: '0 0 4px', fontSize: 17, fontWeight: 500,
                   fontFamily: '"DM Sans", sans-serif', color: 'var(--bw-text)'
                 }}>
                   Business Profile
                 </h1>
-                <p style={{
-                  margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
-                }}>
-                  Your company name, city, and the slug that appears in your booking URLs.
-                </p>
-              </div>
+              )}
+              <p style={{
+                gridColumn: 1, gridRow: 2,
+                margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
+                fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
+              }}>
+                Your company name, city, and the slug that appears in your booking URLs.
+              </p>
 
               {!isMobile && (
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <div style={{ gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'start', display: 'flex', gap: 8, flexShrink: 0 }}>
                   {isEditing ? (
                     <>
-                      <button style={outlineBtnStyle} onClick={handleCancel} disabled={saving}
-                        onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                      <button className="pss-btn pss-btn-outline" onClick={handleCancel} disabled={saving}>
                         <X size={16} aria-hidden /> Cancel
                       </button>
-                      <button
-                        style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
-                        onClick={handleSave} disabled={saving}
-                        onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                      <button className="pss-btn pss-btn-primary" onClick={handleSave} disabled={saving}>
                         <FloppyDisk size={16} aria-hidden />
                         {saving ? 'Saving…' : 'Save Changes'}
                       </button>
                     </>
                   ) : (
-                    <button style={outlineBtnStyle} onClick={() => setIsEditing(true)}
-                      onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                    <button className="pss-btn pss-btn-outline" onClick={() => setIsEditing(true)}>
                       <PencilSimple size={16} aria-hidden /> Edit
                     </button>
                   )}
@@ -291,7 +259,7 @@ export default function CompanyInformation() {
                   helper="Primary city of operations."
                   editing={isEditing}
                   onChange={v => setEditedData(p => ({ ...p, city: v }))} />
-                <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
+                <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2', minWidth: 0 }}>
                   <Field label="Address" value={editedData.address}
                     helper="Street address for business records."
                     editing={isEditing}
@@ -354,5 +322,6 @@ export default function CompanyInformation() {
             </div>
           )}
         </div>
+    </>
   )
 }

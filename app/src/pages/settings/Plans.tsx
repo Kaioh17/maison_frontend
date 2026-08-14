@@ -120,24 +120,32 @@ export default function Plans() {
 
   return (
     <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
-        {/* Header */}
-        <div style={{ 
-          width: '100%',
-          maxWidth: '100%',
-          padding: `clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)`,
-          marginBottom: 'clamp(24px, 4vw, 32px)',
-          boxSizing: 'border-box'
-        }}>
-          <h1 style={{ 
-            fontSize: 'clamp(24px, 4vw, 32px)', 
-            margin: 0,
-            fontFamily: '"DM Sans", sans-serif',
-            fontWeight: 200,
-            color: 'var(--bw-text)'
+        {/* Subscription-only exception: match the outer Content Panel's radius to the plan
+            cards' 14px instead of the shared 26px settings-panel radius. Scoped to this page
+            via a style tag that mounts/unmounts with it, so Sidebar/top bar/other Settings
+            pages keep the default radius. */}
+        <style>{`.settings-main-panel { border-radius: 14px; }`}</style>
+        {/* Header — desktop only: the mobile top bar (SettingsMenuBar) already shows the
+            section title there, so repeating it here would be a second heading. */}
+        {!isMobile && (
+          <div style={{
+            width: '100%',
+            maxWidth: '100%',
+            padding: `clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px) clamp(16px, 2vw, 24px)`,
+            marginBottom: 'clamp(24px, 4vw, 32px)',
+            boxSizing: 'border-box'
           }}>
-            Subscription Plans
-          </h1>
-        </div>
+            <h1 style={{
+              fontSize: 'clamp(24px, 4vw, 32px)',
+              margin: 0,
+              fontFamily: '"DM Sans", sans-serif',
+              fontWeight: 200,
+              color: 'var(--bw-text)'
+            }}>
+              Subscription Plans
+            </h1>
+          </div>
+        )}
 
       {/* Content Container */}
       <div className="bw-container" style={{ 

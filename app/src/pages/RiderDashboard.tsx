@@ -263,7 +263,7 @@ export default function RiderDashboard() {
   useFavicon()
   const [form, setForm] = useState({
     vehicle_id: 0,
-    country: '',
+    country: 'US',
     service_type: 'dropoff' as 'airport' | 'hourly' | 'dropoff',
     airport_service: '' as 'to_airport' | 'from_airport' | '',
     pickup_location: '',
@@ -679,8 +679,8 @@ export default function RiderDashboard() {
       const response = await createBooking(bookingPayload)
       if (response.success && response.data) {
         setForm({ 
-          vehicle_id: 0, 
-          country: '', 
+          vehicle_id: 0,
+          country: 'US',
           service_type: 'dropoff',
           airport_service: '',
           pickup_location: '', 

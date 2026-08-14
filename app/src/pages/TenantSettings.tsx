@@ -40,6 +40,8 @@ import { Gear, User, Building, MapPin, Phone, Envelope, Shield, CreditCard, Curr
 
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 
+import { SETTINGS_BTN_CSS } from './settings/settingsButtonCss'
+
 import {
 
   normalizeAllowedPaymentMethodMap,
@@ -98,24 +100,19 @@ export default function TenantSettings() {
 
   const [savingLogo, setSavingLogo] = useState(false)
 
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
-
-    accountInfo: true,
-
-    companyInfo: true,
-
-    subscription: true,
-
-    statistics: true,
-
-    tenantSettings: true,
-
-    branding: true,
-
-    fare: true,
-
-    rider: true
-
+  // Branding/fare/rider start collapsed on mobile (where they're the only place these
+  // toggle at all — desktop has no chevron for them, so they stay expanded there).
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(() => {
+    const mobile = window.innerWidth <= 768
+    return {
+      accountInfo: true,
+      companyInfo: true,
+      subscription: true,
+      statistics: true,
+      branding: !mobile,
+      fare: !mobile,
+      rider: !mobile
+    }
   })
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -126,45 +123,6 @@ export default function TenantSettings() {
 
   
 
-  // Button hover states
-
-  const [isEditAccountInfoHovered, setIsEditAccountInfoHovered] = useState(false)
-
-  const [isEditCompanyInfoHovered, setIsEditCompanyInfoHovered] = useState(false)
-
-  const [isEditSubscriptionHovered, setIsEditSubscriptionHovered] = useState(false)
-
-  const [isEditStatisticsHovered, setIsEditStatisticsHovered] = useState(false)
-
-  const [isCancelEditHovered, setIsCancelEditHovered] = useState(false)
-
-  const [isSaveChangesHovered, setIsSaveChangesHovered] = useState(false)
-
-  const [isEditSettingsHovered, setIsEditSettingsHovered] = useState(false)
-
-  const [isEditBrandingHovered, setIsEditBrandingHovered] = useState(false)
-
-  const [isCancelLogoHovered, setIsCancelLogoHovered] = useState(false)
-
-  const [isSaveLogoHovered, setIsSaveLogoHovered] = useState(false)
-
-  const [isEditFareHovered, setIsEditFareHovered] = useState(false)
-
-  const [isEditRiderHovered, setIsEditRiderHovered] = useState(false)
-
-  const [isEditBookingConfigHovered, setIsEditBookingConfigHovered] = useState(false)
-
-  const [isEditRiderTiersHovered, setIsEditRiderTiersHovered] = useState(false)
-
-  const [isSaveBookingConfigHovered, setIsSaveBookingConfigHovered] = useState(false)
-
-  const [isSaveRiderTiersHovered, setIsSaveRiderTiersHovered] = useState(false)
-
-  const [isCancelBookingConfigHovered, setIsCancelBookingConfigHovered] = useState(false)
-
-  const [isCancelRiderTiersHovered, setIsCancelRiderTiersHovered] = useState(false)
-
-  
 
   // Separate editing states for booking config and rider tiers
 
@@ -209,6 +167,14 @@ export default function TenantSettings() {
       [section]: !prev[section]
 
     }))
+
+  }
+
+  // Sections default collapsed on mobile; entering edit mode from any "Edit" trigger
+  // should reveal the fields being edited rather than leaving them hidden underneath.
+  const expandAllSections = () => {
+
+    setOpenSections(prev => ({ ...prev, branding: true, fare: true, rider: true }))
 
   }
 
@@ -1733,11 +1699,13 @@ export default function TenantSettings() {
 
   return (
 
-    <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
+    <>
+      <style>{SETTINGS_BTN_CSS}</style>
+      <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
 
         {/* Header - Left aligned */}
 
-        <div style={{ 
+        <div style={{
 
           width: '100%',
 
@@ -1747,13 +1715,24 @@ export default function TenantSettings() {
 
           marginBottom: 'clamp(24px, 4vw, 32px)',
 
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
 
-        }}>
+          display: 'flex',
 
-          <h1 style={{ 
+          alignItems: 'center',
 
-            fontSize: 'clamp(24px, 4vw, 32px)', 
+          justifyContent: 'space-between',
+
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+
+          gap: 'clamp(8px, 1.5vw, 12px)'
+
+        }}
+        >
+
+          <h1 style={{
+
+            fontSize: 'clamp(24px, 4vw, 32px)',
 
             margin: 0,
 
@@ -1768,6 +1747,58 @@ export default function TenantSettings() {
             Booking Settings
 
           </h1>
+
+          <div style={{
+
+            display: 'flex',
+
+            alignItems: 'center',
+
+            gap: 'clamp(8px, 1.5vw, 12px)',
+
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
+
+            width: isMobile ? '100%' : 'auto'
+
+          }}>
+
+            {editingSettings ? (
+
+              <>
+
+                <button
+                  className={`pss-btn pss-btn-outline${isMobile ? ' pss-btn-block' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
+                  disabled={saving}
+                >
+                  <XCircle size={16} aria-hidden />
+                  Cancel
+                </button>
+
+                <button
+                  className={`pss-btn pss-btn-primary${isMobile ? ' pss-btn-block' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleSaveSettings(); }}
+                  disabled={saving}
+                >
+                  <FloppyDisk size={16} aria-hidden />
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+
+              </>
+
+            ) : (
+
+              <button
+                className={`pss-btn pss-btn-outline${isMobile ? ' pss-btn-block' : ''}`}
+                onClick={(e) => { e.stopPropagation(); setEditingSettings(true); expandAllSections(); }}
+              >
+                <Pencil size={16} aria-hidden />
+                Edit
+              </button>
+
+            )}
+
+          </div>
 
         </div>
 
@@ -1813,295 +1844,13 @@ export default function TenantSettings() {
 
         }}>
 
-          <div 
-
-            className="bw-card-header" 
-
-            style={{ 
-
-              display: 'flex', 
-
-              justifyContent: 'space-between', 
-
-              alignItems: 'center',
-
-              cursor: isMobile ? 'pointer' : 'default',
-
-              userSelect: 'none',
-
-              marginBottom: openSections.tenantSettings ? 'clamp(12px, 2vw, 16px)' : 0,
-
-              flexWrap: isMobile ? 'wrap' : 'nowrap',
-
-              gap: 'clamp(8px, 1.5vw, 12px)'
-
-            }}
-
-            onClick={() => isMobile && toggleSection('tenantSettings')}
-
-          >
-
-            <h3 style={{ 
-
-              margin: 0,
-
-              fontSize: 'clamp(16px, 2.5vw, 20px)',
-
-              fontFamily: '"Work Sans", sans-serif',
-
-              fontWeight: 400,
-
-              color: 'var(--bw-text)'
-
-            }}>
-
-              Booking Settings
-
-            </h3>
-
-            <div style={{ 
-
-              display: 'flex', 
-
-              alignItems: 'center', 
-
-              gap: 'clamp(8px, 1.5vw, 12px)',
-
-              flexWrap: isMobile ? 'wrap' : 'nowrap',
-
-              width: isMobile ? '100%' : 'auto'
-
-            }}>
-
-              {editingSettings ? (
-
-                <>
-
-                  <button 
-
-                    className={`bw-btn-outline ${isCancelEditHovered ? 'custom-hover-border' : ''}`}
-
-                    onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
-
-                    onMouseEnter={() => !saving && setIsCancelEditHovered(true)}
-
-                    onMouseLeave={() => setIsCancelEditHovered(false)}
-
-                    disabled={saving}
-
-                    style={{
-
-                      flex: isMobile ? '1 1 100%' : '0 1 auto',
-
-                      minWidth: isMobile ? '100%' : 'auto',
-
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 600,
-
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                      borderRadius: 7,
-
-                      display: 'flex',
-
-                      alignItems: 'center',
-
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                      justifyContent: 'center',
-
-                      color: isCancelEditHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                      border: isCancelEditHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                      borderColor: isCancelEditHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                      backgroundColor: isCancelEditHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                      boxSizing: 'border-box',
-
-                      transition: 'all 0.2s ease'
-
-                    } as React.CSSProperties}
-
-                  >
-
-                    <span style={{ color: isCancelEditHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                      Cancel
-
-                    </span>
-
-                  </button>
-
-                  <button 
-
-                    className={`bw-btn bw-btn-action ${isSaveChangesHovered ? 'custom-hover-border' : ''}`}
-
-                    onClick={(e) => { e.stopPropagation(); handleSaveSettings(); }}
-
-                    onMouseEnter={() => !saving && setIsSaveChangesHovered(true)}
-
-                    onMouseLeave={() => setIsSaveChangesHovered(false)}
-
-                    disabled={saving}
-
-                    style={{
-
-                      flex: isMobile ? '1 1 100%' : '0 1 auto',
-
-                      minWidth: isMobile ? '100%' : 'auto',
-
-                      padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 600,
-
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                      borderRadius: 7,
-
-                      display: 'flex',
-
-                      alignItems: 'center',
-
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                      justifyContent: 'center',
-
-                      backgroundColor: isSaveChangesHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-
-                      color: isSaveChangesHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
-
-                      border: isSaveChangesHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-
-                      borderColor: isSaveChangesHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                      boxSizing: 'border-box',
-
-                      transition: 'all 0.2s ease'
-
-                    } as React.CSSProperties}
-
-                  >
-
-                    {saving ? (
-
-                      <span>Saving...</span>
-
-                    ) : (
-
-                      <>
-
-                        <FloppyDisk size={16} style={{ 
-
-                          width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-
-                          height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-
-                        }} />
-
-                        <span>Save Changes</span>
-
-                      </>
-
-                    )}
-
-                  </button>
-
-                </>
-
-              ) : (
-
-                <button 
-
-                  className={`bw-btn-outline ${isEditSettingsHovered ? 'custom-hover-border' : ''}`}
-
-                  onClick={(e) => { e.stopPropagation(); setEditingSettings(true); }}
-
-                  onMouseEnter={() => setIsEditSettingsHovered(true)}
-
-                  onMouseLeave={() => setIsEditSettingsHovered(false)}
-
-                  style={{
-
-                    flex: isMobile ? '1 1 100%' : '0 1 auto',
-
-                    minWidth: isMobile ? '100%' : 'auto',
-
-                    padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                    borderRadius: 7,
-
-                    display: 'flex',
-
-                    alignItems: 'center',
-
-                    gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                    justifyContent: 'center',
-
-                    color: isEditSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                    border: isEditSettingsHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                    borderColor: isEditSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                    backgroundColor: isEditSettingsHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                    boxSizing: 'border-box',
-
-                    transition: 'all 0.2s ease'
-
-                  } as React.CSSProperties}
-
-                >
-
-                  <span style={{ color: isEditSettingsHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                    Edit Settings
-
-                  </span>
-
-                </button>
-
-              )}
-
-              {isMobile && (
-
-                openSections.tenantSettings ? (
-
-                  <CaretUp size={20} style={{ color: 'var(--bw-text)' }} />
-
-                ) : (
-
-                  <CaretDown size={20} style={{ color: 'var(--bw-text)' }} />
-
-                )
-
-              )}
-
-            </div>
-
-          </div>
-
-          {openSections.tenantSettings && (
 
           <>
 
-          {/* Branding & Theme Settings */}
+          {/* Branding & Theme Settings — first section in the card, so no top divider (the
+              card's own top edge already separates it from whatever precedes the card) */}
 
-          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)', borderTop: '1px solid var(--bw-border)', paddingTop: 'clamp(24px, 4vw, 32px)' }}>
+          <div style={{ marginBottom: 'clamp(24px, 4vw, 32px)' }}>
 
             <div 
 
@@ -2168,63 +1917,18 @@ export default function TenantSettings() {
               {!isMobile && (
 
                 <button
-
-                  className={`bw-btn-outline ${isEditBrandingHovered ? 'custom-hover-border' : ''}`}
-
+                  className="pss-btn pss-btn-outline"
                   onClick={(e) => {
 
                     e.stopPropagation();
 
                     setEditingSections(prev => ({ ...prev, branding: !prev.branding }));
+                    if (!editingSections.branding) expandAllSections();
 
                   }}
-
-                  onMouseEnter={() => setIsEditBrandingHovered(true)}
-
-                  onMouseLeave={() => setIsEditBrandingHovered(false)}
-
-                  style={{
-
-                    padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    display: 'flex',
-
-                    alignItems: 'center',
-
-                    gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                    width: isMobile ? '100%' : 'auto',
-
-                    justifyContent: 'center',
-
-                    borderRadius: 7,
-
-                    border: isEditBrandingHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-
-                    borderColor: isEditBrandingHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                    color: isEditBrandingHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                    backgroundColor: isEditBrandingHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                    transition: 'all 0.2s ease'
-
-                  } as React.CSSProperties}
-
                 >
-
-                  <span style={{ color: isEditBrandingHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                    {editingSections.branding ? 'Cancel' : 'Edit'}
-
-                  </span>
-
+                  {editingSections.branding ? <XCircle size={16} aria-hidden /> : <Pencil size={16} aria-hidden />}
+                  {editingSections.branding ? 'Cancel' : 'Edit'}
                 </button>
 
               )}
@@ -2477,140 +2181,22 @@ export default function TenantSettings() {
 
                     }}>
 
-                      <button 
-
-                        className={`bw-btn-outline ${isCancelLogoHovered ? 'custom-hover-border' : ''}`}
-
+                      <button
+                        className={`pss-btn pss-btn-outline${isMobile ? ' pss-btn-block' : ''}`}
                         onClick={handleCancelLogo}
-
-                        onMouseEnter={() => !savingLogo && setIsCancelLogoHovered(true)}
-
-                        onMouseLeave={() => setIsCancelLogoHovered(false)}
-
                         disabled={savingLogo}
-
-                        style={{ 
-
-                          flex: isMobile ? '1 1 100%' : '0 1 auto',
-
-                          minWidth: isMobile ? '100%' : 'auto',
-
-                          padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px', 
-
-                          fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                          fontFamily: '"Work Sans", sans-serif',
-
-                          fontWeight: 600,
-
-                          borderRadius: 7,
-
-                          display: 'flex',
-
-                          alignItems: 'center',
-
-                          gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                          justifyContent: 'center',
-
-                          color: isCancelLogoHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                          border: isCancelLogoHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                          borderColor: isCancelLogoHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                          backgroundColor: isCancelLogoHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                          boxSizing: 'border-box',
-
-                          transition: 'all 0.2s ease'
-
-                        } as React.CSSProperties}
-
                       >
-
-                        <span style={{ color: isCancelLogoHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                          Cancel
-
-                        </span>
-
+                        <XCircle size={16} aria-hidden />
+                        Cancel
                       </button>
 
-                      <button 
-
-                        className={`bw-btn bw-btn-action ${isSaveLogoHovered ? 'custom-hover-border' : ''}`}
-
+                      <button
+                        className={`pss-btn pss-btn-primary${isMobile ? ' pss-btn-block' : ''}`}
                         onClick={handleSaveLogo}
-
-                        onMouseEnter={() => !savingLogo && setIsSaveLogoHovered(true)}
-
-                        onMouseLeave={() => setIsSaveLogoHovered(false)}
-
                         disabled={savingLogo}
-
-                        style={{ 
-
-                          flex: isMobile ? '1 1 100%' : '0 1 auto',
-
-                          minWidth: isMobile ? '100%' : 'auto',
-
-                          padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px', 
-
-                          fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                          fontFamily: '"Work Sans", sans-serif',
-
-                          fontWeight: 600,
-
-                          borderRadius: 7,
-
-                          display: 'flex',
-
-                          alignItems: 'center',
-
-                          gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                          justifyContent: 'center',
-
-                          backgroundColor: isSaveLogoHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-
-                          color: isSaveLogoHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
-
-                          border: isSaveLogoHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-
-                          borderColor: isSaveLogoHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                          boxSizing: 'border-box',
-
-                          transition: 'all 0.2s ease'
-
-                        } as React.CSSProperties}
-
                       >
-
-                        {savingLogo ? (
-
-                          <span>Saving...</span>
-
-                        ) : (
-
-                          <>
-
-                            <FloppyDisk size={16} style={{ 
-
-                              width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-
-                              height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-
-                            }} />
-
-                            <span>Save Logo</span>
-
-                          </>
-
-                        )}
-
+                        <FloppyDisk size={16} aria-hidden />
+                        {savingLogo ? 'Saving…' : 'Save Logo'}
                       </button>
 
                     </div>
@@ -2884,63 +2470,18 @@ export default function TenantSettings() {
               {!isMobile && (
 
                 <button
-
-                  className={`bw-btn-outline ${isEditFareHovered ? 'custom-hover-border' : ''}`}
-
+                  className="pss-btn pss-btn-outline"
                   onClick={(e) => {
 
                     e.stopPropagation();
 
                     setEditingSections(prev => ({ ...prev, fare: !prev.fare }));
+                    if (!editingSections.fare) expandAllSections();
 
                   }}
-
-                  onMouseEnter={() => setIsEditFareHovered(true)}
-
-                  onMouseLeave={() => setIsEditFareHovered(false)}
-
-                  style={{
-
-                    padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                    fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    display: 'flex',
-
-                    alignItems: 'center',
-
-                    gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                    width: isMobile ? '100%' : 'auto',
-
-                    justifyContent: 'center',
-
-                    borderRadius: 7,
-
-                    border: isEditFareHovered ? '2px solid rgba(155, 97, 209, 0.81)' : undefined,
-
-                    borderColor: isEditFareHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                    color: isEditFareHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                    backgroundColor: isEditFareHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                    transition: 'all 0.2s ease'
-
-                  } as React.CSSProperties}
-
                 >
-
-                  <span style={{ color: isEditFareHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                    {editingSections.fare ? 'Cancel' : 'Edit'}
-
-                  </span>
-
+                  {editingSections.fare ? <XCircle size={16} aria-hidden /> : <Pencil size={16} aria-hidden />}
+                  {editingSections.fare ? 'Cancel' : 'Edit'}
                 </button>
 
               )}
@@ -3131,190 +2672,34 @@ export default function TenantSettings() {
 
                   <>
 
-                    <button 
-
-                      className={`bw-btn-outline ${isCancelRiderTiersHovered ? 'custom-hover-border' : ''}`}
-
+                    <button
+                      className="pss-btn pss-btn-outline"
                       onClick={(e) => { e.stopPropagation(); handleCancelRiderTiers(); }}
-
-                      onMouseEnter={() => !savingRiderTiers && setIsCancelRiderTiersHovered(true)}
-
-                      onMouseLeave={() => setIsCancelRiderTiersHovered(false)}
-
                       disabled={savingRiderTiers}
-
-                      style={{
-
-                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        fontWeight: 300,
-
-                        display: 'flex',
-
-                        alignItems: 'center',
-
-                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                        justifyContent: 'center',
-
-                        borderRadius: 7,
-
-                        color: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                        border: isCancelRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                        borderColor: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                        backgroundColor: isCancelRiderTiersHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                        boxSizing: 'border-box',
-
-                        transition: 'all 0.2s ease'
-
-                      } as React.CSSProperties}
-
                     >
-
-                      <span style={{ color: isCancelRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                        Cancel
-
-                      </span>
-
+                      <XCircle size={16} aria-hidden />
+                      Cancel
                     </button>
 
-                    <button 
-
-                      className={`bw-btn bw-btn-action ${isSaveRiderTiersHovered ? 'custom-hover-border' : ''}`}
-
+                    <button
+                      className="pss-btn pss-btn-primary"
                       onClick={(e) => { e.stopPropagation(); handleSaveRiderTiers(); }}
-
-                      onMouseEnter={() => !savingRiderTiers && setIsSaveRiderTiersHovered(true)}
-
-                      onMouseLeave={() => setIsSaveRiderTiersHovered(false)}
-
                       disabled={savingRiderTiers}
-
-                      style={{
-
-                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        fontWeight: 600,
-
-                        display: 'flex',
-
-                        alignItems: 'center',
-
-                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                        justifyContent: 'center',
-
-                        borderRadius: 7,
-
-                        backgroundColor: isSaveRiderTiersHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-
-                        color: isSaveRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
-
-                        border: isSaveRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-
-                        borderColor: isSaveRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                        boxSizing: 'border-box',
-
-                        transition: 'all 0.2s ease'
-
-                      } as React.CSSProperties}
-
                     >
-
-                      {savingRiderTiers ? (
-
-                        <span>Saving...</span>
-
-                      ) : (
-
-                        <>
-
-                          <FloppyDisk size={16} style={{ 
-
-                            width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-
-                            height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-
-                          }} />
-
-                          <span>Save</span>
-
-                        </>
-
-                      )}
-
+                      <FloppyDisk size={16} aria-hidden />
+                      {savingRiderTiers ? 'Saving…' : 'Save'}
                     </button>
 
                   </>
 
                 ) : (
 
-                  <button 
-
-                    className={`bw-btn-outline ${isEditRiderTiersHovered ? 'custom-hover-border' : ''}`}
-
-                    onClick={(e) => { e.stopPropagation(); setEditingRiderTiers(true); }}
-
-                    onMouseEnter={() => setIsEditRiderTiersHovered(true)}
-
-                    onMouseLeave={() => setIsEditRiderTiersHovered(false)}
-
-                    style={{
-
-                      padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 300,
-
-                      display: 'flex',
-
-                      alignItems: 'center',
-
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                      justifyContent: 'center',
-
-                      borderRadius: 7,
-
-                      color: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                      border: isEditRiderTiersHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                      borderColor: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                      backgroundColor: isEditRiderTiersHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                      boxSizing: 'border-box',
-
-                      transition: 'all 0.2s ease'
-
-                    } as React.CSSProperties}
-
+                  <button
+                    className="pss-btn pss-btn-outline"
+                    onClick={(e) => { e.stopPropagation(); setEditingRiderTiers(true); expandAllSections(); }}
                   >
-
-                    <span style={{ color: isEditRiderTiersHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                      Edit
-
-                    </span>
-
+                    <Pencil size={16} aria-hidden />
+                    Edit
                   </button>
 
                 )}
@@ -3547,190 +2932,34 @@ export default function TenantSettings() {
 
                   <>
 
-                    <button 
-
-                      className={`bw-btn-outline ${isCancelBookingConfigHovered ? 'custom-hover-border' : ''}`}
-
+                    <button
+                      className="pss-btn pss-btn-outline"
                       onClick={(e) => { e.stopPropagation(); handleCancelBookingConfig(); }}
-
-                      onMouseEnter={() => !savingBookingConfig && setIsCancelBookingConfigHovered(true)}
-
-                      onMouseLeave={() => setIsCancelBookingConfigHovered(false)}
-
                       disabled={savingBookingConfig}
-
-                      style={{
-
-                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        fontWeight: 300,
-
-                        display: 'flex',
-
-                        alignItems: 'center',
-
-                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                        justifyContent: 'center',
-
-                        borderRadius: 7,
-
-                        color: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                        border: isCancelBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                        borderColor: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                        backgroundColor: isCancelBookingConfigHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                        boxSizing: 'border-box',
-
-                        transition: 'all 0.2s ease'
-
-                      } as React.CSSProperties}
-
                     >
-
-                      <span style={{ color: isCancelBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                        Cancel
-
-                      </span>
-
+                      <XCircle size={16} aria-hidden />
+                      Cancel
                     </button>
 
-                    <button 
-
-                      className={`bw-btn bw-btn-action ${isSaveBookingConfigHovered ? 'custom-hover-border' : ''}`}
-
+                    <button
+                      className="pss-btn pss-btn-primary"
                       onClick={(e) => { e.stopPropagation(); handleSaveBookingConfig(); }}
-
-                      onMouseEnter={() => !savingBookingConfig && setIsSaveBookingConfigHovered(true)}
-
-                      onMouseLeave={() => setIsSaveBookingConfigHovered(false)}
-
                       disabled={savingBookingConfig}
-
-                      style={{
-
-                        padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                        fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        fontWeight: 600,
-
-                        display: 'flex',
-
-                        alignItems: 'center',
-
-                        gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                        justifyContent: 'center',
-
-                        borderRadius: 7,
-
-                        backgroundColor: isSaveBookingConfigHovered ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-
-                        color: isSaveBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#ffffff',
-
-                        border: isSaveBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : 'none',
-
-                        borderColor: isSaveBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                        boxSizing: 'border-box',
-
-                        transition: 'all 0.2s ease'
-
-                      } as React.CSSProperties}
-
                     >
-
-                      {savingBookingConfig ? (
-
-                        <span>Saving...</span>
-
-                      ) : (
-
-                        <>
-
-                          <FloppyDisk size={16} style={{ 
-
-                            width: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px',
-
-                            height: isMobile ? 'clamp(18px, 2.5vw, 20px)' : '18px'
-
-                          }} />
-
-                          <span>Save</span>
-
-                        </>
-
-                      )}
-
+                      <FloppyDisk size={16} aria-hidden />
+                      {savingBookingConfig ? 'Saving…' : 'Save'}
                     </button>
 
                   </>
 
                 ) : (
 
-                  <button 
-
-                    className={`bw-btn-outline ${isEditBookingConfigHovered ? 'custom-hover-border' : ''}`}
-
-                    onClick={(e) => { e.stopPropagation(); setEditingBookingConfig(true); }}
-
-                    onMouseEnter={() => setIsEditBookingConfigHovered(true)}
-
-                    onMouseLeave={() => setIsEditBookingConfigHovered(false)}
-
-                    style={{
-
-                      padding: isMobile ? 'clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 16px)' : '8px 16px',
-
-                      fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 300,
-
-                      display: 'flex',
-
-                      alignItems: 'center',
-
-                      gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-
-                      justifyContent: 'center',
-
-                      borderRadius: 7,
-
-                      color: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : '#000000',
-
-                      border: isEditBookingConfigHovered ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-
-                      borderColor: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : undefined,
-
-                      backgroundColor: isEditBookingConfigHovered ? 'var(--bw-bg-secondary)' : '#ffffff',
-
-                      boxSizing: 'border-box',
-
-                      transition: 'all 0.2s ease'
-
-                    } as React.CSSProperties}
-
+                  <button
+                    className="pss-btn pss-btn-outline"
+                    onClick={(e) => { e.stopPropagation(); setEditingBookingConfig(true); expandAllSections(); }}
                   >
-
-                    <span style={{ color: isEditBookingConfigHovered ? 'rgba(155, 97, 209, 0.81)' : 'inherit' }}>
-
-                      Edit
-
-                    </span>
-
+                    <Pencil size={16} aria-hidden />
+                    Edit
                   </button>
 
                 )}
@@ -5171,7 +4400,6 @@ export default function TenantSettings() {
 
           </>
 
-          )}
 
         </div>
 
@@ -5180,7 +4408,8 @@ export default function TenantSettings() {
       </div>
 
       </div>
+    </>
 
   )
 
-} 
+}

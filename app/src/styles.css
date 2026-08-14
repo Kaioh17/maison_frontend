@@ -100,6 +100,11 @@ body {
   --rider-row-hover: rgba(255, 255, 255, 0.04);
   --rider-notes-bg: rgba(0, 0, 0, 0.2);
   --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+
+  /* Settings — floating panel backdrop (dark by design; light theme falls back to --bw-*) */
+  --settings-backdrop: #07070b;
+  --settings-panel-top: #121219;
+  --settings-panel-bottom: #15151e;
 }
 
 /* Light Theme */
@@ -143,6 +148,10 @@ body {
   --rider-row-hover: rgba(15, 23, 42, 0.05);
   --rider-notes-bg: rgba(15, 23, 42, 0.04);
   --rider-image-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+
+  --settings-backdrop: var(--bw-bg);
+  --settings-panel-top: var(--bw-bg-secondary);
+  --settings-panel-bottom: var(--bw-bg-secondary);
 }
 
 /* Auto Theme - Follows system preference */
@@ -187,6 +196,10 @@ body {
     --rider-row-hover: rgba(15, 23, 42, 0.05);
     --rider-notes-bg: rgba(15, 23, 42, 0.04);
     --rider-image-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+
+    --settings-backdrop: var(--bw-bg);
+    --settings-panel-top: var(--bw-bg-secondary);
+    --settings-panel-bottom: var(--bw-bg-secondary);
   }
 }
 
@@ -235,6 +248,10 @@ body {
     --rider-row-hover: rgba(255, 255, 255, 0.04);
     --rider-notes-bg: rgba(0, 0, 0, 0.2);
     --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+
+    --settings-backdrop: #07070b;
+    --settings-panel-top: #121219;
+    --settings-panel-bottom: #15151e;
   }
   
   /* Dark scrollbar for auto theme in dark mode */

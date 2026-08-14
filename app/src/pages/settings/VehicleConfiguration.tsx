@@ -3,25 +3,7 @@ import { getTenantInfo } from '@api/tenant'
 import { getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, type VehicleCategoryResponse } from '@api/vehicles'
 import { Car, Plus, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
-
-const ACCENT = 'rgba(155, 97, 209, 0.81)'
-
-function hoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ACCENT
-  e.currentTarget.style.color = ACCENT
-  e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-}
-function unhoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ''
-  e.currentTarget.style.color = ''
-  e.currentTarget.style.backgroundColor = ''
-}
-function hoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = '0.85'
-}
-function unhoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = ''
-}
+import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 export default function VehicleConfiguration() {
   const [info, setInfo] = useState<any>(null)
@@ -142,6 +124,8 @@ export default function VehicleConfiguration() {
   }
 
   const sectionCard: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
     backgroundColor: 'var(--bw-bg-secondary)',
     border: '1px solid var(--bw-border)',
     borderRadius: 10,
@@ -161,23 +145,6 @@ export default function VehicleConfiguration() {
     letterSpacing: '0.03em', textTransform: 'uppercase'
   }
 
-  const outlineBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: '1px solid var(--bw-border)', backgroundColor: '#ffffff',
-    color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer',
-    transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
-  }
-
-  const primaryBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
-    display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer', transition: 'opacity 0.15s ease'
-  }
-
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', fontSize: 14,
     fontFamily: '"Work Sans", sans-serif', fontWeight: 400, borderRadius: 6,
@@ -192,7 +159,9 @@ export default function VehicleConfiguration() {
   }
 
   return (
-    <div style={{
+    <>
+      <style>{SETTINGS_BTN_CSS}</style>
+      <div style={{
       maxWidth: '100%',
       overflowX: 'hidden',
       boxSizing: 'border-box',
@@ -214,31 +183,36 @@ export default function VehicleConfiguration() {
               boxSizing: 'border-box'
             }}
           >
-            {/* Page header */}
+            {/* Page header — title and description are direct children, no title-only wrapper div.
+                The h1 is desktop-only: the mobile top bar (SettingsMenuBar) already shows the
+                section title there, so repeating it here would be a second heading. */}
             <div style={{
-              display: 'flex', alignItems: 'flex-start',
-              justifyContent: 'space-between', gap: 16, marginBottom: 24
+              display: 'grid', gridTemplateColumns: '1fr auto',
+              columnGap: 16, marginBottom: 24
             }}>
-              <div>
+              {!isMobile && (
                 <h1 style={{
+                  gridColumn: 1, gridRow: 1,
                   margin: '0 0 4px', fontSize: 17, fontWeight: 500,
                   fontFamily: '"DM Sans", sans-serif', color: 'var(--bw-text)'
                 }}>
                   Vehicle Configuration
                 </h1>
-                <p style={{
-                  margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
-                }}>
-                  Manage vehicle categories and their flat rates.
-                </p>
-              </div>
+              )}
+              <p style={{
+                gridColumn: 1, gridRow: 2,
+                margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
+                fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
+              }}>
+                Manage vehicle categories and their flat rates.
+              </p>
 
               {!isAdding && !editingId && (
-                <button style={primaryBtnStyle} onClick={handleAdd}
-                  onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
-                  <Plus size={16} aria-hidden /> Add Category
-                </button>
+                <div style={{ gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'start' }}>
+                  <button className="pss-btn pss-btn-primary" onClick={handleAdd}>
+                    <Plus size={16} aria-hidden /> Add Category
+                  </button>
+                </div>
               )}
             </div>
 
@@ -285,14 +259,10 @@ export default function VehicleConfiguration() {
                 </div>
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={outlineBtnStyle} onClick={handleCancel} disabled={saving}
-                    onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                  <button className="pss-btn pss-btn-outline" onClick={handleCancel} disabled={saving}>
                     <X size={16} aria-hidden /> Cancel
                   </button>
-                  <button
-                    style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
-                    onClick={handleSave} disabled={saving}
-                    onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                  <button className="pss-btn pss-btn-primary" onClick={handleSave} disabled={saving}>
                     <FloppyDisk size={16} aria-hidden />
                     {saving ? 'Saving…' : 'Save'}
                   </button>
@@ -341,37 +311,17 @@ export default function VehicleConfiguration() {
                       borderRadius: 8,
                       padding: '14px 16px'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Car size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
-                          <span style={{ fontSize: 14, fontWeight: 500, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-text)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <Car size={15} style={{ color: 'var(--bw-muted)', flexShrink: 0 }} aria-hidden />
+                          <span style={{ fontSize: 14, fontWeight: 500, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-text)', overflowWrap: 'anywhere' }}>
                             {category.vehicle_category}
                           </span>
                         </div>
                         <button
-                          style={{
-                            padding: '6px 12px', fontSize: 12, fontWeight: 500,
-                            fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
-                            border: '1px solid var(--bw-border)', backgroundColor: 'transparent',
-                            color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 5,
-                            cursor: editingId !== null || isAdding ? 'not-allowed' : 'pointer',
-                            opacity: editingId !== null || isAdding ? 0.4 : 1,
-                            transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
-                          }}
+                          className="pss-btn pss-btn-outline pss-btn-sm"
                           onClick={() => handleEdit(category)}
                           disabled={editingId !== null || isAdding}
-                          onMouseEnter={e => {
-                            if (editingId === null && !isAdding) {
-                              e.currentTarget.style.borderColor = ACCENT
-                              e.currentTarget.style.color = ACCENT
-                              e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = ''
-                            e.currentTarget.style.color = ''
-                            e.currentTarget.style.backgroundColor = ''
-                          }}
                         >
                           <PencilSimple size={13} aria-hidden />
                           Edit
@@ -398,5 +348,6 @@ export default function VehicleConfiguration() {
 
           </div>
         </div>
+    </>
   )
 }

@@ -25,6 +25,7 @@ import {
   zellePhoneValidationError
 } from '@utils/zelleContact'
 import { normalizeAllowedPaymentMethodMap } from '@utils/allowedPaymentMethods'
+import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(72px + env(safe-area-inset-bottom, 0px))'
 
@@ -196,10 +197,6 @@ export default function FeedbackFormsSettings() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const { isOpen: menuIsOpen } = useSettingsMenu()
 
-  const [hoverEdit, setHoverEdit] = useState(false)
-  const [hoverSave, setHoverSave] = useState(false)
-  const [hoverCancel, setHoverCancel] = useState(false)
-
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768)
     window.addEventListener('resize', onResize)
@@ -339,7 +336,9 @@ export default function FeedbackFormsSettings() {
   }
 
   return (
-    <div
+    <>
+      <style>{SETTINGS_BTN_CSS}</style>
+      <div
       style={{
         maxWidth: '100%',
         overflowX: 'hidden',
@@ -576,45 +575,20 @@ export default function FeedbackFormsSettings() {
                     <>
                       <button
                         type="button"
-                        className={`bw-btn-outline ${hoverCancel ? 'custom-hover-border' : ''}`}
+                        className="pss-btn pss-btn-outline"
                         disabled={saving}
-                        onMouseEnter={() => !saving && setHoverCancel(true)}
-                        onMouseLeave={() => setHoverCancel(false)}
                         onClick={() => {
                           syncUrlsFromServer()
                           setEditing(false)
-                        }}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: 7,
-                          fontFamily: '"Work Sans", sans-serif',
-                          fontWeight: 300,
-                          border: hoverCancel ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-                          color: hoverCancel ? 'rgba(155, 97, 209, 0.81)' : '#000',
-                          background: hoverCancel ? 'var(--bw-bg-secondary)' : '#fff'
                         }}
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
-                        className={`bw-btn bw-btn-action ${hoverSave ? 'custom-hover-border' : ''}`}
+                        className="pss-btn pss-btn-primary"
                         disabled={saving}
-                        onMouseEnter={() => !saving && setHoverSave(true)}
-                        onMouseLeave={() => setHoverSave(false)}
                         onClick={handleSave}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: 7,
-                          fontFamily: '"Work Sans", sans-serif',
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          background: hoverSave ? 'var(--bw-bg-secondary)' : 'var(--bw-accent)',
-                          color: hoverSave ? 'rgba(155, 97, 209, 0.81)' : '#fff',
-                          border: hoverSave ? '2px solid rgba(155, 97, 209, 0.81)' : 'none'
-                        }}
                       >
                         <FloppyDisk size={16} />
                         {saving ? 'Saving…' : 'Save links'}
@@ -623,19 +597,8 @@ export default function FeedbackFormsSettings() {
                   ) : (
                     <button
                       type="button"
-                      className={`bw-btn-outline ${hoverEdit ? 'custom-hover-border' : ''}`}
-                      onMouseEnter={() => setHoverEdit(true)}
-                      onMouseLeave={() => setHoverEdit(false)}
+                      className="pss-btn pss-btn-outline"
                       onClick={() => setEditing(true)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: 7,
-                        fontFamily: '"Work Sans", sans-serif',
-                        fontWeight: 300,
-                        border: hoverEdit ? '2px solid rgba(155, 97, 209, 0.81)' : '1px solid var(--bw-border)',
-                        color: hoverEdit ? 'rgba(155, 97, 209, 0.81)' : '#000',
-                        background: hoverEdit ? 'var(--bw-bg-secondary)' : '#fff'
-                      }}
                     >
                       Edit links
                     </button>
@@ -827,5 +790,6 @@ export default function FeedbackFormsSettings() {
             </section>
           </div>
         </div>
+    </>
   )
 }

@@ -347,7 +347,7 @@ export function RatingStar({
   )
 }
 
-export type TabType = 'overview' | 'drivers' | 'bookings' | 'vehicles' | 'settings' | 'feedback'
+export type TabType = 'overview' | 'drivers' | 'riders' | 'bookings' | 'vehicles' | 'settings' | 'feedback'
 export type OverviewLinkKey = 'rider' | 'driver' | 'landing'
 export type TenantPageThemeMode = 'dark' | 'light'
 export type OverviewLinkQrState = {

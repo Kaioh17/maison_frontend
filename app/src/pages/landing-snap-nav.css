@@ -16,6 +16,12 @@
 
 .landing-snap-section--scroll {
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.landing-snap-section--scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /* Brand row: hamburger + mark */

@@ -218,10 +218,12 @@ export async function getTenantVehicles(params?: { driver_id?: number; vehicle_i
   return data
 }
 
-export async function getTenantBookings(params?: { 
+export async function getTenantBookings(params?: {
   booking_status?: string
   service_type?: string
   vehicle_id?: number
+  rider_id?: number
+  limit?: number
 }) {
   const { data } = await http.get<StandardResponse<BookingResponse[]>>('/v1/tenant/bookings', { params })
   return data
@@ -263,6 +265,15 @@ export async function tenantBookRide(payload: TenantCreateBookingPayload) {
 export type TenantRiderEmailOption = {
   id: number
   email: string
+  first_name: string
+  last_name: string
+  phone_no?: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  created_on: string
+  total_bookings: number
 }
 
 export async function getTenantRiderEmails() {

@@ -2,27 +2,9 @@ import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantPricing, getBookingConfig, updateBookingConfig, type TenantPricingData, type BookingConfig, type UpdateBookingConfigPayload } from '@api/tenantSettings'
 import { CurrencyDollar, FloppyDisk, PencilSimple, X, Calendar, CaretDown } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
+import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
-
-const ACCENT = 'rgba(155, 97, 209, 0.81)'
-
-function hoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ACCENT
-  e.currentTarget.style.color = ACCENT
-  e.currentTarget.style.backgroundColor = 'var(--bw-bg-secondary)'
-}
-function unhoverOutline(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.borderColor = ''
-  e.currentTarget.style.color = ''
-  e.currentTarget.style.backgroundColor = ''
-}
-function hoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = '0.85'
-}
-function unhoverPrimary(e: React.MouseEvent<HTMLButtonElement>) {
-  e.currentTarget.style.opacity = ''
-}
 
 export default function PricingSettings() {
   const [pricing, setPricing] = useState<TenantPricingData | null>(null)
@@ -221,9 +203,11 @@ export default function PricingSettings() {
   }
 
   const sectionCard: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
     backgroundColor: 'var(--bw-bg-secondary)',
     border: '1px solid var(--bw-border)',
-    borderRadius: 10,
+    borderRadius: 18,
     padding: isMobile ? '16px' : '20px 24px',
     marginBottom: 12
   }
@@ -238,23 +222,6 @@ export default function PricingSettings() {
     margin: 0, fontSize: 13, fontWeight: 500,
     fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
     letterSpacing: '0.03em', textTransform: 'uppercase'
-  }
-
-  const outlineBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: '1px solid var(--bw-border)', backgroundColor: '#ffffff',
-    color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer',
-    transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
-  }
-
-  const primaryBtnStyle: React.CSSProperties = {
-    padding: '10px 20px', fontSize: 14, fontWeight: 500,
-    fontFamily: '"Work Sans", sans-serif', borderRadius: 7,
-    border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
-    display: 'flex', alignItems: 'center', gap: 7,
-    cursor: 'pointer', transition: 'opacity 0.15s ease'
   }
 
   const fieldLabel: React.CSSProperties = {
@@ -277,7 +244,14 @@ export default function PricingSettings() {
 
   const readValueStyle: React.CSSProperties = {
     fontSize: 14, fontFamily: '"Work Sans", sans-serif',
-    fontWeight: 400, color: 'var(--bw-text)', padding: '10px 0'
+    fontWeight: 400, color: 'var(--bw-text)', padding: '10px 0', overflowWrap: 'anywhere'
+  }
+
+  // Figures (fares, rates, percentages, fees) read in monospace; labels/body copy stay sans-serif.
+  const readValueMonoStyle: React.CSSProperties = {
+    ...readValueStyle,
+    fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+    fontVariantNumeric: 'tabular-nums'
   }
 
   const pricingFields = [
@@ -291,6 +265,7 @@ export default function PricingSettings() {
 
   return (
     <>
+      <style>{SETTINGS_BTN_CSS}</style>
       <div style={{
         filter: showLearnMoreModal ? 'blur(4px)' : 'none',
         transition: 'filter 0.3s ease',
@@ -322,45 +297,44 @@ export default function PricingSettings() {
                 boxSizing: 'border-box'
               }}
             >
-              {/* Page header */}
+              {/* Page header — title and description are direct children, no title-only wrapper div.
+                  The h1 is desktop-only: the mobile top bar (SettingsMenuBar) already shows the
+                  section title there, so repeating it here would be a second heading. */}
               <div style={{
-                display: 'flex', alignItems: 'flex-start',
-                justifyContent: 'space-between', gap: 16, marginBottom: 24
+                display: 'grid', gridTemplateColumns: '1fr auto',
+                columnGap: 16, marginBottom: 24
               }}>
-                <div>
+                {!isMobile && (
                   <h1 style={{
+                    gridColumn: 1, gridRow: 1,
                     margin: '0 0 4px', fontSize: 17, fontWeight: 500,
                     fontFamily: '"DM Sans", sans-serif', color: 'var(--bw-text)'
                   }}>
                     Pricing
                   </h1>
-                  <p style={{
-                    margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
-                  }}>
-                    Set your base fares, per-mile rates, and booking deposit rules.
-                  </p>
-                </div>
+                )}
+                <p style={{
+                  gridColumn: 1, gridRow: 2,
+                  margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: 300, color: 'var(--bw-muted)', lineHeight: 1.4
+                }}>
+                  Set your base fares, per-mile rates, and booking deposit rules.
+                </p>
 
                 {!isMobile && (
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                  <div style={{ gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'start', display: 'flex', gap: 8, flexShrink: 0 }}>
                     {isEditing ? (
                       <>
-                        <button style={outlineBtnStyle} onClick={handleCancel} disabled={saving}
-                          onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                        <button className="pss-btn pss-btn-outline" onClick={handleCancel} disabled={saving}>
                           <X size={16} aria-hidden /> Cancel
                         </button>
-                        <button
-                          style={{ ...primaryBtnStyle, opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
-                          onClick={handleSave} disabled={saving}
-                          onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                        <button className="pss-btn pss-btn-primary" onClick={handleSave} disabled={saving}>
                           <FloppyDisk size={16} aria-hidden />
                           {saving ? 'Saving…' : 'Save Changes'}
                         </button>
                       </>
                     ) : (
-                      <button style={outlineBtnStyle} onClick={() => setIsEditing(true)}
-                        onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                      <button className="pss-btn pss-btn-outline" onClick={() => setIsEditing(true)}>
                         <PencilSimple size={16} aria-hidden /> Edit
                       </button>
                     )}
@@ -381,7 +355,7 @@ export default function PricingSettings() {
                   gap: isMobile ? 16 : '16px 24px'
                 }}>
                   {pricingFields.map(item => (
-                    <div key={item.field}>
+                    <div key={item.field} style={{ minWidth: 0 }}>
                       <label style={fieldLabel}>{item.label}</label>
                       <p style={fieldDesc}>{item.description}</p>
                       {isEditing ? (
@@ -407,7 +381,7 @@ export default function PricingSettings() {
                           />
                         )
                       ) : (
-                        <div style={readValueStyle}>
+                        <div style={item.type === 'checkbox' ? readValueStyle : readValueMonoStyle}>
                           {item.type === 'checkbox'
                             ? (editedData[item.field as keyof TenantPricingData] ? 'Yes' : 'No')
                             : `$${((editedData[item.field as keyof TenantPricingData] as number) || 0).toFixed(2)}`
@@ -467,23 +441,6 @@ export default function PricingSettings() {
                       const edited = editedBookingConfigs[serviceType] || booking
                       const serviceName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1)
 
-                      const smallOutline: React.CSSProperties = {
-                        padding: '7px 12px', fontSize: 12, fontWeight: 500,
-                        fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
-                        border: '1px solid var(--bw-border)', backgroundColor: 'transparent',
-                        color: 'var(--bw-text)', display: 'flex', alignItems: 'center', gap: 5,
-                        cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1,
-                        transition: 'border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease'
-                      }
-                      const smallPrimary: React.CSSProperties = {
-                        padding: '7px 12px', fontSize: 12, fontWeight: 500,
-                        fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
-                        border: 'none', backgroundColor: 'var(--bw-accent)', color: '#ffffff',
-                        display: 'flex', alignItems: 'center', gap: 5,
-                        cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.7 : 1,
-                        transition: 'opacity 0.15s ease'
-                      }
-
                       const bookingInputStyle: React.CSSProperties = {
                         width: '100%', padding: '9px 11px', fontSize: 13,
                         fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
@@ -494,7 +451,7 @@ export default function PricingSettings() {
                       return (
                         <div key={serviceType} style={{
                           border: '1px solid var(--bw-border)',
-                          borderRadius: 8,
+                          borderRadius: 14,
                           padding: '14px 16px',
                           backgroundColor: 'var(--bw-bg)'
                         }}>
@@ -505,21 +462,17 @@ export default function PricingSettings() {
                             </span>
                             {!isEditingThisBooking ? (
                               <button
-                                style={{ ...smallOutline, opacity: 1 }}
+                                className="pss-btn pss-btn-outline pss-btn-sm"
                                 onClick={() => setIsEditingBookings(prev => ({ ...prev, [serviceType]: true }))}
-                                onMouseEnter={hoverOutline}
-                                onMouseLeave={unhoverOutline}
                               >
                                 <PencilSimple size={12} aria-hidden /> Edit
                               </button>
                             ) : (
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button style={smallOutline} onClick={() => handleBookingCancel(serviceType)} disabled={isSaving}
-                                  onMouseEnter={hoverOutline} onMouseLeave={unhoverOutline}>
+                                <button className="pss-btn pss-btn-outline pss-btn-sm" onClick={() => handleBookingCancel(serviceType)} disabled={isSaving}>
                                   <X size={12} aria-hidden /> Cancel
                                 </button>
-                                <button style={smallPrimary} onClick={() => handleBookingSave(serviceType)} disabled={isSaving}
-                                  onMouseEnter={hoverPrimary} onMouseLeave={unhoverPrimary}>
+                                <button className="pss-btn pss-btn-primary pss-btn-sm" onClick={() => handleBookingSave(serviceType)} disabled={isSaving}>
                                   <FloppyDisk size={12} aria-hidden />
                                   {isSaving ? 'Saving…' : 'Save'}
                                 </button>
@@ -563,7 +516,7 @@ export default function PricingSettings() {
                                 style={bookingInputStyle}
                               />
                             ) : (
-                              <div style={{ fontSize: 13, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, color: 'var(--bw-text)', padding: '8px 0' }}>
+                              <div style={{ fontSize: 13, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 400, color: 'var(--bw-text)', padding: '8px 0' }}>
                                 {edited.deposit_type === 'percentage'
                                   ? `${(edited.deposit_fee * 100).toFixed(1)}%`
                                   : `$${edited.deposit_fee.toFixed(2)}`
@@ -621,7 +574,7 @@ export default function PricingSettings() {
                                           style={bookingInputStyle}
                                         />
                                       ) : (
-                                        <div style={{ fontSize: 13, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, color: 'var(--bw-text)', padding: '8px 0' }}>
+                                        <div style={{ fontSize: 13, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 400, color: 'var(--bw-text)', padding: '8px 0' }}>
                                           {extra.format((edited as any)[extra.field] ?? 0)}
                                         </div>
                                       )}

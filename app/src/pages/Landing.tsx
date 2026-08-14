@@ -1136,7 +1136,7 @@ function PricingSlide() {
       className="landing-pricing landing-snap-section landing-snap-section--scroll flex items-center justify-center bg-gradient-to-b from-[#0a0a0f] via-gray-900 to-[#0a0a0f]"
       data-nav-theme="dark"
     >
-      <div className="max-w-7xl mx-auto px-5 box-border w-full py-20">
+      <div className="max-w-7xl mx-auto px-5 box-border w-full pt-24 pb-20">
         <motion.div
           initial="initial"
           whileInView="animate"

@@ -53,7 +53,7 @@ Copy `.env.example` to `.env` in `app/`. Key variables:
 | `VITE_API_PORT` | Backend port for local dev (default: `8000`) |
 | `VITE_MAPBOX_TOKEN` | Mapbox GL for location autocomplete |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe client key |
-| `VITE_STRIPE_PRICE_STARTER/GROWTH/FLEET` | Stripe subscription price IDs |
+| `VITE_STRIPE_PRICE_FREE/GROWTH/FLEET` | Stripe subscription price IDs |
 | `VITE_API_KEY` | Shared `X-API-Key` for auth and public driver verify endpoints |
 
 ## Architecture
