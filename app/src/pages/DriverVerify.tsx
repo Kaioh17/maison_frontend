@@ -43,10 +43,18 @@ export default function DriverVerify() {
           setIsLoading(false)
           return
         }
-        // Token is valid, redirect to registration with token and tenant_id in state
-        navigate('/driver/register', { 
+        // Token is valid, redirect to registration with token, tenant_id, and whatever
+        // was already collected at application/invite time so the form can pre-fill it
+        navigate('/driver/register', {
           replace: true,
-          state: { token: token.trim(), tenantId: tenantId }
+          state: {
+            token: token.trim(),
+            tenantId: tenantId,
+            firstName: response.data?.first_name,
+            lastName: response.data?.last_name,
+            email: response.data?.email,
+            driverType: response.data?.driver_type,
+          }
         })
       } else {
         setError(response.message || 'Invalid verification token')

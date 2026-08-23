@@ -70,6 +70,7 @@ const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
 const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
 const DriverVerify = lazy(() => import('@pages/DriverVerify'))
+const DriverApply = lazy(() => import('@pages/DriverApply'))
 const RiderDashboard = lazy(() => import('@pages/RiderDashboard'))
 const RiderRegistration = lazy(() => import('@pages/RiderRegistration'))
 const RiderProfile = lazy(() => import('@pages/RiderProfile'))
@@ -494,6 +495,17 @@ export default function App() {
           <SlugVerification>
             <RiderBrandedShell>
               <DriverVerify />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/driver/apply"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <DriverApply />
             </RiderBrandedShell>
           </SlugVerification>
         }

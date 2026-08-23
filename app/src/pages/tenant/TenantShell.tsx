@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, getTenantRiderEmails, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData, type TenantRiderEmailOption } from '@api/tenant'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, getTenantRiderEmails, onboardDriver, approveDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData, type TenantRiderEmailOption } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
 import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
@@ -13,7 +13,7 @@ import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { TenantDashboardSkeleton } from '@components/Skeleton'
 import { useBookingSearch } from '@hooks/useBookingSearch'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
+import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
 import { extractSubdomain } from '@utils/subdomain'
@@ -28,9 +28,11 @@ import {
   zellePhoneValidationError
 } from '@utils/zelleContact'
 import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
+import { getApiErrorMessage } from '@utils/apiError'
 import { Outlet } from 'react-router-dom'
 import {
   TENANT_DASHBOARD_LAYOUT_CSS,
+  TENANT_DASHBOARD_SHELL_GAP,
   starFillPercent,
   RatingStar,
   VehicleImageCard,
@@ -176,6 +178,8 @@ function useShellState() {
   const [showBookRideModal, setShowBookRideModal] = useState(false)
   const [addDriverError, setAddDriverError] = useState<string | null>(null)
   const [isCreatingDriver, setIsCreatingDriver] = useState(false)
+  const [approvingDriverId, setApprovingDriverId] = useState<number | null>(null)
+  const [approveDriverError, setApproveDriverError] = useState<string | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   // Separate edited state for each section
@@ -242,9 +246,6 @@ function useShellState() {
 
   // Vehicle Settings dropdown state
   const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
-  
-  // Settings submenu state
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
 
   // Overview KPI carousel (mobile swipe)
   const [kpiScrollIndex, setKpiScrollIndex] = useState(0)
@@ -386,6 +387,12 @@ function useShellState() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'drivers'] }),
   })
 
+  // Approve a pending driver (self-serve application or unfinished invite): sends them their registration email
+  const approveDriverMut = useMutation({
+    mutationFn: (driverId: number) => approveDriver(driverId),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'drivers'] }),
+  })
+
   // Delete vehicle: optimistically remove the row, rollback on error
   const deleteVehicleMut = useMutation({
     mutationFn: (vehicleId: number) => deleteVehicle(vehicleId),
@@ -512,6 +519,18 @@ function useShellState() {
     }
   }
 
+  const approveDriverAction = async (driverId: number) => {
+    setApproveDriverError(null)
+    setApprovingDriverId(driverId)
+    try {
+      await approveDriverMut.mutateAsync(driverId)
+    } catch (error: any) {
+      setApproveDriverError(getApiErrorMessage(error, 'Failed to approve driver. Please try again.'))
+    } finally {
+      setApprovingDriverId(null)
+    }
+  }
+
   const confirmUnassignDriver = async (override: boolean) => {
     if (!unassigningVehicleId) return
 
@@ -605,7 +624,7 @@ function useShellState() {
     setShowAssignVehicleToDriver(true)
   }
 
-  const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr) minmax(120px, 1.1fr)'
+  const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(180px, 1.4fr)'
   const ridersTableGridColumns = 'minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.7fr)'
 
   const saveVehicleRate = async (categoryName: string, newRate: number) => {
@@ -1235,13 +1254,6 @@ function useShellState() {
     return 'overview'
   }
 
-  // Auto-open settings menu when on settings page
-  useEffect(() => {
-    if (location.pathname.startsWith('/tenant/settings') && !settingsMenuOpen) {
-      setSettingsMenuOpen(true)
-    }
-  }, [location.pathname, settingsMenuOpen])
-
   const activeTab = getActiveTab()
 
   const activeDriverCount = useMemo(
@@ -1314,20 +1326,7 @@ function useShellState() {
 
   // Handle tab navigation
   const handleTabClick = (tabId: TabType) => {
-    if (tabId === 'settings') {
-      // Toggle settings submenu instead of navigating
-      setSettingsMenuOpen(!settingsMenuOpen)
-    } else {
-      // Navigate to the tab's route
-      navigate(`/tenant/${tabId}`)
-      if (isMobile) setIsMenuOpen(false)
-    }
-  }
-
-  // Handle settings submenu item click
-  const handleSettingsSubmenuClick = (path: string) => {
-    navigate(path)
-    setSettingsMenuOpen(false)
+    navigate(`/tenant/${tabId}`)
     if (isMobile) setIsMenuOpen(false)
   }
 
@@ -1436,6 +1435,8 @@ function useShellState() {
     setAddDriverError,
     isCreatingDriver,
     setIsCreatingDriver,
+    approvingDriverId,
+    approveDriverError,
     tenantConfig,
     setTenantConfig,
     editingSettings,
@@ -1524,8 +1525,6 @@ function useShellState() {
     setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
-    settingsMenuOpen,
-    setSettingsMenuOpen,
     kpiScrollIndex,
     setKpiScrollIndex,
     showAddVehicleForm,
@@ -1613,6 +1612,7 @@ function useShellState() {
     handleTenantThemeModeChange,
     load,
     createDriver,
+    approveDriverAction,
     confirmUnassignDriver,
     confirmAssignDriver,
     confirmAssignVehicleToDriver,
@@ -1650,7 +1650,6 @@ function useShellState() {
     driverPalette,
     getPageTitle,
     handleTabClick,
-    handleSettingsSubmenuClick,
     copyTenantOverviewLink,
     generateTenantOverviewLinkQr,
     downloadTenantOverviewLinkQr,
@@ -1739,6 +1738,8 @@ export default function TenantShell() {
     setAddDriverError,
     isCreatingDriver,
     setIsCreatingDriver,
+    approvingDriverId,
+    approveDriverError,
     tenantConfig,
     setTenantConfig,
     editingSettings,
@@ -1827,8 +1828,6 @@ export default function TenantShell() {
     setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
-    settingsMenuOpen,
-    setSettingsMenuOpen,
     kpiScrollIndex,
     setKpiScrollIndex,
     showAddVehicleForm,
@@ -1916,6 +1915,7 @@ export default function TenantShell() {
     handleTenantThemeModeChange,
     load,
     createDriver,
+    approveDriverAction,
     confirmUnassignDriver,
     confirmAssignDriver,
     confirmAssignVehicleToDriver,
@@ -1953,7 +1953,6 @@ export default function TenantShell() {
     driverPalette,
     getPageTitle,
     handleTabClick,
-    handleSettingsSubmenuClick,
     copyTenantOverviewLink,
     generateTenantOverviewLinkQr,
     downloadTenantOverviewLinkQr,
@@ -2093,11 +2092,9 @@ export default function TenantShell() {
   }
 
   return (
-    <div className="bw tenant-dashboard-layout" style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      display: 'flex',
-      backgroundColor: lightMode ? '#f8fafc' : 'var(--bw-bg)'
+    <div className="bw tenant-dashboard-layout" style={{
+      minHeight: '100vh',
+      display: 'flex'
     }}>
       <style>{TENANT_DASHBOARD_LAYOUT_CSS}</style>
       {/* Token Expiration Notification */}
@@ -2125,10 +2122,6 @@ export default function TenantShell() {
       <div
         id="tenant-dashboard-nav"
         className={`tenant-dashboard-sidebar${isMenuOpen ? ' is-open' : ''}`}
-        style={{
-          backgroundColor: lightMode ? '#ffffff' : 'var(--bw-bg)',
-          borderRight: `1px solid ${lightMode ? '#e2e8f0' : 'var(--bw-border)'}`
-        }}
       >
         {/* Company Name in Sidebar */}
         <div style={{
@@ -2213,120 +2206,51 @@ export default function TenantShell() {
         }}>
           {tabs.map((tab) => {
             const IconComponent = tab.icon
-            const isSettings = tab.id === 'settings'
-            const isActive = activeTab === tab.id || (isSettings && location.pathname.startsWith('/tenant/settings'))
-            
+            const isActive = activeTab === tab.id
+
             return (
-              <div key={tab.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                <button
-                  onClick={() => handleTabClick(tab.id as TabType)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMenuOpen ? '12px' : '0',
-                    padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
-                    backgroundColor: isActive
-                      ? (lightMode ? 'rgba(108, 99, 232, 0.09)' : 'rgba(108, 99, 232, 0.16)')
-                      : 'transparent',
-                    border: 'none',
-                    borderLeft: isMenuOpen ? (isActive ? '3px solid var(--bw-accent)' : '3px solid transparent') : 'none',
-                    color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'var(--bw-text)',
-                    cursor: 'pointer',
-                    fontSize: 'clamp(13px, 1.5vw, 15px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: isActive ? 500 : 300,
-                    textAlign: isMenuOpen ? 'left' : 'center',
-                    transition: 'all 0.2s ease',
-                    justifyContent: isMenuOpen ? 'space-between' : 'center',
-                    boxShadow: 'none',
-                    position: 'relative'
-                  }}
-                  title={!isMenuOpen ? tab.label : undefined}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = lightMode ? 'rgba(108, 99, 232, 0.05)' : 'rgba(255, 255, 255, 0.04)'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: isMenuOpen ? '12px' : '0', flex: 1, justifyContent: isMenuOpen ? 'flex-start' : 'center' }}>
-                    <IconComponent size={18} style={{ flexShrink: 0, color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'inherit' }} />
-                    {isMenuOpen && <span>{tab.label}</span>}
-                  </div>
-                  {isMenuOpen && isSettings && (
-                    <CaretDown 
-                      size={16}
-                      style={{ 
-                        flexShrink: 0,
-                        transform: settingsMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
-                      }} 
-                    />
-                  )}
-                </button>
-                {/* Settings Submenu */}
-                {isMenuOpen && isSettings && settingsMenuOpen && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    paddingLeft: 'clamp(20px, 2.5vw, 32px)',
-                    backgroundColor: 'var(--bw-bg-secondary)',
-                    borderLeft: '2px solid var(--bw-border)',
-                    marginLeft: 'clamp(16px, 2vw, 24px)'
-                  }}>
-                    {[
-                      { path: '/tenant/settings/general', label: 'General View' },
-                      { path: '/tenant/settings/account', label: 'Account Information' },
-                      { path: '/tenant/settings/company', label: 'Company Information' },
-                      { path: '/tenant/settings/tenant-settings', label: 'Tenant Settings' },
-                      { path: '/tenant/settings/feedback-forms', label: 'Feedback forms' },
-                      { path: '/tenant/settings/vehicle-config', label: 'Vehicle Configuration' },
-                      { path: '/tenant/settings/plans', label: 'Plans' },
-                      { path: '/tenant/settings/help', label: 'Help' }
-                    ].map((subItem) => {
-                      const isSubActive = location.pathname === subItem.path
-                      return (
-                        <button
-                          key={subItem.path}
-                          onClick={() => handleSettingsSubmenuClick(subItem.path)}
-                          style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: 'clamp(10px, 1.2vw, 12px) clamp(12px, 1.5vw, 16px)',
-                            backgroundColor: isSubActive ? 'var(--bw-bg-hover)' : 'transparent',
-                            border: 'none',
-                            color: 'var(--bw-text)',
-                            cursor: 'pointer',
-                            fontSize: 'clamp(12px, 1.3vw, 14px)',
-                            fontFamily: '"Work Sans", sans-serif',
-                            fontWeight: 300,
-                            textAlign: 'left',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isSubActive) {
-                              e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isSubActive) {
-                              e.currentTarget.style.backgroundColor = 'transparent'
-                            }
-                          }}
-                        >
-                          <span>{subItem.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id as TabType)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMenuOpen ? '12px' : '0',
+                  padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
+                  backgroundColor: isActive
+                    ? (lightMode ? 'rgba(108, 99, 232, 0.09)' : 'rgba(108, 99, 232, 0.16)')
+                    : 'transparent',
+                  border: 'none',
+                  borderLeft: isMenuOpen ? (isActive ? '3px solid var(--bw-accent)' : '3px solid transparent') : 'none',
+                  color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'var(--bw-text)',
+                  cursor: 'pointer',
+                  fontSize: 'clamp(13px, 1.5vw, 15px)',
+                  fontFamily: '"Work Sans", sans-serif',
+                  fontWeight: isActive ? 500 : 300,
+                  textAlign: isMenuOpen ? 'left' : 'center',
+                  transition: 'all 0.2s ease',
+                  justifyContent: isMenuOpen ? 'space-between' : 'center',
+                  boxShadow: 'none',
+                  position: 'relative'
+                }}
+                title={!isMenuOpen ? tab.label : undefined}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = lightMode ? 'rgba(108, 99, 232, 0.05)' : 'rgba(255, 255, 255, 0.04)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMenuOpen ? '12px' : '0', flex: 1, justifyContent: isMenuOpen ? 'flex-start' : 'center' }}>
+                  <IconComponent size={18} style={{ flexShrink: 0, color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'inherit' }} />
+                  {isMenuOpen && <span>{tab.label}</span>}
+                </div>
+              </button>
             )
           })}
         </nav>
@@ -2559,9 +2483,7 @@ export default function TenantShell() {
       <div className="tenant-dashboard-main" style={{
         flex: 1,
         minWidth: 0,
-        minHeight: '100vh',
-        marginLeft: isMobile ? '0' : (isMenuOpen ? 'min(360px, 100vw)' : '72px'),
-        width: isMobile ? '100%' : (isMenuOpen ? 'calc(100% - min(360px, 100vw))' : 'calc(100% - 72px)')
+        marginLeft: isMobile ? '0' : `calc(${isMenuOpen ? 'min(360px, 100vw)' : '72px'} + ${TENANT_DASHBOARD_SHELL_GAP})`
       }}>
         <div className="bw-container" style={{ 
           padding: 'clamp(12px, 2vw, 24px) clamp(16px, 3vw, 32px)', 

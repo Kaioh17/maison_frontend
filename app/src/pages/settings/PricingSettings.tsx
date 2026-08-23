@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantPricing, getBookingConfig, updateBookingConfig, type TenantPricingData, type BookingConfig, type UpdateBookingConfigPayload } from '@api/tenantSettings'
 import { CurrencyDollar, FloppyDisk, PencilSimple, X, Calendar, CaretDown } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
+import Toggle from '@components/Toggle'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
@@ -358,34 +359,27 @@ export default function PricingSettings() {
                     <div key={item.field} style={{ minWidth: 0 }}>
                       <label style={fieldLabel}>{item.label}</label>
                       <p style={fieldDesc}>{item.description}</p>
-                      {isEditing ? (
-                        item.type === 'checkbox' ? (
-                          <select
-                            value={editedData[item.field as keyof TenantPricingData] ? 'true' : 'false'}
-                            onChange={e => handleInputChange(item.field as keyof TenantPricingData, e.target.value === 'true')}
-                            className="bw-input"
-                            style={inputStyle}
-                          >
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                          </select>
-                        ) : (
-                          <input
-                            type={item.type}
-                            step={(item as any).step}
-                            min={(item as any).min}
-                            value={editedData[item.field as keyof TenantPricingData] as number || 0}
-                            onChange={e => handleInputChange(item.field as keyof TenantPricingData, parseFloat(e.target.value) || 0)}
-                            className="bw-input"
-                            style={inputStyle}
-                          />
-                        )
+                      {item.type === 'checkbox' ? (
+                        <Toggle
+                          checked={!!editedData[item.field as keyof TenantPricingData]}
+                          onChange={v => {
+                            if (!isEditing) setIsEditing(true)
+                            handleInputChange(item.field as keyof TenantPricingData, v)
+                          }}
+                        />
+                      ) : isEditing ? (
+                        <input
+                          type={item.type}
+                          step={(item as any).step}
+                          min={(item as any).min}
+                          value={editedData[item.field as keyof TenantPricingData] as number || 0}
+                          onChange={e => handleInputChange(item.field as keyof TenantPricingData, parseFloat(e.target.value) || 0)}
+                          className="bw-input"
+                          style={inputStyle}
+                        />
                       ) : (
-                        <div style={item.type === 'checkbox' ? readValueStyle : readValueMonoStyle}>
-                          {item.type === 'checkbox'
-                            ? (editedData[item.field as keyof TenantPricingData] ? 'Yes' : 'No')
-                            : `$${((editedData[item.field as keyof TenantPricingData] as number) || 0).toFixed(2)}`
-                          }
+                        <div style={readValueMonoStyle}>
+                          ${((editedData[item.field as keyof TenantPricingData] as number) || 0).toFixed(2)}
                         </div>
                       )}
                     </div>

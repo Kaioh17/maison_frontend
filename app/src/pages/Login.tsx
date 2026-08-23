@@ -173,6 +173,10 @@ export default function AuthPage() {
           .login-form-container {
             width: 100% !important;
             padding: 16px !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           .login-title {
             font-size: 28px !important;
@@ -223,14 +227,13 @@ export default function AuthPage() {
         }
       `}</style>
       <main className="bw" aria-label="Auth" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
-          {/* Left side - Image (70%) */}
+        <div style={{ display: 'flex', height: '100vh', width: '100%', position: 'relative' }}>
+          {/* Left side - Image (full-bleed; the form floats over it on the right) */}
           <div
             className="login-image-container"
             style={{
-              width: '70%',
-              height: '100%',
-              position: 'relative',
+              position: 'absolute',
+              inset: 0,
               backgroundColor: heroUrls[0] ? 'transparent' : '#f3f4f6',
               display: 'flex',
               alignItems: 'center',
@@ -312,20 +315,24 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* Right side - Login Form (30%) */}
+          {/* Right side - Login Form (30%), floating over the image */}
           <div
             role="form"
             aria-labelledby="auth-title"
             className="login-form-container"
             style={{
               width: '30%',
-              height: '100%',
+              margin: '24px 24px 24px auto',
               position: 'relative',
+              zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               padding: '24px',
               backgroundColor: 'var(--bw-bg)',
+              borderRadius: 24,
+              border: '1px solid var(--bw-border-strong)',
+              boxShadow: 'var(--bw-shadow)',
               overflowY: 'auto',
             }}
           >
@@ -364,7 +371,7 @@ export default function AuthPage() {
                       className="bw-input login-input"
                       value={formData.email}
                       aria-invalid={formData.email.length > 0 && !!loginEmailFormatError}
-                      style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                      style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }}
                       placeholder="you@email.com"
                       onChange={handleInputChange}
                     />
@@ -390,7 +397,7 @@ export default function AuthPage() {
                 </div>
                 <div style={{ position: 'relative' }}>
                   <Lock className="login-icon" size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .6 }} />
-                  <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
+                  <input id="password" name="password" type={showPassword ? 'text' : 'password'} required className="bw-input login-input" value={formData.password} style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} placeholder="••••••••" onChange={handleInputChange} />
                   <button type="button" aria-label="Toggle password" className="login-toggle-btn" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: 'var(--bw-muted)', cursor: 'pointer' }}>
                     {showPassword ? <EyeSlash className="login-toggle-icon" size={16} /> : <Eye className="login-toggle-icon" size={16} />}
                   </button>
@@ -398,7 +405,7 @@ export default function AuthPage() {
 
                 <button
                   className="bw-btn login-button"
-                  style={{ width: '100%', marginTop: 20, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
+                  style={{ width: '100%', marginTop: 20, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
                   disabled={isLoading}
                 >
                   <span>{isLoading ? 'Signing in...' : 'Sign in'}</span>
@@ -417,7 +424,7 @@ export default function AuthPage() {
                   <Link to="/signup" style={{ textDecoration: 'none', display: 'block' }}>
                     <button
                       className="bw-btn-outline login-button"
-                      style={{ width: '100%', borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
+                      style={{ width: '100%', borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }}
                     >
                       Create account
                     </button>

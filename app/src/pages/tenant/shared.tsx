@@ -95,43 +95,88 @@ export const DASH_SECTION_TITLE_STYLE: React.CSSProperties = {
   fontFamily: DASH_FONT,
 }
 
-/** Persistent left nav; can be retracted with a shared toggle control. */
+/** Shared floating-panel gap — same visual language as SettingsMenuBar's shell. */
+export const TENANT_DASHBOARD_SHELL_GAP = 'clamp(20px, 2.4vw, 28px)'
+
+/** Persistent left nav; can be retracted with a shared toggle control. Both the nav
+ *  and the content area render as floating panels — the same treatment SettingsMenuBar
+ *  uses for its sidebar/main split (see settings-panel in that file). */
 export const TENANT_DASHBOARD_LAYOUT_CSS = `
+.bw.tenant-dashboard-layout {
+  padding: ${TENANT_DASHBOARD_SHELL_GAP};
+  box-sizing: border-box;
+  background: var(--settings-backdrop);
+  position: relative;
+  overflow: hidden;
+}
+.bw.tenant-dashboard-layout::before {
+  content: '';
+  position: absolute;
+  top: -15%;
+  left: 4%;
+  width: 55%;
+  height: 55%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--bw-accent) 18%, transparent) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(60px);
+  z-index: 0;
+}
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: ${TENANT_DASHBOARD_SHELL_GAP};
+  left: ${TENANT_DASHBOARD_SHELL_GAP};
+  bottom: ${TENANT_DASHBOARD_SHELL_GAP};
   width: 72px;
-  height: 100vh;
   z-index: 999;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, var(--settings-panel-top), var(--settings-panel-bottom));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3);
   transition: width 0.3s ease, box-shadow 0.3s ease;
   transform: translateX(0);
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
   width: min(360px, 100vw);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
-}
-.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) {
-  box-shadow: none;
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-main {
+  position: relative;
+  z-index: 1;
+  height: calc(100vh - 2 * ${TENANT_DASHBOARD_SHELL_GAP});
+  overflow: hidden auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, var(--settings-panel-top), var(--settings-panel-bottom));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3);
   transition: margin-left 0.3s ease, width 0.3s ease;
   box-sizing: border-box;
 }
+/* Tab pages each set their own root wrapper to min-height: 100vh (correct when the
+   page owned full-viewport scrolling). Now the floating panel owns scroll, so that
+   would just pad every tab with dead scroll space; clamp it back to the panel's own
+   height (mirrors SettingsMenuBar's identical override for its main panel). */
+.bw.tenant-dashboard-layout .tenant-dashboard-main > div {
+  min-height: 0 !important;
+}
 @media (max-width: 768px) {
+  .bw.tenant-dashboard-layout {
+    padding: 14px;
+  }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
-    width: 100vw;
-    height: calc(100vh - 64px - env(safe-area-inset-bottom, 0px));
-    transform: translateX(-100%);
+    top: 14px;
+    left: 14px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 14px);
+    width: calc(100vw - 28px);
+    transform: translateX(calc(-100% - 14px));
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
     transform: translateX(0);
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 14px));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
@@ -157,9 +202,9 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     border-top: 1px solid var(--bw-border);
     box-sizing: border-box;
   }
-  /* keep page content clear of the fixed bar */
+  /* keep the floating content panel clear of the fixed bottom tab bar */
   .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - 28px - 64px - env(safe-area-inset-bottom, 0px));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button {
@@ -287,8 +332,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     padding-left: clamp(16px, 3vw, 32px);
     padding-right: clamp(16px, 3vw, 32px);
     padding-top: calc(max(env(safe-area-inset-top), 0px) + 10px);
-    background-color: var(--bw-bg);
-    background-color: color-mix(in srgb, var(--bw-bg) 88%, transparent);
+    background: color-mix(in srgb, var(--settings-panel-top) 88%, transparent);
     -webkit-backdrop-filter: saturate(180%) blur(12px);
     backdrop-filter: saturate(180%) blur(12px);
   }

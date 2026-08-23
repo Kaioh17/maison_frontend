@@ -57,7 +57,7 @@ export default function ForgotPassword() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@email.com"
-                    style={{ padding: '14px 16px 14px 42px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', width: '100%', boxSizing: 'border-box' }}
+                    style={{ padding: '14px 16px 14px 42px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', width: '100%', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -65,7 +65,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 className="bw-btn"
-                style={{ width: '100%', borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
+                style={{ width: '100%', borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
               >
                 Send reset link
               </button>

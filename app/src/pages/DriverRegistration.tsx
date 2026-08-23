@@ -17,14 +17,31 @@ import {
 } from '@utils/passwordPolicy'
 import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
+type DriverVerifyState = {
+  token?: string
+  tenantId?: number
+  firstName?: string
+  lastName?: string
+  email?: string
+  driverType?: 'outsourced' | 'in_house'
+}
+
 export default function DriverRegistration() {
   useFavicon()
   const [showPassword, setShowPassword] = useState(false)
+  const location = useLocation()
+  const navState = (location.state as DriverVerifyState) || {}
+  // Already collected at application/invite time -- pre-fill instead of asking twice.
+  // These are locked in the form below: register_driver rejects a mismatch against
+  // what's on file, so letting them diverge here would just produce a confusing error.
+  const isPrefilled = Boolean(navState.firstName && navState.lastName && navState.email)
+  const isOutsourced = navState.driverType === 'outsourced'
+
   const [formData, setFormData] = useState({
-    email: '',
+    email: navState.email || '',
     password: '',
-    first_name: '',
-    last_name: '',
+    first_name: navState.firstName || '',
+    last_name: navState.lastName || '',
     phone_no: '',
     state: '',
     postal_code: '',
@@ -38,7 +55,6 @@ export default function DriverRegistration() {
       vehicle_category: ''
     }
   })
-  const [includeVehicle, setIncludeVehicle] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -48,13 +64,12 @@ export default function DriverRegistration() {
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const [searchParams] = useSearchParams()
-  const location = useLocation()
   const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
   const loadingPalette = resolveSubdomainLoadingPalette(slug)
   // Get token and tenant_id from navigation state first, fallback to URL params for backward compatibility
-  const token = (location.state as { token?: string })?.token || searchParams.get('token') || ''
-  const tenantId = (location.state as { tenantId?: number })?.tenantId || null
-  
+  const token = navState.token || searchParams.get('token') || ''
+  const tenantId = navState.tenantId || null
+
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
 
@@ -226,6 +241,11 @@ export default function DriverRegistration() {
       return
     }
 
+    if (isOutsourced && (!formData.vehicle.make.trim() || !formData.vehicle.model.trim())) {
+      setError('You were added as an outsourced driver, so your vehicle make and model are required.')
+      return
+    }
+
     if (!token) {
       setError('Verification token is required. Please use the verification link provided.')
       return
@@ -273,8 +293,8 @@ export default function DriverRegistration() {
         payload.license_number = formData.license_number.trim()
       }
 
-      // Include vehicle if user wants to add it, otherwise set to null
-      if (includeVehicle && formData.vehicle.make && formData.vehicle.model) {
+      // Vehicle is required for outsourced drivers, absent for in-house (fleet-assigned)
+      if (isOutsourced && formData.vehicle.make && formData.vehicle.model) {
         const vehicle: any = {
           make: formData.vehicle.make.trim(),
           model: formData.vehicle.model.trim(),
@@ -499,32 +519,34 @@ export default function DriverRegistration() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div style={{ position: 'relative' }}>
                   <User size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                  <input 
-                    id="first_name" 
-                    name="first_name" 
-                    type="text" 
+                  <input
+                    id="first_name"
+                    name="first_name"
+                    type="text"
                     autoComplete="given-name"
-                    required 
-                    className="bw-input" 
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="John" 
+                    required
+                    readOnly={isPrefilled}
+                    className="bw-input"
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', opacity: isPrefilled ? 0.7 : 1 }}
+                    placeholder="John"
                     value={formData.first_name}
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
                   />
                 </div>
                 <div style={{ position: 'relative' }}>
                   <User size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                  <input 
-                    id="last_name" 
-                    name="last_name" 
-                    type="text" 
+                  <input
+                    id="last_name"
+                    name="last_name"
+                    type="text"
                     autoComplete="family-name"
-                    required 
-                    className="bw-input" 
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="Doe" 
+                    required
+                    readOnly={isPrefilled}
+                    className="bw-input"
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', opacity: isPrefilled ? 0.7 : 1 }}
+                    placeholder="Doe"
                     value={formData.last_name}
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
                   />
                 </div>
               </div>
@@ -533,22 +555,23 @@ export default function DriverRegistration() {
                 <label className="small-muted" htmlFor="email" style={{ fontFamily: 'Work Sans, sans-serif' }}>Email</label>
                 <div style={{ position: 'relative', marginTop: 6 }}>
                   <Envelope size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
-                  <input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
                     autoComplete="email"
-                    required 
-                    className="bw-input" 
+                    required
+                    readOnly={isPrefilled}
+                    className="bw-input"
                     aria-invalid={formData.email.length > 0 && !!driverEmailFormatError}
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
-                    placeholder="you@email.com" 
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', opacity: isPrefilled ? 0.7 : 1 }}
+                    placeholder="you@email.com"
                     value={formData.email}
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
                   />
                 </div>
                 <p className="small-muted" style={{ marginTop: 8, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif' }}>
-                  {EMAIL_FORMAT_HINT}
+                  {isPrefilled ? 'Filled in from your application — contact your operator if this needs to change.' : EMAIL_FORMAT_HINT}
                 </p>
                 {driverEmailFormatError && (
                   <div
@@ -575,7 +598,7 @@ export default function DriverRegistration() {
                   autoComplete="tel"
                   required 
                   className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                   placeholder="(555) 555-5555" 
                   value={formData.phone_no}
                   onChange={handleInputChange}
@@ -593,7 +616,7 @@ export default function DriverRegistration() {
                   autoComplete="new-password"
                   required 
                   className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                   placeholder="••••••••" 
                   value={formData.password}
                   onChange={handleInputChange} 
@@ -626,7 +649,7 @@ export default function DriverRegistration() {
 
               <button 
                 className="bw-btn" 
-                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
+                style={{ width: '100%', marginTop: 16, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
                 disabled={isLoading}
                 type="submit"
               >
@@ -646,14 +669,14 @@ export default function DriverRegistration() {
                   onChange={(value) => setFormData({ ...formData, state: value })}
                   placeholder="NY"
                   className="bw-input"
-                  style={{ padding: '16px 18px', borderRadius: 0 }}
+                  style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)' }}
                 />
                 <input 
                   id="postal_code" 
                   name="postal_code" 
                   type="text" 
                   className="bw-input" 
-                  style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                   placeholder="10001" 
                   value={formData.postal_code}
                   onChange={handleInputChange}
@@ -668,7 +691,7 @@ export default function DriverRegistration() {
                   name="license_number" 
                   type="text" 
                   className="bw-input" 
-                  style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                   placeholder="License number" 
                   value={formData.license_number}
                   onChange={handleInputChange}
@@ -676,42 +699,36 @@ export default function DriverRegistration() {
                 />
               </div>
 
-              {/* Vehicle Section - Only if outsourced */}
-              <div style={{ 
-                marginTop: 24, 
-                marginBottom: 12, 
-                padding: '16px', 
-                border: '1px solid var(--bw-border)', 
-                borderRadius: '8px',
-                backgroundColor: 'var(--bw-bg)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <input
-                    type="checkbox"
-                    id="includeVehicle"
-                    checked={includeVehicle}
-                    onChange={(e) => setIncludeVehicle(e.target.checked)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <label htmlFor="includeVehicle" style={{ 
-                    fontFamily: 'Work Sans, sans-serif', 
-                    fontSize: '14px', 
+              {/* Vehicle Section - driver_type was already decided when this driver was
+                  added, not re-asked here: outsourced always needs a vehicle on file,
+                  in-house drives fleet-assigned vehicles and never sees this section. */}
+              {isOutsourced && (
+                <div style={{
+                  marginTop: 24,
+                  marginBottom: 12,
+                  padding: '16px',
+                  border: '1px solid var(--bw-border)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bw-bg)'
+                }}>
+                  <p style={{
+                    margin: '0 0 4px 0',
+                    fontSize: '14px',
+                    fontWeight: 600,
                     color: 'var(--bw-text)',
-                    cursor: 'pointer'
+                    fontFamily: 'Work Sans, sans-serif'
                   }}>
-                    I have a vehicle to add (outsourced driver)
-                  </label>
-                </div>
-                {includeVehicle && (
+                    Your vehicle
+                  </p>
                   <div style={{ marginTop: 12 }}>
-                    <p style={{ 
-                      fontSize: '12px', 
-                      color: 'var(--bw-text)', 
-                      opacity: 0.7, 
+                    <p style={{
+                      fontSize: '12px',
+                      color: 'var(--bw-text)',
+                      opacity: 0.7,
                       marginBottom: 12,
                       fontFamily: 'Work Sans, sans-serif'
                     }}>
-                      If you have a vehicle you want to add, please contact {companyName} to add it to your account.
+                      You're joining as an outsourced driver, so {companyName} needs your vehicle details to approve it.
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                       <label className="small-muted" htmlFor="vehicle.make" style={{ fontFamily: 'Work Sans, sans-serif' }}>Make</label>
@@ -725,7 +742,7 @@ export default function DriverRegistration() {
                           name="vehicle.make" 
                           type="text" 
                           className="bw-input" 
-                          style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                          style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                           placeholder="Toyota" 
                           value={formData.vehicle.make}
                           onChange={handleInputChange} 
@@ -738,7 +755,7 @@ export default function DriverRegistration() {
                           name="vehicle.model" 
                           type="text" 
                           className="bw-input" 
-                          style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                          style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                           placeholder="Camry" 
                           value={formData.vehicle.model}
                           onChange={handleInputChange} 
@@ -753,7 +770,7 @@ export default function DriverRegistration() {
                           name="vehicle.year" 
                           type="number" 
                           className="bw-input" 
-                          style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
+                          style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
                           placeholder="2020" 
                           value={formData.vehicle.year}
                           onChange={handleInputChange}
@@ -767,7 +784,7 @@ export default function DriverRegistration() {
                           name="vehicle.license_plate" 
                           type="text" 
                           className="bw-input" 
-                          style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
+                          style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
                           placeholder="ABC123" 
                           value={formData.vehicle.license_plate}
                           onChange={handleInputChange}
@@ -781,7 +798,7 @@ export default function DriverRegistration() {
                           name="vehicle.color" 
                           type="text" 
                           className="bw-input" 
-                          style={{ padding: '16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
+                          style={{ padding: '16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', marginTop: 6 }} 
                           placeholder="Black" 
                           value={formData.vehicle.color}
                           onChange={handleInputChange} 
@@ -796,7 +813,7 @@ export default function DriverRegistration() {
                         className="bw-input"
                         style={{ 
                           padding: '16px 18px', 
-                          borderRadius: 0, 
+                          borderRadius: 'var(--radius-field)', 
                           fontFamily: 'Work Sans, sans-serif', 
                           marginTop: 6,
                           width: '100%',
@@ -815,14 +832,14 @@ export default function DriverRegistration() {
                       </select>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
                 <button 
                   type="button"
                   className="bw-btn"
-                  style={{ flex: 1, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, background: 'transparent', border: '1px solid var(--bw-border)', color: 'var(--bw-text)' }}
+                  style={{ flex: 1, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, background: 'transparent', border: '1px solid var(--bw-border)', color: 'var(--bw-text)' }}
                   disabled={isLoading}
                   onClick={() => { setError(''); setStep(1) }}
                 >
@@ -830,7 +847,7 @@ export default function DriverRegistration() {
                 </button>
                 <button 
                   className="bw-btn" 
-                  style={{ flex: 2, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
+                  style={{ flex: 2, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
                   disabled={isLoading || !token}
                   type="submit"
                 >

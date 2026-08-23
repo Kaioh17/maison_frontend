@@ -33,11 +33,11 @@ function isV1AuthRequestPath(url: string | undefined): boolean {
 	return path === '/v1/auth' || path.startsWith('/v1/auth/')
 }
 
-/** Pre-login driver onboarding: `GET /api/v1/driver/{slug}/verify` expects `X-API-Key`. */
+/** Pre-login driver onboarding: `GET /api/v1/driver/{slug}/verify` and `POST /api/v1/driver/{slug}/apply` expect `X-API-Key`. */
 function isDriverVerifyRequestPath(url: string | undefined): boolean {
 	if (!url) return false
 	const path = url.split('?')[0]
-	return /^\/v1\/driver\/[^/]+\/verify$/.test(path)
+	return /^\/v1\/driver\/[^/]+\/(verify|apply)$/.test(path)
 }
 
 /** Local dev admin ops: `/api/v1/admin/**` uses shared `X-API-Key`. */

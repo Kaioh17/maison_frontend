@@ -284,6 +284,10 @@ export default function Signup() {
             padding: 16px 24px !important;
             height: auto !important;
             min-height: 100vh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           .signup-form-grid {
             grid-template-columns: 1fr !important;
@@ -378,17 +382,16 @@ export default function Signup() {
       `}</style>
       <div
         className={`signup-main-container${signupStep === 3 ? ' signup-main-container--plan-step' : ''}`}
-        style={{ display: 'flex', height: '100vh', width: '100%', minHeight: signupStep === 3 ? '100vh' : undefined }}
+        style={{ display: 'flex', height: '100vh', width: '100%', minHeight: signupStep === 3 ? '100vh' : undefined, position: 'relative' }}
       >
-        {/* Left side - Image (65%) */}
-        <div 
+        {/* Left side - Image (full-bleed; the form floats over it on the right) */}
+        <div
           ref={imageContainerRef}
           className="signup-image-container"
-          style={{ 
+          style={{
             display: signupStep === 3 ? 'none' : 'flex',
-            width: '65%', 
-            height: '100%', 
-            position: 'relative',
+            position: 'absolute',
+            inset: 0,
             backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
             backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
             backgroundSize: 'cover',
@@ -459,11 +462,12 @@ export default function Signup() {
           aria-labelledby="signup-title"
           className={`signup-form-container${isMobileSignup ? ' signup-mobile-form-container-inner' : ''}${signupStep === 3 ? ' signup-form-container--plan-step' : ''}`}
           style={{
-            width: signupStep === 3 ? '100%' : '35%',
-            height: '100%',
+            width: signupStep === 3 ? '100%' : '30%',
             minHeight: signupStep === 3 ? '100vh' : undefined,
             flex: signupStep === 3 ? '1 1 auto' : undefined,
+            margin: signupStep === 3 ? undefined : '24px 24px 24px auto',
             position: 'relative',
+            zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
@@ -471,9 +475,19 @@ export default function Signup() {
             padding: signupStep === 3 ? 'clamp(24px, 4vw, 48px) clamp(20px, 4vw, 40px)' : '24px',
             paddingTop: signupStep === 3 ? 'clamp(72px, 10vw, 88px)' : undefined,
             backgroundColor: signupStep === 3 ? undefined : 'var(--bw-bg)',
-            background: signupStep === 3
-              ? 'linear-gradient(to bottom, #0a0a0f 0%, rgb(17 24 39) 50%, #0a0a0f 100%)'
-              : undefined,
+            // `background` is a shorthand — setting it to `undefined` here would still clear
+            // `backgroundColor` above (shorthand reset), so it's only added to the object at all
+            // on the plan step, via spread, rather than included with an undefined value.
+            ...(signupStep === 3
+              ? { background: 'linear-gradient(to bottom, #0a0a0f 0%, rgb(17 24 39) 50%, #0a0a0f 100%)' }
+              : {}),
+            borderRadius: signupStep === 3 ? undefined : 24,
+            border: signupStep === 3 ? undefined : '1px solid var(--bw-border-strong)',
+            boxShadow: signupStep === 3 ? undefined : 'var(--bw-shadow)',
+            // Steps 1/2 are now sized to fit the floating panel at normal viewport heights (see the
+            // per-step height:0 fix above), so this shouldn't show a scrollbar in practice. Left as
+            // 'auto' rather than 'hidden' so a genuinely short viewport still gets a scrollbar
+            // instead of an unreachable, silently clipped submit button.
             overflowY: 'auto',
             boxSizing: 'border-box',
           }}
@@ -493,7 +507,7 @@ export default function Signup() {
           >
           {/* Top spacer: desktop steps 1/2 only — creates buffer below the absolute logo and pushes content down toward true center */}
           {!isMobileSignup && signupStep < 3 && (
-            <div style={{ flex: 1, minHeight: 80, maxHeight: 120 }} />
+            <div style={{ flex: 1, minHeight: 0, maxHeight: 120 }} />
           )}
           {/* Step indicator — shown for steps 1 and 2 only */}
           {signupStep < 3 && (
@@ -504,7 +518,7 @@ export default function Signup() {
                 gap: 6,
                 alignItems: 'center',
                 justifyContent: isMobileSignup ? 'flex-start' : 'center',
-                marginBottom: 20,
+                marginBottom: 12,
                 width: '100%',
               }}
             >
@@ -695,7 +709,7 @@ export default function Signup() {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              marginTop: 16,
+              marginTop: 10,
               width: '100%',
               ...(isMobileSignup ? { flex: 1, minHeight: 0 } : {}),
             }}
@@ -709,16 +723,20 @@ export default function Signup() {
                   transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
-                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box' }}>
+                {/* height/overflow keyed to the active step: the inactive step sits in the same
+                    flex row (for the slide transition) and, at auto height, would otherwise
+                    stretch this row — and the floating panel — to fit whichever step is taller,
+                    forcing a scrollbar on the visible one. */}
+                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box', height: signupStep === 1 ? 'auto' : 0, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                       <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                         <span style={{ marginBottom: 6 }}>First name</span>
-                        <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                        <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
                       </label>
                       <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                         <span style={{ marginBottom: 6 }}>Last name</span>
-                        <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                        <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
                       </label>
                     </div>
                     <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
@@ -730,7 +748,7 @@ export default function Signup() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         aria-invalid={email.length > 0 && !!emailFormatError}
-                        style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }}
                       />
                       <span
                         className="small-muted"
@@ -765,7 +783,7 @@ export default function Signup() {
                           type={showPassword ? 'text' : 'password'} 
                           value={password} 
                           onChange={(e) => setPassword(e.target.value)} 
-                          style={{ padding: '16px 18px 16px 18px', paddingRight: '44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                          style={{ padding: '16px 18px 16px 18px', paddingRight: '44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                         />
                         <button 
                           type="button" 
@@ -809,7 +827,7 @@ export default function Signup() {
                       onClick={() => {
                         if (canContinueStep1) setSignupStep(2)
                       }}
-                      style={{ borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
+                      style={{ borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
                     >
                       Continue
                     </button>
@@ -825,11 +843,11 @@ export default function Signup() {
                     </div>
                   </div>
                 </div>
-                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+                <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box', height: signupStep === 2 ? 'auto' : 0, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
                     <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Company</span>
-                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
                     </label>
                     <div style={{ fontFamily: 'Work Sans, sans-serif' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 6 }} className="small-muted">
@@ -917,7 +935,7 @@ export default function Signup() {
                             flex: 1,
                             minWidth: 0,
                             padding: '16px 18px',
-                            borderRadius: 0, 
+                            borderRadius: 'var(--radius-field)', 
                             fontFamily: 'Work Sans, sans-serif',
                             borderColor: slugError ? '#ef4444' : undefined
                           }} 
@@ -956,12 +974,12 @@ export default function Signup() {
                         value={phone} 
                         onChange={handlePhoneChange}
                         maxLength={14}
-                        style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }}
                       />
                     </label>
                     <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>City</span>
-                      <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} />
+                      <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
                     </label>
                     <div className="bw-form-group" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span className="small-muted signup-label" style={{ marginBottom: 6, fontFamily: 'Work Sans, sans-serif', display: 'block' }}>Company Logo (optional)</span>
@@ -1000,8 +1018,8 @@ export default function Signup() {
                         }}
                         style={{
                           border: '1px dashed var(--bw-border-strong)',
-                          borderRadius: 0,
-                          padding: '20px 16px',
+                          borderRadius: 'var(--radius-field)',
+                          padding: '14px 16px',
                           textAlign: 'center',
                           cursor: 'pointer',
                           background: 'transparent',
@@ -1009,7 +1027,7 @@ export default function Signup() {
                           flexDirection: 'column',
                           alignItems: 'center',
                           gap: 8,
-                          minHeight: 100,
+                          minHeight: 72,
                           justifyContent: 'center',
                         }}
                       >
@@ -1063,7 +1081,7 @@ export default function Signup() {
                         className="bw-btn signup-button"
                         type="submit"
                         disabled={isCreatingAccount}
-                        style={{ width: '100%', borderRadius: 0, fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
+                        style={{ width: '100%', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
                       >
                         {isCreatingAccount ? 'Creating account…' : 'Create account'}
                       </button>

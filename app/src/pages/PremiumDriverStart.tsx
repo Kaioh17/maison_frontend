@@ -242,9 +242,8 @@ export default function PremiumDriverStart() {
               I&apos;d like to join the fleet
             </h2>
             <p style={{ margin: '0 0 14px 0', fontSize: 14, lineHeight: 1.6, color: premium.palette.muted }}>
-              New drivers are added by {company}. Reach dispatch using the contacts below and ask how to get your
-              invite or registration link. Have your legal name, mobile number, and work email ready—they&apos;ll match
-              what operations enters in the dashboard.
+              Submit a short application below and {company} will review it. Have your legal name and work email
+              ready—they&apos;ll match what operations enters in the dashboard.
             </p>
             <p style={{ margin: '0 0 10px 0', fontSize: 14, lineHeight: 1.6, color: premium.palette.muted }}>
               <strong style={{ color: premium.palette.text, fontWeight: 600 }}>Say whether you&apos;re in-house or outsourced.</strong>{' '}
@@ -353,6 +352,29 @@ export default function PremiumDriverStart() {
                 </div>
               </details>
             </div>
+
+            <Link
+              to="/driver/apply"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                borderRadius: 999,
+                padding: '12px 20px',
+                marginBottom: 18,
+                fontSize: 14,
+                fontWeight: 500,
+                backgroundColor: premium.palette.accent,
+                color: premium.palette.button_text?.trim() || premium.palette.text,
+              }}
+            >
+              Apply to drive
+            </Link>
+
+            <p style={{ margin: '0 0 10px 0', fontSize: 12, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, color: premium.palette.muted }}>
+              Prefer to talk to dispatch directly?
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {phoneDisplay && phoneHref ? (
                 <a

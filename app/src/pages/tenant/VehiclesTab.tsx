@@ -187,8 +187,6 @@ export default function VehiclesTab() {
     setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
-    settingsMenuOpen,
-    setSettingsMenuOpen,
     kpiScrollIndex,
     setKpiScrollIndex,
     showAddVehicleForm,
@@ -312,7 +310,6 @@ export default function VehiclesTab() {
     driverPalette,
     getPageTitle,
     handleTabClick,
-    handleSettingsSubmenuClick,
     copyTenantOverviewLink,
     generateTenantOverviewLinkQr,
     downloadTenantOverviewLinkQr,
@@ -502,7 +499,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -537,7 +534,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)',
                                   opacity: !newVehicle.make ? 0.5 : 1
@@ -577,7 +574,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -604,7 +601,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -633,7 +630,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -663,7 +660,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -691,7 +688,7 @@ export default function VehiclesTab() {
                                 fontFamily: '"Work Sans", sans-serif',
                                 fontSize: '14px',
                                 border: '1px solid var(--bw-border)',
-                                borderRadius: 0,
+                                borderRadius: 'var(--radius-field)',
                                 backgroundColor: 'var(--bw-bg)',
                                 color: 'var(--bw-text)'
                               }}
@@ -735,7 +732,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}
@@ -762,7 +759,7 @@ export default function VehiclesTab() {
                                   fontFamily: '"Work Sans", sans-serif',
                                   fontSize: '14px',
                                   border: '1px solid var(--bw-border)',
-                                  borderRadius: 0,
+                                  borderRadius: 'var(--radius-field)',
                                   backgroundColor: 'var(--bw-bg)',
                                   color: 'var(--bw-text)'
                                 }}

@@ -9,7 +9,7 @@ export type BookingResponse = {
   airport_service?: 'to_airport' | 'from_airport' | null
   dropoff_location: string
   dropoff_time: string
-  payment_method: 'cash' | 'card' | 'zelle'
+  payment_method: 'cash' | 'card' | 'card_pickup' | 'zelle'
   hours: number | null
   notes: string | null
   estimated_price: number
@@ -66,7 +66,7 @@ export type CreateBooking = {
   pickup_location: string
   pickup_time: string
   dropoff_location?: string
-  payment_method?: 'cash' | 'card' | 'zelle'
+  payment_method?: 'cash' | 'card' | 'card_pickup' | 'zelle'
   notes?: string
   coordinates?: {
     plat: number // pickup latitude
@@ -81,7 +81,7 @@ export type CreateBooking = {
 export async function approveBooking(
   bookingId: number,
   isApproved: boolean,
-  paymentMethod: 'cash' | 'card' | 'zelle'
+  paymentMethod: 'cash' | 'card' | 'card_pickup' | 'zelle'
 ) {
   const { data } = await http.patch<StandardResponse<BookingResponse>>(
     `/v1/bookings/${bookingId}`,
@@ -103,7 +103,7 @@ export async function getBookingByConfirmToken(token: string) {
 export async function approveBookingByToken(
   token: string,
   isApproved: boolean,
-  paymentMethod: 'cash' | 'card' | 'zelle'
+  paymentMethod: 'cash' | 'card' | 'card_pickup' | 'zelle'
 ) {
   const { data } = await http.patch<StandardResponse<BookingResponse>>(
     `/v1/bookings/confirm/${encodeURIComponent(token)}`,

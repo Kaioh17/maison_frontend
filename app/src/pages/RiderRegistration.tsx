@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Eye, EyeSlash, ArrowRight, ArrowLeft } from '@phosphor-icons/react'
+import { Eye, EyeSlash, ArrowRight } from '@phosphor-icons/react'
 import { createUser } from '@api/user'
 import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
@@ -246,46 +246,6 @@ function PrimaryButton({ isLoading, label, loadingLabel, flex, palette }: Primar
     >
       <span>{isLoading ? loadingLabel : label}</span>
       {!isLoading && <ArrowRight size={16} aria-hidden weight="bold" />}
-    </button>
-  )
-}
-
-interface GhostButtonProps {
-  onClick: () => void
-  disabled?: boolean
-  label: string
-  flex?: number
-  withBackArrow?: boolean
-  palette: RiderAuthPalette
-}
-
-function GhostButton({ onClick, disabled, label, flex, withBackArrow, palette }: GhostButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        flex,
-        width: flex ? undefined : '100%',
-        background: 'transparent',
-        color: palette.text,
-        border: `1px solid ${palette.inputBorder}`,
-        borderRadius: 8,
-        padding: '13px 16px',
-        fontSize: 14,
-        fontWeight: 500,
-        fontFamily: FONT_STACK,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-      }}
-    >
-      {withBackArrow && <ArrowLeft size={16} aria-hidden weight="bold" />}
-      <span>{label}</span>
     </button>
   )
 }
@@ -542,7 +502,6 @@ export default function RiderRegistration() {
     country: '',
     postal_code: '',
   })
-  const [step, setStep] = useState<1 | 2>(1)
   const [showAddressFields, setShowAddressFields] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -581,7 +540,7 @@ export default function RiderRegistration() {
     }
   }
 
-  const validateRiderStep1 = (): boolean => {
+  const validateRiderForm = (): boolean => {
     if (!formData.first_name.trim() || !formData.last_name.trim()) {
       setError('Please enter your first and last name.')
       return false
@@ -623,16 +582,11 @@ export default function RiderRegistration() {
       return
     }
 
-    if (step === 1) {
-      setError('')
-      if (!validateRiderStep1()) return
-      setStep(2)
-      return
-    }
+    setError('')
+    if (!validateRiderForm()) return
 
     try {
       setIsLoading(true)
-      setError('')
 
       const phoneDigits = formData.phone_no.replace(/\D/g, '')
 
@@ -657,12 +611,6 @@ export default function RiderRegistration() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleBack = () => {
-    setError('')
-    setShowAddressFields(false)
-    setStep(1)
   }
 
   if (isAuthenticated && role === 'rider') {
@@ -749,10 +697,8 @@ export default function RiderRegistration() {
     setShowPassword,
     emailFormatError,
     passwordFailures,
-    step,
     showAddressFields,
     onAddressToggle: handleAddressDetailsToggle,
-    onBack: handleBack,
     setFormData,
     palette,
   }
@@ -783,32 +729,10 @@ interface LayoutProps {
   setShowPassword: (value: boolean) => void
   emailFormatError: string | null
   passwordFailures: string[]
-  step: 1 | 2
   showAddressFields: boolean
   onAddressToggle: (checked: boolean) => void
-  onBack: () => void
   setFormData: React.Dispatch<React.SetStateAction<LayoutProps['formData']>>
   palette: RiderAuthPalette
-}
-
-function StepIndicator({ step, palette }: { step: 1 | 2; palette: RiderAuthPalette }) {
-  const label = step === 1 ? 'Step 1 of 2 — Account' : 'Step 2 of 2 — Pickup address'
-  return (
-    <p
-      aria-live="polite"
-      style={{
-        margin: '6px 0 0',
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
-        color: palette.labelMuted,
-        fontFamily: FONT_STACK,
-      }}
-    >
-      {label}
-    </p>
-  )
 }
 
 function AddressToggle({
@@ -861,10 +785,8 @@ function DesktopLayout({
   setShowPassword,
   emailFormatError,
   passwordFailures,
-  step,
   showAddressFields,
   onAddressToggle,
-  onBack,
   setFormData,
   palette,
 }: LayoutProps) {
@@ -954,13 +876,11 @@ function DesktopLayout({
             >
               {`Sign up for ${companyName}`}
             </p>
-            <StepIndicator step={step} palette={palette} />
           </div>
 
           {error && <ErrorBanner message={error} palette={palette} />}
 
           <form onSubmit={onSubmit} style={{ marginTop: 4, textAlign: 'left' }}>
-            {step === 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <DesktopField
@@ -1096,19 +1016,6 @@ function DesktopLayout({
                   )}
                 </div>
 
-                <div style={{ marginTop: 8 }}>
-                  <PrimaryButton
-                    isLoading={isLoading}
-                    label="Continue"
-                    loadingLabel="Continue"
-                    palette={palette}
-                  />
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <AddressToggle checked={showAddressFields} onChange={onAddressToggle} palette={palette} />
 
                 {showAddressFields && (
@@ -1211,25 +1118,15 @@ function DesktopLayout({
                   </>
                 )}
 
-                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                  <GhostButton
-                    onClick={onBack}
-                    disabled={isLoading}
-                    label="Back"
-                    flex={1}
-                    withBackArrow
-                    palette={palette}
-                  />
+                <div style={{ marginTop: 8 }}>
                   <PrimaryButton
                     isLoading={isLoading}
                     label="Create account"
                     loadingLabel="Creating…"
-                    flex={2}
                     palette={palette}
                   />
                 </div>
               </div>
-            )}
           </form>
         </div>
 
@@ -1267,10 +1164,8 @@ function MobileLayout({
   setShowPassword,
   emailFormatError,
   passwordFailures,
-  step,
   showAddressFields,
   onAddressToggle,
-  onBack,
   setFormData,
   palette,
 }: LayoutProps) {
@@ -1360,7 +1255,6 @@ function MobileLayout({
           >
             {`Sign up for ${companyName}`}
           </p>
-          <StepIndicator step={step} palette={palette} />
         </div>
 
         {error && <ErrorBanner message={error} palette={palette} />}
@@ -1369,8 +1263,6 @@ function MobileLayout({
           onSubmit={onSubmit}
           style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}
         >
-          {step === 1 && (
-            <>
               <FloatingField
                 id="first_name"
                 name="first_name"
@@ -1487,14 +1379,6 @@ function MobileLayout({
                 {PASSWORD_POLICY_HINT}
               </p>
 
-              <div style={{ marginTop: 8 }}>
-                <PrimaryButton isLoading={isLoading} label="Continue" loadingLabel="Continue" palette={palette} />
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
               <AddressToggle checked={showAddressFields} onChange={onAddressToggle} palette={palette} />
               {showAddressFields && (
                 <>
@@ -1543,25 +1427,14 @@ function MobileLayout({
                   />
                 </>
               )}
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <GhostButton
-                  onClick={onBack}
-                  disabled={isLoading}
-                  label="Back"
-                  flex={1}
-                  withBackArrow
-                  palette={palette}
-                />
+              <div style={{ marginTop: 8 }}>
                 <PrimaryButton
                   isLoading={isLoading}
                   label="Create account"
                   loadingLabel="Creating…"
-                  flex={2}
                   palette={palette}
                 />
               </div>
-            </>
-          )}
         </form>
 
         <p

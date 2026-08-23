@@ -7,7 +7,7 @@ import {
   type BookingResponse,
 } from '@api/bookings'
 import { useTenantInfo } from '@hooks/useTenantInfo'
-import { listAllowedRiderPaymentMethods, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
+import { listAllowedRiderPaymentMethods, RIDER_PAYMENT_METHOD_LABELS, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
 import { useFavicon } from '@hooks/useFavicon'
 import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check, Info } from '@phosphor-icons/react'
 // Stripe Logo SVG Component
@@ -196,7 +196,7 @@ export default function BookingConfirmation() {
 
   const getPaymentMethodDisplayName = (method: RiderPaymentMethodId | null) => {
     if (!method) return 'Select Payment Method'
-    return method.charAt(0).toUpperCase() + method.slice(1)
+    return RIDER_PAYMENT_METHOD_LABELS[method]
   }
 
   if (loadingBooking || !booking) {
@@ -673,7 +673,8 @@ export default function BookingConfirmation() {
               }}>
                 {selectedPaymentMethod === 'card' && 'Card payments are powered by Stripe. Your payment information is secure and encrypted.'}
                 {selectedPaymentMethod === 'zelle' && "You'll see Zelle payment details on the next screen after you confirm your ride."}
-                {selectedPaymentMethod === 'cash' && 'Cash payments will be collected at the time of service. Please have exact change ready.'}
+                {selectedPaymentMethod === 'cash' && 'Cash is collected in person at the time of service. Please have exact change ready.'}
+                {selectedPaymentMethod === 'card_pickup' && "The driver will run your card in person at the time of service, using a card/tap reader (e.g. Square) — not a prepaid Stripe charge."}
               </p>
             </div>
           )}
@@ -848,7 +849,6 @@ export default function BookingConfirmation() {
                       justifyContent: 'center',
                       transition: 'all 0.2s ease',
                       boxShadow: isSelected ? '0 2px 8px rgba(0, 0, 0, 0.1)' : 'none',
-                      textTransform: 'capitalize',
                       position: 'relative'
                     }}
                     onMouseEnter={(e) => {
@@ -864,7 +864,7 @@ export default function BookingConfirmation() {
                       }
                     }}
                   >
-                    <span>{method.charAt(0).toUpperCase() + method.slice(1)}</span>
+                    <span>{RIDER_PAYMENT_METHOD_LABELS[method]}</span>
                     {isSelected && (
                       <Check size={20} style={{ color: 'var(--bw-accent)', position: 'absolute', right: 'clamp(16px, 3vw, 20px)' }} />
                     )}

@@ -99,6 +99,9 @@ export default function DriversTab() {
     setAddDriverError,
     isCreatingDriver,
     setIsCreatingDriver,
+    approvingDriverId,
+    approveDriverError,
+    approveDriverAction,
     tenantConfig,
     setTenantConfig,
     editingSettings,
@@ -187,8 +190,6 @@ export default function DriversTab() {
     setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
-    settingsMenuOpen,
-    setSettingsMenuOpen,
     kpiScrollIndex,
     setKpiScrollIndex,
     showAddVehicleForm,
@@ -312,7 +313,6 @@ export default function DriversTab() {
     driverPalette,
     getPageTitle,
     handleTabClick,
-    handleSettingsSubmenuClick,
     copyTenantOverviewLink,
     generateTenantOverviewLinkQr,
     downloadTenantOverviewLinkQr,
@@ -516,6 +516,7 @@ export default function DriversTab() {
                       const telHref = tenantTelHrefFromPhone(driver.phone_no)
                       const verified = driver.is_registered === 'registered'
                       const inHouse = driver.driver_type === 'in_house'
+                      const unapproved = !verified && !driver.is_active
                       const collapsedAccordion =
                         useCompressedDriverCards && !expandedDriverCardIds.has(driver.id)
                       const initials = overviewDriverInitials(driver)
@@ -901,6 +902,21 @@ export default function DriversTab() {
                             )}
                           </div>
 
+                          {unapproved ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-block"
+                              disabled={approvingDriverId === driver.id}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                approveDriverAction(driver.id)
+                              }}
+                              style={{ marginBottom: inHouse ? 8 : 0 }}
+                            >
+                              <CheckCircle size={18} aria-hidden />
+                              {approvingDriverId === driver.id ? 'Approving...' : 'Approve'}
+                            </button>
+                          ) : null}
                           {inHouse ? (
                             <button
                               type="button"
@@ -1137,10 +1153,28 @@ export default function DriversTab() {
                         </span>
                         <span
                           role="gridcell"
-                          style={{ justifySelf: 'end' }}
+                          style={{
+                            justifySelf: 'end',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                            gap: 8,
+                            minWidth: 0,
+                          }}
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => e.stopPropagation()}
                         >
+                          {!driver.is_active && driver.is_registered !== 'registered' ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={approvingDriverId === driver.id}
+                              onClick={() => approveDriverAction(driver.id)}
+                            >
+                              <CheckCircle size={16} aria-hidden />
+                              {approvingDriverId === driver.id ? 'Approving...' : 'Approve'}
+                            </button>
+                          ) : null}
                           {driver.driver_type === 'in_house' ? (
                             <button
                               type="button"
@@ -1235,7 +1269,7 @@ export default function DriversTab() {
                       fontFamily: 'Work Sans, sans-serif',
                       fontSize: '16px',
                       padding: '16px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
                       width: '100%',
                       boxSizing: 'border-box'
                     }}
@@ -1262,7 +1296,7 @@ export default function DriversTab() {
                       fontFamily: 'Work Sans, sans-serif',
                       fontSize: '16px',
                       padding: '16px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
                       width: '100%',
                       boxSizing: 'border-box'
                     }}
@@ -1290,7 +1324,7 @@ export default function DriversTab() {
                       fontFamily: 'Work Sans, sans-serif',
                       fontSize: '16px',
                       padding: '16px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
                       width: '100%',
                       boxSizing: 'border-box'
                     }}
@@ -1317,7 +1351,7 @@ export default function DriversTab() {
                       fontFamily: 'Work Sans, sans-serif',
                       fontSize: '16px',
                       padding: '16px 18px',
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
                       width: '100%',
                       boxSizing: 'border-box'
                     }}
@@ -1608,6 +1642,25 @@ export default function DriversTab() {
                       </span>
                     </div>
                   </div>
+
+                  {!selectedDriver.is_active && selectedDriver.is_registered !== 'registered' && (
+                    <div style={{ paddingBottom: 'clamp(12px, 2vw, 16px)', borderBottom: '1px solid var(--bw-border)' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-block"
+                        disabled={approvingDriverId === selectedDriver.id}
+                        onClick={() => approveDriverAction(selectedDriver.id)}
+                      >
+                        <CheckCircle size={18} aria-hidden />
+                        {approvingDriverId === selectedDriver.id ? 'Approving...' : 'Approve driver'}
+                      </button>
+                      {approveDriverError && (
+                        <div role="alert" style={{ marginTop: 8, fontSize: 13, color: 'var(--bw-error)' }}>
+                          {approveDriverError}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Personal Information */}
                   <div>

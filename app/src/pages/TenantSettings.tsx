@@ -40,6 +40,8 @@ import { Gear, User, Building, MapPin, Phone, Envelope, Shield, CreditCard, Curr
 
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 
+import Toggle from '@components/Toggle'
+
 import { SETTINGS_BTN_CSS } from './settings/settingsButtonCss'
 
 import {
@@ -48,9 +50,7 @@ import {
 
   RIDER_PAYMENT_METHOD_IDS,
 
-  RIDER_PAYMENT_METHOD_LABELS,
-
-  isRiderPaymentMethodAllowed
+  RIDER_PAYMENT_METHOD_LABELS
 
 } from '@utils/allowedPaymentMethods'
 
@@ -90,10 +90,6 @@ export default function TenantSettings() {
 
   const [editedBranding, setEditedBranding] = useState<TenantBrandingData | null>(null)
 
-  // Per-section editing state for laptop screens
-
-  const [editingSections, setEditingSections] = useState<{ [key: string]: boolean }>({})
-
   const [logoFile, setLogoFile] = useState<File | null>(null)
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -123,16 +119,6 @@ export default function TenantSettings() {
 
   
 
-
-  // Separate editing states for booking config and rider tiers
-
-  const [editingBookingConfig, setEditingBookingConfig] = useState(false)
-
-  const [editingRiderTiers, setEditingRiderTiers] = useState(false)
-
-  const [savingBookingConfig, setSavingBookingConfig] = useState(false)
-
-  const [savingRiderTiers, setSavingRiderTiers] = useState(false)
 
   // State for adding new service
 
@@ -176,6 +162,16 @@ export default function TenantSettings() {
 
     setOpenSections(prev => ({ ...prev, branding: true, fare: true, rider: true }))
 
+  }
+
+  // Toggles are always live (maison-ui skill §8: yes/no settings are switches, not
+  // gated selects). Flipping one outside of edit mode should drop the page into edit
+  // mode itself, same as clicking the single central Edit button.
+  const beginEdit = () => {
+    if (!editingSettings) {
+      setEditingSettings(true)
+      expandAllSections()
+    }
   }
 
 
@@ -1070,572 +1066,6 @@ export default function TenantSettings() {
 
 
 
-  const handleSaveBookingConfig = async () => {
-
-    if (!editedSettings || !tenantConfig?.settings) return
-
-
-
-    const zelleErr = zellePhoneValidationError(editedSettings.zelle_number)
-
-    if (zelleErr) {
-
-      alert(zelleErr)
-
-      return
-
-    }
-
-
-
-    try {
-
-      setSavingBookingConfig(true)
-
-      
-
-      // Preserve all existing service types dynamically
-
-      const existingTypes = editedSettings.config?.booking?.types || {}
-
-      const typesToSave: Record<string, { is_deposit_required: boolean }> = {}
-
-      
-
-      // Preserve all types from edited settings
-
-      Object.keys(existingTypes).forEach(typeKey => {
-
-        typesToSave[typeKey] = {
-
-          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
-
-        }
-
-      })
-
-      
-
-      const completeConfig = {
-
-        rider_tiers_enabled: tenantConfig.settings.rider_tiers_enabled,
-
-        ...tenantZellePayload(editedSettings),
-
-        rider_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.rider_feedback_form),
-
-        driver_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.driver_feedback_form),
-
-        config: {
-
-          booking: {
-
-            allow_guest_bookings: editedSettings.config?.booking?.allow_guest_bookings ?? true,
-
-            show_vehicle_images: editedSettings.config?.booking?.show_vehicle_images ?? true,
-
-            allowed_payment_method: normalizeAllowedPaymentMethodMap(
-
-              editedSettings.config?.booking?.allowed_payment_method
-
-            ),
-
-            types: typesToSave
-
-          },
-
-          branding: {
-
-            button_radius: editedSettings.config?.branding?.button_radius ?? tenantConfig.settings.config?.branding?.button_radius ?? 0,
-
-            font_family: editedSettings.config?.branding?.font_family ?? tenantConfig.settings.config?.branding?.font_family ?? 'string'
-
-          },
-
-          features: {
-
-            vip_profiles: editedSettings.config?.features?.vip_profiles ?? tenantConfig.settings.config?.features?.vip_profiles ?? true,
-
-            show_loyalty_banner: editedSettings.config?.features?.show_loyalty_banner ?? tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
-
-          }
-
-        }
-
-      }
-
-      
-
-      await updateTenantSettings(completeConfig)
-
-      
-
-      // Refresh config
-
-      const refreshedConfig = await getTenantConfig('all')
-
-      setTenantConfig(refreshedConfig)
-
-      if (refreshedConfig.settings) {
-
-        // Preserve all types dynamically after refresh
-
-        const refreshedTypes = refreshedConfig.settings.config?.booking?.types || {}
-
-        const refreshedTypesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
-
-        
-
-        Object.keys(refreshedTypes).forEach(typeKey => {
-
-          refreshedTypesWithDefaults[typeKey] = {
-
-            is_deposit_required: refreshedTypes[typeKey]?.is_deposit_required ?? true
-
-          }
-
-        })
-
-        
-
-        const settingsWithDefaults = {
-
-          ...refreshedConfig.settings,
-
-          zelle_number: zelleNumberFromApi(refreshedConfig.settings.zelle_number),
-
-          zelle_email: zelleEmailFromApi(refreshedConfig.settings.zelle_email),
-
-          config: {
-
-            booking: {
-
-              allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
-
-              show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
-
-              allowed_payment_method: normalizeAllowedPaymentMethodMap(
-
-                refreshedConfig.settings.config?.booking?.allowed_payment_method
-
-              ),
-
-              types: refreshedTypesWithDefaults
-
-            },
-
-            branding: {
-
-              button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
-
-              font_family: refreshedConfig.settings.config?.branding?.font_family ?? 'string'
-
-            },
-
-            features: {
-
-              vip_profiles: refreshedConfig.settings.config?.features?.vip_profiles ?? true,
-
-              show_loyalty_banner: refreshedConfig.settings.config?.features?.show_loyalty_banner ?? true
-
-            }
-
-          }
-
-        }
-
-        setEditedSettings(settingsWithDefaults)
-
-      }
-
-      
-
-      setEditingBookingConfig(false)
-
-      alert('Booking configuration updated successfully!')
-
-    } catch (error) {
-
-      console.error('Failed to update booking configuration:', error)
-
-      alert('Failed to update booking configuration. Please try again.')
-
-    } finally {
-
-      setSavingBookingConfig(false)
-
-    }
-
-  }
-
-
-
-  const handleSaveRiderTiers = async () => {
-
-    if (!editedSettings || !tenantConfig?.settings) return
-
-
-
-    const zelleErr = zellePhoneValidationError(editedSettings.zelle_number)
-
-    if (zelleErr) {
-
-      alert(zelleErr)
-
-      return
-
-    }
-
-
-
-    try {
-
-      setSavingRiderTiers(true)
-
-      
-
-      // Preserve all existing service types dynamically
-
-      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
-
-      const typesToPreserve: Record<string, { is_deposit_required: boolean }> = {}
-
-      
-
-      Object.keys(existingTypes).forEach(typeKey => {
-
-        typesToPreserve[typeKey] = {
-
-          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
-
-        }
-
-      })
-
-      
-
-      const completeConfig = {
-
-        rider_tiers_enabled: editedSettings.rider_tiers_enabled,
-
-        ...tenantZellePayload(editedSettings),
-
-        rider_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.rider_feedback_form),
-
-        driver_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.driver_feedback_form),
-
-        config: tenantConfig.settings.config ? {
-
-          ...tenantConfig.settings.config,
-
-          booking: {
-
-            ...tenantConfig.settings.config.booking,
-
-            types: typesToPreserve
-
-          }
-
-        } : {
-
-          booking: {
-
-            allow_guest_bookings: true,
-
-            show_vehicle_images: true,
-
-            allowed_payment_method: normalizeAllowedPaymentMethodMap(null),
-
-            types: typesToPreserve
-
-          },
-
-          branding: {
-
-            button_radius: 0,
-
-            font_family: 'string'
-
-          },
-
-          features: {
-
-            vip_profiles: true,
-
-            show_loyalty_banner: true
-
-          }
-
-        }
-
-      }
-
-      
-
-      await updateTenantSettings(completeConfig)
-
-      
-
-      // Refresh config
-
-      const refreshedConfig = await getTenantConfig('all')
-
-      setTenantConfig(refreshedConfig)
-
-      if (refreshedConfig.settings) {
-
-        // Preserve all types dynamically
-
-        const refreshedTypes = refreshedConfig.settings.config?.booking?.types || {}
-
-        const refreshedTypesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
-
-        
-
-        Object.keys(refreshedTypes).forEach(typeKey => {
-
-          refreshedTypesWithDefaults[typeKey] = {
-
-            is_deposit_required: refreshedTypes[typeKey]?.is_deposit_required ?? true
-
-          }
-
-        })
-
-        
-
-        const settingsWithDefaults = {
-
-          ...refreshedConfig.settings,
-
-          zelle_number: zelleNumberFromApi(refreshedConfig.settings.zelle_number),
-
-          zelle_email: zelleEmailFromApi(refreshedConfig.settings.zelle_email),
-
-          config: {
-
-            booking: {
-
-              allow_guest_bookings: refreshedConfig.settings.config?.booking?.allow_guest_bookings ?? true,
-
-              show_vehicle_images: refreshedConfig.settings.config?.booking?.show_vehicle_images ?? true,
-
-              allowed_payment_method: normalizeAllowedPaymentMethodMap(
-
-                refreshedConfig.settings.config?.booking?.allowed_payment_method
-
-              ),
-
-              types: refreshedTypesWithDefaults
-
-            },
-
-            branding: {
-
-              button_radius: refreshedConfig.settings.config?.branding?.button_radius ?? 0,
-
-              font_family: refreshedConfig.settings.config?.branding?.font_family ?? 'string'
-
-            },
-
-            features: {
-
-              vip_profiles: refreshedConfig.settings.config?.features?.vip_profiles ?? true,
-
-              show_loyalty_banner: refreshedConfig.settings.config?.features?.show_loyalty_banner ?? true
-
-            }
-
-          }
-
-        }
-
-        setEditedSettings(settingsWithDefaults)
-
-      }
-
-      
-
-      setEditingRiderTiers(false)
-
-      alert('Rider tiers updated successfully!')
-
-    } catch (error) {
-
-      console.error('Failed to update rider tiers:', error)
-
-      alert('Failed to update rider tiers. Please try again.')
-
-    } finally {
-
-      setSavingRiderTiers(false)
-
-    }
-
-  }
-
-
-
-  const handleCancelBookingConfig = () => {
-
-    if (tenantConfig?.settings) {
-
-      // Preserve all existing service types dynamically
-
-      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
-
-      const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
-
-      
-
-      Object.keys(existingTypes).forEach(typeKey => {
-
-        typesWithDefaults[typeKey] = {
-
-          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
-
-        }
-
-      })
-
-      
-
-      const settingsWithDefaults = {
-
-        ...tenantConfig.settings,
-
-        zelle_number: zelleNumberFromApi(tenantConfig.settings.zelle_number),
-
-        zelle_email: zelleEmailFromApi(tenantConfig.settings.zelle_email),
-
-        config: {
-
-          booking: {
-
-            allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
-
-            show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
-
-            allowed_payment_method: normalizeAllowedPaymentMethodMap(
-
-              tenantConfig.settings.config?.booking?.allowed_payment_method
-
-            ),
-
-            types: typesWithDefaults
-
-          },
-
-          branding: {
-
-            button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
-
-            font_family: tenantConfig.settings.config?.branding?.font_family ?? 'string'
-
-          },
-
-          features: {
-
-            vip_profiles: tenantConfig.settings.config?.features?.vip_profiles ?? true,
-
-            show_loyalty_banner: tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
-
-          }
-
-        }
-
-      }
-
-      setEditedSettings(settingsWithDefaults)
-
-    }
-
-    setEditingBookingConfig(false)
-
-  }
-
-
-
-  const handleCancelRiderTiers = () => {
-
-    if (tenantConfig?.settings) {
-
-      // Preserve all types dynamically
-
-      const existingTypes = tenantConfig.settings.config?.booking?.types || {}
-
-      const typesWithDefaults: Record<string, { is_deposit_required: boolean }> = {}
-
-      
-
-      Object.keys(existingTypes).forEach(typeKey => {
-
-        typesWithDefaults[typeKey] = {
-
-          is_deposit_required: existingTypes[typeKey]?.is_deposit_required ?? true
-
-        }
-
-      })
-
-      
-
-      const settingsWithDefaults = {
-
-        ...tenantConfig.settings,
-
-        zelle_number: zelleNumberFromApi(tenantConfig.settings.zelle_number),
-
-        zelle_email: zelleEmailFromApi(tenantConfig.settings.zelle_email),
-
-        config: {
-
-          booking: {
-
-            allow_guest_bookings: tenantConfig.settings.config?.booking?.allow_guest_bookings ?? true,
-
-            show_vehicle_images: tenantConfig.settings.config?.booking?.show_vehicle_images ?? true,
-
-            allowed_payment_method: normalizeAllowedPaymentMethodMap(
-
-              tenantConfig.settings.config?.booking?.allowed_payment_method
-
-            ),
-
-            types: typesWithDefaults
-
-          },
-
-          branding: {
-
-            button_radius: tenantConfig.settings.config?.branding?.button_radius ?? 0,
-
-            font_family: tenantConfig.settings.config?.branding?.font_family ?? 'string'
-
-          },
-
-          features: {
-
-            vip_profiles: tenantConfig.settings.config?.features?.vip_profiles ?? true,
-
-            show_loyalty_banner: tenantConfig.settings.config?.features?.show_loyalty_banner ?? true
-
-          }
-
-        }
-
-      }
-
-      setEditedSettings(settingsWithDefaults)
-
-    }
-
-    setEditingRiderTiers(false)
-
-  }
-
-
-
   const handleTestLogoEndpoint = async () => {
 
     try {
@@ -1914,25 +1344,6 @@ export default function TenantSettings() {
 
               )}
 
-              {!isMobile && (
-
-                <button
-                  className="pss-btn pss-btn-outline"
-                  onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    setEditingSections(prev => ({ ...prev, branding: !prev.branding }));
-                    if (!editingSections.branding) expandAllSections();
-
-                  }}
-                >
-                  {editingSections.branding ? <XCircle size={16} aria-hidden /> : <Pencil size={16} aria-hidden />}
-                  {editingSections.branding ? 'Cancel' : 'Edit'}
-                </button>
-
-              )}
-
             </div>
 
             {openSections.branding && (
@@ -1995,7 +1406,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -2109,7 +1520,7 @@ export default function TenantSettings() {
 
                         fontFamily: '"Work Sans", sans-serif',
 
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius-field)',
 
                         color: 'var(--bw-text)',
 
@@ -2275,7 +1686,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -2329,67 +1740,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingSettings ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedBranding?.enable_branding ? 'true' : 'false'} 
-
-                    onChange={(e) => handleBrandingChange('enable_branding', e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.branding?.enable_branding ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedBranding?.enable_branding}
+                  onChange={(v) => { beginEdit(); handleBrandingChange('enable_branding', v) }}
+                />
 
               </div>
 
@@ -2464,25 +1818,6 @@ export default function TenantSettings() {
                   <CaretDown size={16} style={{ color: 'var(--bw-text)' }} />
 
                 )
-
-              )}
-
-              {!isMobile && (
-
-                <button
-                  className="pss-btn pss-btn-outline"
-                  onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    setEditingSections(prev => ({ ...prev, fare: !prev.fare }));
-                    if (!editingSections.fare) expandAllSections();
-
-                  }}
-                >
-                  {editingSections.fare ? <XCircle size={16} aria-hidden /> : <Pencil size={16} aria-hidden />}
-                  {editingSections.fare ? 'Cancel' : 'Edit'}
-                </button>
 
               )}
 
@@ -2568,7 +1903,7 @@ export default function TenantSettings() {
 
                         fontFamily: '"Work Sans", sans-serif',
 
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius-field)',
 
                         color: 'var(--bw-text)',
 
@@ -2668,42 +2003,6 @@ export default function TenantSettings() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
 
-                {editingRiderTiers ? (
-
-                  <>
-
-                    <button
-                      className="pss-btn pss-btn-outline"
-                      onClick={(e) => { e.stopPropagation(); handleCancelRiderTiers(); }}
-                      disabled={savingRiderTiers}
-                    >
-                      <XCircle size={16} aria-hidden />
-                      Cancel
-                    </button>
-
-                    <button
-                      className="pss-btn pss-btn-primary"
-                      onClick={(e) => { e.stopPropagation(); handleSaveRiderTiers(); }}
-                      disabled={savingRiderTiers}
-                    >
-                      <FloppyDisk size={16} aria-hidden />
-                      {savingRiderTiers ? 'Saving…' : 'Save'}
-                    </button>
-
-                  </>
-
-                ) : (
-
-                  <button
-                    className="pss-btn pss-btn-outline"
-                    onClick={(e) => { e.stopPropagation(); setEditingRiderTiers(true); expandAllSections(); }}
-                  >
-                    <Pencil size={16} aria-hidden />
-                    Edit
-                  </button>
-
-                )}
-
                 {isMobile && (
 
                   openSections.rider ? (
@@ -2760,67 +2059,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingRiderTiers ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedSettings?.rider_tiers_enabled ? 'true' : 'false'} 
-
-                    onChange={(e) => handleSettingChange('rider_tiers_enabled', e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.settings?.rider_tiers_enabled ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedSettings?.rider_tiers_enabled}
+                  onChange={(v) => { beginEdit(); handleSettingChange('rider_tiers_enabled', v) }}
+                />
 
               </div>
 
@@ -2926,49 +2168,9 @@ export default function TenantSettings() {
 
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 1.5vw, 12px)' }}>
-
-                {editingBookingConfig ? (
-
-                  <>
-
-                    <button
-                      className="pss-btn pss-btn-outline"
-                      onClick={(e) => { e.stopPropagation(); handleCancelBookingConfig(); }}
-                      disabled={savingBookingConfig}
-                    >
-                      <XCircle size={16} aria-hidden />
-                      Cancel
-                    </button>
-
-                    <button
-                      className="pss-btn pss-btn-primary"
-                      onClick={(e) => { e.stopPropagation(); handleSaveBookingConfig(); }}
-                      disabled={savingBookingConfig}
-                    >
-                      <FloppyDisk size={16} aria-hidden />
-                      {savingBookingConfig ? 'Saving…' : 'Save'}
-                    </button>
-
-                  </>
-
-                ) : (
-
-                  <button
-                    className="pss-btn pss-btn-outline"
-                    onClick={(e) => { e.stopPropagation(); setEditingBookingConfig(true); expandAllSections(); }}
-                  >
-                    <Pencil size={16} aria-hidden />
-                    Edit
-                  </button>
-
-                )}
-
-              </div>
-
             </div>
 
-            <div className="bw-form-grid" style={{ 
+            <div className="bw-form-grid" style={{
 
               display: 'grid', 
 
@@ -3002,67 +2204,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedSettings?.config?.booking?.allow_guest_bookings ? 'true' : 'false'} 
-
-                    onChange={(e) => handleConfigChange(['booking', 'allow_guest_bookings'], e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.settings?.config?.booking?.allow_guest_bookings ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedSettings?.config?.booking?.allow_guest_bookings}
+                  onChange={(v) => { beginEdit(); handleConfigChange(['booking', 'allow_guest_bookings'], v) }}
+                />
 
               </div>
 
@@ -3086,67 +2231,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedSettings?.config?.booking?.show_vehicle_images ? 'true' : 'false'} 
-
-                    onChange={(e) => handleConfigChange(['booking', 'show_vehicle_images'], e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.settings?.config?.booking?.show_vehicle_images ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedSettings?.config?.booking?.show_vehicle_images}
+                  onChange={(v) => { beginEdit(); handleConfigChange(['booking', 'show_vehicle_images'], v) }}
+                />
 
               </div>
 
@@ -3168,99 +2256,14 @@ export default function TenantSettings() {
 
                   }}>
 
-                    Offer {methodId === 'cash' ? 'Cash or card (in-person card like Square)' : RIDER_PAYMENT_METHOD_LABELS[methodId]}
+                    Offer {RIDER_PAYMENT_METHOD_LABELS[methodId]}
 
                   </label>
 
-                  {editingBookingConfig ? (
-
-                    <select
-
-                      className="bw-input"
-
-                      value={
-
-                        editedSettings?.config?.booking?.allowed_payment_method?.[methodId]?.is_allowed !== false
-
-                          ? 'true'
-
-                          : 'false'
-
-                      }
-
-                      onChange={(e) =>
-
-                        handleConfigChange(
-
-                          ['booking', 'allowed_payment_method', methodId, 'is_allowed'],
-
-                          e.target.value === 'true'
-
-                        )
-
-                      }
-
-                      style={{
-
-                        width: '100%',
-
-                        maxWidth: '100%',
-
-                        boxSizing: 'border-box',
-
-                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        borderRadius: 0,
-
-                        color: 'var(--bw-text)',
-
-                        backgroundColor: 'var(--bw-bg)',
-
-                        border: '1px solid var(--bw-border)'
-
-                      }}
-
-                    >
-
-                      <option value="true">Yes</option>
-
-                      <option value="false">No</option>
-
-                    </select>
-
-                  ) : (
-
-                    <span className="bw-info-value" style={{
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 300,
-
-                      color: 'var(--bw-text)'
-
-                    }}>
-
-                      {isRiderPaymentMethodAllowed(
-
-                        methodId,
-
-                        tenantConfig.settings?.config?.booking?.allowed_payment_method
-
-                      )
-
-                        ? 'Yes'
-
-                        : 'No'}
-
-                    </span>
-
-                  )}
+                  <Toggle
+                    checked={editedSettings?.config?.booking?.allowed_payment_method?.[methodId]?.is_allowed !== false}
+                    onChange={(v) => { beginEdit(); handleConfigChange(['booking', 'allowed_payment_method', methodId, 'is_allowed'], v) }}
+                  />
 
                 </div>
 
@@ -3318,7 +2321,7 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
+                {editingSettings ? (
 
                   (() => {
 
@@ -3368,7 +2371,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -3468,7 +2471,7 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
+                {editingSettings ? (
 
                   <input
 
@@ -3508,7 +2511,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -3568,67 +2571,10 @@ export default function TenantSettings() {
 
                   </label>
 
-                  {editingBookingConfig ? (
-
-                    <select 
-
-                      className="bw-input" 
-
-                      value={editedSettings?.config?.booking?.types?.[typeKey]?.is_deposit_required ? 'true' : 'false'} 
-
-                      onChange={(e) => handleConfigChange(['booking', 'types', typeKey, 'is_deposit_required'], e.target.value === 'true')}
-
-                      style={{
-
-                        width: '100%',
-
-                        maxWidth: '100%',
-
-                        boxSizing: 'border-box',
-
-                        padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                        fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                        fontFamily: '"Work Sans", sans-serif',
-
-                        borderRadius: 0,
-
-                        color: 'var(--bw-text)',
-
-                        backgroundColor: 'var(--bw-bg)',
-
-                        border: '1px solid var(--bw-border)'
-
-                      }}
-
-                    >
-
-                      <option value="true">Yes</option>
-
-                      <option value="false">No</option>
-
-                    </select>
-
-                  ) : (
-
-                    <span className="bw-info-value" style={{
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      fontWeight: 300,
-
-                      color: 'var(--bw-text)'
-
-                    }}>
-
-                      {tenantConfig.settings?.config?.booking?.types?.[typeKey]?.is_deposit_required ? 'Yes' : 'No'}
-
-                    </span>
-
-                  )}
+                  <Toggle
+                    checked={!!editedSettings?.config?.booking?.types?.[typeKey]?.is_deposit_required}
+                    onChange={(v) => { beginEdit(); handleConfigChange(['booking', 'types', typeKey, 'is_deposit_required'], v) }}
+                  />
 
                 </div>
 
@@ -3638,7 +2584,7 @@ export default function TenantSettings() {
 
               {/* Add Service Button - Only show when editing */}
 
-              {editingBookingConfig && (
+              {editingSettings && (
 
                 <div className="bw-form-group" style={{ 
 
@@ -3818,7 +2764,7 @@ export default function TenantSettings() {
 
                           fontFamily: '"Work Sans", sans-serif',
 
-                          borderRadius: 0,
+                          borderRadius: 'var(--radius-field)',
 
                           color: 'var(--bw-text)',
 
@@ -3994,7 +2940,7 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
+                {editingSettings ? (
 
                   <input 
 
@@ -4024,7 +2970,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -4078,7 +3024,7 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
+                {editingSettings ? (
 
                   <input 
 
@@ -4106,7 +3052,7 @@ export default function TenantSettings() {
 
                       fontFamily: '"Work Sans", sans-serif',
 
-                      borderRadius: 0,
+                      borderRadius: 'var(--radius-field)',
 
                       color: 'var(--bw-text)',
 
@@ -4202,67 +3148,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedSettings?.config?.features?.vip_profiles ? 'true' : 'false'} 
-
-                    onChange={(e) => handleConfigChange(['features', 'vip_profiles'], e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.settings?.config?.features?.vip_profiles ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedSettings?.config?.features?.vip_profiles}
+                  onChange={(v) => { beginEdit(); handleConfigChange(['features', 'vip_profiles'], v) }}
+                />
 
               </div>
 
@@ -4286,67 +3175,10 @@ export default function TenantSettings() {
 
                 </label>
 
-                {editingBookingConfig ? (
-
-                  <select 
-
-                    className="bw-input" 
-
-                    value={editedSettings?.config?.features?.show_loyalty_banner ? 'true' : 'false'} 
-
-                    onChange={(e) => handleConfigChange(['features', 'show_loyalty_banner'], e.target.value === 'true')}
-
-                    style={{
-
-                      width: '100%',
-
-                      maxWidth: '100%',
-
-                      boxSizing: 'border-box',
-
-                      padding: 'clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 18px)',
-
-                      fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                      fontFamily: '"Work Sans", sans-serif',
-
-                      borderRadius: 0,
-
-                      color: 'var(--bw-text)',
-
-                      backgroundColor: 'var(--bw-bg)',
-
-                      border: '1px solid var(--bw-border)'
-
-                    }}
-
-                  >
-
-                    <option value="true">Yes</option>
-
-                    <option value="false">No</option>
-
-                  </select>
-
-                ) : (
-
-                  <span className="bw-info-value" style={{
-
-                    fontSize: 'clamp(12px, 1.5vw, 14px)',
-
-                    fontFamily: '"Work Sans", sans-serif',
-
-                    fontWeight: 300,
-
-                    color: 'var(--bw-text)'
-
-                  }}>
-
-                    {tenantConfig.settings?.config?.features?.show_loyalty_banner ? 'Yes' : 'No'}
-
-                  </span>
-
-                )}
+                <Toggle
+                  checked={!!editedSettings?.config?.features?.show_loyalty_banner}
+                  onChange={(v) => { beginEdit(); handleConfigChange(['features', 'show_loyalty_banner'], v) }}
+                />
 
               </div>
 

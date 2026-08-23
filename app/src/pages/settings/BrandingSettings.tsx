@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBrandingData } from '@api/tenantSettings'
 import { Palette, FloppyDisk, PencilSimple, X, CaretDown, CaretUp, Image } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
+import Toggle from '@components/Toggle'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
@@ -202,7 +203,15 @@ export default function BrandingSettings() {
         }}>
           {item.description}
         </p>
-        {isEditing ? (
+        {item.type === 'checkbox' ? (
+          <Toggle
+            checked={!!editedData[item.field]}
+            onChange={v => {
+              if (!isEditing) setIsEditing(true)
+              handleInputChange(item.field, v)
+            }}
+          />
+        ) : isEditing ? (
           item.type === 'select' ? (
             <select
               value={editedData[item.field] as string || ''}
@@ -218,21 +227,6 @@ export default function BrandingSettings() {
               {item.options?.map(opt => (
                 <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
               ))}
-            </select>
-          ) : item.type === 'checkbox' ? (
-            <select
-              value={editedData[item.field] ? 'true' : 'false'}
-              onChange={e => handleInputChange(item.field, e.target.value === 'true')}
-              className="bw-input"
-              style={{
-                width: '100%', padding: '10px 12px', fontSize: 14,
-                fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
-                color: 'var(--bw-text)', backgroundColor: 'var(--bw-bg)',
-                border: '1px solid var(--bw-border)'
-              }}
-            >
-              <option value="true">Yes</option>
-              <option value="false">No</option>
             </select>
           ) : item.type === 'color' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -294,10 +288,7 @@ export default function BrandingSettings() {
           </div>
         ) : (
           <div style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, color: 'var(--bw-text)', padding: '10px 0', overflowWrap: 'anywhere' }}>
-            {item.type === 'checkbox'
-              ? (editedData[item.field] ? 'Yes' : 'No')
-              : ((editedData[item.field] as string) || <span style={{ color: 'var(--bw-muted)' }}>—</span>)
-            }
+            {(editedData[item.field] as string) || <span style={{ color: 'var(--bw-muted)' }}>—</span>}
           </div>
         )}
       </div>

@@ -681,7 +681,7 @@ export default function FeedbackFormsSettings() {
                         padding: '12px 14px',
                         fontSize: 14,
                         fontFamily: '"Work Sans", sans-serif',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius-field)',
                         border: '1px solid var(--bw-border)'
                       }}
                     />
@@ -735,7 +735,7 @@ export default function FeedbackFormsSettings() {
                         padding: '12px 14px',
                         fontSize: 14,
                         fontFamily: '"Work Sans", sans-serif',
-                        borderRadius: 0,
+                        borderRadius: 'var(--radius-field)',
                         border: '1px solid var(--bw-border)'
                       }}
                     />

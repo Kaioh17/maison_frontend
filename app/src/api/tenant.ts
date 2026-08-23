@@ -286,6 +286,11 @@ export async function onboardDriver(payload: OnboardDriver) {
   return data
 }
 
+export async function approveDriver(driverId: number) {
+  const { data } = await http.patch<StandardResponse<{ id: number }>>(`/v1/tenant/drivers/${driverId}/approve`)
+  return data
+}
+
 export async function assignDriverToRide(riderId: number, payload: AssignDriver) {
   const { data } = await http.patch(`/v1/tenant/riders/${riderId}/assign-driver`, payload)
   return data
@@ -469,7 +474,7 @@ export type BookingResponse = {
   airport_service?: 'to_airport' | 'from_airport' | null
   dropoff_location: string
   dropoff_time: string
-  payment_method: 'cash' | 'card' | 'zelle'
+  payment_method: 'cash' | 'card' | 'card_pickup' | 'zelle'
   hours: number | null
   notes: string | null
   estimated_price: number

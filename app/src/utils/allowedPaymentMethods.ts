@@ -1,16 +1,17 @@
 /** Rider-facing payment methods aligned with booking APIs. */
-export const RIDER_PAYMENT_METHOD_IDS = ['card', 'zelle', 'cash'] as const
+export const RIDER_PAYMENT_METHOD_IDS = ['card', 'cash', 'card_pickup', 'zelle'] as const
 export type RiderPaymentMethodId = (typeof RIDER_PAYMENT_METHOD_IDS)[number]
 
 export const RIDER_PAYMENT_METHOD_LABELS: Record<RiderPaymentMethodId, string> = {
   card: 'Card',
   zelle: 'Zelle',
-  cash: 'Cash',
+  cash: 'Cash at Pickup',
+  card_pickup: "Card at Pickup (via driver's device)",
 }
 
 export type AllowedPaymentMethodRow = { is_allowed: boolean }
 
-/** Normalized map stored in tenant settings (fixed keys for the three methods). */
+/** Normalized map stored in tenant settings (fixed keys for the four methods). */
 export type AllowedPaymentMethodMap = Record<RiderPaymentMethodId, AllowedPaymentMethodRow>
 
 /**
@@ -47,5 +48,6 @@ export function normalizeAllowedPaymentMethodMap(
     card: { is_allowed: isRiderPaymentMethodAllowed('card', raw) },
     zelle: { is_allowed: isRiderPaymentMethodAllowed('zelle', raw) },
     cash: { is_allowed: isRiderPaymentMethodAllowed('cash', raw) },
+    card_pickup: { is_allowed: isRiderPaymentMethodAllowed('card_pickup', raw) },
   }
 }

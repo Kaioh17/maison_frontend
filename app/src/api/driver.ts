@@ -45,6 +45,18 @@ export async function verifyDriverToken(slug: string, token: string) {
   return data
 }
 
+export type DriverApplication = {
+  first_name: string
+  last_name: string
+  email: string
+  driver_type: 'outsourced' | 'in_house'
+}
+
+export async function applyToDrive(slug: string, payload: DriverApplication) {
+  const { data } = await http.post<StandardResponse<{ id: number }>>(`/v1/driver/${slug}/apply`, payload)
+  return data
+}
+
 export async function updateDriverStatus(isActive: boolean) {
   const { data } = await http.patch<StandardResponse<{ is_active: boolean }>>('/v1/driver/status', null, {
     params: { is_active: isActive },

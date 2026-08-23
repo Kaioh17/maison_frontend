@@ -165,15 +165,14 @@ export default function DriverLogin() {
 
   return (
     <main className="bw" aria-label="Driver Login" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', height: '100vh', width: '100%' }}>
-        {/* Left side - Image (60%) */}
-        <div 
+      <div style={{ display: 'flex', height: '100vh', width: '100%', position: 'relative' }}>
+        {/* Left side - Image (full-bleed; the form floats over it on the right) */}
+        <div
           ref={imageContainerRef}
           className="driver-login-image-container"
-          style={{ 
-            width: '60%', 
-            height: '100%', 
-            position: 'relative',
+          style={{
+            position: 'absolute',
+            inset: 0,
             backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
             backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
             backgroundSize: 'cover',
@@ -218,21 +217,25 @@ export default function DriverLogin() {
           </div>
         </div>
 
-        {/* Right side - Login Form (40%) */}
-        <div 
-          role="form" 
+        {/* Right side - Login Form (40%), floating over the image */}
+        <div
+          role="form"
           aria-labelledby="login-title"
           className="driver-login-form-container"
-          style={{ 
-            width: '40%', 
-            height: '100%', 
+          style={{
+            width: '30%',
+            margin: '24px 24px 24px auto',
             position: 'relative',
-            display: 'flex', 
+            zIndex: 2,
+            display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center', 
+            alignItems: 'center',
             justifyContent: 'center',
             padding: '24px',
             backgroundColor: 'var(--bw-bg)',
+            borderRadius: 24,
+            border: '1px solid var(--bw-border-strong)',
+            boxShadow: 'var(--bw-shadow)',
             overflowY: 'auto'
           }}
         >
@@ -306,7 +309,7 @@ export default function DriverLogin() {
                     required 
                     className="bw-input" 
                     aria-invalid={formData.email.length > 0 && !!driverLoginEmailFormatError}
-                    style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                    style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                     placeholder="you@email.com" 
                     value={formData.email}
                     onChange={handleInputChange} 
@@ -339,7 +342,7 @@ export default function DriverLogin() {
                   type={showPassword ? 'text' : 'password'} 
                   required 
                   className="bw-input" 
-                  style={{ padding: '16px 18px 16px 44px', borderRadius: 0, fontFamily: 'Work Sans, sans-serif' }} 
+                  style={{ padding: '16px 18px 16px 44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
                   placeholder="••••••••" 
                   value={formData.password}
                   onChange={handleInputChange} 
@@ -356,7 +359,7 @@ export default function DriverLogin() {
 
               <button 
                 className="bw-btn" 
-                style={{ width: '100%', marginTop: 16, borderRadius: 0, padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
+                style={{ width: '100%', marginTop: 16, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
                 disabled={isLoading}
                 type="submit"
               >
@@ -377,7 +380,7 @@ export default function DriverLogin() {
                 </div>
                 <p className="small-muted" style={{ textAlign: 'center', marginBottom: 16, fontSize: '14px', fontFamily: 'Work Sans, sans-serif' }}>
                   Don't have an account?{' '}
-                  <Link to="/driver/verify" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
+                  <Link to="/driver/apply" style={{ color: 'var(--bw-fg)', textDecoration: 'underline' }}>
                     Get started
                   </Link>
                 </p>
@@ -393,6 +396,10 @@ export default function DriverLogin() {
           }
           .driver-login-form-container {
             width: 100% !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
         }
       `}</style>
