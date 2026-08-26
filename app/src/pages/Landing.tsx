@@ -6,6 +6,7 @@ import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan, buildPlanDisplays } from '@data/landingPricingPlans'
 import { getPublicPlans, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
+import { getTenantAppUrl } from '@config/host'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
 import {
@@ -1730,9 +1731,9 @@ export default function Landing() {
           pointerEvents: ctaHidden ? 'none' : 'auto',
         }}
       >
-        <Link to="/tenant/login" className="landing-snap-login-cta" aria-label="Login">
+        <a href={getTenantAppUrl('app', '/tenant/login')} className="landing-snap-login-cta" aria-label="Login">
           <SignIn className="w-4 h-4" weight="bold" aria-hidden />
-        </Link>
+        </a>
         {activeSection !== 0 ? (
           <Link to="/signup" className="landing-snap-cta">
             Get Started
@@ -1816,9 +1817,9 @@ export default function Landing() {
             </button>
           </div>
           <nav className="landing-snap-menu-overlay__nav" aria-label="Secondary">
-            <Link to="/tenant/login" onClick={() => setMenuOpen(false)}>
+            <a href={getTenantAppUrl('app', '/tenant/login')} onClick={() => setMenuOpen(false)}>
               Login
-            </Link>
+            </a>
             <a
               href="#platform"
               onClick={(e) => {

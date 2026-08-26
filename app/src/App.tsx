@@ -194,7 +194,7 @@ export default function App() {
           </TenantRouteBlock>
         }
       />
-      <Route path="/success" element={<SubdomainBlock><Success /></SubdomainBlock>} />
+      <Route path="/success" element={<TenantRouteBlock><Success /></TenantRouteBlock>} />
       {/* Redirect /tenant to /tenant/overview */}
       <Route
         path="/tenant"

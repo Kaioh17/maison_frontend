@@ -6,7 +6,7 @@
 import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain } from '@config/host'
 
 /** First labels that are infrastructure / marketing, not tenant slugs (e.g. api.*, www.*). */
-const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin'])
+const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin', 'app'])
 
 function isReservedSubdomainLabel(label: string): boolean {
   return RESERVED_SUBDOMAIN_LABELS.has(label.toLowerCase())
@@ -158,6 +158,19 @@ export function isAdminAppSubdomain(): boolean {
   const mainDomain = getMainDomain().toLowerCase()
   const host = window.location.hostname.split(':')[0].toLowerCase()
   return host === `admin.${mainDomain}`
+}
+
+/**
+ * Tenant operator app host: `app.{MAIN_DOMAIN}` in both production and dev
+ * (e.g. `app.usemaison.io`, `app.localhost`). This is the tenant-operator
+ * dashboard/login, distinct from a tenant's own `{slug}.{MAIN_DOMAIN}`
+ * rider/driver white-label subdomain.
+ */
+export function isTenantAppSubdomain(): boolean {
+  if (typeof window === 'undefined') return false
+  const mainDomain = getMainDomain().toLowerCase()
+  const host = window.location.hostname.split(':')[0].toLowerCase()
+  return host === `app.${mainDomain}`
 }
 
 export function extractSubdomain(hostname: string): string | null {

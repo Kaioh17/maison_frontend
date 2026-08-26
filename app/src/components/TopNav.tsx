@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import MaisonWordmark from '@components/MaisonWordmark'
+import { getTenantAppUrl } from '@config/host'
 
 export default function TopNav() {
   return (
@@ -15,7 +16,7 @@ export default function TopNav() {
         <a href="#contact">Contact</a>
       </nav>
       <div className="cta">
-        <Link to="/tenant/login" className="btn ghost">Login</Link>
+        <a href={getTenantAppUrl('app', '/tenant/login')} className="btn ghost">Login</a>
         <Link to="/signup" className="btn">Sign up</Link>
       </div>
     </header>

@@ -163,7 +163,15 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 }
 @media (max-width: 768px) {
   .bw.tenant-dashboard-layout {
-    padding: 14px;
+    padding: 0;
+  }
+  /* Mobile has no room to spare for a floating card inset — the content panel
+     runs the full device width instead of sitting in a bordered/shadowed card. */
+  .bw.tenant-dashboard-layout .tenant-dashboard-main {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    background: var(--bw-bg);
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
     top: 14px;
@@ -202,9 +210,9 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     border-top: 1px solid var(--bw-border);
     box-sizing: border-box;
   }
-  /* keep the floating content panel clear of the fixed bottom tab bar */
+  /* keep the full-width content panel clear of the fixed bottom tab bar */
   .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    height: calc(100vh - 28px - 64px - env(safe-area-inset-bottom, 0px));
+    height: calc(100vh - 64px - env(safe-area-inset-bottom, 0px));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button {

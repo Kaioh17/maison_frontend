@@ -1,5 +1,5 @@
 import SlugVerification from '@components/SlugVerification'
-import { isAdminAppSubdomain, isMainDomain } from '@utils/subdomain'
+import { isAdminAppSubdomain, isMainDomain, isTenantAppSubdomain } from '@utils/subdomain'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
 import type { LazyExoticComponent } from 'react'
@@ -26,6 +26,12 @@ export default function RootLanding({ MainLanding, TenantLanding }: RootLandingP
       return <Navigate to="/operations" replace />
     }
     return <Navigate to="/login" replace />
+  }
+  if (isTenantAppSubdomain()) {
+    if (isAuthenticated && role === 'tenant') {
+      return <Navigate to="/tenant/overview" replace />
+    }
+    return <Navigate to="/tenant/login" replace />
   }
   return (
     <SlugVerification>

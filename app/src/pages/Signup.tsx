@@ -665,7 +665,7 @@ export default function Signup() {
                     <div style={{ display: 'flex', gap: 10 }}>
                       <button
                         type="button"
-                        onClick={() => { window.location.href = '/tenant/overview' }}
+                        onClick={() => { window.location.href = getTenantAppUrl('app', '/tenant/login') }}
                         style={{
                           background: 'transparent',
                           border: '1px solid rgba(255,255,255,0.2)',
@@ -833,13 +833,13 @@ export default function Signup() {
                     </button>
                     <div style={{ textAlign: 'center', marginTop: 4 }}>
                       <span className="small-muted signup-link-text" style={{ fontFamily: 'Work Sans, sans-serif' }}>Already have an account? </span>
-                      <Link
-                        to="/tenant/login"
+                      <a
+                        href={getTenantAppUrl('app', '/tenant/login')}
                         className="signup-link-text"
                         style={{ marginLeft: 4, color: 'var(--bw-accent)', textDecoration: 'underline', fontFamily: 'Work Sans, sans-serif' }}
                       >
                         Sign in
-                      </Link>
+                      </a>
                     </div>
                   </div>
                 </div>
