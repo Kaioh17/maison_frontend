@@ -4,6 +4,7 @@ import { loginTenant } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getApiErrorMessage } from '@utils/apiError'
+import { getDemoCredentials } from '@api/demo'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
 
 const LOGIN_HERO_INTERVAL_MS = 60_000
@@ -124,10 +125,21 @@ export default function AuthPage() {
       setError('Please enter a valid email address.')
       return
     }
+    await signIn(formData.email, formData.password)
+  }
+
+  // Landing's "See the demo" links here with ?demo=1 (login must run on this origin: tokens are per-origin).
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('demo') !== '1') return
+    getDemoCredentials('tenant').then((c) => (c ? signIn(c.email, c.password) : setError('The demo is unavailable right now.')))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true)
       // Tenant login only
-      const data = await loginTenant(formData.email, formData.password)
+      const data = await loginTenant(email, password)
       useAuthStore.getState().login({ token: data.access_token })
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('tenant-install-app-tip', '1')

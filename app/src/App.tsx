@@ -54,8 +54,6 @@ function DriverRoute({ children }: { children: ReactNode }) {
 // Route-level code splitting: pages load on demand
 const Landing = lazy(() => import('@pages/Landing'))
 const TenantLanding = lazy(() => import('@pages/TenantLanding'))
-const DemoDashboard = lazy(() => import('@pages/demo/index'))
-const DemoStripeRedirect = lazy(() => import('@pages/demo/StripeRedirect'))
 const About = lazy(() => import('@pages/About'))
 const Login = lazy(() => import('@pages/Login'))
 const Signup = lazy(() => import('@pages/Signup'))
@@ -175,8 +173,6 @@ export default function App() {
       {/* Not wrapped in SubdomainBlock, matching /terms and /privacy: the legal
           pages must stay reachable from an Operator's branded subdomain too. */}
       <Route path="/subprocessors" element={<Subprocessors />} />
-      <Route path="/demo" element={<SubdomainBlock><DemoDashboard /></SubdomainBlock>} />
-      <Route path="/demo/stripe-redirect" element={<SubdomainBlock><DemoStripeRedirect /></SubdomainBlock>} />
       <Route path="/tools/qr-studio" element={<TempQrEditor />} />
       <Route path="/tools/temp-qr" element={<Navigate to="/tools/qr-studio" replace />} />
 

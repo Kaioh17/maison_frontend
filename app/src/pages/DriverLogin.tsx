@@ -4,6 +4,7 @@ import { loginDriver } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { useDemoCredentials } from '@api/demo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
@@ -20,7 +21,11 @@ export default function DriverLogin() {
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
   const loadingPalette = resolveSubdomainLoadingPalette(slug)
-  
+  const demo = useDemoCredentials('driver', slug)
+  useEffect(() => {
+    if (demo) setFormData(demo)
+  }, [demo])
+
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()
   const [searchParams] = useSearchParams()

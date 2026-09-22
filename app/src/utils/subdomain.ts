@@ -6,7 +6,7 @@
 import { MAIN_DOMAIN, DEV_HOSTS, getEffectiveMainDomain } from '@config/host'
 
 /** First labels that are infrastructure / marketing, not tenant slugs (e.g. api.*, www.*). */
-const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin', 'app'])
+const RESERVED_SUBDOMAIN_LABELS = new Set(['api', 'www', 'admin', 'app', 'ekko'])
 
 function isReservedSubdomainLabel(label: string): boolean {
   return RESERVED_SUBDOMAIN_LABELS.has(label.toLowerCase())

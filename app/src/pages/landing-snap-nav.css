@@ -1,6 +1,7 @@
 /* Full-page snap scroll root */
 .landing-snap-page {
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
@@ -8,6 +9,7 @@
 
 .landing-snap-section {
   height: 100vh;
+  height: 100dvh;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   position: relative;
@@ -29,7 +31,7 @@
   position: fixed;
   top: 1.25rem;
   left: 1.25rem;
-  z-index: 100;
+  z-index: var(--landing-z-chrome);
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -45,11 +47,7 @@
   background: none;
   cursor: pointer;
   color: #fff;
-  transition: color 0.3s ease, opacity 0.3s ease;
-}
-
-.landing-snap-brand-row[data-theme='light'] .landing-snap-menu-btn {
-  color: #0a0a0f;
+  transition: opacity 400ms var(--landing-ease);
 }
 
 .landing-snap-logo {
@@ -59,20 +57,9 @@
   background: none;
   font-size: 2.125rem;
   color: #fff;
-  transition:
-    color 0.3s ease,
-    opacity 0.3s ease;
+  transition: opacity 400ms var(--landing-ease);
   cursor: pointer;
   line-height: 1;
-}
-
-.landing-snap-logo[data-theme='light'] {
-  color: #0a0a0f;
-}
-
-/* Raster mark stays white-only; darken on light snap sections where `color` no longer paints text. */
-.landing-snap-logo[data-theme='light'] img {
-  filter: brightness(0);
 }
 
 /* Top-right actions */
@@ -80,88 +67,88 @@
   position: fixed;
   top: 1rem;
   right: 1.25rem;
-  z-index: 100;
+  z-index: var(--landing-z-chrome);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  transition: opacity 0.3s ease;
+  transition: opacity 400ms var(--landing-ease);
 }
 
 .landing-snap-login-cta {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--landing-hairline-strong);
   color: #fff;
-  background: rgba(10, 10, 15, 0.55);
+  background: rgba(7, 7, 11, 0.6);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
   box-sizing: border-box;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 300ms var(--landing-ease),
+    border-color 300ms var(--landing-ease),
+    transform 500ms var(--landing-ease);
 }
 
 .landing-snap-login-cta:hover {
-  background: rgba(124, 92, 252, 0.22);
-  border-color: rgba(124, 92, 252, 0.55);
+  background: rgba(110, 91, 216, 0.24);
+  border-color: rgba(169, 156, 242, 0.5);
+}
+
+.landing-snap-login-cta:active {
+  transform: scale(0.96);
 }
 
 .landing-snap-cta {
-  background: #7c5cfc;
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 8px 18px;
+  min-height: 40px;
+  padding: 0 18px;
   font-size: 13px;
-  font-weight: 600;
-  font-family: 'Work Sans', sans-serif;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
 }
 
-.landing-snap-cta:hover {
-  background: #7c3aed;
-  color: #fff;
-}
-
+/* Floating glass island — fixed, so backdrop blur is safe here */
 .landing-snap-top-links {
   position: fixed;
   top: 1rem;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 101;
+  z-index: calc(var(--landing-z-chrome) + 1);
   display: none;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.35rem 0.5rem;
+  gap: 0.25rem;
+  padding: 0.3rem;
   border-radius: 999px;
-  border: 1px solid rgba(124, 92, 252, 0.25);
-  background: rgba(10, 10, 15, 0.75);
-  backdrop-filter: blur(6px);
-  transition: opacity 0.3s ease;
+  border: 1px solid var(--landing-hairline);
+  background: rgba(14, 14, 20, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: opacity 400ms var(--landing-ease);
 }
 
 .landing-snap-top-links a {
-  font-family: 'Work Sans', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--landing-font);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--landing-fg-muted);
   text-decoration: none;
-  padding: 0.33rem 0.56rem;
+  padding: 0.45rem 0.85rem;
   border-radius: 999px;
-  transition: color 0.2s ease, background-color 0.2s ease;
+  transition:
+    color 300ms var(--landing-ease),
+    background-color 300ms var(--landing-ease);
   white-space: nowrap;
 }
 
 .landing-snap-top-links a:hover {
   color: #fff;
-  background: rgba(124, 92, 252, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.landing-snap-top-links a[aria-current='true'] {
+  color: #fff;
+  background: rgba(169, 156, 242, 0.16);
 }
 
 /* Section dot rail (not pricing carousel dots) — desktop only */
@@ -177,54 +164,61 @@
 
   .landing-snap-dot-nav {
     position: fixed;
-    right: 1.25rem;
+    right: 1.5rem;
     top: 50%;
     transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    z-index: 100;
+    gap: 6px;
+    z-index: var(--landing-z-chrome);
   }
 }
 
+/* 24px hit area around a 6px dot */
 .landing-snap-dot-nav__btn {
+  width: 24px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.landing-snap-dot-nav__btn::before {
+  content: '';
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition:
-    height 0.25s ease,
-    background 0.25s ease,
-    border-radius 0.25s ease;
-}
-
-.landing-snap-dot-nav__btn.active {
-  height: 20px;
   border-radius: 999px;
-  background: #7c5cfc;
+  background: rgba(255, 255, 255, 0.24);
+  transition:
+    transform 500ms var(--landing-ease),
+    background-color 300ms var(--landing-ease);
 }
 
-.landing-snap-dot-nav[data-theme='light'] .landing-snap-dot-nav__btn {
-  background: rgba(0, 0, 0, 0.2);
+.landing-snap-dot-nav__btn:hover::before {
+  background: rgba(255, 255, 255, 0.5);
 }
 
-.landing-snap-dot-nav[data-theme='light'] .landing-snap-dot-nav__btn.active {
-  background: #7c5cfc;
+.landing-snap-dot-nav__btn.active::before {
+  background: var(--landing-accent-soft);
+  transform: scaleY(3.2);
 }
 
-/* Full-screen menu */
+/* Full-screen menu: heavy glass, staggered link reveal */
 .landing-snap-menu-overlay {
   position: fixed;
   inset: 0;
-  z-index: 120;
-  background: rgba(10, 10, 15, 0.97);
+  z-index: var(--landing-z-menu);
+  background: rgba(7, 7, 11, 0.86);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   display: flex;
   flex-direction: column;
   padding: 1.25rem 1.5rem 2rem;
   box-sizing: border-box;
+  animation: landing-menu-in 500ms var(--landing-ease) both;
 }
 
 .landing-snap-menu-overlay__top {
@@ -248,29 +242,43 @@
 .landing-snap-menu-overlay__nav {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.35rem;
   align-items: flex-start;
 }
 
 .landing-snap-menu-overlay__nav a {
-  font-family: 'Work Sans', sans-serif;
-  font-size: 1.125rem;
+  font-family: var(--landing-font);
+  font-size: clamp(1.75rem, 7vw, 2.5rem);
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: -0.03em;
+  color: var(--landing-fg);
   text-decoration: none;
-  transition: color 0.2s ease;
+  padding: 0.25rem 0;
+  transition: color 300ms var(--landing-ease);
+  animation: landing-menu-link 700ms var(--landing-ease) both;
+  animation-delay: calc(80ms + var(--i, 0) * 55ms);
 }
 
 .landing-snap-menu-overlay__nav a:hover {
-  color: #7c5cfc;
+  color: var(--landing-accent-soft);
 }
 
 .landing-snap-menu-overlay__divider {
   width: 100%;
   max-width: 240px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-  margin: 0.5rem 0;
+  background: var(--landing-hairline);
+  margin: 0.75rem 0;
+}
+
+@keyframes landing-menu-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes landing-menu-link {
+  from { opacity: 0; transform: translateY(2.5rem); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Driver slide: decorative route map (CSS + SVG only) --- */
@@ -298,7 +306,7 @@
 
 .landing-route-map__path {
   fill: none;
-  stroke: rgba(124, 92, 252, 0.35);
+  stroke: rgba(169, 156, 242, 0.4);
   stroke-width: 1.5px;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -322,13 +330,13 @@
 }
 
 .landing-route-map__dot {
-  fill: rgba(124, 92, 252, 0.6);
+  fill: rgba(169, 156, 242, 0.65);
   vector-effect: non-scaling-stroke;
 }
 
 .landing-route-map__ring {
   fill: none;
-  stroke: rgba(124, 92, 252, 0.28);
+  stroke: rgba(169, 156, 242, 0.3);
   stroke-width: 1.25px;
   vector-effect: non-scaling-stroke;
 }
@@ -364,7 +372,9 @@
 @media (prefers-reduced-motion: reduce) {
   .landing-driver-route-map *,
   .landing-driver-route-map *::before,
-  .landing-driver-route-map *::after {
+  .landing-driver-route-map *::after,
+  .landing-snap-menu-overlay,
+  .landing-snap-menu-overlay__nav a {
     animation: none !important;
   }
 }
@@ -374,15 +384,12 @@
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scroll-padding-inline: 1.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .landing-platform-carousel::-webkit-scrollbar {
   display: none;
-}
-
-.landing-platform-carousel {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 @media (min-width: 768px) {
@@ -391,4 +398,3 @@
     scroll-padding-inline: 0;
   }
 }
-

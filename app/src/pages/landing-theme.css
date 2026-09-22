@@ -1,0 +1,269 @@
+/*
+ * Maison marketing landing — design tokens + shared primitives.
+ *
+ * Scoped to `.landing-root` (the <main> in Landing.tsx). The apex page is not
+ * white-labelled, so these are landing-local tokens rather than tenant `--bw-*`
+ * vars; nothing here leaks into the tenant shell.
+ *
+ * One accent, one background, one hairline. Sections differ only by where the
+ * ambient glow sits (`.landing-ambient--*`).
+ */
+
+.landing-root {
+  --landing-bg: #07070b;
+  --landing-surface: rgba(255, 255, 255, 0.035);
+  --landing-hairline: rgba(255, 255, 255, 0.08);
+  --landing-hairline-strong: rgba(255, 255, 255, 0.16);
+  --landing-fg: #f4f4f7;
+  --landing-fg-muted: #a1a1b3;
+  --landing-fg-faint: #80808f;
+
+  /* Fill is dark enough for white text (>4.5:1); soft is for text/icons on the dark bg. */
+  --landing-accent: #6e5bd8;
+  --landing-accent-hover: #7d6be6;
+  --landing-accent-soft: #a99cf2;
+  --landing-accent-glow: rgba(110, 91, 216, 0.38);
+
+  --landing-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --landing-font: 'Geist', 'DM Sans', system-ui, sans-serif;
+  --landing-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* z-index scale: grain < chrome (nav, actions) < menu overlay */
+  --landing-z-grain: 40;
+  --landing-z-chrome: 100;
+  --landing-z-menu: 120;
+
+  background: var(--landing-bg);
+  color: var(--landing-fg);
+  font-family: var(--landing-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Film grain: fixed, non-interactive, never attached to a scrolling container. */
+.landing-root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--landing-z-grain);
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.landing-root :focus-visible {
+  outline: 2px solid var(--landing-accent-soft);
+  outline-offset: 3px;
+}
+
+/* ---- Section surface ------------------------------------------------- */
+
+.landing-snap-section {
+  background-color: var(--landing-bg);
+}
+
+.landing-ambient {
+  background-image:
+    radial-gradient(60% 50% at var(--ax, 80%) var(--ay, 8%), rgba(110, 91, 216, 0.17), transparent 70%),
+    radial-gradient(45% 40% at var(--bx, 8%) var(--by, 92%), rgba(110, 91, 216, 0.07), transparent 70%);
+}
+.landing-ambient--tr { --ax: 82%; --ay: 6%;  --bx: 6%;  --by: 96%; }
+.landing-ambient--tl { --ax: 12%; --ay: 8%;  --bx: 94%; --by: 90%; }
+.landing-ambient--br { --ax: 88%; --ay: 96%; --bx: 4%;  --by: 6%;  }
+.landing-ambient--c  { --ax: 50%; --ay: 0%;  --bx: 50%; --by: 100%; }
+
+/* ---- Type ------------------------------------------------------------- */
+
+.landing-eyebrow {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--landing-hairline);
+  background: var(--landing-surface);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--landing-fg-muted);
+}
+.landing-eyebrow::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--landing-accent-soft);
+}
+
+.landing-h2 {
+  font-family: var(--landing-font);
+  font-size: clamp(1.9rem, 4.2vw + 0.4rem, 3.5rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: var(--landing-fg);
+  text-wrap: balance;
+}
+
+.landing-lead {
+  max-width: 36rem;
+  font-size: clamp(0.9375rem, 0.4vw + 0.85rem, 1.0625rem);
+  line-height: 1.6;
+  color: var(--landing-fg-muted);
+  text-wrap: pretty;
+}
+
+.landing-accent-text {
+  color: var(--landing-accent-soft);
+}
+
+/* ---- Buttons: pill + nested trailing icon ------------------------------ */
+
+.landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0 1.4rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-family: var(--landing-font);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition:
+    transform 500ms var(--landing-ease),
+    background-color 300ms var(--landing-ease),
+    border-color 300ms var(--landing-ease);
+}
+.landing-btn:active {
+  transform: scale(0.98);
+}
+
+.landing-btn--primary {
+  background: var(--landing-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 14px 34px -14px var(--landing-accent-glow);
+}
+.landing-btn--primary:hover {
+  background: var(--landing-accent-hover);
+}
+
+.landing-btn--ghost {
+  background: var(--landing-surface);
+  border-color: var(--landing-hairline-strong);
+}
+.landing-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Icon sits in its own circle, flush with the button's right inner edge. */
+.landing-btn--icon {
+  padding: 0 6px 0 1.4rem;
+}
+.landing-btn__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  transition: transform 500ms var(--landing-ease);
+}
+.landing-btn:hover .landing-btn__icon {
+  transform: translate(2px, -1px) scale(1.06);
+}
+
+.landing-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* ---- Double-bezel container -------------------------------------------- */
+
+.landing-bezel {
+  padding: 6px;
+  border-radius: 28px;
+  border: 1px solid var(--landing-hairline);
+  background: rgba(255, 255, 255, 0.03);
+  box-sizing: border-box;
+}
+.landing-bezel__core {
+  height: 100%;
+  border-radius: 22px; /* outer radius − shell padding */
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+.landing-bezel--accent {
+  border-color: rgba(169, 156, 242, 0.34);
+  background: rgba(110, 91, 216, 0.1);
+  box-shadow: 0 30px 70px -32px var(--landing-accent-glow);
+}
+.landing-bezel--accent .landing-bezel__core {
+  background: linear-gradient(180deg, rgba(110, 91, 216, 0.16), rgba(110, 91, 216, 0.04));
+}
+
+.landing-icon-well {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(169, 156, 242, 0.12);
+  color: var(--landing-accent-soft);
+}
+
+.landing-mono {
+  font-family: var(--landing-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small floating URL chip (solid: no backdrop blur on scrolling content) */
+.landing-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--landing-hairline-strong);
+  background: rgba(20, 20, 30, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 40px -18px rgba(4, 3, 14, 0.85);
+  font-family: var(--landing-mono);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: var(--landing-fg-muted);
+}
+
+/* Footer / inline links */
+.landing-link {
+  color: var(--landing-fg-muted);
+  text-decoration: none;
+  transition: color 300ms var(--landing-ease);
+}
+.landing-link:hover {
+  color: var(--landing-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-btn,
+  .landing-btn__icon {
+    transition: none;
+  }
+  .landing-btn:hover .landing-btn__icon {
+    transform: none;
+  }
+}

@@ -4,6 +4,7 @@ import { loginRider } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import { useDemoCredentials } from '@api/demo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
@@ -264,6 +265,10 @@ export default function RiderLogin() {
   const [error, setError] = useState('')
   const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
   const palette = resolveRiderAuthPalette(tenantInfo?.branding)
+  const demo = useDemoCredentials('rider', slug)
+  useEffect(() => {
+    if (demo) setFormData(demo)
+  }, [demo])
 
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuthStore()

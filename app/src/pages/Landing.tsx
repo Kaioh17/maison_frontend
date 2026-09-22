@@ -1,16 +1,19 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, MotionConfig } from 'framer-motion'
 import MaisonWordmark from '@components/MaisonWordmark'
 import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan, buildPlanDisplays } from '@data/landingPricingPlans'
 import { getPublicPlans, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
 import { getTenantAppUrl } from '@config/host'
+import './landing-theme.css'
 import './landing-pricing.css'
 import './landing-snap-nav.css'
 import {
-  CheckCircle,
+  ArrowUpRight,
+  Check,
   CreditCard,
   Link as LinkIcon,
   List,
@@ -19,28 +22,30 @@ import {
   SlidersHorizontal,
   TrendUp,
   X,
-  XCircle,
 } from '@phosphor-icons/react'
 
-// Animation variants
+// Heavy, springy ease shared with the CSS (--landing-ease)
+const EASE = [0.32, 0.72, 0, 1] as const
+
+// Animation variants. `transition` lives inside `animate` so it applies both
+// when spread onto an element and when used as `variants` under a stagger parent.
 const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: 'easeOut' }
+  initial: { opacity: 0, y: 28 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.8, ease: EASE } },
 }
 
 const fadeIn = {
   initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  transition: { duration: 0.8, ease: 'easeOut' }
+  animate: { opacity: 1, transition: { duration: 0.8, ease: EASE } },
 }
 
 const staggerChildren = {
   animate: {
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.09,
+      delayChildren: 0.05,
+    },
+  },
 }
 
 /** True when the device is likely using mouse/trackpad hover (not primary touch). */
@@ -68,11 +73,10 @@ const SNAP_SECTION_LABELS = [
 ] as const
 
 const PRICING_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Pricing')
+const MISSION_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Mission')
+const FOOTER_SECTION_INDEX = SNAP_SECTION_LABELS.indexOf('Get started')
 
 const QUESTIONS_FORM_URL = 'https://forms.gle/eJDkYht52iGe5dgm7'
-
-const footerLinkClass =
-  'transition-colors duration-200 hover:text-[#7c3aed] focus-visible:outline-none focus-visible:text-[#7c3aed]'
 
 const smoothScrollToSection = (id: string) => {
   const el = document.getElementById(id)
@@ -111,6 +115,7 @@ function HeroParticleField() {
 
     const mediaQuery = window.matchMedia('(max-width: 767px)')
     if (mediaQuery.matches) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -209,7 +214,7 @@ function HeroParticleField() {
         const alpha = particle.isAnchor ? Math.min(0.9, opacity + 0.15) : opacity
 
         ctx.beginPath()
-        ctx.fillStyle = `rgba(124, 58, 237, ${alpha.toFixed(3)})`
+        ctx.fillStyle = `rgba(169, 156, 242, ${alpha.toFixed(3)})`
         ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2)
         ctx.fill()
       }
@@ -230,7 +235,7 @@ function HeroParticleField() {
           if (alpha < 0.01) continue
 
           ctx.beginPath()
-          ctx.strokeStyle = `rgba(124, 58, 237, ${alpha.toFixed(3)})`
+          ctx.strokeStyle = `rgba(169, 156, 242, ${alpha.toFixed(3)})`
           ctx.lineWidth = 1
           ctx.moveTo(a.x, a.y)
           ctx.lineTo(b.x, b.y)
@@ -255,7 +260,6 @@ function HeroParticleField() {
       aria-hidden
       className="pointer-events-none absolute left-0 top-0 z-0 hidden h-screen w-[55vw] md:block"
       style={{
-        backgroundColor: '#0a0a12',
         maskImage:
           'linear-gradient(to right, black 40%, transparent 75%), radial-gradient(90% 100% at 30% 50%, black 45%, transparent 100%)',
         WebkitMaskImage:
@@ -276,7 +280,7 @@ function HeroIPhoneMockup({ className }: { className?: string }) {
         maxWidth: '100%',
         boxSizing: 'border-box',
         filter:
-          'drop-shadow(0 28px 56px rgba(0,0,0,0.42)) drop-shadow(0 14px 32px rgba(0,0,0,0.28)) drop-shadow(0 0 48px rgba(124,58,237,0.14))',
+          'drop-shadow(0 28px 56px rgba(0,0,0,0.42)) drop-shadow(0 14px 32px rgba(0,0,0,0.28)) drop-shadow(0 0 48px rgba(110,91,216,0.16))',
       }}
     >
       {/* Side buttons (subtle, scaled with device) */}
@@ -343,22 +347,12 @@ function HeroIPhoneMockup({ className }: { className?: string }) {
 // Slide 1: Hero
 function HeroSlide() {
   return (
-    <section
-      className="landing-snap-section relative min-h-0 overflow-x-hidden bg-[#0a0a12]"
-      data-nav-theme="dark"
-    >
+    <section className="landing-snap-section landing-ambient landing-ambient--tr relative min-h-0 overflow-x-hidden">
       <HeroParticleField />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 55% at 70% 20%, rgba(124, 58, 237, 0.09) 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 20% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%), #0a0a12',
-        }}
-      />
 
-      <div className="relative z-10 box-border flex h-full min-h-0 w-full max-w-[1280px] flex-col px-5 pt-[4.5rem] pb-3 md:mx-auto md:flex-row md:items-center md:justify-between md:gap-10 md:px-8 md:pt-[4.75rem] md:pb-6 lg:gap-14">
+      <div className="relative z-10 box-border flex h-full min-h-0 w-full max-w-[1280px] flex-col px-5 pt-[4.5rem] pb-3 md:mx-auto md:flex-row md:items-center md:justify-center md:gap-10 md:px-8 md:pt-[4.75rem] md:pb-6 lg:gap-14">
         {/* Product visual: above headline on mobile; right column on desktop */}
-        <div className="relative order-1 flex min-h-0 w-full min-w-0 max-md:flex-none max-md:shrink-0 flex-1 flex-col items-center justify-start md:order-2 md:mt-0 md:max-w-[min(44%,420px)] md:flex-none md:justify-center">
+        <div className="relative order-1 hidden min-h-0 w-full min-w-0 max-md:flex-none max-md:shrink-0 flex-1 flex-col items-center justify-start md:order-2 md:mt-0 md:max-w-[min(44%,420px)] md:flex-none md:justify-center">
           <div
             className="relative z-10 mx-auto w-[min(300px,88vw)] overflow-hidden max-md:translate-y-14 md:hidden"
             style={{
@@ -369,8 +363,17 @@ function HeroSlide() {
               <HeroIPhoneMockup />
             </div>
           </div>
-          <div className="mx-auto hidden w-[min(280px,32vw)] max-w-full md:block lg:w-[min(300px,30vw)]">
+          <div className="relative mx-auto hidden w-[min(280px,32vw)] max-w-full md:block lg:w-[min(300px,30vw)]">
             <HeroIPhoneMockup />
+            <motion.div
+              aria-hidden
+              className="landing-chip absolute -left-10 bottom-[16%] z-30 -rotate-2 lg:-left-16"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.9, ease: EASE, delay: 0.5 } }}
+            >
+              <span className="text-white/55">limo.</span>
+              <span className="text-white">usemaison.io</span>
+            </motion.div>
           </div>
         </div>
 
@@ -379,78 +382,75 @@ function HeroSlide() {
           initial="initial"
           animate="animate"
           variants={staggerChildren}
-          className="order-2 flex min-h-0 min-w-0 flex-1 flex-col justify-center max-md:mt-1 md:order-1 md:max-w-[min(52%,34rem)] md:shrink md:pt-0"
+          className="order-2 flex min-h-0 min-w-0 flex-1 flex-col justify-center max-md:mt-1 md:order-1 md:max-w-3xl md:shrink md:pt-0 items-center text-center mx-auto"
         >
+          <motion.p variants={fadeInUp} className="landing-eyebrow mb-4 max-sm:!hidden md:mb-6">
+            For independent limo &amp; black car operators
+          </motion.p>
           <motion.h1
-            {...fadeInUp}
-            className="text-white"
+            variants={fadeInUp}
+            className="text-white [text-wrap:balance]"
             style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 'clamp(2rem, 5.2vw + 1rem, 4.25rem)',
-              lineHeight: 1.05,
-              letterSpacing: '-0.03em',
-              fontWeight: 700,
+              fontSize: 'clamp(2.25rem, 3.6vw + 1rem, 4rem)',
+              lineHeight: 1.02,
+              letterSpacing: '-0.045em',
+              fontWeight: 500,
             }}
           >
-            Run Your Fleet.
+            Run your fleet.
             <br />
-            Own The Experience.
+            <span className="landing-accent-text">Own the experience.</span>
           </motion.h1>
-          <motion.p
-            {...fadeInUp}
-            className="mt-3 max-w-[21rem] text-[15px] leading-snug text-white/65 sm:max-w-xl sm:text-[16px] md:mt-4 md:text-[17px]"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
-          >
-            Your branded booking link, your drivers, your rates — no aggregator fees, no middlemen.
+          <motion.p variants={fadeInUp} className="landing-lead mt-3 max-w-[24rem] md:mt-5 md:max-w-[32rem]">
+            Your branded booking link, your drivers, your rates. No aggregator fees, no middlemen.
           </motion.p>
-          <motion.div
-            {...fadeInUp}
-            className="mt-4 grid w-full max-w-xl grid-cols-3 gap-x-1 text-[10px] leading-tight text-white/45 sm:gap-x-2 sm:text-[11px] md:mt-5 md:text-[12px]"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
+          <motion.ul
+            variants={fadeInUp}
+            className="m-0 mt-4 flex list-none flex-wrap justify-center gap-x-5 gap-y-1 p-0 text-[12px] text-[color:var(--landing-fg-faint)] md:mt-6 md:text-[13px]"
           >
-            <span className="text-left sm:text-center">
-              {'\u2713'} Free to start
-            </span>
-            <span className="text-center">
-              {'\u2713'} No contracts
-            </span>
-            <span className="text-right sm:text-center">
-              {'\u2713'} White-label URLs
-            </span>
-          </motion.div>
+            {['Free to start', 'No contracts', 'White-label URLs'].map((item) => (
+              <li key={item} className="inline-flex items-center gap-1.5">
+                <Check size={14} weight="bold" className="landing-accent-text" aria-hidden />
+                {item}
+              </li>
+            ))}
+          </motion.ul>
           <motion.div
-            {...fadeInUp}
-            className="mt-6 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-center md:mt-8"
+            variants={fadeInUp}
+            className="mt-6 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-center md:mt-9"
           >
             <Link
               to="/signup"
-              className="inline-flex w-full items-center justify-center gap-1.5 py-[13px] px-5 text-[15px] font-semibold text-white transition-colors hover:brightness-110 sm:w-auto sm:min-w-[168px]"
-              style={{
-                fontFamily: "'Work Sans', sans-serif",
-                borderRadius: '10px',
-                backgroundColor: '#7c3aed',
-                border: '2px solid transparent',
-                boxSizing: 'border-box',
-              }}
+              className="landing-btn landing-btn--primary landing-btn--icon w-full justify-between sm:w-auto sm:justify-center"
             >
-              Get Started
-              <span className="text-base font-normal leading-none opacity-90" aria-hidden>
-                →
+              Get started
+              <span className="landing-btn__icon">
+                <ArrowUpRight size={16} weight="bold" aria-hidden />
               </span>
             </Link>
-            <Link
-              to="/demo"
-              className="inline-flex w-full items-center justify-center py-[13px] px-5 text-[15px] font-semibold text-white transition-colors hover:bg-white/[0.06] sm:w-auto sm:min-w-[168px]"
-              style={{
-                fontFamily: "'Work Sans', sans-serif",
-                borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                boxSizing: 'border-box',
-              }}
+            <a
+              href={getTenantAppUrl('app', '/tenant/login?demo=1')}
+              className="landing-btn landing-btn--ghost w-full sm:w-auto"
             >
-              See Demo
-            </Link>
+              See the demo
+            </a>
           </motion.div>
+          <motion.ul
+            variants={fadeInUp}
+            className="m-0 mt-8 hidden w-full max-w-3xl list-none grid-cols-3 gap-3 p-0 text-left md:grid"
+          >
+            {[
+              { Icon: LinkIcon, title: 'Your booking link', text: 'Clients book on your branded page, on your own URL.' },
+              { Icon: SlidersHorizontal, title: 'Your rates', text: 'Set pricing and manage drivers and vehicles from one dashboard.' },
+              { Icon: CreditCard, title: 'Your payouts', text: 'Riders pay by card and the money goes straight to you.' },
+            ].map(({ Icon, title, text }) => (
+              <li key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <Icon size={20} weight="bold" className="landing-accent-text" aria-hidden />
+                <p className="m-0 mt-3 text-[14px] font-medium text-white">{title}</p>
+                <p className="m-0 mt-1 text-[12.5px] leading-snug text-[color:var(--landing-fg-faint)]">{text}</p>
+              </li>
+            ))}
+          </motion.ul>
         </motion.div>
       </div>
     </section>
@@ -459,54 +459,52 @@ function HeroSlide() {
 
 // Slide 2: Scalability & Onboarding
 function PlatformSlide() {
-  const CARD_BG = 'rgba(124, 92, 252, 0.1)'
-  const CARD_BORDER = 'rgba(124, 92, 252, 0.3)'
-  const ICON_WELL_BG = 'rgba(124, 92, 252, 0.18)'
-
   const featureCards = [
     {
       id: 'launch',
       Icon: RocketLaunch,
       title: 'Launch in one day',
       description: 'Your booking page goes live fast. No dev, no waiting, no back-and-forth.',
+      span: 'md:col-span-7',
     },
     {
       id: 'invites',
       Icon: LinkIcon,
       title: 'Secure invite links',
       description: 'Share access with drivers and clients. No accounts to manage, no exposure.',
+      span: 'md:col-span-5',
     },
     {
       id: 'rates',
       Icon: SlidersHorizontal,
       title: 'Instant rate config',
       description: 'Set and adjust your pricing from the dashboard. No code, no tickets.',
+      span: 'md:col-span-5',
     },
     {
       id: 'scale',
       Icon: TrendUp,
       title: 'Scale without migration',
       description: 'Add vehicles, drivers, and clients. The platform moves with you.',
+      span: 'md:col-span-7',
     },
     {
       id: 'billing',
       Icon: CreditCard,
       title: 'Start free, upgrade when it makes sense',
       description:
-        'No inbox pings, no pressure. Level up when your bookings need the headroom — not when we do.',
-      fullWidth: true,
-      warm: true,
+        'No inbox pings, no pressure. Level up when your bookings need the headroom, not when we do.',
+      span: 'md:col-span-12',
+      featured: true,
     },
   ] as const
 
   return (
     <section
       id="platform"
-      className="landing-snap-section flex items-center justify-center"
-      style={{ backgroundColor: '#0d0d12' }}
-      data-nav-theme="dark"
+      className="landing-snap-section landing-ambient landing-ambient--tl flex items-center justify-center"
     >
-      <div className="max-w-[1280px] mx-auto px-5 box-border w-full">
+      <div className="mx-auto box-border w-full max-w-[1280px] px-5 pt-14">
         <motion.div
           initial="initial"
           whileInView="animate"
@@ -514,62 +512,47 @@ function PlatformSlide() {
           variants={staggerChildren}
           className="text-left"
         >
-          <motion.h2
-            variants={fadeInUp}
-            className="text-[48px] font-light text-white mb-4 leading-tight max-md:text-[clamp(1.75rem,6vw,2.25rem)]"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            From Solo Operator To Growing Fleet.
-          </motion.h2>
-          <motion.p
-            variants={fadeInUp}
-            className="mb-5 max-w-[42rem] text-[14px] leading-relaxed text-[#9ca3af] sm:text-[15px] md:mb-8 md:text-[16px]"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
-          >
-            Stop duct-taping your business together with WhatsApp and spreadsheets. Get a platform built for operators like you — not aggregators, not enterprises.
-          </motion.p>
+          <div className="mb-6 md:mb-9 md:flex md:items-end md:justify-between md:gap-12">
+            <div>
+              <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+                Platform
+              </motion.p>
+              <motion.h2 variants={fadeInUp} className="landing-h2 md:max-w-[22ch]">
+                From solo operator to growing fleet.
+              </motion.h2>
+            </div>
+            <motion.p variants={fadeInUp} className="landing-lead mt-4 md:mt-0 md:max-w-[26rem]">
+              Stop duct-taping your business together with WhatsApp and spreadsheets. A platform built for operators
+              like you, not aggregators, not enterprises.
+            </motion.p>
+          </div>
+
           <motion.div
             variants={staggerChildren}
-            className="landing-platform-carousel -mx-5 flex w-auto max-md:gap-3 max-md:overflow-x-auto max-md:overflow-y-visible max-md:px-5 max-md:pb-1 max-md:pr-6 md:mx-0 md:grid md:w-full md:grid-cols-2 md:gap-[10px] md:overflow-visible md:px-0 md:pr-0"
+            className="landing-platform-carousel -mx-5 flex w-auto max-md:gap-3 max-md:overflow-x-auto max-md:overflow-y-visible max-md:px-5 max-md:pb-1 max-md:pr-6 md:mx-0 md:grid md:w-full md:grid-cols-12 md:gap-3 md:overflow-visible md:px-0 md:pr-0"
           >
             {featureCards.map((item) => {
               const Icon = item.Icon
-              const fullWidth = 'fullWidth' in item && item.fullWidth
-              const warm = 'warm' in item && item.warm
+              const featured = 'featured' in item && item.featured
               return (
                 <motion.article
                   key={item.id}
                   variants={fadeInUp}
-                  className={`w-[min(88vw,20rem)] shrink-0 snap-start rounded-[8px] p-4 sm:w-[min(86vw,22rem)] sm:p-5 md:w-auto md:min-w-0 md:snap-normal md:p-7 md:min-h-0 ${fullWidth ? 'max-md:min-w-[min(92vw,24rem)] md:col-span-2' : ''}`}
-                  style={{
-                    backgroundColor: warm ? 'rgba(110, 88, 92, 0.22)' : CARD_BG,
-                    borderWidth: 1,
-                    borderStyle: 'solid',
-                    borderColor: warm ? 'rgba(212, 175, 130, 0.42)' : CARD_BORDER,
-                  }}
+                  className={`landing-bezel w-[min(88vw,20rem)] shrink-0 snap-start sm:w-[min(86vw,22rem)] md:w-auto md:min-w-0 md:snap-normal ${item.span} ${featured ? 'landing-bezel--accent max-md:min-w-[min(92vw,24rem)]' : ''}`}
                 >
-                  <div
-                    className="mb-3 flex h-8 w-8 items-center justify-center rounded-[6px] md:mb-4 md:h-9 md:w-9"
-                    style={{ backgroundColor: ICON_WELL_BG }}
-                    aria-hidden
-                  >
-                    <Icon
-                      className="h-4 w-4 text-[#7c5cfc] sm:h-[17px] sm:w-[17px] md:h-[18px] md:w-[18px]"
-                      weight="regular"
-                    />
+                  <div className="landing-bezel__core !p-5 md:!p-6">
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="landing-icon-well !h-9 !w-9" aria-hidden>
+                        <Icon size={18} weight="light" />
+                      </span>
+                      <h3 className="m-0 text-[1.0625rem] font-medium leading-snug tracking-[-0.02em] text-white md:text-[1.125rem]">
+                        {item.title}
+                      </h3>
+                    </div>
+                    <p className="m-0 text-[0.875rem] leading-relaxed text-[color:var(--landing-fg-muted)] md:text-[0.9375rem]">
+                      {item.description}
+                    </p>
                   </div>
-                  <h3
-                    className="mb-1.5 text-[clamp(0.94rem,3.9vw,1.05rem)] font-semibold leading-snug text-white sm:mb-2 sm:text-[1.05rem] md:text-[18px]"
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p
-                    className="text-[clamp(0.8125rem,3.35vw,0.9375rem)] leading-relaxed text-[#9ca3af] sm:text-[14px] md:text-[15px]"
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    {item.description}
-                  </p>
                 </motion.article>
               )
             })}
@@ -585,28 +568,24 @@ function HowItWorksSlide() {
   const steps = [
     {
       num: '01',
-      Icon: RocketLaunch,
       title: 'Claim your platform',
       description:
-        'Sign up and get a branded booking URL at yourname.usemaison.io — live in minutes, no dev work required.',
+        'Sign up and get a branded booking URL at yourname.usemaison.io. Live in minutes, no dev work required.',
     },
     {
       num: '02',
-      Icon: SlidersHorizontal,
       title: 'Configure your fleet',
       description:
         'Add vehicles, set your rates, and upload your logo. Your booking page reflects your brand from day one.',
     },
     {
       num: '03',
-      Icon: LinkIcon,
       title: 'Share your link',
       description:
-        'Send riders your booking URL. They book directly with you — no app download, no marketplace cut.',
+        'Send riders your booking URL. They book directly with you: no app download, no marketplace cut.',
     },
     {
       num: '04',
-      Icon: CreditCard,
       title: 'Get paid',
       description:
         'Assign drivers, track rides in real time, and receive payments straight to your account.',
@@ -616,80 +595,50 @@ function HowItWorksSlide() {
   return (
     <section
       id="how-it-works"
-      className="landing-snap-section flex items-center justify-center bg-[#0d0d16]"
-      data-nav-theme="dark"
+      className="landing-snap-section landing-ambient landing-ambient--br flex items-center justify-center"
     >
-      <div className="mx-auto box-border w-full max-w-[1280px] px-5">
-        <motion.div
-          initial="initial"
-          whileInView="animate"
-          viewport={{ once: true, margin: '-100px' }}
-          variants={staggerChildren}
-        >
-          <motion.div variants={fadeInUp} className="mb-8 md:mb-12">
-            <p
-              className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7c5cfc]"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              How Maison works
-            </p>
-            <h2
-              className="text-[clamp(1.75rem,6vw,3rem)] font-light leading-tight text-white"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              Up and running in a day.
-            </h2>
-          </motion.div>
+      <motion.div
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true, margin: '-100px' }}
+        variants={staggerChildren}
+        className="mx-auto box-border grid w-full max-w-[1280px] gap-7 px-5 pt-14 md:grid-cols-12 md:items-center md:gap-14"
+      >
+        <div className="md:col-span-5">
+          <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+            How Maison works
+          </motion.p>
+          <motion.h2 variants={fadeInUp} className="landing-h2">
+            Up and running in a day.
+          </motion.h2>
+          <motion.p variants={fadeInUp} className="landing-lead mt-4 max-md:hidden">
+            Four steps from sign-up to your first paid ride. No developer, no migration, no sales call.
+          </motion.p>
+        </div>
 
-          <motion.div
-            variants={staggerChildren}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 md:gap-5 lg:gap-6"
-          >
-            {steps.map((step) => {
-              const Icon = step.Icon
-              return (
-                <motion.div key={step.num} variants={fadeInUp}>
-                  <div
-                    className="h-full rounded-[10px] p-5 md:p-6"
-                    style={{
-                      backgroundColor: 'rgba(124, 92, 252, 0.06)',
-                      border: '1px solid rgba(124, 92, 252, 0.18)',
-                    }}
-                  >
-                    <div className="mb-4 flex items-center gap-3">
-                      <span
-                        className="text-[11px] font-bold tabular-nums text-[#7c5cfc]/55"
-                        style={{ fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.06em' }}
-                      >
-                        {step.num}
-                      </span>
-                      <div
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px]"
-                        style={{ backgroundColor: 'rgba(124, 92, 252, 0.18)' }}
-                        aria-hidden
-                      >
-                        <Icon className="h-4 w-4 text-[#7c5cfc]" weight="regular" />
-                      </div>
-                    </div>
-                    <h3
-                      className="mb-2 text-[15px] font-semibold leading-snug text-white md:text-[16px]"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      {step.title}
-                    </h3>
-                    <p
-                      className="text-[13px] leading-relaxed text-[#9ca3af]"
-                      style={{ fontFamily: "'Work Sans', sans-serif" }}
-                    >
-                      {step.description}
-                    </p>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </motion.div>
+        <motion.div variants={fadeInUp} className="landing-bezel md:col-span-7">
+          <ol className="landing-bezel__core m-0 list-none !p-1.5 md:!p-2">
+            {steps.map((step, i) => (
+              <li
+                key={step.num}
+                className={`grid grid-cols-[2.25rem_1fr] gap-x-3 px-3.5 py-3.5 md:grid-cols-[3rem_1fr] md:gap-x-4 md:px-5 md:py-5 ${
+                  i > 0 ? 'border-t border-[color:var(--landing-hairline)]' : ''
+                }`}
+              >
+                <span className="landing-mono landing-accent-text pt-0.5 text-[12px] md:text-[13px]">{step.num}</span>
+                <div>
+                  <h3 className="m-0 mb-1 text-[1rem] font-medium tracking-[-0.02em] text-white md:text-[1.125rem]">
+                    {step.title}
+                  </h3>
+                  <p className="m-0 text-[0.8125rem] leading-relaxed text-[color:var(--landing-fg-muted)] md:text-[0.9375rem]">
+                    {step.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   )
 }
@@ -720,15 +669,13 @@ function DriverExperienceSlide() {
     },
   ] as const
 
-  const revealDetail = (id: string) =>
-    (hoverPointer && hoverId === id) || (!hoverPointer && tappedId === id)
+  // Hover previews on fine pointers; click / Enter / Space pins a panel open (keyboard + touch).
+  const revealDetail = (id: string) => (hoverPointer && hoverId === id) || tappedId === id
 
   return (
     <section
       id="drivers"
-      className="landing-snap-section flex items-center justify-center"
-      style={{ backgroundColor: '#0d0d18' }}
-      data-nav-theme="dark"
+      className="landing-snap-section landing-ambient landing-ambient--br flex items-center justify-center"
     >
       <div className="landing-driver-route-map" aria-hidden>
         <svg
@@ -784,36 +731,22 @@ function DriverExperienceSlide() {
           </g>
         </svg>
       </div>
-      <div
-        className="pointer-events-none absolute inset-0 z-[1] opacity-70"
-        style={{
-          background:
-            'radial-gradient(ellipse 85% 55% at 100% 45%, rgba(124, 92, 252, 0.09) 0%, transparent 58%), radial-gradient(ellipse 60% 40% at 0% 80%, rgba(15, 23, 42, 0.35) 0%, transparent 50%)',
-        }}
-        aria-hidden
-      />
-
-      <div className="relative z-10 mx-auto box-border w-full max-w-[1280px] px-5">
+      <div className="relative z-10 mx-auto box-border w-full max-w-[1280px] px-5 pt-12">
         <motion.div
           initial="initial"
           whileInView="animate"
           viewport={{ once: true, margin: '-100px' }}
           variants={staggerChildren}
-          className="max-w-xl text-left md:max-w-[min(32rem,48vw)]"
+          className="max-w-xl text-left md:max-w-[min(34rem,50vw)]"
         >
-          <motion.h2
-            variants={fadeInUp}
-            className="mb-4 text-[48px] font-light leading-tight text-white max-md:text-[clamp(1.75rem,6vw,2.25rem)]"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Give Drivers a Platform They Can Trust
+          <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+            Drivers
+          </motion.p>
+          <motion.h2 variants={fadeInUp} className="landing-h2 mb-4">
+            Give drivers a platform they can trust.
           </motion.h2>
-          <motion.p
-            variants={fadeInUp}
-            className="mb-8 max-w-[28rem] text-[15px] leading-relaxed text-[#9ca3af] md:text-[16px]"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
-          >
-            Tools that help drivers stay informed, organized, and ready for every trip—everything in one place, so they
+          <motion.p variants={fadeInUp} className="landing-lead mb-7">
+            Tools that help drivers stay informed, organized, and ready for every trip. Everything in one place, so they
             spend less time checking texts and more time focused on the road.
           </motion.p>
 
@@ -821,49 +754,37 @@ function DriverExperienceSlide() {
             {leadPoints.map((item) => {
               const open = revealDetail(item.id)
               return (
-                <motion.div key={item.id} variants={fadeInUp} className="border-l-2 border-[#7c5cfc]/45 pl-5">
+                <motion.div
+                  key={item.id}
+                  variants={fadeInUp}
+                  className="border-l-2 pl-5 transition-colors duration-300"
+                  style={{
+                    borderColor: open ? 'var(--landing-accent-soft)' : 'var(--landing-hairline-strong)',
+                  }}
+                >
                   <button
                     type="button"
-                    className="w-full rounded-r-md text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-[#7c5cfc]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d18]"
+                    className="w-full rounded-r-xl py-1 text-left transition-colors duration-300 hover:bg-white/[0.03]"
                     aria-expanded={open}
-                    aria-label={`${item.title}. ${open ? 'Hide' : 'Show'} details.`}
-                    style={{ fontFamily: "'DM Sans', sans-serif" }}
                     onMouseEnter={() => hoverPointer && setHoverId(item.id)}
                     onMouseLeave={() => hoverPointer && setHoverId(null)}
-                    onClick={() => {
-                      if (hoverPointer) return
-                      setTappedId((prev) => (prev === item.id ? null : item.id))
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return
-                      e.preventDefault()
-                      setTappedId((prev) => (prev === item.id ? null : item.id))
-                    }}
+                    onClick={() => setTappedId((prev) => (prev === item.id ? null : item.id))}
                   >
-                    <span
-                      className="block text-[17px] font-semibold leading-snug text-white md:text-[18px]"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
+                    <span className="block text-[17px] font-medium leading-snug tracking-[-0.02em] text-white md:text-[18px]">
                       {item.title}
                     </span>
                     {!hoverPointer ? (
-                      <span
-                        className="mt-0.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500"
-                        style={{ fontFamily: "'Work Sans', sans-serif" }}
-                      >
+                      <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-[0.16em] text-[color:var(--landing-fg-faint)]">
                         Tap for details
                       </span>
                     ) : null}
                     <div
-                      className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+                      className={`grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
                         open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                       }`}
                     >
                       <div className="min-h-0 overflow-hidden">
-                        <p
-                          className="pt-2 text-[14px] leading-relaxed text-[#94a3b8] md:text-[15px]"
-                          style={{ fontFamily: "'Work Sans', sans-serif" }}
-                        >
+                        <p className="m-0 pt-2 text-[14px] leading-relaxed text-[color:var(--landing-fg-muted)] md:text-[15px]">
                           {item.detail}
                         </p>
                       </div>
@@ -876,14 +797,13 @@ function DriverExperienceSlide() {
 
           <motion.div
             variants={fadeInUp}
-            className="mt-8 border-t border-white/10 pt-8"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
+            className="mt-8 border-t border-[color:var(--landing-hairline)] pt-6"
           >
-            <p className="mb-3 text-[14px] leading-relaxed text-[#94a3b8] md:text-[15px]">
+            <p className="mb-2 text-[14px] leading-relaxed text-[color:var(--landing-fg-muted)] md:text-[15px]">
               Built to support smoother operations today, with deeper payout workflows as we scale. Payouts are handled
-              by the tenant for now—we provide the data foundation; automation is on the roadmap.
+              by the tenant for now. We provide the data foundation; automation is on the roadmap.
             </p>
-            <p className="text-[12px] leading-relaxed text-slate-500 md:text-[13px]">
+            <p className="m-0 text-[12px] leading-relaxed text-[color:var(--landing-fg-faint)] md:text-[13px]">
               Payout workflows vary by tenant setup.
             </p>
           </motion.div>
@@ -893,7 +813,7 @@ function DriverExperienceSlide() {
   )
 }
 
-// Slide 4: Rider Experience / White-Label
+// Slide 5: Rider Experience / White-Label
 function RiderBookingSlide() {
   const actionItems = [
     'Single branded link for all services.',
@@ -904,7 +824,7 @@ function RiderBookingSlide() {
 
   const brandedLinkPills = [
     {
-      full: 'limo.usemaison.io/driver',
+      path: '/driver',
       top: '6%',
       left: '4%',
       rotate: -2.5,
@@ -913,7 +833,7 @@ function RiderBookingSlide() {
       delay: 0,
     },
     {
-      full: 'limo.usemaison.io/riders',
+      path: '/riders',
       top: '42%',
       left: '-2%',
       rotate: 1.8,
@@ -922,7 +842,7 @@ function RiderBookingSlide() {
       delay: 0.45,
     },
     {
-      full: 'limo.usemaison.io/landing',
+      path: '/landing',
       top: '72%',
       left: '8%',
       rotate: -1.2,
@@ -935,10 +855,9 @@ function RiderBookingSlide() {
   return (
     <section
       id="rider-experience"
-      className="landing-snap-section flex items-center justify-center bg-[#0a0a0f]"
-      data-nav-theme="dark"
+      className="landing-snap-section landing-ambient landing-ambient--c flex items-center justify-center"
     >
-      <div className="relative mx-auto box-border flex w-full max-w-[1280px] flex-col items-stretch gap-10 px-5 md:flex-row md:items-center md:gap-12 lg:gap-16">
+      <div className="relative mx-auto box-border flex w-full max-w-[1280px] flex-col items-stretch gap-10 px-5 pt-12 md:flex-row md:items-center md:gap-12 lg:gap-16">
         <motion.div
           initial="initial"
           whileInView="animate"
@@ -949,8 +868,8 @@ function RiderBookingSlide() {
         >
           {brandedLinkPills.map((pill) => (
             <motion.div
-              key={pill.full}
-              className="absolute max-w-[calc(100vw-2.5rem)] rounded-full border border-white/12 bg-[#12121a]/95 px-3.5 py-2 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)] backdrop-blur-sm md:max-w-[19rem]"
+              key={pill.path}
+              className="landing-chip absolute max-w-[calc(100vw-2.5rem)] !text-[12px] md:max-w-[19rem] md:!text-[13px]"
               style={{
                 top: pill.top,
                 left: pill.left,
@@ -964,14 +883,9 @@ function RiderBookingSlide() {
                 delay: pill.delay,
               }}
             >
-              <span
-                className="block truncate font-mono text-[11px] tracking-tight text-white/88 sm:text-[12px] md:text-[13px]"
-                style={{ fontFamily: "ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace" }}
-              >
+              <span className="block truncate">
                 <span className="text-white/55">limo.usemaison.io</span>
-                <span className="text-[#c4b5fd]">
-                  {pill.full.replace('limo.usemaison.io', '')}
-                </span>
+                <span className="landing-accent-text">{pill.path}</span>
               </span>
             </motion.div>
           ))}
@@ -984,29 +898,25 @@ function RiderBookingSlide() {
           variants={staggerChildren}
           className="order-1 min-w-0 flex-1 text-left md:order-2"
         >
-          <motion.h2
-            variants={fadeInUp}
-            className="mb-4 text-[48px] font-light leading-tight text-white max-md:text-[clamp(1.75rem,6vw,2.25rem)]"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Your Brand At Every Touchpoint.
+          <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+            Rider experience
+          </motion.p>
+          <motion.h2 variants={fadeInUp} className="landing-h2 mb-4">
+            Your brand at every touchpoint.
           </motion.h2>
-          <motion.p
-            variants={fadeInUp}
-            className="mb-8 text-[16px] text-gray-400"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
-          >
+          <motion.p variants={fadeInUp} className="landing-lead mb-7">
             Riders see your name, your logo, your standards.
           </motion.p>
-          <motion.ul variants={staggerChildren} className="space-y-4">
-            {actionItems.map((item, index) => (
+          <motion.ul variants={staggerChildren} className="m-0 list-none space-y-3.5 p-0">
+            {actionItems.map((item) => (
               <motion.li
-                key={index}
+                key={item}
                 variants={fadeInUp}
-                className="flex items-start gap-3 text-[18px] text-slate-400"
-                style={{ fontFamily: "'Work Sans', sans-serif", lineHeight: '1.5' }}
+                className="flex items-start gap-3.5 text-[15px] leading-normal text-[color:var(--landing-fg-muted)] md:text-[17px]"
               >
-                <CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-[#7c5cfc]" weight="fill" />
+                <span className="landing-icon-well mt-0.5 !h-6 !w-6 shrink-0 !rounded-lg" aria-hidden>
+                  <Check size={13} weight="bold" />
+                </span>
                 <span>{item}</span>
               </motion.li>
             ))}
@@ -1030,7 +940,7 @@ function scrollPricingCarouselToCard(
   carousel.scrollTo({ left: Math.max(0, next), behavior })
 }
 
-// Slide 6: Pricing
+// Slide 7: Pricing
 function PricingSlide() {
   const carouselRef = useRef<HTMLDivElement>(null)
   const featuredIndex = LANDING_PRICING_PLANS.findIndex(isPopularPlan)
@@ -1134,120 +1044,110 @@ function PricingSlide() {
   return (
     <section
       id="pricing"
-      className="landing-pricing landing-snap-section landing-snap-section--scroll flex items-center justify-center bg-gradient-to-b from-[#0a0a0f] via-gray-900 to-[#0a0a0f]"
-      data-nav-theme="dark"
+      className="landing-pricing landing-snap-section landing-snap-section--scroll landing-ambient landing-ambient--tl flex items-center justify-center"
     >
-      <div className="max-w-7xl mx-auto px-5 box-border w-full pt-24 pb-20">
+      <div className="mx-auto box-border w-full max-w-7xl px-5 pb-20 pt-24">
         <motion.div
           initial="initial"
           whileInView="animate"
           viewport={{ once: true, margin: '-100px' }}
           variants={staggerChildren}
-          className="text-center mb-8 md:mb-16"
+          className="mb-8 flex flex-col gap-5 md:mb-14 md:flex-row md:items-end md:justify-between md:gap-12"
         >
-          <motion.h2
-            variants={fadeInUp}
-            className="text-4xl md:text-6xl font-light text-white mb-4"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Fair, Transparent Pricing.
-          </motion.h2>
-          <motion.p
-            variants={fadeInUp}
-            className="text-sm text-slate-500 mb-6 max-w-2xl mx-auto"
-            style={{ fontFamily: "'Work Sans', sans-serif" }}
-          >
-            Priced for operators at every stage. Start free, upgrade when your bookings need the headroom. No long-term contracts.
-          </motion.p>
-          {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-            <motion.p
-              variants={fadeInUp}
-              className="text-sm font-medium mb-2"
-              style={{ color: '#7c5cfc', fontFamily: "'Work Sans', sans-serif" }}
-            >
-              🎉 Only a few founding operator spots left — sign up
-              now and your subscription is free.
+          <div>
+            <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+              Pricing
             </motion.p>
-          ) : null}
-          {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-            <motion.p
-              variants={fadeInUp}
-              className="text-xs text-slate-400 mb-2"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              Applies to the plan you choose today — upgrading later bills full price for the new plan.
+            <motion.h2 variants={fadeInUp} className="landing-h2">
+              Fair, transparent pricing.
+            </motion.h2>
+          </div>
+          <div className="md:max-w-md">
+            <motion.p variants={fadeInUp} className="landing-lead">
+              Priced for operators at every stage. Start free, upgrade when your bookings need the headroom. No
+              long-term contracts.
             </motion.p>
-          ) : null}
+            {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
+              <>
+                <motion.p variants={fadeInUp} className="landing-accent-text mb-1 mt-4 text-sm font-medium">
+                  Only a few founding operator spots left. Sign up now and your subscription is free.
+                </motion.p>
+                <motion.p variants={fadeInUp} className="m-0 text-xs text-[color:var(--landing-fg-faint)]">
+                  Applies to the plan you choose today. Upgrading later bills full price for the new plan.
+                </motion.p>
+              </>
+            ) : null}
+          </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.45 }}
+          transition={{ duration: 0.8, ease: EASE }}
         >
           <div ref={carouselRef} className="pricing-carousel -mx-5 md:mx-0">
-            {plans.map((plan, index) => (
-              <div
-                key={plan.name}
-                data-index={index}
-                className={`pricing-card bg-gray-900 border ${
-                  isPopularPlan(plan) ? 'featured border-[#7c5cfc]' : 'border-gray-800'
-                }`}
-              >
-                {isPopularPlan(plan) ? (
-                  <div className="pricing-badge" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                    Most Popular
-                  </div>
-                ) : null}
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-semibold text-white mb-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    {plan.name}
-                  </h3>
-                  <div className="price-wrapper">
-                    <span className="price-amount text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      {plan.price}
-                    </span>
-                    <span className="price-period" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                      {plan.period}
-                    </span>
-                  </div>
-                  <p className="text-gray-400 mb-6 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                    {plan.description}
-                  </p>
-                  <Link
-                    to="/signup"
-                    className={`inline-flex items-center justify-center w-full py-[13px] px-5 text-[15px] font-semibold rounded-[10px] transition-colors box-border ${
-                      isPopularPlan(plan)
-                        ? 'border-2 border-transparent bg-[#7c5cfc] text-white hover:bg-[#7c3aed]'
-                        : 'border-2 border-gray-700 text-white hover:border-[#7c5cfc]'
-                    }`}
-                    style={{ fontFamily: "'Work Sans', sans-serif" }}
-                  >
-                    Get Started
-                  </Link>
-                </div>
-                <div className="border-t border-gray-800 pt-6">
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-3">
-                        {feature.included ? (
-                          <CheckCircle className="w-5 h-5 text-[#7c5cfc] flex-shrink-0" weight="fill" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-gray-600 flex-shrink-0" weight="fill" />
-                        )}
-                        <span
-                          className={`text-sm ${feature.included ? 'text-gray-300' : 'text-gray-600'}`}
-                          style={{ fontFamily: "'Work Sans', sans-serif" }}
-                        >
-                          {feature.text}
+            {plans.map((plan, index) => {
+              const popular = isPopularPlan(plan)
+              return (
+                <div
+                  key={plan.name}
+                  data-index={index}
+                  className={`pricing-card landing-bezel${popular ? ' featured landing-bezel--accent' : ''}`}
+                >
+                  <div className="landing-bezel__core relative flex flex-col !p-6 md:!p-7">
+                    {popular ? <div className="pricing-badge absolute right-5 top-5 !mb-0">Most popular</div> : null}
+                    <h3 className="m-0 text-xl font-medium tracking-[-0.02em] text-white">{plan.name}</h3>
+                    <div className="price-wrapper">
+                      <span className="price-amount text-white">{plan.price}</span>
+                      <span className="price-period">{plan.period}</span>
+                    </div>
+                    <p className="m-0 mb-6 min-h-[3.75rem] text-sm leading-relaxed text-[color:var(--landing-fg-muted)]">
+                      {plan.description}
+                    </p>
+                    <ul className="m-0 flex-1 list-none space-y-3 border-t border-[color:var(--landing-hairline)] p-0 pt-6">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          {feature.included ? (
+                            <Check size={16} weight="bold" className="landing-accent-text mt-0.5 shrink-0" aria-hidden />
+                          ) : (
+                            <X
+                              size={16}
+                              weight="regular"
+                              className="mt-0.5 shrink-0 text-[color:var(--landing-fg-faint)]"
+                              aria-hidden
+                            />
+                          )}
+                          <span
+                            className={`text-sm leading-snug ${
+                              feature.included
+                                ? 'text-[color:var(--landing-fg)]'
+                                : 'text-[color:var(--landing-fg-faint)]'
+                            }`}
+                          >
+                            {feature.included ? null : <span className="sr-only">Not included: </span>}
+                            {feature.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      to="/signup"
+                      className={`landing-btn landing-btn--block mt-8 ${
+                        popular ? 'landing-btn--primary landing-btn--icon !justify-between' : 'landing-btn--ghost'
+                      }`}
+                    >
+                      Get started
+                      {popular ? (
+                        <span className="landing-btn__icon">
+                          <ArrowUpRight size={16} weight="bold" aria-hidden />
                         </span>
-                      </li>
-                    ))}
-                  </ul>
+                      ) : null}
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           <div className="dots" role="tablist" aria-label="Pricing plans">
@@ -1269,153 +1169,135 @@ function PricingSlide() {
   )
 }
 
-// Slide 5: Mission & Values
+// Slide 6: Mission & Values
 function MissionValuesSlide() {
   const coreValues = [
     {
-      title: 'Your Brand, Your Subdomain',
-      signal: "Every account gets a dedicated space at tito.usemaison.io — your drivers and rider never see anyone else's name."
+      title: 'Your brand, your subdomain',
+      signal: "Every account gets a dedicated space at tito.usemaison.io. Your drivers and riders never see anyone else's name.",
     },
     {
-      title: 'Brand Autonomy',
-      signal: 'Upload your logo and set your company name across every rider and driver touchpoint from day one.'
+      title: 'Brand autonomy',
+      signal: 'Upload your logo and set your company name across every rider and driver touchpoint from day one.',
     },
     {
-      title: 'Operations That Run Themselves',
-      signal: 'Live driver and vehicle tracking on your dashboard. Automatic emails keep drivers and riders informed at every step, no manual follow-up needed. Assign a driver. They get notified. '
-    },
-    {
-      title: 'Honest MVP Momentum',
+      title: 'Operations that run themselves',
       signal:
-        "We're not pretending to be a decade-old suite. Maison ships continuously, and early operators get direct input on the roadmap—your workflow matters more than a polished slide deck.",
+        'Live driver and vehicle tracking on your dashboard. Automatic emails keep drivers and riders informed at every step. Assign a driver, they get notified.',
+    },
+    {
+      title: 'Honest MVP momentum',
+      signal:
+        "We're not pretending to be a decade-old suite. Maison ships continuously, and early operators get direct input on the roadmap.",
     },
   ]
 
   return (
-    <section id="mission" className="landing-snap-section flex items-center justify-center bg-[#0a0a0f]" data-nav-theme="dark">
-      <div className="max-w-[1280px] mx-auto px-5 box-border w-full">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left Column: Strategic Vision */}
+    <section
+      id="mission"
+      className="landing-snap-section landing-ambient landing-ambient--tr flex items-center justify-center"
+    >
+      <div className="mx-auto box-border w-full max-w-[1280px] px-5 pt-14">
+        <div className="grid items-center gap-12 md:grid-cols-12 md:gap-16">
           <motion.div
             initial="initial"
             whileInView="animate"
             viewport={{ once: true, margin: '-100px' }}
             variants={staggerChildren}
-            className="text-left"
+            className="text-left md:col-span-5"
           >
-            <motion.h2
-              variants={fadeInUp}
-              className="text-[clamp(1.5rem,5.5vw,2.25rem)] md:text-[48px] font-light text-white mb-3 md:mb-6 leading-[1.1] md:leading-tight"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              The Infrastructure of Independence.
-            </motion.h2>
-            <motion.p
-              variants={fadeInUp}
-              className="text-[14px] md:text-[18px] text-gray-300 leading-snug md:leading-relaxed mb-4 md:mb-8"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              Independent limo and black car operators shouldn't have to surrender their brand, their customer relationships, or their pricing control to platforms that extract value without adding it.
+            <motion.p variants={fadeInUp} className="landing-eyebrow mb-4">
+              Mission
             </motion.p>
-            <motion.p
-              variants={fadeInUp}
-              className="text-[14px] md:text-[16px] text-gray-400 leading-snug md:leading-relaxed mb-4 md:mb-8"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              Maison gives you the infrastructure to run your business on your terms — your branding, your pricing, your standards. Free to start. Transparent as you scale. Built weekly with real operator feedback.
+            <motion.h2 variants={fadeInUp} className="landing-h2 mb-5 md:mb-7">
+              The infrastructure of independence.
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="landing-lead mb-4 !text-[color:var(--landing-fg)] md:mb-5">
+              Independent limo and black car operators shouldn&apos;t have to surrender their brand, their customer
+              relationships, or their pricing control to platforms that extract value without adding it.
+            </motion.p>
+            <motion.p variants={fadeInUp} className="landing-lead">
+              Maison gives you the infrastructure to run your business on your terms: your branding, your pricing, your
+              standards. Free to start. Transparent as you scale. Built weekly with real operator feedback.
             </motion.p>
           </motion.div>
 
-          {/* Right Column: Technical Core Values (desktop only — keeps mobile to one viewport) */}
-          <motion.div
+          {/* Desktop only, keeps mobile to one viewport */}
+          <motion.ol
             initial="initial"
             whileInView="animate"
             viewport={{ once: true, margin: '-100px' }}
             variants={staggerChildren}
-            className="hidden md:block space-y-6"
+            className="m-0 hidden list-none p-0 md:col-span-7 md:block"
           >
             {coreValues.map((value, index) => (
-              <motion.div
+              <motion.li
                 key={value.title}
                 variants={fadeInUp}
-                transition={{ delay: index * 0.1 }}
-                className="bg-gray-900 border border-gray-800 p-6 rounded-lg"
+                className="grid grid-cols-[3rem_1fr] gap-x-4 border-t border-[color:var(--landing-hairline)] py-5 last:border-b"
               >
-                <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  {value.title}
-                </h3>
-                <p className="text-gray-400 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                  {value.signal}
-                </p>
-              </motion.div>
+                <span className="landing-mono landing-accent-text pt-1 text-[13px]">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <h3 className="m-0 mb-1.5 text-[1.25rem] font-medium tracking-[-0.02em] text-white">{value.title}</h3>
+                  <p className="m-0 max-w-[34rem] text-[0.9375rem] leading-relaxed text-[color:var(--landing-fg-muted)]">
+                    {value.signal}
+                  </p>
+                </div>
+              </motion.li>
             ))}
-          </motion.div>
+          </motion.ol>
         </div>
       </div>
     </section>
   )
 }
 
-// Slide 7: Conclusion & Footer
+// Slide 8: Conclusion & Footer
 function ConclusionSlide() {
+  const linkClass = 'landing-link text-[13px]'
+
   return (
-    <section id="footer" className="landing-snap-section landing-snap-section--scroll flex flex-col bg-[#0d0c18]" data-nav-theme="dark">
-      <div className="flex-1 flex items-center justify-center py-10 md:py-14 min-h-0">
+    <section
+      id="footer"
+      className="landing-snap-section landing-snap-section--scroll landing-ambient landing-ambient--c flex flex-col"
+    >
+      <div className="flex min-h-0 flex-1 items-center justify-center py-10 pt-20 md:py-14 md:pt-20">
         <motion.div
           initial="initial"
           whileInView="animate"
           viewport={{ once: true }}
           variants={staggerChildren}
-          className="w-full box-border px-5 text-center max-w-[min(100%,56rem)] mx-auto"
+          className="mx-auto w-full max-w-[min(100%,56rem)] box-border px-5 text-center"
         >
-          <motion.h2
-            variants={fadeInUp}
-            className="text-white mb-3 md:mb-5 leading-[1.12] text-[clamp(1.7rem,5vw,2.625rem)] font-semibold"
-            style={{ fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Built for Operators Who Don&apos;t Compromise.
+          <motion.h2 variants={fadeInUp} className="landing-h2 mx-auto mb-6 max-w-[18ch] md:mb-8">
+            Built for operators who don&apos;t compromise.
           </motion.h2>
-          <motion.figure
-            variants={fadeInUp}
-            className="mx-auto mb-7 md:mb-8 max-w-2xl rounded-xl border border-[#7c5cfc]/35 bg-[#151425]/80 px-5 py-4 text-left"
-          >
-            <blockquote
-              className="text-[15px] font-medium leading-snug text-white sm:text-base md:text-lg"
-              style={{ fontFamily: "'DM Sans', sans-serif" }}
-            >
-              &ldquo;Professional chauffeurs and independent operators deserve the same tools as any serious business,
-              without the tax.&rdquo;
-            </blockquote>
-            <figcaption
-              className="mt-3 text-[13px] text-[#8a87a8]"
-              style={{ fontFamily: "'Work Sans', sans-serif" }}
-            >
-              — Mubaraq Odumeso, Founder{' '}
-              <Link to="/about" className="text-[#a78bfa] underline-offset-2 hover:underline">
-                Read the vision
-              </Link>
-            </figcaption>
+          <motion.figure variants={fadeInUp} className="landing-bezel mx-auto mb-6 max-w-2xl text-left md:mb-8">
+            <div className="landing-bezel__core !p-5 md:!p-6">
+              <blockquote className="m-0 text-[15px] font-medium leading-snug tracking-[-0.01em] text-white sm:text-base md:text-lg">
+                &ldquo;Professional chauffeurs and independent operators deserve the same tools as any serious
+                business, without the tax.&rdquo;
+              </blockquote>
+              <figcaption className="mt-3 text-[13px] text-[color:var(--landing-fg-faint)]">
+                Mubaraq Odumeso, Founder{' · '}
+                <Link to="/about" className="landing-accent-text underline-offset-4 hover:underline">
+                  Read the vision
+                </Link>
+              </figcaption>
+            </div>
           </motion.figure>
-          <motion.p
-            variants={fadeInUp}
-            className="max-w-3xl mx-auto mb-7 md:mb-10 text-[13px] leading-snug sm:text-base md:text-[18px] md:leading-normal"
-            style={{ color: '#8a87a8', fontFamily: "'Work Sans', sans-serif" }}
-          >
-            Your brand. Your riders. Your drivers. All in one place—without giving up control. Join while we&apos;re
+          <motion.p variants={fadeInUp} className="landing-lead mx-auto mb-7 md:mb-9">
+            Your brand. Your riders. Your drivers. All in one place, without giving up control. Join while we&apos;re
             still early: your feedback shapes the product.
           </motion.p>
           <motion.div variants={fadeInUp}>
-            <Link
-              to="/signup"
-              className="inline-flex items-center justify-center text-white font-semibold transition-colors hover:bg-[#6d28d9]"
-              style={{
-                fontFamily: "'Work Sans', sans-serif",
-                background: '#7C3AED',
-                padding: '14px 32px',
-                borderRadius: 8,
-              }}
-            >
-              Start Free Today
+            <Link to="/signup" className="landing-btn landing-btn--primary landing-btn--icon">
+              Start free today
+              <span className="landing-btn__icon">
+                <ArrowUpRight size={16} weight="bold" aria-hidden />
+              </span>
             </Link>
           </motion.div>
         </motion.div>
@@ -1426,11 +1308,11 @@ function ConclusionSlide() {
         whileInView="animate"
         viewport={{ once: true }}
         variants={fadeIn}
-        className="landing-footer shrink-0 border-t border-[#1e1c30]/90 bg-[#0d0c18]"
+        className="shrink-0 border-t border-[color:var(--landing-hairline)]"
       >
-        <div className="landing-footer__inner w-full box-border px-5 pt-8 pb-6 md:px-[60px] md:pt-12 md:pb-8">
-          <div className="mb-6 md:mb-8 md:grid md:grid-cols-3 md:gap-x-12 md:items-start">
-            <div className="hidden pb-6 mb-6 border-b border-[#1e1c30] md:mb-0 md:block md:border-0 md:pb-0">
+        <div className="box-border w-full px-5 pb-6 pt-8 md:px-[60px] md:pb-8 md:pt-12">
+          <div className="mb-6 md:mb-8 md:grid md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] md:items-start md:gap-x-12">
+            <div className="mb-6 hidden md:mb-0 md:block">
               <MaisonDarkModeLogo
                 forceDark
                 className="block"
@@ -1439,38 +1321,18 @@ function ConclusionSlide() {
                   width: 'auto',
                 }}
               />
-              <p
-                className="mt-3.5 max-w-md leading-[1.55] tracking-[-0.01em] text-[13px] md:text-[14px]"
-                style={{ color: '#9b97b3', fontFamily: "'DM Sans', sans-serif", fontWeight: 450 }}
-              >
+              <p className="mt-3.5 max-w-xs text-[14px] leading-[1.55] tracking-[-0.01em] text-[color:var(--landing-fg-muted)]">
                 Built for operators who run their business like a brand.
               </p>
-              <span
-                className="inline-flex items-center mt-4 rounded-full"
-                style={{
-                  background: '#1e1640',
-                  border: '0.5px solid #3d2f7a',
-                  color: '#9d6fff',
-                  fontSize: 11,
-                  lineHeight: '16px',
-                  padding: '4px 10px',
-                  fontFamily: "'Work Sans', sans-serif",
-                  letterSpacing: '0.02em',
-                }}
-              >
-                slug.usemaison.io
-              </span>
+              <span className="landing-chip mt-4 !py-1 !text-[11px]">slug.usemaison.io</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-5 sm:gap-x-8 md:contents text-left">
+            <div className="grid grid-cols-3 gap-x-5 text-left sm:gap-x-8 md:contents">
               <nav className="min-w-0" aria-label="Product">
-                <h3
-                  className="mb-2.5 uppercase tracking-[0.2em] text-[10px] md:text-[11px]"
-                  style={{ color: '#5c5978', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
-                >
+                <h3 className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.2em] text-[color:var(--landing-fg-faint)] md:text-[11px]">
                   Product
                 </h3>
-                <ul className="space-y-1.5 md:space-y-2">
+                <ul className="m-0 list-none space-y-1.5 p-0 md:space-y-2">
                   <li>
                     <a
                       href="#platform"
@@ -1478,8 +1340,7 @@ function ConclusionSlide() {
                         e.preventDefault()
                         smoothScrollToSection('platform')
                       }}
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                      className={linkClass}
                     >
                       Overview
                     </a>
@@ -1491,96 +1352,83 @@ function ConclusionSlide() {
                         e.preventDefault()
                         smoothScrollToSection('pricing')
                       }}
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
+                      className={linkClass}
                     >
                       Pricing
                     </a>
                   </li>
                   <li>
-                    <Link
-                      to="/signup"
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                    >
-                      Get Started
+                    <Link to="/signup" className={linkClass}>
+                      Get started
                     </Link>
                   </li>
                 </ul>
               </nav>
 
               <nav className="min-w-0" aria-label="Company">
-                <h3
-                  className="mb-2.5 uppercase tracking-[0.2em] text-[10px] md:text-[11px]"
-                  style={{ color: '#5c5978', fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
-                >
+                <h3 className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.2em] text-[color:var(--landing-fg-faint)] md:text-[11px]">
                   Company
                 </h3>
-                <ul className="space-y-1.5 md:space-y-2">
+                <ul className="m-0 list-none space-y-1.5 p-0 md:space-y-2">
                   <li>
-                    <a
-                      href="/about"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                    >
+                    <a href="/about" target="_blank" rel="noopener noreferrer" className={linkClass}>
                       About
                     </a>
                   </li>
                   <li>
-                    <a
-                      href="/about#founders-vision"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                    >
-                      Founder&apos;s Vision
+                    <a href="/about#founders-vision" target="_blank" rel="noopener noreferrer" className={linkClass}>
+                      Founder&apos;s vision
                     </a>
                   </li>
                   <li>
-                    <a
-                      href="mailto:hello@usemaison.io"
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                    >
+                    <a href="mailto:hello@usemaison.io" className={linkClass}>
                       Contact
                     </a>
                   </li>
                   <li>
-                    <a
-                      href={QUESTIONS_FORM_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={footerLinkClass}
-                      style={{ color: '#8b8899', fontSize: 13, fontFamily: "'Work Sans', sans-serif" }}
-                    >
+                    <a href={QUESTIONS_FORM_URL} target="_blank" rel="noopener noreferrer" className={linkClass}>
                       Questions
                     </a>
+                  </li>
+                </ul>
+              </nav>
+
+              <nav className="min-w-0" aria-label="Legal">
+                <h3 className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.2em] text-[color:var(--landing-fg-faint)] md:text-[11px]">
+                  Legal
+                </h3>
+                <ul className="m-0 list-none space-y-1.5 p-0 md:space-y-2">
+                  <li>
+                    <Link to="/privacy" className={linkClass}>
+                      Privacy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/terms" className={linkClass}>
+                      Terms
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/subprocessors" className={linkClass}>
+                      Subprocessors
+                    </Link>
                   </li>
                 </ul>
               </nav>
             </div>
           </div>
 
-          <div className="border-t border-[#1e1c30] pt-4">
-            <p
-              className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] md:hidden"
-              style={{ color: '#45435c', fontFamily: "'Work Sans', sans-serif" }}
-            >
+          <div className="border-t border-[color:var(--landing-hairline)] pt-4">
+            <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-[color:var(--landing-fg-faint)] md:hidden">
               <span>© 2026</span>
               <MaisonWordmark
-                color="#45435c"
+                color="var(--landing-fg-faint)"
                 className="shrink-0"
                 style={{ fontSize: 12, display: 'inline-block', verticalAlign: 'baseline' }}
               />
               <span>. All rights reserved.</span>
             </p>
-            <p
-              className="hidden text-xs md:block"
-              style={{ color: '#45435c', fontFamily: "'Work Sans', sans-serif" }}
-            >
+            <p className="m-0 hidden text-xs text-[color:var(--landing-fg-faint)] md:block">
               © 2026 Maison. All rights reserved.
             </p>
           </div>
@@ -1594,7 +1442,6 @@ function ConclusionSlide() {
 export default function Landing() {
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const [activeSection, setActiveSection] = useState(0)
-  const [navTheme, setNavTheme] = useState<'dark' | 'light'>('dark')
   const [menuOpen, setMenuOpen] = useState(false)
 
   const scrollToTop = useCallback(() => {
@@ -1631,10 +1478,8 @@ export default function Landing() {
       const best = candidates.reduce((a, b) =>
         a.intersectionRatio >= b.intersectionRatio ? a : b
       )
-      const theme = (best.target as HTMLElement).dataset.navTheme === 'light' ? 'light' : 'dark'
       const index = [...sections].indexOf(best.target as HTMLElement)
       if (index < 0) return
-      setNavTheme(theme)
       setActiveSection(index)
     }
 
@@ -1665,212 +1510,198 @@ export default function Landing() {
   // but keep the existing "Get Started" CTA out of the way (it's already in-page).
   const ctaHidden = hideFloatingChromeOnPricing
 
+  // Which top-nav link owns the section currently in view.
+  const activeNavKey =
+    activeSection >= 1 && activeSection <= 4
+      ? 'platform'
+      : activeSection === MISSION_SECTION_INDEX
+        ? 'mission'
+        : activeSection === PRICING_SECTION_INDEX
+          ? 'pricing'
+          : activeSection === FOOTER_SECTION_INDEX
+            ? 'footer'
+            : null
+
+  const navLinks = [
+    { id: 'platform', label: 'Product' },
+    { id: 'pricing', label: 'Pricing' },
+    { id: 'mission', label: 'About' },
+    { id: 'footer', label: 'Company' },
+  ] as const
+
   return (
-    <main className="relative bg-[#0a0a0f] text-white overflow-x-hidden" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
-      <div ref={scrollRootRef} className="landing-snap-page scroll-smooth">
-        <HeroSlide />
-        <PlatformSlide />
-        <HowItWorksSlide />
-        <DriverExperienceSlide />
-        <RiderBookingSlide />
-        <MissionValuesSlide />
-        <PricingSlide />
-        <ConclusionSlide />
-      </div>
-
-      <div className="landing-snap-brand-row" data-theme={navTheme}>
-        <button
-          type="button"
-          className="landing-snap-menu-btn"
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-          tabIndex={hideFloatingChromeOnPricing ? -1 : undefined}
-          onClick={() => setMenuOpen(true)}
-          style={{
-            opacity: hideFloatingChromeOnPricing ? 0 : 1,
-            pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
-          }}
-        >
-          <List className="w-7 h-7" weight="bold" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="landing-snap-logo"
-          data-theme={navTheme}
-          onClick={scrollToTop}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 'clamp(0.75rem, 2.2vw, 1rem)',
-            opacity: hideFloatingChromeOnPricing ? 0 : 1,
-            pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
-          }}
-        >
-          <MaisonDarkModeLogo
-            forceDark
-            style={{
-              height: 'clamp(1.625rem, 4vw, 2.125rem)',
-              width: 'auto',
-            }}
-          />
-          <MaisonWordmark
-            color={null}
-            style={{
-              fontSize: 'clamp(1.2rem, 2.8vw, 1.5rem)',
-              display: 'inline-block',
-              verticalAlign: 'middle',
-            }}
-          />
-        </button>
-      </div>
-
-      <div
-        className="landing-snap-actions"
-        style={{
-          opacity: ctaHidden ? 0 : 1,
-          pointerEvents: ctaHidden ? 'none' : 'auto',
-        }}
-      >
-        <a href={getTenantAppUrl('app', '/tenant/login')} className="landing-snap-login-cta" aria-label="Login">
-          <SignIn className="w-4 h-4" weight="bold" aria-hidden />
-        </a>
-        {activeSection !== 0 ? (
-          <Link to="/signup" className="landing-snap-cta">
-            Get Started
-          </Link>
-        ) : null}
-      </div>
-
-      <nav
-        className="landing-snap-top-links"
-        aria-label="Primary"
-        style={{
-          opacity: hideFloatingChromeOnPricing ? 0 : 1,
-          pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
-        }}
-      >
-        <a
-          href="#platform"
-          onClick={(e) => {
-            e.preventDefault()
-            scrollToSectionById('platform')
-          }}
-        >
-          Product
-        </a>
-        <a
-          href="#pricing"
-          onClick={(e) => {
-            e.preventDefault()
-            scrollToSectionById('pricing')
-          }}
-        >
-          Pricing
-        </a>
-        <a
-          href="#mission"
-          onClick={(e) => {
-            e.preventDefault()
-            scrollToSectionById('mission')
-          }}
-        >
-          About
-        </a>
-        <a
-          href="#footer"
-          onClick={(e) => {
-            e.preventDefault()
-            scrollToSectionById('footer')
-          }}
-        >
-          Company
-        </a>
-        <a href={QUESTIONS_FORM_URL} target="_blank" rel="noopener noreferrer">
-          Questions
-        </a>
-      </nav>
-
-      <nav className="landing-snap-dot-nav" aria-label="Section navigation" data-theme={navTheme}>
-        {SNAP_SECTION_LABELS.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            className={`landing-snap-dot-nav__btn${i === activeSection ? ' active' : ''}`}
-            data-index={i}
-            aria-label={label}
-            aria-current={i === activeSection ? 'true' : undefined}
-            onClick={() => scrollToSnapIndex(i)}
-          />
-        ))}
-      </nav>
-
-      {menuOpen ? (
-        <div className="landing-snap-menu-overlay" role="dialog" aria-modal="true" aria-label="Site menu">
-          <div className="landing-snap-menu-overlay__top">
-            <button
-              type="button"
-              className="landing-snap-menu-close"
-              aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
-            >
-              <X className="w-8 h-8" weight="bold" aria-hidden />
-            </button>
-          </div>
-          <nav className="landing-snap-menu-overlay__nav" aria-label="Secondary">
-            <a href={getTenantAppUrl('app', '/tenant/login')} onClick={() => setMenuOpen(false)}>
-              Login
-            </a>
-            <a
-              href="#platform"
-              onClick={(e) => {
-                e.preventDefault()
-                scrollToSectionById('platform')
-              }}
-            >
-              Product
-            </a>
-            <a
-              href="#pricing"
-              onClick={(e) => {
-                e.preventDefault()
-                scrollToSectionById('pricing')
-              }}
-            >
-              Pricing
-            </a>
-            <a
-              href="#mission"
-              onClick={(e) => {
-                e.preventDefault()
-                scrollToSectionById('mission')
-              }}
-            >
-              About
-            </a>
-            <a
-              href="#footer"
-              onClick={(e) => {
-                e.preventDefault()
-                scrollToSectionById('footer')
-              }}
-            >
-              Company
-            </a>
-            <a
-              href={QUESTIONS_FORM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setMenuOpen(false)}
-            >
-              Questions
-            </a>
-            <div className="landing-snap-menu-overlay__divider" aria-hidden />
-            <Link to="/signup" onClick={() => setMenuOpen(false)}>
-              Get Started
-            </Link>
-          </nav>
+    <MotionConfig reducedMotion="user">
+      <main className="landing-root relative overflow-x-hidden">
+        <div ref={scrollRootRef} className="landing-snap-page scroll-smooth">
+          <HeroSlide />
+          <PlatformSlide />
+          <HowItWorksSlide />
+          <DriverExperienceSlide />
+          <RiderBookingSlide />
+          <MissionValuesSlide />
+          <PricingSlide />
+          <ConclusionSlide />
         </div>
-      ) : null}
-    </main>
+
+        <div className="landing-snap-brand-row">
+          <button
+            type="button"
+            className="landing-snap-menu-btn"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            tabIndex={hideFloatingChromeOnPricing ? -1 : undefined}
+            onClick={() => setMenuOpen(true)}
+            style={{
+              opacity: hideFloatingChromeOnPricing ? 0 : 1,
+              pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
+            }}
+          >
+            <List className="h-7 w-7" weight="light" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="landing-snap-logo"
+            aria-label="Maison, back to top"
+            tabIndex={hideFloatingChromeOnPricing ? -1 : undefined}
+            onClick={scrollToTop}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'clamp(0.75rem, 2.2vw, 1rem)',
+              opacity: hideFloatingChromeOnPricing ? 0 : 1,
+              pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
+            }}
+          >
+            <MaisonDarkModeLogo
+              forceDark
+              style={{
+                height: 'clamp(1.625rem, 4vw, 2.125rem)',
+                width: 'auto',
+              }}
+            />
+            <MaisonWordmark
+              color={null}
+              style={{
+                fontSize: 'clamp(1.2rem, 2.8vw, 1.5rem)',
+                display: 'inline-block',
+                verticalAlign: 'middle',
+              }}
+            />
+          </button>
+        </div>
+
+        <div
+          className="landing-snap-actions"
+          style={{
+            opacity: ctaHidden ? 0 : 1,
+            pointerEvents: ctaHidden ? 'none' : 'auto',
+          }}
+        >
+          <a href={getTenantAppUrl('app', '/tenant/login')} className="landing-snap-login-cta" aria-label="Log in">
+            <SignIn className="h-4 w-4" weight="regular" aria-hidden />
+          </a>
+          {activeSection !== 0 ? (
+            <Link to="/signup" className="landing-btn landing-btn--primary landing-snap-cta">
+              Get started
+            </Link>
+          ) : null}
+        </div>
+
+        <nav
+          className="landing-snap-top-links"
+          aria-label="Primary"
+          style={{
+            opacity: hideFloatingChromeOnPricing ? 0 : 1,
+            pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
+          }}
+        >
+          {navLinks.map((link) => (
+            <a
+              key={link.id}
+              href={`#${link.id}`}
+              aria-current={activeNavKey === link.id ? 'true' : undefined}
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSectionById(link.id)
+              }}
+            >
+              {link.label}
+            </a>
+          ))}
+          <a href={QUESTIONS_FORM_URL} target="_blank" rel="noopener noreferrer">
+            Questions
+          </a>
+        </nav>
+
+        <nav className="landing-snap-dot-nav" aria-label="Section navigation">
+          {SNAP_SECTION_LABELS.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              className={`landing-snap-dot-nav__btn${i === activeSection ? ' active' : ''}`}
+              data-index={i}
+              aria-label={label}
+              aria-current={i === activeSection ? 'true' : undefined}
+              onClick={() => scrollToSnapIndex(i)}
+            />
+          ))}
+        </nav>
+
+        {menuOpen ? (
+          <div className="landing-snap-menu-overlay" role="dialog" aria-modal="true" aria-label="Site menu">
+            <div className="landing-snap-menu-overlay__top">
+              <button
+                type="button"
+                className="landing-snap-menu-close"
+                aria-label="Close menu"
+                autoFocus
+                onClick={() => setMenuOpen(false)}
+              >
+                <X className="h-8 w-8" weight="light" aria-hidden />
+              </button>
+            </div>
+            <nav className="landing-snap-menu-overlay__nav" aria-label="Secondary">
+              <a
+                href={getTenantAppUrl('app', '/tenant/login')}
+                style={{ '--i': 0 } as CSSProperties}
+                onClick={() => setMenuOpen(false)}
+              >
+                Log in
+              </a>
+              {navLinks.map((link, i) => (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  style={{ '--i': i + 1 } as CSSProperties}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    scrollToSectionById(link.id)
+                  }}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <a
+                href={QUESTIONS_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ '--i': navLinks.length + 1 } as CSSProperties}
+                onClick={() => setMenuOpen(false)}
+              >
+                Questions
+              </a>
+              <div className="landing-snap-menu-overlay__divider" aria-hidden />
+              <Link
+                to="/signup"
+                style={{ '--i': navLinks.length + 2 } as CSSProperties}
+                onClick={() => setMenuOpen(false)}
+              >
+                Get started
+              </Link>
+            </nav>
+          </div>
+        ) : null}
+      </main>
+    </MotionConfig>
   )
 }

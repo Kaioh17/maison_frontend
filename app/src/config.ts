@@ -22,7 +22,7 @@ const FALLBACK_API_BASE = isSubdomain
 
 export const API_BASE = import.meta.env.VITE_API_BASE || FALLBACK_API_BASE;
 
-export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+export const MAPBOX_TOKEN =import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 export const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 
