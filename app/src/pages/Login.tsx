@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { Eye, EyeSlash, Envelope, Lock, ArrowRight } from '@phosphor-icons/react'
 import { loginTenant } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { getApiErrorMessage } from '@utils/apiError'
 import { getDemoCredentials } from '@api/demo'
+import DemoLoadingScreen from '@components/DemoLoadingScreen'
 import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
 
 const LOGIN_HERO_INTERVAL_MS = 60_000
@@ -31,6 +33,11 @@ export default function AuthPage() {
   const [heroUrls, setHeroUrls] = useState<[string | null, string | null]>([null, null])
   const [heroSlideIndex, setHeroSlideIndex] = useState(0)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
+  // Seeded synchronously (not in the ?demo=1 effect) so the loading screen is what
+  // paints first, never a flash of the bare login form.
+  const [demoLoading, setDemoLoading] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1',
+  )
 
   const navigate = useNavigate()
   const location = useLocation()
@@ -131,7 +138,13 @@ export default function AuthPage() {
   // Landing's "See the demo" links here with ?demo=1 (login must run on this origin: tokens are per-origin).
   useEffect(() => {
     if (new URLSearchParams(location.search).get('demo') !== '1') return
-    getDemoCredentials('tenant').then((c) => (c ? signIn(c.email, c.password) : setError('The demo is unavailable right now.')))
+    getDemoCredentials('tenant').then((c) => {
+      if (c) signIn(c.email, c.password)
+      else {
+        setDemoLoading(false)
+        setError('The demo is unavailable right now.')
+      }
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -149,6 +162,7 @@ export default function AuthPage() {
       navigate(from, { replace: true })
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'))
+      setDemoLoading(false)
     } finally {
       setIsLoading(false)
     }
@@ -177,6 +191,7 @@ export default function AuthPage() {
 
   return (
     <>
+      <AnimatePresence>{demoLoading && <DemoLoadingScreen />}</AnimatePresence>
       <style>{`
         @media (max-width: 1024px) {
           .login-image-container {

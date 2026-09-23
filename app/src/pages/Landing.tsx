@@ -677,60 +677,6 @@ function DriverExperienceSlide() {
       id="drivers"
       className="landing-snap-section landing-ambient landing-ambient--br flex items-center justify-center"
     >
-      <div className="landing-driver-route-map" aria-hidden>
-        <svg
-          className="landing-driver-route-map__svg"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="xMidYMid slice"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g className="landing-route-map__grid" aria-hidden>
-            <line x1="0" y1="20" x2="100" y2="20" />
-            <line x1="0" y1="40" x2="100" y2="40" />
-            <line x1="0" y1="60" x2="100" y2="60" />
-            <line x1="0" y1="80" x2="100" y2="80" />
-            <line x1="20" y1="0" x2="20" y2="100" />
-            <line x1="40" y1="0" x2="40" y2="100" />
-            <line x1="60" y1="0" x2="60" y2="100" />
-            <line x1="80" y1="0" x2="80" y2="100" />
-          </g>
-          <g className="landing-route-map__routes" fill="none" aria-hidden>
-            <path
-              className="landing-route-map__path landing-route-map__path--a"
-              pathLength="100"
-              d="M 15 75 C 15 56 16 44 15 35 C 24 33 38 37 45 35 C 47 28 46 20 45 15"
-            />
-            <path
-              className="landing-route-map__path landing-route-map__path--b"
-              pathLength="100"
-              d="M 85 70 C 76 52 58 48 48 40 S 28 32 25 25"
-            />
-            <path
-              className="landing-route-map__path landing-route-map__path--c"
-              pathLength="100"
-              d="M 55 20 Q 58 38 55 55 C 48 62 38 72 30 80"
-            />
-          </g>
-          <g className="landing-route-map__stops" aria-hidden>
-            <g transform="translate(15 75)">
-              <g className="landing-route-map__pulse">
-                <circle className="landing-route-map__ring" r="4.2" cx="0" cy="0" />
-                <circle className="landing-route-map__dot" r="2.1" cx="0" cy="0" />
-              </g>
-            </g>
-            <circle className="landing-route-map__dot" cx="45" cy="15" r="2.1" />
-            <g transform="translate(25 25)">
-              <g className="landing-route-map__pulse landing-route-map__pulse--delay">
-                <circle className="landing-route-map__ring" r="4.2" cx="0" cy="0" />
-                <circle className="landing-route-map__dot" r="2.1" cx="0" cy="0" />
-              </g>
-            </g>
-            <circle className="landing-route-map__dot" cx="30" cy="80" r="2.1" />
-            <circle className="landing-route-map__dot" cx="85" cy="70" r="2.1" />
-            <circle className="landing-route-map__dot" cx="55" cy="20" r="2.1" />
-          </g>
-        </svg>
-      </div>
       <div className="relative z-10 mx-auto box-border w-full max-w-[1280px] px-5 pt-12">
         <motion.div
           initial="initial"
