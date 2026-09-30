@@ -13,6 +13,7 @@ export default function AccountVerificationNotification() {
   const [isVerified, setIsVerified] = useState<boolean | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSettingUp, setIsSettingUp] = useState(false)
+  const [setupError, setSetupError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!accessToken || role !== 'tenant') {
@@ -42,6 +43,7 @@ export default function AccountVerificationNotification() {
   const handleCompleteSetup = async () => {
     try {
       setIsSettingUp(true)
+      setSetupError(null)
       const response = await setupStripeAccount()
       if (response.onboarding_link) {
         // Open the onboarding link in a new tab
@@ -49,11 +51,11 @@ export default function AccountVerificationNotification() {
         // Optionally close the notification after opening the link
         // setShowNotification(false)
       } else {
-        alert('Failed to get Stripe onboarding link')
+        setSetupError('Could not get the Stripe onboarding link. Try again in a moment.')
       }
     } catch (err: any) {
       console.error('Failed to setup Stripe account:', err)
-      alert(err?.response?.data?.message || err?.message || 'Failed to setup Stripe account')
+      setSetupError(err?.response?.data?.message || err?.message || 'Could not set up your Stripe account. Try again in a moment.')
     } finally {
       setIsSettingUp(false)
     }
@@ -123,6 +125,9 @@ export default function AccountVerificationNotification() {
               Learn more
             </button>
             {' '}about how this enables you to receive payments from riders and distribute funds to drivers seamlessly.
+          </div>
+          <div aria-live="polite">
+            {setupError && <div role="alert" style={{ marginTop: '6px', fontSize: '13px', fontWeight: 600 }}>{setupError}</div>}
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MaisonWordmark from './MaisonWordmark'
 
@@ -18,7 +18,7 @@ const QUOTES = [
  * out the instant sign-in resolves, rather than popping off.
  */
 export default function DemoLoadingScreen() {
-  const quote = useMemo(() => QUOTES[Math.floor(Math.random() * QUOTES.length)], [])
+  const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)])
 
   return (
     <motion.div
