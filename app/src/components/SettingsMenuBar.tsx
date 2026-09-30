@@ -2,6 +2,9 @@ import { useState, useEffect, createContext, useContext, type ReactNode } from '
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, Palette, CurrencyDollar, CaretRight, ChatCircle, BookOpen, WarningCircle, List, X } from '@phosphor-icons/react'
 import { getStripeLoginLink } from '@api/tenantSettings'
+import Button from '@components/Button'
+import Notice from '@components/Notice'
+import { useNotice } from '@hooks/useNotice'
 
 interface MenuItem {
   path: string
@@ -81,40 +84,22 @@ const SETTINGS_LAYOUT_CSS = `
 .bw.settings-shell {
   height: 100vh;
   box-sizing: border-box;
-  padding: clamp(20px, 2.4vw, 28px);
   display: flex;
-  gap: 18px;
-  background: var(--settings-backdrop);
-  position: relative;
+  background: var(--bw-bg);
   overflow: hidden;
 }
-.bw.settings-shell::before {
-  content: '';
-  position: absolute;
-  top: -15%;
-  left: 4%;
-  width: 55%;
-  height: 55%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--bw-accent) 18%, transparent) 0%, transparent 70%);
-  pointer-events: none;
-  filter: blur(60px);
-  z-index: 0;
-}
 .settings-panel {
-  position: relative;
-  z-index: 1;
-  border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: linear-gradient(180deg, var(--settings-panel-top), var(--settings-panel-bottom));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--bw-bg);
 }
 .settings-sidebar-panel {
-  width: 270px;
+  width: 248px;
   flex-shrink: 0;
   overflow: hidden;
+  background: var(--bw-bg-secondary);
+  border-right: 1px solid var(--bw-border);
 }
 .settings-main-panel {
   flex: 1;
@@ -122,11 +107,16 @@ const SETTINGS_LAYOUT_CSS = `
   overflow: hidden auto;
   -webkit-overflow-scrolling: touch;
 }
-/* Settings pages each set their own root wrapper to min-height: 100vh (correct when the
-   page owned full-viewport scrolling). Now the floating panel owns scroll, so that would
-   just pad every page with dead scroll space; clamp it back to the panel's own height. */
 .settings-main-panel > div {
   min-height: 0 !important;
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.settings-main-panel .bw-container {
+  width: 100%;
+  box-sizing: border-box;
 }
 .settings-sidebar-nav {
   flex: 1;
@@ -149,10 +139,6 @@ const SETTINGS_LAYOUT_CSS = `
 .settings-nav-subitem.is-active {
   background: color-mix(in srgb, var(--bw-accent) 10%, transparent);
 }
-.settings-stripe-btn:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--bw-accent) 45%, transparent);
-}
 .settings-topbar-icon-btn {
   display: flex;
   align-items: center;
@@ -160,7 +146,7 @@ const SETTINGS_LAYOUT_CSS = `
   width: 38px;
   height: 38px;
   flex-shrink: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--bw-text);
@@ -203,8 +189,6 @@ const SETTINGS_LAYOUT_CSS = `
 @media (max-width: ${MOBILE_BREAKPOINT}px) {
   .bw.settings-shell {
     flex-direction: column;
-    padding: 14px;
-    gap: 12px;
   }
   .settings-sidebar-panel {
     display: none;
@@ -220,9 +204,9 @@ const SETTINGS_LAYOUT_CSS = `
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: color-mix(in srgb, var(--bw-bg) 70%, transparent);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 40;
     opacity: 0;
     pointer-events: none;
@@ -235,13 +219,15 @@ const SETTINGS_LAYOUT_CSS = `
   .settings-drawer-panel {
     display: flex;
     position: fixed;
-    top: 14px;
-    bottom: 14px;
-    left: 14px;
-    width: 270px;
-    max-width: calc(100vw - 28px);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 280px;
+    max-width: 86vw;
     z-index: 41;
-    transform: translateX(calc(-100% - 14px));
+    background: var(--bw-bg-secondary);
+    border-right: 1px solid var(--bw-border);
+    transform: translateX(-100%);
     transition: transform 0.25s ease;
   }
   .settings-drawer-panel.is-open {
@@ -258,6 +244,7 @@ interface SettingsMenuBarProps {
 export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= MOBILE_BREAKPOINT)
   const [loadingStripeLink, setLoadingStripeLink] = useState(false)
+  const [stripeNotice, setStripeNotice] = useNotice()
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set())
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
@@ -307,15 +294,16 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
   const handleStripeLogin = async () => {
     try {
       setLoadingStripeLink(true)
+      setStripeNotice(null)
       const response = await getStripeLoginLink()
       if (response.success && response.data.login_link) {
         window.open(response.data.login_link, '_blank', 'noopener,noreferrer')
       } else {
-        alert('Failed to get Stripe login link')
+        setStripeNotice({ ok: false, text: 'Could not get the Stripe login link. Try again in a moment.' })
       }
     } catch (err: any) {
       console.error('Failed to get Stripe login link:', err)
-      alert(err?.response?.data?.message || err?.message || 'Failed to get Stripe login link')
+      setStripeNotice({ ok: false, text: err?.response?.data?.message || err?.message || 'Could not get the Stripe login link. Try again in a moment.' })
     } finally {
       setLoadingStripeLink(false)
     }
@@ -495,31 +483,11 @@ export default function SettingsMenuBar({ children }: SettingsMenuBarProps) {
       </nav>
 
       <div style={{ padding: '14px', borderTop: '1px solid var(--bw-border)', flexShrink: 0 }}>
-        <button
-          className="settings-stripe-btn"
-          onClick={handleStripeLogin}
-          disabled={loadingStripeLink}
-          style={{
-            width: '100%',
-            padding: '13px 16px',
-            borderRadius: 100,
-            backgroundColor: 'var(--bw-accent)',
-            color: '#ffffff',
-            border: 'none',
-            cursor: loadingStripeLink ? 'not-allowed' : 'pointer',
-            fontFamily: '"Work Sans", sans-serif',
-            fontWeight: 600,
-            fontSize: 14,
-            opacity: loadingStripeLink ? 0.6 : 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px'
-          }}
-        >
-          <CreditCard size={16} />
-          <span>{loadingStripeLink ? 'Loading…' : 'Stripe Dashboard'}</span>
-        </button>
+        <Notice notice={stripeNotice} />
+        <Button variant="secondary" fullWidth onClick={handleStripeLogin} disabled={loadingStripeLink}>
+          <CreditCard size={16} aria-hidden />
+          {loadingStripeLink ? 'Loading…' : 'Stripe Dashboard'}
+        </Button>
       </div>
     </>
   )

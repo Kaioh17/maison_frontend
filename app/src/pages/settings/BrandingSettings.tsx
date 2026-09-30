@@ -3,6 +3,7 @@ import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBra
 import { Palette, FloppyDisk, PencilSimple, X, CaretDown, CaretUp, Image } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 import Toggle from '@components/Toggle'
+import Button from '@components/Button'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
@@ -558,6 +559,31 @@ export default function BrandingSettings() {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* ── Appearance (not connected yet) ───────────── */}
+            <div style={sectionCard}>
+              <div style={sectionHeading}>
+                <Palette size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
+                <h2 style={sectionTitle}>Appearance</h2>
+                <span className="bw-soon-tag" style={{ marginLeft: 'auto' }}>Not connected</span>
+              </div>
+              <div className="bw-soon" aria-disabled="true" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : '16px 24px' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Corner style</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {['Square', 'Rounded', 'Pill'].map(o => (
+                      <Button key={o} variant="secondary" disabled tabIndex={-1}>{o}</Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Rider page font</div>
+                  <select disabled tabIndex={-1} style={{ width: '100%', minHeight: 40 }} defaultValue="DM Sans">
+                    {['DM Sans', 'Lexend', 'Manrope', 'Playfair Display'].map(f => <option key={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Save feedback */}

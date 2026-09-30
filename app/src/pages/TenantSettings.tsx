@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import Notice from '@components/Notice'
+import { useNotice } from '@hooks/useNotice'
 
 import { getTenantInfo } from '@api/tenant'
 
@@ -13,8 +15,6 @@ import {
   updateTenantBranding, 
 
   updateTenantLogo, 
-
-  testLogoEndpoint,
 
   type TenantConfigResponse,
 
@@ -124,6 +124,10 @@ export default function TenantSettings() {
 
   const [newServiceName, setNewServiceName] = useState('')
 
+  const [serviceError, setServiceError] = useState<string | null>(null)
+  const [notice, setNotice] = useNotice()
+  const [logoNotice, setLogoNotice] = useNotice()
+
   const [showAddServiceInput, setShowAddServiceInput] = useState(false)
 
   
@@ -211,10 +215,11 @@ export default function TenantSettings() {
   // Handler to add new service
 
   const handleAddNewService = () => {
+    setServiceError(null)
 
     if (!newServiceName.trim()) {
 
-      alert('Please enter a service name')
+      setServiceError('Enter a service name.')
 
       return
 
@@ -230,7 +235,7 @@ export default function TenantSettings() {
 
     if (editedSettings?.config?.booking?.types?.[serviceKey]) {
 
-      alert('This service already exists')
+      setServiceError('That service already exists. Choose a different name.')
 
       setNewServiceName('')
 
@@ -561,10 +566,11 @@ export default function TenantSettings() {
 
 
   const handleSaveLogo = async () => {
+    setLogoNotice(null)
 
     if (!logoFile) {
 
-      alert('Please select a logo file to upload')
+      setLogoNotice({ ok: false, text: 'Choose a logo file to upload.' })
 
       return
 
@@ -594,13 +600,13 @@ export default function TenantSettings() {
 
       setLogoPreview(null)
 
-      alert('Logo updated successfully!')
+      setLogoNotice({ ok: true, text: 'Logo updated.' })
 
     } catch (error) {
 
       console.error('Failed to update logo:', error)
 
-      alert('Failed to update logo. Please try again.')
+      setLogoNotice({ ok: false, text: 'Could not update the logo. Try again.' })
 
     } finally {
 
@@ -613,6 +619,7 @@ export default function TenantSettings() {
 
 
   const handleSaveSettings = async () => {
+    setNotice(null)
 
     try {
 
@@ -644,7 +651,7 @@ export default function TenantSettings() {
 
           if (zelleErr) {
 
-            alert(zelleErr)
+            setNotice({ ok: false, text: zelleErr })
 
             setSaving(false)
 
@@ -846,7 +853,7 @@ export default function TenantSettings() {
 
       if (updatePromises.length === 0) {
 
-        alert('No changes to save')
+        setNotice({ ok: true, text: 'No changes to save.' })
 
         setSaving(false)
 
@@ -948,13 +955,13 @@ export default function TenantSettings() {
 
       setEditingSettings(false)
 
-      alert('Settings updated successfully!')
+      setNotice({ ok: true, text: 'Settings updated.' })
 
     } catch (error) {
 
       console.error('Failed to update settings:', error)
 
-      alert('Failed to update settings. Please try again.')
+      setNotice({ ok: false, text: 'Could not update settings. Try again.' })
 
     } finally {
 
@@ -1065,24 +1072,6 @@ export default function TenantSettings() {
   }
 
 
-
-  const handleTestLogoEndpoint = async () => {
-
-    try {
-
-      const result = await testLogoEndpoint()
-
-      alert('Logo endpoint test successful! Check console for details.')
-
-    } catch (error) {
-
-      console.error('Logo endpoint test failed:', error)
-
-      alert('Logo endpoint test failed! Check console for details.')
-
-    }
-
-  }
 
 
 
@@ -1247,6 +1236,7 @@ export default function TenantSettings() {
         boxSizing: 'border-box'
 
       }}>
+        <Notice notice={notice} />
 
 
 
@@ -1577,6 +1567,8 @@ export default function TenantSettings() {
                     )}
 
                   </div>
+
+                  <Notice notice={logoNotice} />
 
                   {logoFile && (
 
@@ -2604,7 +2596,7 @@ export default function TenantSettings() {
 
                         type="button"
 
-                        onClick={() => setShowAddServiceInput(true)}
+                        onClick={() => { setServiceError(null); setShowAddServiceInput(true) }}
 
                         style={{
 
@@ -2702,7 +2694,7 @@ export default function TenantSettings() {
 
                     }}>
 
-                      <label className="bw-form-label small-muted" style={{
+                      <label className="bw-form-label small-muted" htmlFor="new-service-name" style={{
 
                         fontSize: 'clamp(11px, 1.3vw, 13px)',
 
@@ -2726,9 +2718,12 @@ export default function TenantSettings() {
 
                         className="bw-input"
 
+                        id="new-service-name"
+                        aria-invalid={serviceError ? true : undefined}
+                        aria-describedby={serviceError ? 'new-service-error' : undefined}
                         value={newServiceName}
 
-                        onChange={(e) => setNewServiceName(e.target.value)}
+                        onChange={(e) => { setNewServiceName(e.target.value); setServiceError(null) }}
 
                         placeholder="e.g., Event Dropoff, Point to Point"
 
@@ -2775,6 +2770,7 @@ export default function TenantSettings() {
                         }}
 
                       />
+                      {serviceError && <div id="new-service-error" role="alert" className="bw-field-error">{serviceError}</div>}
 
                       <div style={{ 
 

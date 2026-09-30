@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
-import { User, Buildings, CreditCard, TrendUp, CheckCircle, Warning } from '@phosphor-icons/react'
+import { User, Buildings, CreditCard, TrendUp } from '@phosphor-icons/react'
+import { useNavigate } from 'react-router-dom'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
+import StatusPill from '@components/StatusPill'
+import StatTile from '@components/StatTile'
+import Button from '@components/Button'
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '3px 10px', borderRadius: 100,
-      fontSize: 12, fontWeight: 500, fontFamily: '"Work Sans", sans-serif',
-      backgroundColor: ok ? 'rgba(30, 127, 74, 0.1)' : 'rgba(0,0,0,0.06)',
-      color: ok ? 'var(--bw-success)' : 'var(--bw-muted)'
-    }}>
-      {ok ? <CheckCircle weight="fill" size={13} aria-hidden /> : <Warning weight="fill" size={13} aria-hidden />}
-      {label}
-    </span>
-  )
+  return <StatusPill status={ok ? 'active' : 'default'} label={label} />
 }
 
 export default function GeneralView() {
@@ -24,6 +17,7 @@ export default function GeneralView() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [isWide, setIsWide] = useState(window.innerWidth >= 1600)
   const { isOpen: menuIsOpen } = useSettingsMenu()
+  const navigate = useNavigate()
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
@@ -72,7 +66,7 @@ export default function GeneralView() {
     backgroundColor: 'var(--bw-bg-secondary)',
     border: '1px solid var(--bw-border)',
     borderRadius: 10,
-    padding: isMobile ? '16px' : '20px 24px'
+    padding: isMobile ? '16px' : '18px 20px'
   }
 
   const sectionHeading: React.CSSProperties = {
@@ -86,7 +80,7 @@ export default function GeneralView() {
   // neighbor (Account, 7 rows) instead of leaving one dead gap at the bottom.
   const rowsWrap: React.CSSProperties = {
     display: 'flex', flexDirection: 'column',
-    flex: 1, justifyContent: 'space-between'
+    flex: 1, justifyContent: 'flex-start'
   }
 
   const sectionTitle: React.CSSProperties = {
@@ -157,12 +151,20 @@ export default function GeneralView() {
               A summary of your account, company, and subscription details.
             </p>
 
+            <div className="kpi-grid" style={{ marginBottom: 20 }}>
+              <StatTile label="Drivers" value={info?.stats?.drivers_count ?? 0} />
+              <StatTile label="Total rides" value={info?.stats?.total_ride_count ?? 0} />
+              <StatTile label="Rides today" value={info?.stats?.daily_ride_count ?? 0} />
+              <StatTile label="Plan" value={currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} sub={subscriptionStatus === 'active' ? 'Active' : subscriptionStatus} />
+            </div>
+
             {(() => {
               const accountCard = (
                 <div style={sectionCard}>
                   <div style={sectionHeading}>
                     <User size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                     <h2 style={sectionTitle}>Account</h2>
+                    <Button variant="ghost" style={{ marginLeft: 'auto', minHeight: 28, padding: '4px 8px', fontSize: 12 }} onClick={() => navigate('/tenant/settings/account')}>Edit</Button>
                   </div>
                   <div style={rowsWrap}>
                     <div style={rowStyle}>
@@ -204,6 +206,7 @@ export default function GeneralView() {
                   <div style={sectionHeading}>
                     <Buildings size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                     <h2 style={sectionTitle}>Company</h2>
+                    <Button variant="ghost" style={{ marginLeft: 'auto', minHeight: 28, padding: '4px 8px', fontSize: 12 }} onClick={() => navigate('/tenant/settings/company')}>Edit</Button>
                   </div>
                   <div style={rowsWrap}>
                     <div style={rowStyle}>
@@ -238,6 +241,7 @@ export default function GeneralView() {
                   <div style={sectionHeading}>
                     <CreditCard size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                     <h2 style={sectionTitle}>Billing</h2>
+                    <Button variant="ghost" style={{ marginLeft: 'auto', minHeight: 28, padding: '4px 8px', fontSize: 12 }} onClick={() => navigate('/tenant/settings/plans')}>Edit</Button>
                   </div>
                   <div style={rowsWrap}>
                     <div style={rowStyle}>
@@ -246,16 +250,7 @@ export default function GeneralView() {
                           tier -- a Warning triangle there read as something being
                           wrong. Every tier bills through Stripe now, so a plain
                           CreditCard badge is accurate for all of them. */}
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 10px', borderRadius: 100,
-                        fontSize: 12, fontWeight: 500, fontFamily: '"Work Sans", sans-serif',
-                        backgroundColor: 'rgba(108, 99, 232, 0.1)',
-                        color: 'var(--bw-accent)'
-                      }}>
-                        <CreditCard weight="fill" size={13} aria-hidden />
-                        {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
-                      </span>
+                      <StatusPill status="assigned" label={currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} />
                     </div>
                     <div style={rowStyle}>
                       <span style={rowLabel}>Status</span>

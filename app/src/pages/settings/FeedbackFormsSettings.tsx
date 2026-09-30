@@ -92,14 +92,16 @@ function CopyableBlock({
   isMobile: boolean
 }) {
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
 
   const onCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(text)
+      setCopyFailed(false)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
-      alert('Could not copy. Select the text and copy manually.')
+      setCopyFailed(true)
     }
   }, [text])
 
@@ -181,6 +183,9 @@ function CopyableBlock({
       >
         {text}
       </pre>
+      <div aria-live="polite">
+        {copyFailed && <div className="bw-field-error" style={{ padding: '8px 14px' }}>Could not copy. Select the text and copy it manually.</div>}
+      </div>
     </div>
   )
 }
