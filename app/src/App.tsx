@@ -64,6 +64,7 @@ const RidersTab = lazy(() => import('@pages/tenant/RidersTab'))
 const BookingsTab = lazy(() => import('@pages/tenant/BookingsTab'))
 const VehiclesTab = lazy(() => import('@pages/tenant/VehiclesTab'))
 const FeedbackTab = lazy(() => import('@pages/tenant/FeedbackTab'))
+const AssistantTab = lazy(() => import('@pages/tenant/AssistantTab'))
 const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
 const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
@@ -214,6 +215,7 @@ export default function App() {
         <Route path="/tenant/riders" element={<RidersTab />} />
         <Route path="/tenant/bookings" element={<BookingsTab />} />
         <Route path="/tenant/vehicles" element={<VehiclesTab />} />
+        <Route path="/tenant/assistant" element={<AssistantTab />} />
         <Route path="/tenant/feedback" element={<FeedbackTab />} />
       </Route>
       <Route
