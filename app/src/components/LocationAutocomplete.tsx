@@ -216,13 +216,12 @@ export default function LocationAutocomplete({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            marginBottom: '8px',
-            fontSize: 'clamp(13px, 2vw, 14px)',
-            fontWeight: 500,
-            color: 'var(--bw-text)',
+            marginBottom: '6px',
+            fontSize: 12,
+            color: 'var(--bw-muted)',
           }}
         >
-          <MapPin size={16} />
+          <MapPin size={14} aria-hidden />
           {label}
         </label>
       )}
@@ -242,15 +241,7 @@ export default function LocationAutocomplete({
           placeholder={placeholder}
           disabled={disabled}
           style={{
-            width: '100%',
-            padding: 'clamp(10px, 2vw, 12px)',
-            paddingRight: isLoading ? '40px' : 'clamp(10px, 2vw, 12px)',
-            borderRadius: '8px',
-            border: '1px solid var(--bw-border)',
-            backgroundColor: 'var(--bw-bg)',
-            color: 'var(--bw-text)',
-            fontFamily: 'Work Sans, sans-serif',
-            fontSize: 'clamp(13px, 2vw, 14px)',
+            paddingRight: isLoading ? '40px' : undefined,
             ...inputStyle,
           }}
         />

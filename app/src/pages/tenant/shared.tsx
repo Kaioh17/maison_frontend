@@ -103,88 +103,78 @@ export const TENANT_DASHBOARD_SHELL_GAP = 'clamp(20px, 2.4vw, 28px)'
  *  uses for its sidebar/main split (see settings-panel in that file). */
 export const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout {
-  padding: ${TENANT_DASHBOARD_SHELL_GAP};
-  box-sizing: border-box;
-  background: var(--settings-backdrop);
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  min-height: 100vh;
+  background: var(--bw-bg);
+  color: var(--bw-text);
 }
-.bw.tenant-dashboard-layout::before {
-  content: '';
-  position: absolute;
-  top: -15%;
-  left: 4%;
-  width: 55%;
-  height: 55%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--bw-accent) 18%, transparent) 0%, transparent 70%);
-  pointer-events: none;
-  filter: blur(60px);
-  z-index: 0;
-}
+/* Docked sidebar: sticky, full height, single right border (no floating card). */
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
-  position: fixed;
-  top: ${TENANT_DASHBOARD_SHELL_GAP};
-  left: ${TENANT_DASHBOARD_SHELL_GAP};
-  bottom: ${TENANT_DASHBOARD_SHELL_GAP};
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
   width: 72px;
+  flex: none;
   z-index: 999;
+  overflow-x: hidden;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: linear-gradient(180deg, var(--settings-panel-top), var(--settings-panel-bottom));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3);
-  transition: width 0.3s ease, box-shadow 0.3s ease;
-  transform: translateX(0);
+  border-right: 1px solid var(--bw-border);
+  background: var(--bw-bg-secondary);
+  transition: width 0.15s ease;
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
-  width: min(360px, 100vw);
+  width: 248px;
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-main {
-  position: relative;
-  z-index: 1;
-  height: calc(100vh - 2 * ${TENANT_DASHBOARD_SHELL_GAP});
-  overflow: hidden auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: linear-gradient(180deg, var(--settings-panel-top), var(--settings-panel-bottom));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(0, 0, 0, 0.3);
-  transition: margin-left 0.3s ease, width 0.3s ease;
-  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bw-bg);
 }
-/* Tab pages each set their own root wrapper to min-height: 100vh (correct when the
-   page owned full-viewport scrolling). Now the floating panel owns scroll, so that
-   would just pad every tab with dead scroll space; clamp it back to the panel's own
-   height (mirrors SettingsMenuBar's identical override for its main panel). */
-.bw.tenant-dashboard-layout .tenant-dashboard-main > div {
-  min-height: 0 !important;
+.bw.tenant-dashboard-layout .tenant-dashboard-content {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 24px 28px 56px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+/* Chat page owns the whole viewport: no page padding, its own header. */
+.bw.tenant-dashboard-layout .tenant-dashboard-content.is-chat {
+  max-width: none;
+  padding: 0;
+}
+.bw.tenant-dashboard-layout .assistant-page {
+  height: 100dvh;
 }
 @media (max-width: 768px) {
-  .bw.tenant-dashboard-layout {
+  .bw.tenant-dashboard-layout .tenant-dashboard-content.is-chat {
     padding: 0;
   }
-  /* Mobile has no room to spare for a floating card inset — the content panel
-     runs the full device width instead of sitting in a bordered/shadowed card. */
-  .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-    background: var(--bw-bg);
+  .bw.tenant-dashboard-layout .assistant-page {
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+  }
+  .bw.tenant-dashboard-layout .tenant-dashboard-content {
+    padding: 16px 16px 88px;
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
-    top: 14px;
-    left: 14px;
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 14px);
-    width: calc(100vw - 28px);
-    transform: translateX(calc(-100% - 14px));
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    box-sizing: border-box;
+    width: min(300px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-sidebar.is-open {
+    width: min(300px, 86vw);
     transform: translateX(0);
-  }
-  .bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) {
-    transform: translateX(calc(-100% - 14px));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-menu-btn {
@@ -212,7 +202,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   }
   /* keep the full-width content panel clear of the fixed bottom tab bar */
   .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    height: calc(100vh - 64px - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button {
@@ -227,10 +217,10 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   border: none;
   cursor: pointer;
   color: var(--bw-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-family: "Work Sans", sans-serif;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   -webkit-tap-highlight-color: transparent;
   transition: color 0.15s ease, transform 0.1s ease;
   position: relative;
@@ -305,10 +295,11 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card {
   cursor: pointer;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border-color: var(--bw-border-strong);
+  background-color: var(--bw-bg-hover);
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card:active {
   transform: scale(0.98);
@@ -328,31 +319,135 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   font-variant-numeric: tabular-nums;
 }
 .bw.tenant-dashboard-layout .bw-card {
-  border-radius: 16px;
+  border-radius: 10px;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bw-bg);
+  border-bottom: 1px solid var(--bw-border);
+  padding: 10px 28px;
+  min-height: 60px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 @media (max-width: 768px) {
   .bw.tenant-dashboard-layout .tenant-dashboard-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    margin-left: clamp(-32px, -3vw, -16px);
-    margin-right: clamp(-32px, -3vw, -16px);
-    padding-left: clamp(16px, 3vw, 32px);
-    padding-right: clamp(16px, 3vw, 32px);
-    padding-top: calc(max(env(safe-area-inset-top), 0px) + 10px);
-    background: color-mix(in srgb, var(--settings-panel-top) 88%, transparent);
-    -webkit-backdrop-filter: saturate(180%) blur(12px);
-    backdrop-filter: saturate(180%) blur(12px);
+    padding: calc(max(env(safe-area-inset-top), 0px) + 10px) 16px 10px;
   }
 }
 .bw.tenant-dashboard-layout .tenant-driver-table-row {
   transition: background-color 0.15s ease;
 }
 .bw.tenant-dashboard-layout .tenant-driver-table-row:hover {
-  background-color: rgba(124, 58, 237, 0.07);
+  background-color: var(--bw-bg-hover);
 }
-[data-theme="light"] .bw.tenant-dashboard-layout .tenant-driver-table-row:hover {
-  background-color: rgba(124, 58, 237, 0.06);
+
+/* Sidebar navigation (grouped) */
+.bw.tenant-dashboard-layout .tnav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+}
+.bw.tenant-dashboard-layout .tnav-label {
+  padding: 16px 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bw-muted);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) .tnav-label {
+  height: 1px;
+  margin: 8px 12px;
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+  background: var(--bw-border);
+}
+.bw.tenant-dashboard-layout .tnav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bw-muted);
+  font-family: "Work Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.bw.tenant-dashboard-layout .tnav-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--bw-muted);
+  cursor: pointer;
+}
+.bw.tenant-dashboard-layout .tnav-icon-btn:hover {
+  background: var(--bw-bg-hover);
+  color: var(--bw-text);
+}
+.bw.tenant-dashboard-layout .tnav-item:hover {
+  background: var(--bw-bg-hover);
+  color: var(--bw-text);
+}
+.bw.tenant-dashboard-layout .tnav-item:focus-visible {
+  outline: 2px solid var(--bw-accent);
+  outline-offset: -2px;
+}
+.bw.tenant-dashboard-layout .tnav-item.is-active {
+  background: var(--bw-bg-hover-strong);
+  color: var(--bw-text);
+}
+.bw.tenant-dashboard-layout .tnav-item.is-active svg {
+  color: var(--bw-accent);
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) .tnav-item {
+  justify-content: center;
+  padding: 8px;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) .tnav-item span {
+  display: none;
+}
+.bw.tenant-dashboard-layout .tnav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bw-status-pending-bg);
+  color: var(--bw-status-pending-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-sidebar:not(.is-open) .tnav-badge {
+  display: none;
+}
+.bw.tenant-dashboard-layout .tenant-dashboard-topbar h1 {
+  margin: 0;
+  font-family: "Work Sans", sans-serif;
+  font-size: clamp(20px, 3vw, 24px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--bw-text);
 }
 `.trim()
 
@@ -399,7 +494,7 @@ export function RatingStar({
   )
 }
 
-export type TabType = 'overview' | 'drivers' | 'riders' | 'bookings' | 'vehicles' | 'settings' | 'feedback'
+export type TabType = 'overview' | 'drivers' | 'riders' | 'bookings' | 'vehicles' | 'settings' | 'feedback' | 'assistant'
 export type OverviewLinkKey = 'rider' | 'driver' | 'landing'
 export type TenantPageThemeMode = 'dark' | 'light'
 export type OverviewLinkQrState = {
@@ -540,7 +635,7 @@ export function overviewBookingStatusDisplay(status: string | undefined): { labe
   const s = status?.toLowerCase() || ''
   if (s === 'active') return { label: 'Active', bg: 'var(--bw-status-active-bg)', color: 'var(--bw-status-active-text)' }
   if (s === 'pending') return { label: 'Pending', bg: 'var(--bw-status-pending-bg)', color: 'var(--bw-status-pending-text)' }
-  if (s === 'completed' || s === 'done' || s === 'complete') return { label: 'Done', bg: 'var(--bw-status-done-bg)', color: 'var(--bw-status-done-text)' }
+  if (s === 'completed' || s === 'done' || s === 'complete') return { label: 'Completed', bg: 'var(--bw-status-done-bg)', color: 'var(--bw-status-done-text)' }
   if (s === 'cancelled' || s === 'canceled') return { label: 'Cancelled', bg: 'var(--bw-status-cancelled-bg)', color: 'var(--bw-status-cancelled-text)' }
   if (s === 'confirmed') return { label: 'Confirmed', bg: 'var(--bw-status-confirmed-bg)', color: 'var(--bw-status-confirmed-text)' }
   if (s === 'assigned') return { label: 'Assigned', bg: 'var(--bw-status-assigned-bg)', color: 'var(--bw-status-assigned-text)' }
@@ -552,10 +647,24 @@ export function tenantDriverTypeLabel(driverType: string): 'In-House' | 'Outsour
   return driverType === 'in_house' ? 'In-House' : 'Outsourced'
 }
 
+/** "(773) 241-1362" / "+1 (773) 241-1362" for 10/11-digit US numbers; anything else is returned as typed. */
+export function formatTenantPhone(phone: string | null | undefined): string {
+  const raw = (phone || '').trim()
+  const d = raw.replace(/\D/g, '')
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+  if (d.length === 11 && d[0] === '1') return `+1 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`
+  return raw
+}
+
 /** Best-effort `tel:` link for tenant driver cards. */
 export function tenantTelHrefFromPhone(phone: string): string | null {
   const digits = (phone || '').replace(/\D/g, '')
   if (!digits) return null
   if (digits.length === 10) return `tel:+1${digits}`
   return `tel:+${digits}`
+}
+
+const usdFormats = [0, 2].map((d) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }))
+export function formatUsd(n: number, digits: 0 | 2 = 2): string {
+  return usdFormats[digits === 0 ? 0 : 1].format(n)
 }

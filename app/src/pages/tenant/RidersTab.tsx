@@ -1,10 +1,13 @@
 import { useMemo, useState, useCallback } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { User, Phone, MagnifyingGlass, MapPin, XCircle, Car, Clock } from '@phosphor-icons/react'
+import { MagnifyingGlass, MapPin, Car, Clock } from '@phosphor-icons/react'
 import type { TenantShellCtx } from './TenantShell'
-import { overviewDriverInitials, tenantTelHrefFromPhone } from './shared'
+import { formatUsd, formatTenantPhone, overviewDriverInitials, tenantTelHrefFromPhone } from './shared'
 import { getTenantBookings, type TenantRiderEmailOption, type BookingResponse } from '@api/tenant'
 import StatusPill from '@components/StatusPill'
+import Button from '@components/Button'
+import Card from '@components/Card'
+import Modal from '@components/Modal'
 
 function riderAddressLine(r: { address?: string | null; city?: string | null; state?: string | null; postal_code?: string | null }): string {
   return [r.address, r.city, [r.state, r.postal_code].filter(Boolean).join(' ')].filter(Boolean).join(', ')
@@ -21,7 +24,7 @@ function rideDateTime(iso: string): string {
 }
 
 export default function RidersTab() {
-  const { riders, isMobile, driverPalette, ridersTableGridColumns } = useOutletContext<TenantShellCtx>()
+  const { riders } = useOutletContext<TenantShellCtx>()
   const [search, setSearch] = useState('')
 
   // Rider ride-receipts modal (past + future rides for one rider)
@@ -73,214 +76,105 @@ export default function RidersTab() {
   }, [riders, search])
 
   return (
-    <>
-      <div
-        className="bw-content-header"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'clamp(12px, 2vw, 18px)',
-          gap: 'clamp(12px, 2vw, 16px)',
-        }}
-      >
-        <div style={{ fontFamily: '"Work Sans", sans-serif', fontSize: 13, color: 'var(--bw-muted)' }}>
-          {riders.length} rider{riders.length === 1 ? '' : 's'} signed on
-        </div>
-      </div>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {riders.length > 0 && (
-        <div style={{ marginBottom: 'clamp(12px, 2vw, 18px)', position: 'relative', maxWidth: isMobile ? '100%' : 320 }}>
-          <MagnifyingGlass
-            size={17}
-            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--bw-muted)', pointerEvents: 'none', zIndex: 1 }}
-            aria-hidden
-          />
-          <input
-            type="search"
-            className="bw-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
-            aria-label="Search riders"
-            style={{ width: '100%', padding: '8px 12px 8px 38px', boxSizing: 'border-box', fontFamily: '"Work Sans", sans-serif', fontSize: 13 }}
-          />
+        <div className="bw-searchbar">
+          <div className="dt-search" style={{ position: 'relative', flex: '1 1 260px', maxWidth: 360 }}>
+            <MagnifyingGlass size={16} aria-hidden style={{ position: 'absolute', left: 12, top: 12, color: 'var(--bw-muted)', pointerEvents: 'none' }} />
+            <input
+              type="search"
+              className="bw-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or email…"
+              aria-label="Search riders"
+              style={{ paddingLeft: 36 }}
+            />
+          </div>
+          {search.trim() && (
+            <span className="bw-panel-meta">{filteredRiders.length} of {riders.length}</span>
+          )}
         </div>
       )}
 
-      {isMobile ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(12px, 2vw, 16px)' }}>
-          {riders.length === 0 ? (
-            <div className="bw-empty-state" style={{ padding: 'clamp(24px, 4vw, 48px)', textAlign: 'center' }}>
-              <div className="bw-empty-icon" style={{ marginBottom: 'clamp(12px, 2vw, 16px)', display: 'flex', justifyContent: 'center' }}>
-                <User size={32} style={{ width: 'clamp(32px, 5vw, 48px)', height: 'clamp(32px, 5vw, 48px)', color: 'var(--bw-muted)' }} />
-              </div>
-              <div className="bw-empty-text" style={{ fontSize: 'clamp(16px, 2.5vw, 20px)', color: 'var(--bw-text)', marginBottom: 'clamp(8px, 1.5vw, 12px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500 }}>
-                No riders yet
-              </div>
-              <div className="bw-empty-subtext" style={{ fontSize: 'clamp(14px, 2vw, 16px)', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif' }}>
-                Riders will show up here once they sign up.
-              </div>
+      <Card style={{ padding: 0 }}>
+        {filteredRiders.length === 0 ? (
+          <div className="bw-empty">
+            <div style={{ color: 'var(--bw-text)', fontWeight: 500, marginBottom: 6 }}>
+              {riders.length === 0 ? 'No riders yet' : 'No matching riders'}
             </div>
-          ) : filteredRiders.length === 0 ? (
-            <div className="bw-empty-state" style={{ padding: 'clamp(24px, 4vw, 48px)', textAlign: 'center' }}>
-              <div className="bw-empty-text" style={{ fontSize: 'clamp(16px, 2.5vw, 20px)', color: 'var(--bw-text)', marginBottom: 'clamp(8px, 1.5vw, 12px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500 }}>
-                No matching riders
-              </div>
-              <div className="bw-empty-subtext" style={{ fontSize: 'clamp(14px, 2vw, 16px)', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif' }}>
-                Try adjusting your search
-              </div>
-            </div>
-          ) : (
-            filteredRiders.map((rider) => {
-              const telHref = tenantTelHrefFromPhone(rider.phone_no ?? '')
-              const address = riderAddressLine(rider)
-              return (
-                <div
-                  key={rider.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openRiderReceipts(rider)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRiderReceipts(rider) } }}
-                  style={{ border: driverPalette.line, borderRadius: 'clamp(8px, 1.5vw, 12px)', padding: 'clamp(16px, 3vw, 20px)', backgroundColor: driverPalette.card, cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
-                    <div
-                      style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: 15, fontWeight: 700, fontFamily: '"Work Sans", sans-serif', flexShrink: 0 }}
-                      aria-hidden
+            {riders.length === 0 ? 'Riders will show up here once they sign up.' : 'Try adjusting your search.'}
+          </div>
+        ) : (
+          <div className="dt-wrap">
+            <table className="dt" style={{ minWidth: 720 }}>
+              <thead>
+                <tr><th>Rider</th><th>Phone</th><th>Address</th><th>Joined</th><th style={{ textAlign: 'right' }}>Rides</th></tr>
+              </thead>
+              <tbody>
+                {filteredRiders.map((rider) => {
+                  const telHref = tenantTelHrefFromPhone(rider.phone_no ?? '')
+                  return (
+                    <tr
+                      key={rider.id}
+                      className="is-clickable"
+                      onClick={() => openRiderReceipts(rider)}
                     >
-                      {overviewDriverInitials(rider)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: 'clamp(17px, 3vw, 20px)', fontWeight: 600, color: 'var(--bw-text)', fontFamily: '"Work Sans", sans-serif', lineHeight: 1.2 }}>
-                        {rider.first_name} {rider.last_name}
-                      </span>
-                      <span style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif' }} title={rider.email}>
-                        {rider.email}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: driverPalette.statsLabel, fontFamily: '"Work Sans", sans-serif', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                      {rider.total_bookings} ride{rider.total_bookings === 1 ? '' : 's'}
-                    </span>
-                  </div>
-
-                  {telHref ? (
-                    <a href={telHref} onClick={(e) => e.stopPropagation()} className="tenant-driver-card-menu" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, textDecoration: 'none', color: 'var(--bw-text)', fontFamily: '"Work Sans", sans-serif' }}>
-                      <Phone size={18} weight="bold" style={{ flexShrink: 0, color: 'var(--bw-muted)' }} aria-hidden />
-                      <span style={{ fontWeight: 600, fontSize: 'clamp(15px, 2vw, 16px)' }}>{rider.phone_no}</span>
-                    </a>
-                  ) : null}
-
-                  {address ? (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10, color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 13 }}>
-                      <MapPin size={18} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden />
-                      <span>{address}</span>
-                    </div>
-                  ) : null}
-
-                  <div style={{ fontSize: 12, color: driverPalette.statsLabel, fontFamily: '"Work Sans", sans-serif' }}>
-                    Joined {riderJoinedDate(rider.created_on)}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      ) : (
-        <div className="bw-table">
-          <div className="bw-table-header" role="row" style={{ gridTemplateColumns: ridersTableGridColumns, display: 'grid', gap: 16, padding: '16px 24px', alignItems: 'center' }}>
-            <span role="columnheader">Rider</span>
-            <span role="columnheader">Phone</span>
-            <span role="columnheader">Address</span>
-            <span role="columnheader">Joined</span>
-            <span role="columnheader" style={{ justifySelf: 'end' }}>Rides</span>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span
+                            aria-hidden
+                            style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'grid', placeItems: 'center', background: 'var(--bw-bg-hover-strong)', fontSize: 12, fontWeight: 500 }}
+                          >
+                            {overviewDriverInitials(rider)}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="strong"><button type="button" className="dt-rowbtn">{rider.first_name} {rider.last_name}</button></div>
+                            <div className="sub">{rider.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td data-label="Phone" style={{ whiteSpace: 'nowrap' }}>
+                        {rider.phone_no ? (
+                          telHref ? (
+                            <a href={telHref} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{formatTenantPhone(rider.phone_no)}</a>
+                          ) : formatTenantPhone(rider.phone_no)
+                        ) : <span className="sub">-</span>}
+                      </td>
+                      <td data-label="Address" style={{ maxWidth: 280 }} className="sub">{riderAddressLine(rider) || '-'}</td>
+                      <td data-label="Joined" style={{ whiteSpace: 'nowrap' }} className="sub">{riderJoinedDate(rider.created_on)}</td>
+                      <td data-label="Rides" className="strong" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{rider.total_bookings}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-          {riders.length === 0 ? (
-            <div className="bw-empty-state">
-              <div className="bw-empty-icon"><User size={32} /></div>
-              <div className="bw-empty-text">No riders yet</div>
-              <div className="bw-empty-subtext">Riders will show up here once they sign up.</div>
-            </div>
-          ) : filteredRiders.length === 0 ? (
-            <div className="bw-empty-state">
-              <div className="bw-empty-text">No matching riders</div>
-              <div className="bw-empty-subtext">Try adjusting your search</div>
-            </div>
-          ) : (
-            filteredRiders.map((rider) => (
-              <div
-                key={rider.id}
-                role="row"
-                className="bw-table-row"
-                onClick={() => openRiderReceipts(rider)}
-                style={{ cursor: 'pointer', display: 'grid', gridTemplateColumns: ridersTableGridColumns, gap: 16, padding: '16px 24px', alignItems: 'center' }}
-              >
-                <span role="gridcell" title={`${rider.first_name} ${rider.last_name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <span aria-hidden style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#7c3aed', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: 14, fontWeight: 700, flexShrink: 0, fontFamily: '"Work Sans", sans-serif' }}>
-                    {overviewDriverInitials(rider)}
-                  </span>
-                  <span style={{ minWidth: 0, display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
-                    <span className="bw-user-name" style={{ display: 'block' }}>{rider.first_name} {rider.last_name}</span>
-                    <span className="bw-user-email" style={{ display: 'block' }}>{rider.email}</span>
-                  </span>
-                </span>
-                <span role="gridcell" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
-                  {rider.phone_no ? (<><Phone size={12} aria-hidden /> {rider.phone_no}</>) : '—'}
-                </span>
-                <span role="gridcell" style={{ fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
-                  {riderAddressLine(rider) || '—'}
-                </span>
-                <span role="gridcell" style={{ fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
-                  {riderJoinedDate(rider.created_on)}
-                </span>
-                <span role="gridcell" style={{ justifySelf: 'end', fontWeight: 700, fontFamily: '"Work Sans", sans-serif' }}>
-                  {rider.total_bookings}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+        )}
+      </Card>
 
-      {/* Rider ride receipts modal */}
       {receiptsRider && (
-        <div className="bw-modal-overlay" onClick={closeRiderReceipts}>
-          <div
-            className="bw-modal"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 640, width: '90vw', maxHeight: '85vh', overflowY: 'auto' }}
-          >
-            <div className="bw-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'clamp(16px, 2.5vw, 24px)', borderBottom: '1px solid var(--bw-border)' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: 400, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-text)' }}>
-                  {receiptsRider.first_name} {receiptsRider.last_name}
-                </h3>
-                <div style={{ fontSize: 13, color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', marginTop: 2 }}>
-                  {receiptsRider.email}
-                </div>
-              </div>
-              <button className="bw-btn-icon" onClick={closeRiderReceipts} style={{ padding: '8px', minWidth: 32, minHeight: 32 }} aria-label="Close ride receipts">
-                <XCircle size={20} />
-              </button>
+        <Modal
+          title={`${receiptsRider.first_name} ${receiptsRider.last_name}`}
+          onClose={closeRiderReceipts}
+          footer={<Button variant="secondary" onClick={closeRiderReceipts}>Close</Button>}
+        >
+          <div className="bw-panel-meta" style={{ marginBottom: 16 }}>{receiptsRider.email}</div>
+          {loadingReceipts ? (
+            <div className="bw-empty">Loading rides…</div>
+          ) : receiptsError ? (
+            <div className="bw-empty" style={{ color: 'var(--bw-error)' }}>{receiptsError}</div>
+          ) : upcomingBookings.length === 0 && pastBookings.length === 0 ? (
+            <div className="bw-empty">No rides yet for this rider.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <RideReceiptSection title="Upcoming rides" bookings={upcomingBookings} />
+              <RideReceiptSection title="Past rides" bookings={pastBookings} />
             </div>
-            <div className="bw-modal-body" style={{ padding: 'clamp(16px, 2.5vw, 24px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 300, display: 'flex', flexDirection: 'column', gap: 'clamp(16px, 2.5vw, 24px)' }}>
-              {loadingReceipts ? (
-                <div style={{ textAlign: 'center', padding: 40, color: 'var(--bw-muted)' }}>Loading rides…</div>
-              ) : receiptsError ? (
-                <div style={{ textAlign: 'center', padding: 40, color: 'var(--bw-error)' }}>{receiptsError}</div>
-              ) : upcomingBookings.length === 0 && pastBookings.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40, color: 'var(--bw-muted)' }}>No rides yet for this rider.</div>
-              ) : (
-                <>
-                  <RideReceiptSection title="Upcoming rides" bookings={upcomingBookings} />
-                  <RideReceiptSection title="Past rides" bookings={pastBookings} />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+          )}
+        </Modal>
       )}
-    </>
+    </div>
   )
 }
 
@@ -288,7 +182,7 @@ function RideReceiptSection({ title, bookings }: { title: string; bookings: Book
   if (bookings.length === 0) return null
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--bw-muted)', marginBottom: 10 }}>
+      <div className="bw-section-label">
         {title} ({bookings.length})
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -312,7 +206,7 @@ function RideReceiptSection({ title, bookings }: { title: string; bookings: Book
               </div>
             ) : null}
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--bw-text)' }}>
-              ${(b.estimated_price ?? 0).toFixed(2)}
+              {formatUsd(b.estimated_price ?? 0)}
             </div>
           </div>
         ))}

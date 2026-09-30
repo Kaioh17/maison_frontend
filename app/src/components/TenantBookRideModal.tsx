@@ -1,5 +1,6 @@
+import Button from '@components/Button'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { XCircle, Calendar, User, MapPin } from '@phosphor-icons/react'
+import { X, XCircle, Calendar, User, MapPin } from '@phosphor-icons/react'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
 import {
@@ -319,19 +320,9 @@ export default function TenantBookRideModal({
         style={{ maxWidth: isMobile ? '100%' : 640, maxHeight: 'min(92vh, 900px)' }}
       >
         <div className="bw-modal-header">
-          <h3
-            style={{
-              margin: 0,
-              fontFamily: 'DM Sans, sans-serif',
-              fontSize: isMobile ? 22 : 28,
-              fontWeight: 200,
-              color: 'var(--bw-text)',
-            }}
-          >
-            Schedule ride for customer
-          </h3>
+          <h3>Schedule ride for customer</h3>
           <button type="button" className="bw-btn-icon" onClick={handleClose} aria-label="Close">
-            <XCircle size={20} />
+            <X size={18} aria-hidden />
           </button>
         </div>
 
@@ -756,37 +747,12 @@ export default function TenantBookRideModal({
             </section>
           </div>
 
-          <div
-            className="bw-modal-footer"
-            style={{
-              display: 'flex',
-              gap: 12,
-              justifyContent: 'flex-end',
-              padding: '16px 24px',
-              borderTop: '1px solid var(--bw-border)',
-            }}
-          >
-            <button
-              type="button"
-              className="bw-btn"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bw-btn bw-btn-primary"
-              disabled={isSubmitting || Boolean(successMessage)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <Calendar size={18} />
-              {isSubmitting ? 'Scheduling…' : 'Schedule ride'}
-            </button>
+          <div className="bw-modal-footer">
+            <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting || Boolean(successMessage)}>
+              <Calendar size={18} aria-hidden />
+              {isSubmitting ? 'Scheduling...' : 'Schedule ride'}
+            </Button>
           </div>
         </form>
       </div>

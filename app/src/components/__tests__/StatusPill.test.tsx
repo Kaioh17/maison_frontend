@@ -53,7 +53,7 @@ describe('StatusPill', () => {
 
   it('uses the compact metrics at size sm and the larger ones at md', () => {
     const { rerender } = render(<StatusPill status="active" />)
-    expect(screen.getByText('Active')).toHaveStyle({ fontSize: '10px', padding: '3px 8px' })
+    expect(screen.getByText('Active')).toHaveStyle({ fontSize: '11px', padding: '3px 8px' })
 
     rerender(<StatusPill status="active" size="md" />)
     expect(screen.getByText('Active')).toHaveStyle({ fontSize: '12px', padding: '5px 12px' })

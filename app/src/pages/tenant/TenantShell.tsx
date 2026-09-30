@@ -3,11 +3,14 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import type React from 'react'
 import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, getTenantRiderEmails, onboardDriver, approveDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData, type TenantRiderEmailOption } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
-import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
+import { getTenantConfig, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
 import ThemeToggle from '@components/ThemeToggle'
+import Button from '@components/Button'
+import Modal from '@components/Modal'
+import StatusPill from '@components/StatusPill'
 import VehicleEditModal from '@components/VehicleEditModal'
 import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
@@ -21,11 +24,8 @@ import { getTenantAppUrl } from '@config/host'
 import {
   zelleNumberFromApi,
   zelleEmailFromApi,
-  tenantZellePayload,
   hasZelleRecipient,
-  zelleEmailDisplay,
-  isCompleteUsPhone,
-  zellePhoneValidationError
+  isCompleteUsPhone
 } from '@utils/zelleContact'
 import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
 import { getApiErrorMessage } from '@utils/apiError'
@@ -49,6 +49,15 @@ import {
   tenantTelHrefFromPhone,
 } from './shared'
 import type { TabType, OverviewLinkKey, TenantPageThemeMode, OverviewLinkQrState, OverviewDriverRow, OverviewDriverPresence } from './shared'
+
+/** Tabs kept out of the 5-slot mobile bar; they stay reachable from the Menu drawer. */
+const BOTTOM_BAR_HIDDEN: string[] = ['settings', 'assistant', 'riders', 'feedback']
+
+const NAV_GROUPS: Array<{ label: string; group: 'main' | 'tools' | 'account' }> = [
+  { label: 'Manage', group: 'main' },
+  { label: 'Tools', group: 'tools' },
+  { label: 'Account', group: 'account' },
+]
 
 function useShellState() {
   const { accessToken, role, tenantId: storeTenantId } = useAuthStore()
@@ -171,8 +180,6 @@ function useShellState() {
 
   const [error, setError] = useState<string | null>(null)
   const [addingCategory, setAddingCategory] = useState(false)
-  const [editingRates, setEditingRates] = useState<{ [key: string]: number }>({})
-  const [savingRates, setSavingRates] = useState<{ [key: string]: boolean }>({})
   const [newDriver, setNewDriver] = useState<OnboardDriver>({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
   const [showAddDriver, setShowAddDriver] = useState(false)
   const [showBookRideModal, setShowBookRideModal] = useState(false)
@@ -196,6 +203,7 @@ function useShellState() {
 
   // Sidebar state (mobile gets the bottom tab bar instead, so the drawer starts closed there)
   const [isMenuOpen, setIsMenuOpen] = useState(() => window.innerWidth > 768)
+  const [logoFailed, setLogoFailed] = useState(false)
   
   // Mobile breakpoint state (behavioral: KPI carousel, stacked controls, etc. — still ≤768px)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
@@ -241,8 +249,6 @@ function useShellState() {
   const [assignVehicleToDriverId, setAssignVehicleToDriverId] = useState<number | null>(null)
   const [selectedVehicleIdForDriverAssign, setSelectedVehicleIdForDriverAssign] = useState('')
   const [assignVehicleToDriverError, setAssignVehicleToDriverError] = useState<string | null>(null)
-  const [isCancelAssignVehicleToDriverHovered, setIsCancelAssignVehicleToDriverHovered] = useState(false)
-  const [isConfirmAssignVehicleToDriverHovered, setIsConfirmAssignVehicleToDriverHovered] = useState(false)
 
   // Vehicle Settings dropdown state
   const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
@@ -259,11 +265,8 @@ function useShellState() {
   const [isSwitchingToDriver, setIsSwitchingToDriver] = useState(false)
   const [switchToDriverError, setSwitchToDriverError] = useState<string | null>(null)
   const [showInstallAppNotice, setShowInstallAppNotice] = useState(false)
-  const [isAddVehicleHovered, setIsAddVehicleHovered] = useState(false)
   
   // Button hover states
-  const [isRetryHovered, setIsRetryHovered] = useState(false)
-  const [isTryAgainHovered, setIsTryAgainHovered] = useState(false)
   const [overviewCopiedLink, setOverviewCopiedLink] = useState<OverviewLinkKey | null>(null)
   const [overviewLinkQrState, setOverviewLinkQrState] = useState<Record<OverviewLinkKey, OverviewLinkQrState>>({
     rider: { loading: false, imageDataUrl: null, error: null },
@@ -271,29 +274,6 @@ function useShellState() {
     landing: { loading: false, imageDataUrl: null, error: null },
   })
   const [overviewLinksOpen, setOverviewLinksOpen] = useState(false)
-  const [isAddDriverHovered, setIsAddDriverHovered] = useState(false)
-  const [isBookRideHovered, setIsBookRideHovered] = useState(false)
-  const [isDownloadLogsHovered, setIsDownloadLogsHovered] = useState(false)
-  const [isSaveRateHovered, setIsSaveRateHovered] = useState(false)
-  const [isAddCategoryHovered, setIsAddCategoryHovered] = useState(false)
-  const [isMoreSettingsHovered, setIsMoreSettingsHovered] = useState(false)
-  const [isCreateDriverHovered, setIsCreateDriverHovered] = useState(false)
-  const [isAssignDriverToBookingHovered, setIsAssignDriverToBookingHovered] = useState(false)
-  const [isOverrideConfirmHovered, setIsOverrideConfirmHovered] = useState(false)
-  const [isDeleteVehicleHovered, setIsDeleteVehicleHovered] = useState(false)
-  const [isAddVehicleFormHovered, setIsAddVehicleFormHovered] = useState(false)
-  const [isCancelAddVehicleHovered, setIsCancelAddVehicleHovered] = useState(false)
-  const [isCancelAddDriverHovered, setIsCancelAddDriverHovered] = useState(false)
-  const [isCancelAssignBookingHovered, setIsCancelAssignBookingHovered] = useState(false)
-  const [isBackOverrideHovered, setIsBackOverrideHovered] = useState(false)
-  const [isCancelDeleteHovered, setIsCancelDeleteHovered] = useState(false)
-  const [unassignHoveredVehicleId, setUnassignHoveredVehicleId] = useState<number | null>(null)
-  const [isConfirmUnassignHovered, setIsConfirmUnassignHovered] = useState(false)
-  const [isCancelUnassignHovered, setIsCancelUnassignHovered] = useState(false)
-  const [assignHoveredVehicleId, setAssignHoveredVehicleId] = useState<number | null>(null)
-  const [hoveredVehicleCardId, setHoveredVehicleCardId] = useState<number | null>(null)
-  const [isConfirmAssignHovered, setIsConfirmAssignHovered] = useState(false)
-  const [isCancelAssignHovered, setIsCancelAssignHovered] = useState(false)
   
   const [newVehicle, setNewVehicle] = useState({
     make: '',
@@ -627,71 +607,6 @@ function useShellState() {
   const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(180px, 1.4fr)'
   const ridersTableGridColumns = 'minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.7fr)'
 
-  const saveVehicleRate = async (categoryName: string, newRate: number) => {
-    try {
-      setSavingRates(prev => {
-        try {
-          return { ...prev, [categoryName]: true }
-        } catch (e) {
-          console.error('Error updating saving state:', e)
-          return prev
-        }
-      })
-      
-      const payload = {
-        vehicle_category: categoryName,
-        vehicle_flat_rate: newRate
-      }
-      
-      const result = await setVehicleRates(payload)
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to update vehicle rate')
-      }
-      
-      // Update local state to reflect the change
-      setVehicleCategories(prev => {
-        try {
-          return prev.map(cat => 
-            cat.vehicle_category === categoryName 
-              ? { ...cat, vehicle_flat_rate: newRate }
-              : cat
-          )
-        } catch (e) {
-          console.error('Error updating vehicle categories state:', e)
-          return prev
-        }
-      })
-      
-      // Clear the editing state for this category
-      setEditingRates(prev => {
-        try {
-          const newState = { ...prev }
-          delete newState[categoryName]
-          return newState
-        } catch (e) {
-          console.error('Error clearing editing state:', e)
-          return prev
-        }
-      })
-      
-      alert(`Successfully updated ${categoryName} rate to $${newRate}`)
-    } catch (error: any) {
-      console.error(`Failed to update ${categoryName} rate:`, error)
-      alert(`Failed to update ${categoryName} rate. Please try again.`)
-    } finally {
-      // Safely reset saving state
-      setSavingRates(prev => {
-        try {
-          return { ...prev, [categoryName]: false }
-        } catch (e) {
-          console.error('Error resetting saving state:', e)
-          return prev
-        }
-      })
-    }
-  }
-
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'completed': return 'text-green-500'
@@ -706,13 +621,13 @@ function useShellState() {
     switch (status?.toLowerCase()) {
       case 'completed':
       case 'active':
-        return '#10b981'
+        return 'var(--bw-success)'
       case 'pending':
-        return '#f59e0b'
+        return 'var(--bw-warning)'
       case 'cancelled':
-        return '#ef4444'
+        return 'var(--bw-error)'
       default:
-        return '#6b7280'
+        return 'var(--bw-muted)'
     }
   }
 
@@ -823,142 +738,6 @@ function useShellState() {
           logo_url: file
         } as any)
       }
-    }
-  }
-
-  const handleSaveSettings = async () => {
-    try {
-      setSavingSettings(true)
-      const updatePromises: Promise<any>[] = []
-      
-      // Handle logo upload separately if present
-      if (logoFile) {
-        try {
-          await updateTenantLogo(logoFile)
-          // Refresh config to get the new logo URL
-          const refreshedConfig = await getTenantConfig('all')
-          if (refreshedConfig.branding) {
-            setEditedBranding(refreshedConfig.branding)
-          }
-        } catch (logoError) {
-          console.error('Logo upload failed:', logoError)
-          alert('Logo upload failed, but continuing with other settings')
-        }
-      }
-      
-      // Check if settings changed
-      if (editedSettings && tenantConfig?.settings) {
-        const settingsChanged = 
-          editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
-          zelleNumberFromApi(editedSettings.zelle_number) !== zelleNumberFromApi(tenantConfig.settings.zelle_number) ||
-          zelleEmailFromApi(editedSettings.zelle_email) !== zelleEmailFromApi(tenantConfig.settings.zelle_email) ||
-          JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
-        
-        if (settingsChanged) {
-          const zelleErr = zellePhoneValidationError(editedSettings.zelle_number)
-          if (zelleErr) {
-            alert(zelleErr)
-            setSavingSettings(false)
-            return
-          }
-          updatePromises.push(
-            updateTenantSettings({
-              rider_tiers_enabled: editedSettings.rider_tiers_enabled,
-              ...tenantZellePayload(editedSettings),
-              rider_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.rider_feedback_form),
-              driver_feedback_form: feedbackFormUrlForPayload(tenantConfig.settings.driver_feedback_form),
-              config: editedSettings.config
-            }).then(result => ({ type: 'settings', data: result }))
-          )
-        }
-      }
-      
-      // Check if pricing changed
-      if (editedPricing && tenantConfig?.pricing) {
-        const pricingChanged = 
-          editedPricing.base_fare !== tenantConfig.pricing.base_fare ||
-          editedPricing.per_mile_rate !== tenantConfig.pricing.per_mile_rate ||
-          editedPricing.per_minute_rate !== tenantConfig.pricing.per_minute_rate ||
-          editedPricing.per_hour_rate !== tenantConfig.pricing.per_hour_rate ||
-          editedPricing.cancellation_fee !== tenantConfig.pricing.cancellation_fee ||
-          editedPricing.discounts !== tenantConfig.pricing.discounts
-        
-        if (pricingChanged) {
-          updatePromises.push(
-            updateTenantPricing({
-              base_fare: editedPricing.base_fare,
-              per_mile_rate: editedPricing.per_mile_rate,
-              per_minute_rate: editedPricing.per_minute_rate,
-              per_hour_rate: editedPricing.per_hour_rate,
-              cancellation_fee: editedPricing.cancellation_fee,
-              discounts: editedPricing.discounts
-            }).then(result => ({ type: 'pricing', data: result }))
-          )
-        }
-      }
-      
-      // Check if branding changed (excluding logo_url which is handled separately)
-      if (editedBranding && tenantConfig?.branding) {
-        const brandingChanged = 
-          editedBranding.theme !== tenantConfig.branding.theme ||
-          editedBranding.primary_color !== tenantConfig.branding.primary_color ||
-          editedBranding.secondary_color !== tenantConfig.branding.secondary_color ||
-          editedBranding.accent_color !== tenantConfig.branding.accent_color ||
-          editedBranding.favicon_url !== tenantConfig.branding.favicon_url ||
-          editedBranding.slug !== tenantConfig.branding.slug ||
-          editedBranding.email_from_name !== tenantConfig.branding.email_from_name ||
-          editedBranding.email_from_address !== tenantConfig.branding.email_from_address ||
-          editedBranding.enable_branding !== tenantConfig.branding.enable_branding
-        
-        if (brandingChanged) {
-          updatePromises.push(
-            updateTenantBranding({
-              theme: editedBranding.theme,
-              primary_color: editedBranding.primary_color,
-              secondary_color: editedBranding.secondary_color,
-              accent_color: editedBranding.accent_color,
-              favicon_url: editedBranding.favicon_url,
-              slug: editedBranding.slug,
-              email_from_name: editedBranding.email_from_name,
-              email_from_address: editedBranding.email_from_address,
-              enable_branding: editedBranding.enable_branding
-            }).then(result => ({ type: 'branding', data: result }))
-          )
-        }
-      }
-      
-      if (updatePromises.length === 0 && !logoFile) {
-        alert('No changes to save')
-        setSavingSettings(false)
-        return
-      }
-      
-      // Execute all updates
-      if (updatePromises.length > 0) {
-        await Promise.all(updatePromises)
-      }
-      
-      // Fetch fresh config, update query cache, and re-sync edit state
-      const refreshedConfig = await getTenantConfig('all')
-      queryClient.setQueryData(['tenant', 'config'], refreshedConfig)
-      if (refreshedConfig.settings) {
-        setEditedSettings({
-          ...refreshedConfig.settings,
-          zelle_number: zelleNumberFromApi(refreshedConfig.settings.zelle_number),
-          zelle_email: zelleEmailFromApi(refreshedConfig.settings.zelle_email),
-        })
-      }
-      if (refreshedConfig.pricing) setEditedPricing(refreshedConfig.pricing)
-      if (refreshedConfig.branding) setEditedBranding(refreshedConfig.branding)
-      setEditingSettings(false)
-      setLogoFile(null)
-      setLogoPreview(null)
-      alert('Settings updated successfully!')
-    } catch (error) {
-      console.error('Failed to update settings:', error)
-      alert('Failed to update settings. Please try again.')
-    } finally {
-      setSavingSettings(false)
     }
   }
 
@@ -1229,14 +1008,16 @@ function useShellState() {
     }
   }
 
-  const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }> = [
-    { id: 'overview', label: 'Overview', icon: TrendUp },
-    { id: 'drivers', label: 'Drivers', icon: Users },
-    { id: 'riders', label: 'Riders', icon: User },
-    { id: 'bookings', label: 'Bookings', icon: Calendar },
-    { id: 'vehicles', label: 'Vehicles', icon: Car },
-    { id: 'settings', label: 'Settings', icon: Gear },
-    { id: 'feedback', label: 'Feedback', icon: ChatCircleDots },
+  type NavTab = { id: TabType; label: string; group: 'main' | 'tools' | 'account'; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }
+  const tabs: NavTab[] = [
+    { id: 'overview', label: 'Overview', group: 'main', icon: TrendUp },
+    { id: 'bookings', label: 'Bookings', group: 'main', icon: Calendar },
+    { id: 'drivers', label: 'Drivers', group: 'main', icon: Users },
+    { id: 'riders', label: 'Riders', group: 'main', icon: User },
+    { id: 'vehicles', label: 'Vehicles', group: 'main', icon: Car },
+    { id: 'assistant', label: 'Assistant', group: 'tools', icon: Sparkle },
+    { id: 'settings', label: 'Settings', group: 'account', icon: Gear },
+    { id: 'feedback', label: 'Feedback', group: 'account', icon: ChatCircleDots },
   ]
 
   // Determine active tab from URL or internal state
@@ -1250,6 +1031,7 @@ function useShellState() {
     if (path === '/tenant/overview' || path === '/tenant') return 'overview'
     if (path.startsWith('/tenant/settings')) return 'settings'
     if (path === '/tenant/feedback') return 'feedback'
+    if (path === '/tenant/assistant') return 'assistant'
     // Default to overview if path doesn't match
     return 'overview'
   }
@@ -1299,24 +1081,6 @@ function useShellState() {
       return next
     })
   }, [])
-
-  const driverPalette = useMemo(
-    () =>
-      lightMode
-        ? {
-            card: '#fafafa',
-            line: '1px solid #e2e8f0',
-            contactPill: '#f1f5f9',
-            statsLabel: '#64748b',
-          }
-        : {
-            card: '#11111a',
-            line: '1px solid rgba(255,255,255,0.08)',
-            contactPill: 'rgba(255,255,255,0.06)',
-            statsLabel: '#9ca3af',
-          },
-    [lightMode]
-  )
 
   // Get dynamic page title based on active tab
   const getPageTitle = (): string => {
@@ -1421,10 +1185,6 @@ function useShellState() {
     setError,
     addingCategory,
     setAddingCategory,
-    editingRates,
-    setEditingRates,
-    savingRates,
-    setSavingRates,
     newDriver,
     setNewDriver,
     showAddDriver,
@@ -1461,6 +1221,8 @@ function useShellState() {
     setTooltipVehicleId,
     isMenuOpen,
     setIsMenuOpen,
+    logoFailed,
+    setLogoFailed,
     isMobile,
     setIsMobile,
     selectedBooking,
@@ -1519,10 +1281,6 @@ function useShellState() {
     setSelectedVehicleIdForDriverAssign,
     assignVehicleToDriverError,
     setAssignVehicleToDriverError,
-    isCancelAssignVehicleToDriverHovered,
-    setIsCancelAssignVehicleToDriverHovered,
-    isConfirmAssignVehicleToDriverHovered,
-    setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
     kpiScrollIndex,
@@ -1537,64 +1295,12 @@ function useShellState() {
     setSwitchToDriverError,
     showInstallAppNotice,
     setShowInstallAppNotice,
-    isAddVehicleHovered,
-    setIsAddVehicleHovered,
-    isRetryHovered,
-    setIsRetryHovered,
-    isTryAgainHovered,
-    setIsTryAgainHovered,
     overviewCopiedLink,
     setOverviewCopiedLink,
     overviewLinkQrState,
     setOverviewLinkQrState,
     overviewLinksOpen,
     setOverviewLinksOpen,
-    isAddDriverHovered,
-    setIsAddDriverHovered,
-    isBookRideHovered,
-    setIsBookRideHovered,
-    isDownloadLogsHovered,
-    setIsDownloadLogsHovered,
-    isSaveRateHovered,
-    setIsSaveRateHovered,
-    isAddCategoryHovered,
-    setIsAddCategoryHovered,
-    isMoreSettingsHovered,
-    setIsMoreSettingsHovered,
-    isCreateDriverHovered,
-    setIsCreateDriverHovered,
-    isAssignDriverToBookingHovered,
-    setIsAssignDriverToBookingHovered,
-    isOverrideConfirmHovered,
-    setIsOverrideConfirmHovered,
-    isDeleteVehicleHovered,
-    setIsDeleteVehicleHovered,
-    isAddVehicleFormHovered,
-    setIsAddVehicleFormHovered,
-    isCancelAddVehicleHovered,
-    setIsCancelAddVehicleHovered,
-    isCancelAddDriverHovered,
-    setIsCancelAddDriverHovered,
-    isCancelAssignBookingHovered,
-    setIsCancelAssignBookingHovered,
-    isBackOverrideHovered,
-    setIsBackOverrideHovered,
-    isCancelDeleteHovered,
-    setIsCancelDeleteHovered,
-    unassignHoveredVehicleId,
-    setUnassignHoveredVehicleId,
-    isConfirmUnassignHovered,
-    setIsConfirmUnassignHovered,
-    isCancelUnassignHovered,
-    setIsCancelUnassignHovered,
-    assignHoveredVehicleId,
-    setAssignHoveredVehicleId,
-    hoveredVehicleCardId,
-    setHoveredVehicleCardId,
-    isConfirmAssignHovered,
-    setIsConfirmAssignHovered,
-    isCancelAssignHovered,
-    setIsCancelAssignHovered,
     newVehicle,
     setNewVehicle,
     addingVehicle,
@@ -1619,7 +1325,6 @@ function useShellState() {
     openAssignVehicleToDriver,
     driversTableGridColumns,
     ridersTableGridColumns,
-    saveVehicleRate,
     getStatusColor,
     getStatusColorHex,
     getStatusIcon,
@@ -1629,7 +1334,6 @@ function useShellState() {
     handlePricingChange,
     handleBrandingChange,
     handleLogoChange,
-    handleSaveSettings,
     hasOtherChanges,
     handleCancelEdit,
     handleBookingClick,
@@ -1647,7 +1351,6 @@ function useShellState() {
     useCompressedDriverCards,
     openDriverRideHistory,
     toggleDriverCardExpanded,
-    driverPalette,
     getPageTitle,
     handleTabClick,
     copyTenantOverviewLink,
@@ -1724,10 +1427,6 @@ export default function TenantShell() {
     setError,
     addingCategory,
     setAddingCategory,
-    editingRates,
-    setEditingRates,
-    savingRates,
-    setSavingRates,
     newDriver,
     setNewDriver,
     showAddDriver,
@@ -1764,6 +1463,8 @@ export default function TenantShell() {
     setTooltipVehicleId,
     isMenuOpen,
     setIsMenuOpen,
+    logoFailed,
+    setLogoFailed,
     isMobile,
     setIsMobile,
     selectedBooking,
@@ -1822,10 +1523,6 @@ export default function TenantShell() {
     setSelectedVehicleIdForDriverAssign,
     assignVehicleToDriverError,
     setAssignVehicleToDriverError,
-    isCancelAssignVehicleToDriverHovered,
-    setIsCancelAssignVehicleToDriverHovered,
-    isConfirmAssignVehicleToDriverHovered,
-    setIsConfirmAssignVehicleToDriverHovered,
     vehicleSettingsOpen,
     setVehicleSettingsOpen,
     kpiScrollIndex,
@@ -1840,64 +1537,12 @@ export default function TenantShell() {
     setSwitchToDriverError,
     showInstallAppNotice,
     setShowInstallAppNotice,
-    isAddVehicleHovered,
-    setIsAddVehicleHovered,
-    isRetryHovered,
-    setIsRetryHovered,
-    isTryAgainHovered,
-    setIsTryAgainHovered,
     overviewCopiedLink,
     setOverviewCopiedLink,
     overviewLinkQrState,
     setOverviewLinkQrState,
     overviewLinksOpen,
     setOverviewLinksOpen,
-    isAddDriverHovered,
-    setIsAddDriverHovered,
-    isBookRideHovered,
-    setIsBookRideHovered,
-    isDownloadLogsHovered,
-    setIsDownloadLogsHovered,
-    isSaveRateHovered,
-    setIsSaveRateHovered,
-    isAddCategoryHovered,
-    setIsAddCategoryHovered,
-    isMoreSettingsHovered,
-    setIsMoreSettingsHovered,
-    isCreateDriverHovered,
-    setIsCreateDriverHovered,
-    isAssignDriverToBookingHovered,
-    setIsAssignDriverToBookingHovered,
-    isOverrideConfirmHovered,
-    setIsOverrideConfirmHovered,
-    isDeleteVehicleHovered,
-    setIsDeleteVehicleHovered,
-    isAddVehicleFormHovered,
-    setIsAddVehicleFormHovered,
-    isCancelAddVehicleHovered,
-    setIsCancelAddVehicleHovered,
-    isCancelAddDriverHovered,
-    setIsCancelAddDriverHovered,
-    isCancelAssignBookingHovered,
-    setIsCancelAssignBookingHovered,
-    isBackOverrideHovered,
-    setIsBackOverrideHovered,
-    isCancelDeleteHovered,
-    setIsCancelDeleteHovered,
-    unassignHoveredVehicleId,
-    setUnassignHoveredVehicleId,
-    isConfirmUnassignHovered,
-    setIsConfirmUnassignHovered,
-    isCancelUnassignHovered,
-    setIsCancelUnassignHovered,
-    assignHoveredVehicleId,
-    setAssignHoveredVehicleId,
-    hoveredVehicleCardId,
-    setHoveredVehicleCardId,
-    isConfirmAssignHovered,
-    setIsConfirmAssignHovered,
-    isCancelAssignHovered,
-    setIsCancelAssignHovered,
     newVehicle,
     setNewVehicle,
     addingVehicle,
@@ -1922,7 +1567,6 @@ export default function TenantShell() {
     openAssignVehicleToDriver,
     driversTableGridColumns,
     ridersTableGridColumns,
-    saveVehicleRate,
     getStatusColor,
     getStatusColorHex,
     getStatusIcon,
@@ -1932,7 +1576,6 @@ export default function TenantShell() {
     handlePricingChange,
     handleBrandingChange,
     handleLogoChange,
-    handleSaveSettings,
     hasOtherChanges,
     handleCancelEdit,
     handleBookingClick,
@@ -1950,7 +1593,6 @@ export default function TenantShell() {
     useCompressedDriverCards,
     openDriverRideHistory,
     toggleDriverCardExpanded,
-    driverPalette,
     getPageTitle,
     handleTabClick,
     copyTenantOverviewLink,
@@ -1984,49 +1626,20 @@ export default function TenantShell() {
           <div className="bw-header-content">
             <h1 style={{ fontSize: 32, margin: 0 }}>Dashboard</h1>
             <div className="bw-header-actions">
-              <button 
-                className="bw-btn-outline" 
-                onClick={() => useAuthStore.getState().logout()}
-                style={{ marginLeft: 16 }}
-              >
+              <Button variant="secondary" onClick={() => useAuthStore.getState().logout()} style={{ marginLeft: 16 }}>
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </div>
         
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ color: '#6b7280', marginBottom: '16px' }}>
+          <div style={{ color: 'var(--bw-muted)', marginBottom: '16px' }}>
             <WarningCircle size={48} className="mx-auto" />
           </div>
-          <h3 style={{ margin: '0 0 16px 0', color: '#6b7280' }}>No Tenant Information</h3>
-          <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>Unable to load tenant information. Please try again.</p>
-          <button 
-            className={`bw-btn bw-btn-action ${isRetryHovered ? 'custom-hover-border' : ''}`}
-            onClick={load}
-            onMouseEnter={() => setIsRetryHovered(true)}
-            onMouseLeave={() => setIsRetryHovered(false)}
-            style={{
-              padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-              fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-              width: isMobile ? '100%' : 'auto',
-              justifyContent: 'center',
-              borderRadius: 7,
-              border: isRetryHovered ? '2px solid var(--bw-accent)' : undefined,
-              borderColor: isRetryHovered ? 'var(--bw-accent)' : undefined,
-              color: isRetryHovered ? 'var(--bw-accent)' : '#000',
-              transition: 'all 0.2s ease'
-            } as React.CSSProperties}
-          >
-            <span style={{ color: isRetryHovered ? 'var(--bw-accent)' : 'inherit' }}>
-              Retry
-            </span>
-          </button>
+          <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-muted)' }}>No Tenant Information</h3>
+          <p style={{ margin: '0 0 24px 0', color: 'var(--bw-muted)' }}>Unable to load tenant information. Please try again.</p>
+          <Button onClick={load}>Retry</Button>
         </div>
       </div>
     )
@@ -2040,52 +1653,23 @@ export default function TenantShell() {
           <div className="bw-header-content">
             <h1 style={{ fontSize: 32, margin: 0 }}>Dashboard</h1>
             <div className="bw-header-actions">
-              <button 
-                className="bw-btn-outline" 
-                onClick={() => useAuthStore.getState().logout()}
-                style={{ marginLeft: 16 }}
-              >
+              <Button variant="secondary" onClick={() => useAuthStore.getState().logout()} style={{ marginLeft: 16 }}>
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </div>
         
         <div className="bw-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ color: 'var(--bw-error, #C5483D)', marginBottom: '16px' }}>
+          <div style={{ color: 'var(--bw-error)', marginBottom: '16px' }}>
             <WarningCircle size={48} className="mx-auto" />
           </div>
-          <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-error, #C5483D)' }}>Error Loading Dashboard</h3>
-          <p style={{ margin: '0 0 24px 0', color: '#6b7280' }}>{error}</p>
-          <button 
-            className={`bw-btn bw-btn-action ${isTryAgainHovered ? 'custom-hover-border' : ''}`}
-            onClick={() => {
+          <h3 style={{ margin: '0 0 16px 0', color: 'var(--bw-error)' }}>Error Loading Dashboard</h3>
+          <p style={{ margin: '0 0 24px 0', color: 'var(--bw-muted)' }}>{error}</p>
+          <Button onClick={() => {
               setError(null)
               load()
-            }}
-            onMouseEnter={() => setIsTryAgainHovered(true)}
-            onMouseLeave={() => setIsTryAgainHovered(false)}
-            style={{
-              padding: isMobile ? 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)' : '14px 24px',
-              fontSize: isMobile ? 'clamp(14px, 2vw, 16px)' : '14px',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: isMobile ? 'clamp(8px, 1.5vw, 10px)' : '8px',
-              width: isMobile ? '100%' : 'auto',
-              justifyContent: 'center',
-              borderRadius: 7,
-              border: isTryAgainHovered ? '2px solid var(--bw-accent)' : undefined,
-              borderColor: isTryAgainHovered ? 'var(--bw-accent)' : undefined,
-              color: isTryAgainHovered ? 'var(--bw-accent)' : '#000',
-              transition: 'all 0.2s ease'
-            } as React.CSSProperties}
-          >
-            <span style={{ color: isTryAgainHovered ? 'var(--bw-accent)' : 'inherit' }}>
-              Try Again
-            </span>
-          </button>
+            }}>Try Again</Button>
         </div>
       </div>
     )
@@ -2123,136 +1707,84 @@ export default function TenantShell() {
         id="tenant-dashboard-nav"
         className={`tenant-dashboard-sidebar${isMenuOpen ? ' is-open' : ''}`}
       >
-        {/* Company Name in Sidebar */}
+        {/* Company header */}
         <div style={{
-          padding: isMenuOpen ? 'clamp(16px, 2vw, 24px)' : '12px',
-          paddingTop: isMenuOpen
-            ? 'calc(max(env(safe-area-inset-top), 0px) + clamp(16px, 2vw, 24px))'
-            : 'calc(max(env(safe-area-inset-top), 0px) + 12px)',
+          height: 60,
+          padding: '0 14px',
           borderBottom: '1px solid var(--bw-border)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isMenuOpen ? 'space-between' : 'center',
-          gap: '12px'
+          gap: 10,
+          flexShrink: 0,
         }}>
-          {isMenuOpen && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'clamp(12px, 2vw, 16px)',
-              flex: 1,
-              minWidth: 0
-            }}>
-              {info?.profile?.logo_url && (
-                <img 
-                  src={info.profile.logo_url} 
-                  alt={info?.profile?.company_name || 'Company logo'}
-                  style={{
-                    width: 'clamp(40px, 5vw, 50px)',
-                    height: 'clamp(40px, 5vw, 50px)',
-                    objectFit: 'contain',
-                    flexShrink: 0
-                  }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              )}
-              <h1 style={{ 
-                fontFamily: '"DM Sans", sans-serif',
-                fontSize: 'clamp(20px, 3vw, 32px)',
-                fontWeight: 600,
-                margin: 0,
-                color: lightMode ? '#0f172a' : '#ffffff',
-                letterSpacing: '0.5px',
-                lineHeight: '1.2',
-                flex: 1,
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}>
-                {info?.profile?.company_name || 'Dashboard'}
-              </h1>
-            </div>
-          )}
           <button
-            className="bw-menu tenant-dashboard-sidebar-close"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            aria-label={isMenuOpen ? 'Retract menu' : 'Expand menu'}
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            aria-label={info?.profile?.company_name || 'Dashboard'}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '8px',
-              minWidth: '40px',
-              minHeight: '40px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              flexShrink: 0
+              width: 32, height: 32, borderRadius: 8, border: 'none', flexShrink: 0, cursor: 'pointer',
+              background: info?.profile?.logo_url && !logoFailed ? 'transparent' : 'var(--bw-accent)',
+              color: 'var(--bw-bg)', display: 'grid', placeItems: 'center', fontWeight: 600, fontSize: 14, padding: 0, overflow: 'hidden',
             }}
           >
-            <SidebarSimple size={20} weight="bold" aria-hidden />
+            {info?.profile?.logo_url && !logoFailed ? (
+              <img
+                src={info.profile.logo_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={() => setLogoFailed(true)}
+              />
+            ) : (
+              (info?.profile?.company_name?.[0] || 'M').toUpperCase()
+            )}
           </button>
+          {isMenuOpen && (
+            <>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--bw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {info?.profile?.company_name || 'Dashboard'}
+                </div>
+                {info?.profile?.city && (
+                  <div style={{ fontSize: 12, color: 'var(--bw-muted)', whiteSpace: 'nowrap' }}>{info.profile.city}</div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="tnav-icon-btn"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label={isMobile ? 'Close menu' : 'Collapse sidebar'}
+              >
+                {isMobile ? <X size={18} aria-hidden /> : <SidebarSimple size={18} aria-hidden />}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Navigation Tabs in Sidebar */}
-        <nav style={{
-          flex: 1,
-          padding: isMenuOpen ? 'clamp(12px, 1.5vw, 20px) 0' : '8px 0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px'
-        }}>
-          {tabs.map((tab) => {
-            const IconComponent = tab.icon
-            const isActive = activeTab === tab.id
-
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id as TabType)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMenuOpen ? '12px' : '0',
-                  padding: isMenuOpen ? 'clamp(12px, 1.5vw, 16px) clamp(16px, 2vw, 24px)' : '12px',
-                  backgroundColor: isActive
-                    ? (lightMode ? 'rgba(108, 99, 232, 0.09)' : 'rgba(108, 99, 232, 0.16)')
-                    : 'transparent',
-                  border: 'none',
-                  borderLeft: isMenuOpen ? (isActive ? '3px solid var(--bw-accent)' : '3px solid transparent') : 'none',
-                  color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'var(--bw-text)',
-                  cursor: 'pointer',
-                  fontSize: 'clamp(13px, 1.5vw, 15px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: isActive ? 500 : 300,
-                  textAlign: isMenuOpen ? 'left' : 'center',
-                  transition: 'all 0.2s ease',
-                  justifyContent: isMenuOpen ? 'space-between' : 'center',
-                  boxShadow: 'none',
-                  position: 'relative'
-                }}
-                title={!isMenuOpen ? tab.label : undefined}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = lightMode ? 'rgba(108, 99, 232, 0.05)' : 'rgba(255, 255, 255, 0.04)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMenuOpen ? '12px' : '0', flex: 1, justifyContent: isMenuOpen ? 'flex-start' : 'center' }}>
-                  <IconComponent size={18} style={{ flexShrink: 0, color: isActive ? (lightMode ? '#5b21b6' : '#c4b5fd') : 'inherit' }} />
-                  {isMenuOpen && <span>{tab.label}</span>}
-                </div>
-              </button>
-            )
-          })}
+        <nav className="tnav" aria-label="Dashboard">
+          {NAV_GROUPS.map(({ label, group }) => (
+            <div key={group} style={{ display: 'contents' }}>
+              <div className="tnav-label" aria-hidden={!isMenuOpen}>{label}</div>
+              {tabs.filter((tab) => tab.group === group).map((tab) => {
+                const IconComponent = tab.icon
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`tnav-item${isActive ? ' is-active' : ''}`}
+                    onClick={() => handleTabClick(tab.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    aria-label={tab.label}
+                    title={!isMenuOpen ? tab.label : undefined}
+                  >
+                    <IconComponent size={18} weight={isActive ? 'fill' : 'regular'} style={{ flexShrink: 0 }} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Footer Section in Sidebar - Expanded */}
@@ -2276,7 +1808,7 @@ export default function TenantShell() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--bw-accent) 0%, rgba(108, 99, 232, 0.55) 100%)',
+                background: 'var(--bw-accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2318,79 +1850,34 @@ export default function TenantShell() {
                 onChange={handleTenantThemeModeChange}
               />
             </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => {
                 if (isMobile) setIsMenuOpen(false)
                 setShowDriverModeConfirm(true)
               }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
-                backgroundColor: 'var(--bw-accent)',
-                border: 'none',
-                color: '#ffffff',
-                cursor: 'pointer',
-                fontSize: 'clamp(13px, 1.5vw, 15px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 400,
-                borderRadius: 7,
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
-              }}
             >
               Switch to Driver Mode
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              fullWidth
               onClick={() => {
                 if (isMobile) setIsMenuOpen(false)
                 useAuthStore.getState().logout()
               }}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: 'clamp(10px, 1.2vw, 12px) clamp(16px, 2vw, 24px)',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--bw-border)',
-                color: 'var(--bw-text)',
-                cursor: 'pointer',
-                fontSize: 'clamp(13px, 1.5vw, 15px)',
-                fontFamily: '"Work Sans", sans-serif',
-                fontWeight: 300,
-                borderRadius: 7,
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-              }}
             >
-              <SignOut size={15} style={{ flexShrink: 0 }} aria-hidden />
-              Logout
-            </button>
+              <SignOut size={16} aria-hidden />
+              Log out
+            </Button>
           </div>
         )}
 
         {/* Footer Section in Sidebar - Collapsed (desktop icon-only rail) */}
         {!isMenuOpen && (
           <div style={{
-            padding: '12px 0',
+            padding: '12px 8px',
             borderTop: '1px solid var(--bw-border)',
             display: 'flex',
             flexDirection: 'column',
@@ -2403,7 +1890,7 @@ export default function TenantShell() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--bw-accent) 0%, rgba(108, 99, 232, 0.55) 100%)',
+                background: 'var(--bw-accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2419,29 +1906,11 @@ export default function TenantShell() {
               {info?.first_name?.[0]?.toUpperCase() || 'T'}
             </div>
             <button
+              type="button"
+              className="tnav-item"
               onClick={() => useAuthStore.getState().logout()}
-              title="Logout"
-              style={{
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--bw-border)',
-                borderRadius: '8px',
-                color: 'var(--bw-muted)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                e.currentTarget.style.color = 'var(--bw-text)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = 'var(--bw-muted)'
-              }}
+              title="Log out"
+              aria-label="Log out"
             >
               <SignOut size={16} aria-hidden />
             </button>
@@ -2451,7 +1920,7 @@ export default function TenantShell() {
 
       {/* Mobile bottom tab bar (replaces the hamburger; "Menu" opens the drawer for settings/account actions) */}
       <nav className="tenant-dashboard-bottombar" aria-label="Primary">
-        {tabs.filter((tab) => tab.id !== 'settings').map((tab) => {
+        {tabs.filter((tab) => !BOTTOM_BAR_HIDDEN.includes(tab.id)).map((tab) => {
           const IconComponent = tab.icon
           const isActive = activeTab === tab.id && !isMenuOpen
           return (
@@ -2469,7 +1938,7 @@ export default function TenantShell() {
         })}
         <button
           type="button"
-          className={isMenuOpen ? 'is-active' : undefined}
+          className={isMenuOpen || BOTTOM_BAR_HIDDEN.includes(activeTab) ? 'is-active' : undefined}
           onClick={() => setIsMenuOpen((open) => !open)}
           aria-expanded={isMenuOpen}
           aria-controls="tenant-dashboard-nav"
@@ -2480,166 +1949,61 @@ export default function TenantShell() {
       </nav>
 
       {/* Main Content Area */}
-      <div className="tenant-dashboard-main" style={{
-        flex: 1,
-        minWidth: 0,
-        marginLeft: isMobile ? '0' : `calc(${isMenuOpen ? 'min(360px, 100vw)' : '72px'} + ${TENANT_DASHBOARD_SHELL_GAP})`
-      }}>
-        <div className="bw-container" style={{ 
-          padding: 'clamp(12px, 2vw, 24px) clamp(16px, 3vw, 32px)', 
-          maxWidth: '100%',
-          width: '100%',
-          minWidth: 0,
-          boxSizing: 'border-box'
-        }}>
-          {/* Top Bar with Sidebar Toggle */}
-          <div className="tenant-dashboard-topbar" style={{
-            marginBottom: 'clamp(16px, 3vw, 32px)',
-            paddingBottom: 'clamp(12px, 2vw, 16px)',
-            borderBottom: '1px solid var(--bw-border)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: activeTab === 'overview' ? 'flex-start' : 'center',
-            gap: '12px',
-            flexWrap: 'wrap'
-          }}>
-            {activeTab === 'overview' ? (
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{
-                  margin: 0,
-                  fontSize: 'clamp(18px, 2.5vw, 22px)',
-                  fontWeight: 500,
-                  fontFamily: '"Work Sans", sans-serif',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1.25
-                }}>
-                  {(() => {
-                    const h = new Date().getHours()
-                    const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-                    return `${g}, ${info?.first_name || 'there'}`
-                  })()}
-                </div>
-                <div style={{
-                  fontSize: 'clamp(11px, 1.2vw, 12px)',
-                  color: 'var(--bw-muted)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 300
-                }}>
-                  {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
-                  {info?.profile?.city ? ` · ${info.profile.city}` : ''}
-                </div>
+      <div className="tenant-dashboard-main">
+          {/* Top bar: page title, live-count subtitle, status */}
+          {activeTab !== 'assistant' && (
+          <header className="tenant-dashboard-topbar">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1>
+                {activeTab === 'overview'
+                  ? (() => {
+                      const h = new Date().getHours()
+                      const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+                      return `${g}, ${info?.first_name || 'there'}`
+                    })()
+                  : getPageTitle()}
+              </h1>
+              <div style={{ marginTop: 4, fontSize: 13, color: 'var(--bw-muted)', fontWeight: 400 }}>
+                {activeTab === 'overview' && (
+                  <>
+                    {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+                    {info?.profile?.city ? ` · ${info.profile.city}` : ''}
+                  </>
+                )}
+                {activeTab === 'drivers' && `${activeDriverCount} active of ${drivers.length} ${drivers.length === 1 ? 'driver' : 'drivers'}`}
+                {activeTab === 'bookings' && `${bookings.length} ${bookings.length === 1 ? 'booking' : 'bookings'}`}
+                {activeTab === 'riders' && `${riders.length} ${riders.length === 1 ? 'rider' : 'riders'}`}
+                {activeTab === 'vehicles' && `${vehicles.length} ${vehicles.length === 1 ? 'vehicle' : 'vehicles'}`}
               </div>
-            ) : activeTab === 'drivers' && isMobile ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 }}>
-                <h3 style={{
-                  margin: 0,
-                  fontSize: 'clamp(20px, 3vw, 28px)',
-                  fontWeight: 400,
-                  fontFamily: '"Work Sans", sans-serif',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1,
-                  minWidth: 0
-                }}>
-                  {getPageTitle()}
-                </h3>
-                <span style={{
-                  flexShrink: 0,
-                  fontSize: 'clamp(11px, 1.4vw, 12px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  letterSpacing: '0.03em',
-                  padding: '5px 10px',
-                  borderRadius: '999px',
-                  border: lightMode ? '1px solid rgba(124, 58, 237, 0.28)' : '1px solid rgba(124, 58, 237, 0.45)',
-                  backgroundColor: lightMode ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.14)',
-                  color: lightMode ? '#5b21b6' : '#c4b5fd'
-                }} title={`${drivers.length} total drivers`}
-                >
-                  {activeDriverCount === 1 ? '1 active' : `${activeDriverCount} active`}
-                </span>
-              </div>
-            ) : (
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3vw, 28px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif',
-                color: 'var(--bw-text)',
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                lineHeight: 1
-              }}>
-                {getPageTitle()}
-              </h3>
-            )}
-
-            <div style={{ 
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'center',
-              marginLeft: activeTab === 'overview' ? 'auto' : undefined,
-              flexWrap: 'wrap',
-              justifyContent: 'flex-end'
-            }}
-            className="desktop-actions"
-            >
-              {activeTab === 'overview' && (
-                <>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: lightMode ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.12)',
-                    fontSize: 'clamp(11px, 1.2vw, 12px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 500,
-                    color: 'var(--bw-text)'
-                  }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#22c55e', flexShrink: 0 }} />
-                    Live
-                  </div>
-                  <div style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--bw-border)',
-                    backgroundColor: 'var(--bw-bg-secondary)',
-                    fontSize: 'clamp(11px, 1.2vw, 12px)',
-                    fontFamily: '"Work Sans", sans-serif',
-                    fontWeight: 400,
-                    color: 'var(--bw-text)',
-                    maxWidth: 220,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }} title={info?.profile?.company_name || ''}>
-                    {info?.profile?.company_name || 'Company'}
-                  </div>
-                </>
-              )}
-              <button 
-                className="bw-btn-outline" 
-                onClick={() => useAuthStore.getState().logout()}
-                style={{ 
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontSize: 'clamp(12px, 1.5vw, 14px)',
-                  padding: 'clamp(6px, 1vw, 8px) clamp(12px, 2vw, 16px)',
-                  fontWeight: 300,
-                  display: isMobile ? 'none' : 'inline-flex'
-                }}
-              >
-                Logout
-              </button>
             </div>
-          </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {activeTab === 'overview' && !isMobile && <StatusPill status="active" label="Dispatch live" size="md" />}
+              {(activeTab === 'overview' || activeTab === 'bookings') && (
+                <Button onClick={() => setShowBookRideModal(true)}>
+                  <Plus size={15} weight="bold" aria-hidden />
+                  {isMobile ? 'Book' : 'New booking'}
+                </Button>
+              )}
+              {activeTab === 'drivers' && (
+                <Button onClick={() => setShowAddDriver(true)}>
+                  <Plus size={15} weight="bold" aria-hidden />
+                  {isMobile ? 'Add' : 'Add driver'}
+                </Button>
+              )}
+              {activeTab === 'vehicles' && (
+                <Button onClick={() => setShowAddVehicleForm(!showAddVehicleForm)}>
+                  <Plus size={15} weight="bold" aria-hidden />
+                  {isMobile ? 'Add' : 'Add vehicle'}
+                </Button>
+              )}
+            </div>
+          </header>
+          )}
 
           {/* Tab Content */}
+          <div className={`tenant-dashboard-content${activeTab === 'assistant' ? ' is-chat' : ''}`}>
           <div className="bw-tab-content" style={{
             fontFamily: '"Work Sans", sans-serif',
-            fontWeight: 300,
             width: '100%',
             maxWidth: '100%',
             minWidth: 0,
@@ -2656,15 +2020,14 @@ export default function TenantShell() {
               left: isMobile ? '12px' : 'auto',
               zIndex: 1100,
               width: isMobile ? 'auto' : 'min(420px, calc(100vw - 32px))',
-              border: lightMode ? '1px solid rgba(79, 70, 229, 0.28)' : '1px solid rgba(167, 139, 250, 0.4)',
-              background: lightMode ? '#ffffff' : '#1f1b33',
-              boxShadow: lightMode ? '0 10px 24px rgba(15, 23, 42, 0.12)' : '0 12px 28px rgba(0, 0, 0, 0.45)',
+              border: '1px solid var(--bw-border-strong)',
+              background: 'var(--bw-bg-secondary)',
               borderRadius: 10,
               padding: '12px',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <Info size={18} style={{ flexShrink: 0, marginTop: 1, color: lightMode ? '#4338ca' : '#c4b5fd' }} aria-hidden />
+              <Info size={18} style={{ flexShrink: 0, marginTop: 1, color: 'var(--bw-accent)' }} aria-hidden />
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--bw-text)' }}>
                   Install Maison as an app
@@ -2673,25 +2036,11 @@ export default function TenantShell() {
                   Add Maison to your iPhone or Android home screen for faster access.
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="bw-btn-outline"
-                    onClick={() => {
+                  <Button variant="secondary" onClick={() => {
                       setShowInstallAppNotice(false)
                       navigate('/tenant/settings/help#install-web-app')
-                    }}
-                    style={{ padding: '6px 10px', fontSize: 12, fontFamily: '"Work Sans", sans-serif' }}
-                  >
-                    View instructions
-                  </button>
-                  <button
-                    type="button"
-                    className="bw-btn-outline"
-                    onClick={() => setShowInstallAppNotice(false)}
-                    style={{ padding: '6px 10px', fontSize: 12, fontFamily: '"Work Sans", sans-serif' }}
-                  >
-                    Not now
-                  </button>
+                    }} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>View instructions</Button>
+                  <Button variant="secondary" onClick={() => setShowInstallAppNotice(false)} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>Not now</Button>
                 </div>
               </div>
               <button
@@ -2714,121 +2063,38 @@ export default function TenantShell() {
         )}
 
         <Outlet context={ctx} />
-        </div>
-        </div>
+          </div>
+          </div>
 
       {showDriverModeConfirm && (
-        <div className="bw-modal-overlay" onClick={() => setShowDriverModeConfirm(false)}>
-          <div className="bw-modal" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()} style={{
-            maxWidth: '500px',
-            width: '90vw'
-          }}>
-            <div className="bw-modal-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderBottom: '1px solid var(--bw-border)'
-            }}>
-              <h3 style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 2.5vw, 24px)',
-                fontWeight: 400,
-                fontFamily: '"Work Sans", sans-serif'
-              }}>
-                Switch to Driver Mode
-              </h3>
-              <button 
-                type="button"
-                className="bw-btn-icon" 
+        <Modal
+          title="Switch to Driver Mode"
+          width={500}
+          onClose={() => setShowDriverModeConfirm(false)}
+          footer={
+            <>
+              <Button
+                variant="secondary"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   setShowDriverModeConfirm(false)
-                }}
-                style={{
-                  padding: '8px',
-                  minWidth: '32px',
-                  minHeight: '32px'
-                }}
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div className="bw-modal-body" style={{
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              fontFamily: '"Work Sans", sans-serif',
-              fontWeight: 300
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <p style={{
-                  margin: 0,
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1.6
-                }}>
-                  You are about to switch to Driver Mode. This will change your view to the driver interface where you can manage your driver profile, view assigned bookings, and access driver-specific features.
-                </p>
-                <p style={{
-                  margin: 0,
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  color: 'var(--bw-text)',
-                  lineHeight: 1.6
-                }}>
-                  Do you want to continue?
-                </p>
-                {switchToDriverError && (
-                  <div style={{
-                    padding: '12px',
-                    backgroundColor: 'var(--bw-bg-secondary)',
-                    border: '1px solid var(--bw-border)',
-                    borderRadius: '7px',
-                    color: 'var(--bw-error, #ff4444)',
-                    fontSize: 'clamp(13px, 1.8vw, 15px)'
-                  }}>
-                    {switchToDriverError}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="bw-modal-footer" style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px',
-              padding: 'clamp(16px, 2.5vw, 24px)',
-              borderTop: '1px solid var(--bw-border)'
-            }}>
-              <button
-                type="button"
-                className="bw-btn-outline"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setShowDriverModeConfirm(false)
-                }}
-                style={{
-                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 600,
-                  borderRadius: 7
                 }}
               >
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async (e) => {
+              </Button>
+              <Button
+                                onClick={async (e) => {
                   e.preventDefault()
                   e.stopPropagation()
                   try {
                     setIsSwitchingToDriver(true)
                     setSwitchToDriverError(null)
-                    
+
                     const response = await becomeDriver()
-                    
+
                     const accessToken = response.data?.access_token || (response as any).access_token
-                    
+
                     if (accessToken) {
                       const tenantSlug =
                         tenantConfig?.branding?.slug?.trim() ||
@@ -2841,7 +2107,7 @@ export default function TenantShell() {
                       }
                       const driverLoginUrl = getTenantAppUrl(tenantSlug, `/driver/login?token=${encodeURIComponent(accessToken)}`)
                       window.open(driverLoginUrl, '_blank', 'noopener,noreferrer')
-                      
+
                       setShowDriverModeConfirm(false)
                     } else {
                       setSwitchToDriverError(response.error || 'Failed to get driver access token')
@@ -2854,35 +2120,43 @@ export default function TenantShell() {
                   }
                 }}
                 disabled={isSwitchingToDriver}
-                style={{
-                  padding: 'clamp(10px, 1.5vw, 14px) clamp(16px, 3vw, 24px)',
-                  fontSize: 'clamp(14px, 2vw, 16px)',
-                  fontFamily: '"Work Sans", sans-serif',
-                  fontWeight: 400,
-                  borderRadius: 7,
-                  backgroundColor: isSwitchingToDriver ? 'rgba(108, 99, 232, 0.45)' : 'var(--bw-accent)',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: isSwitchingToDriver ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  opacity: isSwitchingToDriver ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSwitchingToDriver) {
-                    e.currentTarget.style.backgroundColor = 'var(--bw-accent-hover)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSwitchingToDriver) {
-                    e.currentTarget.style.backgroundColor = 'var(--bw-accent)'
-                  }
-                }}
               >
-                {isSwitchingToDriver ? 'Switching...' : 'Continue'}
-              </button>
-            </div>
+                {isSwitchingToDriver ? 'Switching…' : 'Continue'}
+              </Button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{
+              margin: 0,
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              color: 'var(--bw-text)',
+              lineHeight: 1.6
+            }}>
+              You are about to switch to Driver Mode. This will change your view to the driver interface where you can manage your driver profile, view assigned bookings, and access driver-specific features.
+            </p>
+            <p style={{
+              margin: 0,
+              fontSize: 'clamp(14px, 2vw, 16px)',
+              color: 'var(--bw-text)',
+              lineHeight: 1.6
+            }}>
+              Do you want to continue?
+            </p>
+            {switchToDriverError && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: 'var(--bw-bg-secondary)',
+                border: '1px solid var(--bw-border)',
+                borderRadius: '7px',
+                color: 'var(--bw-error)',
+                fontSize: 'clamp(13px, 1.8vw, 15px)'
+              }}>
+                {switchToDriverError}
+              </div>
+            )}
           </div>
-        </div>
+        </Modal>
       )}
 
       <TenantBookRideModal

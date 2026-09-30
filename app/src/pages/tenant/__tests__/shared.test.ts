@@ -1,4 +1,4 @@
-import { getDashboardColors, DASH_LABEL_STYLE, DASH_VALUE_STYLE } from '../shared'
+import { getDashboardColors, DASH_LABEL_STYLE, DASH_VALUE_STYLE, formatTenantPhone } from '../shared'
 
 /**
  * White-label regression guard (maison-ui skill §1).
@@ -70,5 +70,14 @@ describe('shared typography primitives', () => {
       fontWeight: 600,
       textTransform: 'uppercase',
     })
+  })
+})
+
+describe('formatTenantPhone', () => {
+  it('formats US numbers and leaves anything else as typed', () => {
+    expect(formatTenantPhone('7732411362')).toBe('(773) 241-1362')
+    expect(formatTenantPhone('+1 (177) 356-7788')).toBe('+1 (177) 356-7788')
+    expect(formatTenantPhone('+44 20 7946 0958')).toBe('+44 20 7946 0958')
+    expect(formatTenantPhone(null)).toBe('')
   })
 })

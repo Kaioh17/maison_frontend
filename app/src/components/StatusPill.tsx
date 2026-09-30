@@ -42,7 +42,7 @@ export default function StatusPill({ status, label, size = 'sm', style, classNam
         alignItems: 'center',
         padding: size === 'sm' ? '3px 8px' : '5px 12px',
         borderRadius: size === 'sm' ? 4 : 6,
-        fontSize: size === 'sm' ? 10 : 12,
+        fontSize: size === 'sm' ? 11 : 12,
         fontWeight: 600,
         fontFamily: '"Work Sans", sans-serif',
         whiteSpace: 'nowrap',
