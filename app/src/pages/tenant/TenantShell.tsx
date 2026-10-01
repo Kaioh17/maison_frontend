@@ -1613,7 +1613,7 @@ export default function TenantShell() {
 
   if (loading) {
     return (
-      <div className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)' }}>
+      <div className="bw" style={{ minHeight: 'var(--app-h)', backgroundColor: 'var(--bw-bg)' }}>
         <TenantDashboardSkeleton />
       </div>
     )
@@ -1677,7 +1677,7 @@ export default function TenantShell() {
 
   return (
     <div className="bw tenant-dashboard-layout" style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       display: 'flex'
     }}>
       <style>{TENANT_DASHBOARD_LAYOUT_CSS}</style>
@@ -2015,11 +2015,11 @@ export default function TenantShell() {
             aria-live="polite"
             style={{
               position: 'fixed',
-              top: isMobile ? '12px' : '16px',
-              right: isMobile ? '12px' : '16px',
-              left: isMobile ? '12px' : 'auto',
+              top: `calc(${isMobile ? '12px' : '16px'} + env(safe-area-inset-top, 0px))`,
+              right: `calc(${isMobile ? '12px' : '16px'} + env(safe-area-inset-right, 0px))`,
+              left: isMobile ? 'calc(12px + env(safe-area-inset-left, 0px))' : 'auto',
               zIndex: 1100,
-              width: isMobile ? 'auto' : 'min(420px, calc(100vw - 32px))',
+              width: isMobile ? 'auto' : 'min(420px, calc(100% - 32px))',
               border: '1px solid var(--bw-border-strong)',
               background: 'var(--bw-bg-secondary)',
               borderRadius: 10,

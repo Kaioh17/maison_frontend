@@ -226,7 +226,7 @@ export default function RiderProfile() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: 'var(--app-h)',
           backgroundColor: 'var(--bw-bg)',
           color: 'var(--bw-text)',
           fontFamily: FONT_BODY,
@@ -247,7 +247,7 @@ export default function RiderProfile() {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          height: 'var(--app-h)',
           backgroundColor: 'var(--bw-bg)',
           padding: 24,
           fontFamily: FONT_BODY,
@@ -282,7 +282,7 @@ export default function RiderProfile() {
   return (
     <main
       style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: 'var(--bw-bg)',
         padding: 'clamp(16px, 3vw, 24px)',
         fontFamily: FONT_BODY,

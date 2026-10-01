@@ -47,7 +47,7 @@ export interface DashboardColors {
 export function getDashboardColors({ isCustomThemeActive, lightMode }: DashboardThemeFlags): DashboardColors {
   return {
     cardBg: isCustomThemeActive ? 'var(--bw-bg-secondary)' : (lightMode ? '#ffffff' : '#1c1a2e'),
-    cardBorder: isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid #e5e7eb' : '1px solid #2a2640'),
+    cardBorder: isCustomThemeActive ? '1px solid var(--bw-border)' : (lightMode ? '1px solid #e5e7eb' : '1px solid #2A2A2E'),
     cardShadow: isCustomThemeActive ? 'none' : (lightMode ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none'),
     primaryText: isCustomThemeActive ? 'var(--bw-text)' : (lightMode ? '#1a1a1a' : '#ffffff'),
     mutedText: isCustomThemeActive ? 'var(--bw-muted)' : (lightMode ? '#64748b' : '#7c7a92'),
@@ -104,16 +104,16 @@ export const TENANT_DASHBOARD_SHELL_GAP = 'clamp(20px, 2.4vw, 28px)'
 export const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout {
   display: flex;
-  min-height: 100vh;
+  min-height: var(--app-h);
   background: var(--bw-bg);
   color: var(--bw-text);
 }
 /* Docked sidebar: sticky, full height, single right border (no floating card). */
 .bw.tenant-dashboard-layout .tenant-dashboard-sidebar {
   position: sticky;
-  top: 0;
+  top: var(--safe-top);
   align-self: flex-start;
-  height: 100vh;
+  height: var(--app-h);
   width: 72px;
   flex: none;
   z-index: 999;
@@ -149,14 +149,14 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   padding: 0;
 }
 .bw.tenant-dashboard-layout .assistant-page {
-  height: 100dvh;
+  height: var(--app-h);
 }
 @media (max-width: 768px) {
   .bw.tenant-dashboard-layout .tenant-dashboard-content.is-chat {
     padding: 0;
   }
   .bw.tenant-dashboard-layout .assistant-page {
-    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    height: calc(var(--app-h) - 64px - var(--safe-bottom));
   }
   .bw.tenant-dashboard-layout .tenant-dashboard-content {
     padding: 16px 16px 88px;
@@ -165,8 +165,9 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     position: fixed;
     top: 0;
     left: 0;
-    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
-    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--dvh) - 64px - var(--safe-bottom));
+    padding-top: var(--safe-top);
+    padding-left: var(--safe-left);
     box-sizing: border-box;
     width: min(300px, 86vw);
     transform: translateX(-100%);
@@ -191,8 +192,8 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     right: 0;
     bottom: 0;
     z-index: 1000;
-    height: calc(64px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(64px + var(--safe-bottom));
+    padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
     background-color: var(--bw-bg);
     background-color: color-mix(in srgb, var(--bw-bg) 88%, transparent);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
@@ -202,7 +203,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   }
   /* keep the full-width content panel clear of the fixed bottom tab bar */
   .bw.tenant-dashboard-layout .tenant-dashboard-main {
-    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    height: calc(var(--app-h) - 64px - var(--safe-bottom));
   }
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-bottombar button {
@@ -305,7 +306,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   transform: scale(0.98);
 }
 .bw.tenant-dashboard-layout .tenant-overview-nav-card:focus-visible {
-  outline: 2px solid var(--bw-accent, #6c63e8);
+  outline: 2px solid var(--bw-accent, #6e5bd8);
   outline-offset: 2px;
 }
 .bw.tenant-dashboard-layout .tenant-overview-triple-grid {
@@ -323,7 +324,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 }
 .bw.tenant-dashboard-layout .tenant-dashboard-topbar {
   position: sticky;
-  top: 0;
+  top: var(--safe-top);
   z-index: 100;
   background: var(--bw-bg);
   border-bottom: 1px solid var(--bw-border);
@@ -338,7 +339,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 }
 @media (max-width: 768px) {
   .bw.tenant-dashboard-layout .tenant-dashboard-topbar {
-    padding: calc(max(env(safe-area-inset-top), 0px) + 10px) 16px 10px;
+    padding: 10px 16px;
   }
 }
 .bw.tenant-dashboard-layout .tenant-driver-table-row {
@@ -404,6 +405,11 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
 .bw.tenant-dashboard-layout .tnav-icon-btn:hover {
   background: var(--bw-bg-hover);
   color: var(--bw-text);
+}
+/* Touch: component rules above set smaller sizes with higher specificity than the global 44px floor. */
+@media (pointer: coarse) {
+  .bw.tenant-dashboard-layout .tnav-item { min-height: 44px; }
+  .bw.tenant-dashboard-layout .tnav-icon-btn { width: 44px; height: 44px; }
 }
 .bw.tenant-dashboard-layout .tnav-item:hover {
   background: var(--bw-bg-hover);

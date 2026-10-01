@@ -38,8 +38,9 @@ function apiProxyConfig(mode: string) {
     '/manifest.webmanifest': passthrough,
     '/apple-touch-icon.png': passthrough,
     '/apple-touch-icon-precomposed.png': passthrough,
-    '^/apple-touch-icon-[^/]+\\.png$': passthrough,
-    '^/icons/icon-[^/]+\\.png$': passthrough,
+    // `(?:\\?.*)?$`: the matched URL still carries the `?v=<version>` cache-buster.
+    '^/apple-touch-icon-[^/?]+\\.png(?:\\?.*)?$': passthrough,
+    '^/icons/icon-[^/?]+\\.png(?:\\?.*)?$': passthrough,
   } as const
 }
 
@@ -48,7 +49,10 @@ export default defineConfig(({ mode }) => ({
     react(),
     tsconfigPaths(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': a new service worker waits until the user accepts (see `src/hooks/usePwaUpdate.ts`); never auto-reloads.
+      registerType: 'prompt',
+      // Registered from `src/main.tsx` via `virtual:pwa-register` so the update prompt can be wired up.
+      injectRegister: false,
       /**
        * Use `public/manifest.webmanifest` (static fallback). In production
        * nginx rewrites `/manifest.webmanifest` to the backend so per-host
@@ -72,7 +76,7 @@ export default defineConfig(({ mode }) => ({
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-      includeAssets: ['offline.html', 'favicon.svg', 'icons/icon.svg'],
+      includeAssets: ['offline.html'],
       devOptions: {
         enabled: false,
       },

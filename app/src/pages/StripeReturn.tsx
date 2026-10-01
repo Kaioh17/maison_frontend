@@ -6,7 +6,7 @@ export default function StripeReturn() {
 
   return (
     <main className="bw" style={{ 
-      minHeight: '100vh', 
+      minHeight: 'var(--app-h)', 
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center',

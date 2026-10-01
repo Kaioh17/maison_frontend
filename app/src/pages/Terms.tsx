@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import MaisonWordmark from '@components/MaisonWordmark'
 
 const EFFECTIVE_DATE = 'June 14, 2026'
@@ -288,11 +287,10 @@ const sections: { title: string; content: ReactNode }[] = [
 
 export default function Terms() {
   return (
-    <main className="bw" style={{ minHeight: '100vh', backgroundColor: 'var(--bw-bg)', padding: '48px 24px' }}>
+    <main className="bw" style={{ minHeight: 'var(--app-h)', backgroundColor: 'var(--bw-bg)', padding: '48px 24px' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: 48 }}>
-          <MaisonDarkModeLogo height={44} />
-          <MaisonWordmark color={null} style={{ fontSize: '1.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
+          <MaisonWordmark color={null} style={{ fontSize: '1.75rem' }} />
         </div>
 
         <h1 style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 200, fontSize: 40, margin: '0 0 8px 0' }}>Terms of Service</h1>

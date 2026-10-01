@@ -6,10 +6,11 @@ import { useAuthStore } from '@store/auth'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle, EnvelopeSimple, CaretDown } from '@phosphor-icons/react'
+import { MapPin, Calendar, CreditCard, Car, User, SignOut, UserCircle, List, X, SquaresFour, BookOpen, Truck, CheckCircle, XCircle, Clock, WarningCircle, EnvelopeSimple, CaretDown, House, ClockCounterClockwise, DotsThree } from '@phosphor-icons/react'
 import { hasZelleRecipient, zelleNumberFromApi, zelleEmailFromApi, zelleEmailDisplay, isCompleteUsPhone } from '@utils/zelleContact'
 import LocationAutocomplete from '@components/LocationAutocomplete'
 import CountryAutocomplete from '@components/CountryAutocomplete'
+import RiderMapPlaceholder from '@components/RiderMapPlaceholder'
 type MenuSection = 'dashboard' | 'book-ride' | 'all-bookings' | 'vehicles'
 
 const riderSurfaceShell: CSSProperties = {
@@ -712,7 +713,7 @@ export default function RiderDashboard() {
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A'
     const date = new Date(dateString)
-    return date.toLocaleString()
+    return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
   }
 
   const getStatusColor = (status: string) => {
@@ -1005,10 +1006,10 @@ export default function RiderDashboard() {
   const riderCompanyName = tenantInfo?.company_name?.trim() || 'your service'
 
   const menuItems = [
-    { id: 'dashboard' as MenuSection, label: 'Dashboard', icon: SquaresFour },
-    { id: 'book-ride' as MenuSection, label: 'Book a Ride', icon: BookOpen },
-    { id: 'all-bookings' as MenuSection, label: 'See All Bookings', icon: List },
-    { id: 'vehicles' as MenuSection, label: 'See Vehicles', icon: Truck },
+    { id: 'dashboard' as MenuSection, label: 'Dashboard', short: 'Home', icon: SquaresFour, navIcon: House },
+    { id: 'book-ride' as MenuSection, label: 'Book a Ride', short: 'Book', icon: BookOpen, navIcon: Car },
+    { id: 'all-bookings' as MenuSection, label: 'See All Bookings', short: 'Trips', icon: List, navIcon: ClockCounterClockwise },
+    { id: 'vehicles' as MenuSection, label: 'See Vehicles', short: 'Fleet', icon: Truck, navIcon: Truck },
   ]
 
   const handleMenuSelect = (section: MenuSection) => {
@@ -1027,7 +1028,7 @@ export default function RiderDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
       position: 'relative'
@@ -1055,13 +1056,24 @@ export default function RiderDashboard() {
         style={{
           position: 'fixed',
           top: 0,
-          left: isMobile ? (isMenuOpen ? '0' : '-100%') : '0',
+          left: '0',
+          ...(isMobile
+            ? {
+                top: 'auto',
+                bottom: 0,
+                height: 'auto',
+                maxHeight: '85dvh',
+                borderRadius: '24px 24px 0 0',
+                transform: isMenuOpen ? 'translateY(0)' : 'translateY(100%)',
+                visibility: isMenuOpen ? 'visible' : 'hidden',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              } as CSSProperties
+            : { height: 'var(--app-h)' }),
           width: isMobile ? '100%' : 'clamp(280px, 25vw, 320px)',
-          height: '100vh',
           backgroundColor: 'var(--bw-bg)',
           borderRight: '1px solid var(--bw-border)',
           zIndex: 999,
-          transition: 'left 0.3s ease',
+          transition: isMobile ? 'transform 0.3s ease, visibility 0.3s' : 'left 0.3s ease',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
@@ -1071,7 +1083,6 @@ export default function RiderDashboard() {
         {/* Company Logo/Name in Sidebar */}
         <div style={{
           padding: 'clamp(16px, 2.5vw, 24px)',
-          paddingTop: 'calc(max(env(safe-area-inset-top), 0px) + clamp(16px, 2.5vw, 24px))',
           borderBottom: '1px solid var(--bw-border)',
           display: 'flex',
           alignItems: 'center',
@@ -1113,6 +1124,7 @@ export default function RiderDashboard() {
               Rider Dashboard
             </h1>
           )}
+          {isMobile && (
           <button
             onClick={() => setIsMenuOpen(false)}
             aria-label="Close menu"
@@ -1131,9 +1143,11 @@ export default function RiderDashboard() {
           >
             <X size={20} />
           </button>
+          )}
         </div>
 
-        {/* Navigation Menu */}
+        {/* Navigation Menu (desktop; mobile uses the bottom bar and this sheet only holds contact/profile/logout) */}
+        {isMobile ? <div style={{ flex: 1 }} /> : (
         <nav style={{
           flex: 1,
           padding: 'clamp(12px, 2vw, 20px) 0',
@@ -1181,6 +1195,7 @@ export default function RiderDashboard() {
             )
           })}
         </nav>
+        )}
 
         {/* Tenant contact (public slug: branding.email_from_address + branding.phone) */}
         <div
@@ -1367,50 +1382,43 @@ export default function RiderDashboard() {
           alignItems: 'center',
           gap: '12px'
         }}>
-          {isMobile && (
-            <button
-              className="rider-hamburger"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="Toggle menu"
-              aria-expanded={isMenuOpen}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '8px',
-                minWidth: '40px',
-                minHeight: '40px',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--bw-border)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: 'var(--bw-text)'
-              }}
-            >
-              <List size={20} />
-            </button>
-          )}
-
-          <h1 style={{
-            margin: 0,
-            fontSize: 'clamp(20px, 4vw, 28px)',
-            fontWeight: 200,
-            fontFamily: 'DM Sans, sans-serif',
-            color: 'var(--bw-text)',
-            flex: 1
-          }}>
-            {menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
-          </h1>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {isMobile && (
+              <div style={{
+                marginBottom: 2,
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--bw-muted)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {riderCompanyName}
+              </div>
+            )}
+            <h1 style={{
+              margin: 0,
+              fontSize: 'clamp(24px, 5vw, 28px)',
+              fontWeight: 500,
+              letterSpacing: '-0.02em',
+              fontFamily: 'DM Sans, sans-serif',
+              color: 'var(--bw-text)'
+            }}>
+              {menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}
+            </h1>
+          </div>
         </div>
 
         {/* Error Message */}
         {error && (
           <div style={{
             padding: 'clamp(10px, 2vw, 12px)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            color: '#ef4444',
+            backgroundColor: 'color-mix(in srgb, var(--bw-error) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--bw-error) 45%, transparent)',
+            borderRadius: '12px',
+            color: 'var(--bw-error)',
             marginBottom: 'clamp(16px, 3vw, 24px)',
             fontSize: 'clamp(13px, 2vw, 14px)'
           }}>
@@ -1421,10 +1429,10 @@ export default function RiderDashboard() {
         {notice && (
           <div style={{
             padding: 'clamp(10px, 2vw, 12px)',
-            backgroundColor: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid rgba(16, 185, 129, 0.45)',
-            borderRadius: '8px',
-            color: '#10b981',
+            backgroundColor: 'color-mix(in srgb, var(--bw-success) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--bw-success) 45%, transparent)',
+            borderRadius: '12px',
+            color: 'var(--bw-success)',
             marginBottom: 'clamp(16px, 3vw, 24px)',
             fontSize: 'clamp(13px, 2vw, 14px)'
           }}>
@@ -1476,19 +1484,9 @@ export default function RiderDashboard() {
                   Your bookings, ride history, and trip status updates will appear here once you take your first ride.
                 </p>
                 <button
+                  className="btn btn-primary"
                   onClick={() => handleMenuSelect('book-ride')}
-                  style={{
-                    marginTop: 'clamp(14px, 2.5vw, 18px)',
-                    padding: 'clamp(12px, 2.3vw, 16px) clamp(18px, 3.4vw, 22px)',
-                    backgroundColor: 'var(--rider-primary)',
-                    color: 'var(--rider-on-primary)',
-                    border: 'none',
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    fontSize: 'clamp(14px, 2.3vw, 15px)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 600
-                  }}
+                  style={{ marginTop: 'clamp(14px, 2.5vw, 18px)' }}
                 >
                   Book your first ride
                 </button>
@@ -1511,9 +1509,9 @@ export default function RiderDashboard() {
                 >
                   <div className="rider-stat-segment" style={{ minWidth: 'clamp(140px, 30vw, 180px)', flex: '1 1 0%', padding: 'clamp(10px, 2.2vw, 14px)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <Calendar size={15} style={{ color: '#b0b9c6' }} />
+                      <Calendar size={15} style={{ color: 'var(--bw-muted)' }} />
                       <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
-                        Total Bookings
+                        Total
                       </div>
                     </div>
                     <div style={{ fontSize: 'clamp(20px, 4.2vw, 24px)', color: 'var(--bw-text)', fontWeight: 600, fontFamily: 'Work Sans, sans-serif', lineHeight: 1.1 }}>
@@ -1523,7 +1521,7 @@ export default function RiderDashboard() {
 
                   <div className="rider-stat-segment" style={{ minWidth: 'clamp(140px, 30vw, 180px)', flex: '1 1 0%', padding: 'clamp(10px, 2.2vw, 14px)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <CheckCircle size={15} style={{ color: '#34d399' }} />
+                      <CheckCircle size={15} style={{ color: 'var(--bw-status-active-text)' }} />
                       <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
                         Completed
                       </div>
@@ -1543,7 +1541,7 @@ export default function RiderDashboard() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <Clock size={15} style={{ color: '#fbbf24' }} />
+                      <Clock size={15} style={{ color: 'var(--bw-status-pending-text)' }} />
                       <div style={{ fontSize: 'clamp(11px, 1.9vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, fontFamily: 'Work Sans, sans-serif', fontWeight: 400 }}>
                         Pending
                       </div>
@@ -1551,7 +1549,7 @@ export default function RiderDashboard() {
                     <div
                       style={{
                         fontSize: 'clamp(20px, 4.2vw, 24px)',
-                        color: pendingBookings === 0 ? '#9ca3af' : 'var(--bw-text)',
+                        color: pendingBookings === 0 ? 'var(--bw-muted)' : 'var(--bw-text)',
                         fontWeight: 600,
                         fontFamily: 'Work Sans, sans-serif',
                         lineHeight: 1.1
@@ -1564,48 +1562,24 @@ export default function RiderDashboard() {
 
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button
-                    onClick={() => handleMenuSelect('book-ride')}
-                    style={{
-                      width: '100%',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                      backgroundColor: 'var(--rider-primary)',
-                      color: 'var(--rider-on-primary)',
-                      border: 'none',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      fontSize: 'clamp(14px, 2.5vw, 16px)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontWeight: 600
-                    }}
-                  >
-                    <Car size={18} weight="regular" />
+                  <button className="btn btn-primary btn-block" style={{ minHeight: 52 }} onClick={() => handleMenuSelect('book-ride')}>
+                    <Car size={18} weight="regular" aria-hidden />
                     Book a Ride
                   </button>
-                  <button
-                    onClick={() => handleMenuSelect('all-bookings')}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(13px, 2.3vw, 16px) clamp(20px, 4vw, 24px)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--rider-primary)',
-                      border: '1px solid var(--rider-primary)',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      fontSize: 'clamp(14px, 2.4vw, 15px)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontWeight: 500
-                    }}
-                  >
+                  <button className="btn btn-secondary btn-block" onClick={() => handleMenuSelect('all-bookings')}>
                     See All Bookings
                   </button>
                 </div>
+
               </div>
             )}
+
+            {/* Map: shows the next ride's route once a map provider is connected */}
+            <RiderMapPlaceholder
+              title={upcomingBookings.length > 0 ? 'Next ride' : 'Ride map'}
+              pickup={upcomingBookings[0]?.pickup_location}
+              dropoff={upcomingBookings[0]?.dropoff_location}
+            />
 
             {/* Upcoming Rides */}
             {upcomingBookings.length > 0 && (
@@ -1641,13 +1615,13 @@ export default function RiderDashboard() {
                         }
                       }}
                       style={{
-                        border: index === 0 ? '1px solid rgba(248, 231, 206, 0.45)' : 'none',
+                        border: index === 0 ? '1px solid color-mix(in srgb, var(--bw-accent) 55%, transparent)' : 'none',
                         borderRadius: '8px',
                         padding: index === 0 ? 'clamp(14px, 2.3vw, 18px)' : 'clamp(12px, 2vw, 16px)',
                         backgroundColor: 'var(--rider-surface-inset)',
                         cursor: 'pointer',
                         transition: 'background-color 0.15s ease',
-                        boxShadow: index === 0 ? '0 0 0 1px rgba(248, 231, 206, 0.1), var(--rider-field-inset-glow)' : 'var(--rider-field-inset-glow)'
+                        boxShadow: index === 0 ? '0 0 0 1px color-mix(in srgb, var(--bw-accent) 12%, transparent), var(--rider-field-inset-glow)' : 'var(--rider-field-inset-glow)'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = 'var(--rider-row-hover)'
@@ -1674,8 +1648,8 @@ export default function RiderDashboard() {
                             {index === 0 ? 'Next Ride' : `Booking #${booking.id}`}
                           </div>
                           <div style={{
-                            fontSize: 'clamp(10px, 1.5vw, 11px)',
-                            color: '#9ca3af',
+                            fontSize: 12,
+                            color: 'var(--bw-muted)',
                             fontWeight: 300
                           }}>
                             {formatDate(booking.pickup_time)}
@@ -1777,8 +1751,8 @@ export default function RiderDashboard() {
                             Booking #{booking.id}
                           </div>
                           <div style={{
-                            fontSize: 'clamp(10px, 1.5vw, 11px)',
-                            color: '#9ca3af',
+                            fontSize: 12,
+                            color: 'var(--bw-muted)',
                             fontWeight: 300
                           }}>
                             {formatDate(booking.pickup_time)}
@@ -1813,7 +1787,7 @@ export default function RiderDashboard() {
               </div>
             )}
 
-            {upcomingBookings.length === 0 && !isLoadingBookings && (
+            {upcomingBookings.length === 0 && !isLoadingBookings && !isFreshDashboard && (
               <div style={{
                 ...riderSurfaceShell,
                 textAlign: 'center',
@@ -1831,25 +1805,8 @@ export default function RiderDashboard() {
                 }}>
                   No upcoming rides.
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleMenuSelect('book-ride')}
-                  style={{
-                    padding: 'clamp(12px, 2.3vw, 16px) clamp(18px, 3.4vw, 22px)',
-                    backgroundColor: 'var(--rider-primary)',
-                    color: 'var(--rider-on-primary)',
-                    border: 'none',
-                    borderRadius: 8,
-                    cursor: 'pointer',
-                    fontSize: 'clamp(14px, 2.3vw, 15px)',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Car size={17} weight="regular" />
+                <button type="button" className="btn btn-primary" onClick={() => handleMenuSelect('book-ride')}>
+                  <Car size={17} weight="regular" aria-hidden />
                   Book a Ride
                 </button>
               </div>
@@ -1867,15 +1824,12 @@ export default function RiderDashboard() {
             position: 'relative',
             overflow: 'visible'
           }}>
-            <h2 style={{
-              margin: '0 0 clamp(16px, 3vw, 20px) 0',
-              fontSize: 'clamp(18px, 3vw, 22px)',
-              fontWeight: 400,
-              fontFamily: 'Work Sans, sans-serif',
-              color: 'var(--bw-text)'
-            }}>
-              Book a Ride
-            </h2>
+            <div style={{ marginBottom: 'clamp(16px, 3vw, 20px)' }}>
+              <RiderMapPlaceholder
+                pickup={form.service_type === 'airport' && form.airport_service === 'from_airport' ? form.airport_location : form.pickup_location}
+                dropoff={form.service_type === 'airport' && form.airport_service === 'to_airport' ? form.airport_location : form.dropoff_location}
+              />
+            </div>
 
             <div style={{
               display: 'flex',
@@ -1884,14 +1838,9 @@ export default function RiderDashboard() {
               position: 'relative',
               overflow: 'visible'
             }}>
-              {/* Service Type and Payment Method */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(150px, 25vw, 200px), 1fr))',
-                gap: 'clamp(12px, 2.5vw, 16px)'
-              }}>
-                <div>
-                  <label style={{
+              {/* Service type */}
+              <div>
+                  <label id="rider-service-type-label" style={{
                     display: 'block',
                     marginBottom: '8px',
                     fontSize: 'clamp(13px, 2vw, 14px)',
@@ -1900,64 +1849,60 @@ export default function RiderDashboard() {
                   }}>
                     Service Type
                   </label>
-                  <select 
-                    className="bw-input" 
-                    value={form.service_type} 
-                    onChange={(e) => setForm({ 
-                      ...form, 
-                      service_type: e.target.value as any,
-                      airport_service: '', // Reset airport service when changing service type
-                      hours: 0, // Reset hours when changing service type
-                    })}
-                    style={{
-                      width: '100%',
-                      padding: 'clamp(10px, 2vw, 12px)',
-                      borderRadius: '8px',
-                      color: 'var(--bw-text)',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(13px, 2vw, 14px)',
-                      ...riderFieldDepth
-                    }}
-                  >
-                    <option value="dropoff">Dropoff</option>
-                    <option value="airport">Airport</option>
-                    <option value="hourly">Hourly</option>
-                  </select>
-                </div>
-
-                {/* Airport Service Type - Only show when service_type is airport */}
-                {form.service_type === 'airport' && (
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      fontSize: 'clamp(13px, 2vw, 14px)',
-                      fontWeight: 500,
-                      color: 'var(--bw-text)'
-                    }}>
-                      Airport Service *
-                    </label>
-                    <select 
-                      className="bw-input" 
-                      value={form.airport_service} 
-                      onChange={(e) => setForm({ ...form, airport_service: e.target.value as any })}
-                      style={{
-                        width: '100%',
-                        padding: 'clamp(10px, 2vw, 12px)',
-                        borderRadius: '8px',
-                        color: 'var(--bw-text)',
-                        fontFamily: 'Work Sans, sans-serif',
-                        fontSize: 'clamp(13px, 2vw, 14px)',
-                        ...riderFieldDepth
-                      }}
+                <div className="rider-seg" role="radiogroup" aria-labelledby="rider-service-type-label">
+                  {([
+                    ['dropoff', 'Dropoff'],
+                    ['airport', 'Airport'],
+                    ['hourly', 'Hourly'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.service_type === value}
+                      onClick={() => setForm({
+                        ...form,
+                        service_type: value,
+                        airport_service: '', // Reset airport service when changing service type
+                        hours: 0, // Reset hours when changing service type
+                      })}
                     >
-                      <option value="">Select airport service</option>
-                      <option value="to_airport">To Airport</option>
-                      <option value="from_airport">From Airport</option>
-                    </select>
-                  </div>
-                )}
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Airport service - only when service_type is airport */}
+              {form.service_type === 'airport' && (
+                <div>
+                  <label id="rider-airport-service-label" style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: 500,
+                    color: 'var(--bw-text)'
+                  }}>
+                    Airport Service *
+                  </label>
+                  <div className="rider-seg" role="radiogroup" aria-labelledby="rider-airport-service-label">
+                    {([
+                      ['to_airport', 'To airport'],
+                      ['from_airport', 'From airport'],
+                    ] as const).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        role="radio"
+                        aria-checked={form.airport_service === value}
+                        onClick={() => setForm({ ...form, airport_service: value })}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Vehicle */}
               <div style={{ position: 'relative', zIndex: 1 }}>
@@ -2254,26 +2199,16 @@ export default function RiderDashboard() {
               </div>
 
               {/* Submit Button */}
-              <button 
-                className="bw-btn" 
-                onClick={book}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: 'clamp(12px, 2.5vw, 14px) clamp(20px, 4vw, 24px)',
-                  borderRadius: 7,
-                  backgroundColor: 'var(--rider-primary)',
-                  color: 'var(--rider-on-primary)',
-                  border: 'none',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  opacity: isLoading ? 0.6 : 1
-                }}
-              >
-                {isLoading ? 'Booking...' : 'Book Ride'}
-              </button>
+              <div className="rider-sticky-cta">
+                <button
+                  className="btn btn-primary btn-block"
+                  style={{ minHeight: 52, fontSize: 16 }}
+                  onClick={book}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Booking...' : 'Book Ride'}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2589,7 +2524,7 @@ export default function RiderDashboard() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Pickup</div>
                           <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif' }}>{booking.pickup_location}</div>
-                          <div style={{ fontSize: 'clamp(10px, 1.5vw, 11px)', color: '#9ca3af', fontWeight: 300, marginTop: '4px' }}>
+                          <div style={{ fontSize: 12, color: 'var(--bw-muted)', fontWeight: 300, marginTop: '4px' }}>
                             {formatDate(booking.pickup_time)}
                           </div>
                         </div>
@@ -2606,7 +2541,7 @@ export default function RiderDashboard() {
                             <div style={{ fontSize: 'clamp(11px, 1.8vw, 12px)', color: 'var(--bw-text)', opacity: 0.7, marginBottom: '4px' }}>Dropoff</div>
                             <div style={{ fontSize: 'clamp(13px, 2vw, 14px)', color: 'var(--bw-text)', fontWeight: 300, fontFamily: 'Work Sans, sans-serif', opacity: 0.45 }}>{booking.dropoff_location}</div>
                             {booking.dropoff_time && (
-                              <div style={{ fontSize: 'clamp(10px, 1.5vw, 11px)', color: '#9ca3af', fontWeight: 300, marginTop: '4px' }}>
+                              <div style={{ fontSize: 12, color: 'var(--bw-muted)', fontWeight: 300, marginTop: '4px' }}>
                                 {formatDate(booking.dropoff_time)}
                               </div>
                             )}
@@ -3243,6 +3178,41 @@ export default function RiderDashboard() {
         )}
       </div>
 
+      {isMobile && (
+        <nav className="rider-bottomnav" aria-label="Rider navigation">
+          {menuItems.map((item) => {
+            const NavIcon = item.navIcon
+            const isPrimary = item.id === 'book-ride'
+            const isActive = activeSection === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`rider-bottomnav__item${isPrimary ? ' rider-bottomnav__item--primary' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => handleMenuSelect(item.id)}
+              >
+                {isPrimary ? (
+                  <span className="rider-bottomnav__icon"><NavIcon size={22} weight="fill" aria-hidden /></span>
+                ) : (
+                  <NavIcon size={22} weight={isActive ? 'fill' : 'regular'} aria-hidden />
+                )}
+                {item.short}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            className="rider-bottomnav__item"
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen(true)}
+          >
+            <DotsThree size={22} weight="bold" aria-hidden />
+            More
+          </button>
+        </nav>
+      )}
+
       {/* Responsive Styles */}
       <style>{`
         /* Compact KPI strip with subtle separators */
@@ -3250,12 +3220,11 @@ export default function RiderDashboard() {
           border-left: 1px solid var(--rider-hairline);
         }
 
-        /* If needed on narrow screens, wrap to 2 + 1 */
+        /* Three compact columns on phones instead of wrapping 2 + 1 */
         @media (max-width: 560px) {
-          .rider-stats-strip .rider-stat-segment:nth-child(3) {
-            flex-basis: 100% !important;
-            border-left: none !important;
-            border-top: 1px solid var(--rider-hairline);
+          .rider-stats-strip .rider-stat-segment {
+            min-width: 0 !important;
+            padding: 12px 10px !important;
           }
         }
 

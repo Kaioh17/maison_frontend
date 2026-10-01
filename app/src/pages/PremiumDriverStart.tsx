@@ -57,7 +57,7 @@ export default function PremiumDriverStart() {
     return (
       <div
         style={{
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -112,7 +112,7 @@ export default function PremiumDriverStart() {
     <main
       style={{
         margin: 0,
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: premium.palette.background,
         color: premium.palette.text,
         fontFamily: 'Work Sans, sans-serif',

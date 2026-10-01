@@ -1,20 +1,22 @@
 import { Link } from 'react-router-dom'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
-import MaisonWordmark from '@components/MaisonWordmark'
+import maisonWordmark from '../images/maison_wordmark.png'
 
 export default function About() {
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-white" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
+    <main className="min-h-[var(--app-h)] bg-[#0a0a0f] text-white" style={{ fontFamily: "'DM Sans', 'Work Sans', sans-serif" }}>
       <section className="mx-auto max-w-4xl px-6 py-12 md:py-16">
         <div className="mb-8 flex items-center justify-between gap-4">
           <Link
             to="/"
             className="text-white"
             aria-label="Maison home"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.9rem', lineHeight: 1 }}
+            style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}
           >
-            <MaisonDarkModeLogo forceDark height={30} />
-            <MaisonWordmark color="#ffffff" style={{ fontSize: '1.5rem', display: 'inline-block' }} />
+            <img
+              src={maisonWordmark}
+              alt="Maison"
+              style={{ height: '2.25rem', width: 'auto', display: 'block', transform: 'translateY(-16.9%)' }}
+            />
           </Link>
           <Link
             to="/signup"

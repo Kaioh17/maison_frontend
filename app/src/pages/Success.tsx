@@ -3,7 +3,7 @@ import './landing.css'
 
 export default function Success() {
   return (
-    <main className="bw landing-page" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <main className="bw landing-page" style={{ minHeight: 'var(--app-h)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="bw-container" style={{ maxWidth: '600px', textAlign: 'center', padding: 'clamp(32px, 5vw, 48px)' }}>
         <div style={{ marginBottom: 'clamp(32px, 4vw, 48px)' }}>
           <div style={{

@@ -1,15 +1,13 @@
 /* Full-page snap scroll root */
 .landing-snap-page {
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h);
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
 }
 
 .landing-snap-section {
-  height: 100vh;
-  height: 100dvh;
+  height: var(--app-h);
   scroll-snap-align: start;
   scroll-snap-stop: always;
   position: relative;

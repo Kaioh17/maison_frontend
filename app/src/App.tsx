@@ -9,6 +9,8 @@ import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AdminOpsGate from '@components/AdminOpsGate'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
+import UpdateBanner from '@components/UpdateBanner'
+import AssistantLauncher from '@components/AssistantLauncher'
 import { useFavicon } from '@hooks/useFavicon'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
@@ -120,7 +122,7 @@ function PageFallback() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -140,8 +142,10 @@ export default function App() {
   useFavicon()
 
   return (
-    <div style={{ paddingTop: 'max(env(safe-area-inset-top), 0px)' }}>
+    <div className="app-root">
+      <UpdateBanner />
       <AccountVerificationNotification />
+      <AssistantLauncher />
       <Suspense fallback={<PageFallback />}>
         <Routes>
       <Route

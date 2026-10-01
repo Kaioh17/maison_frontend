@@ -31,7 +31,7 @@ export default function AuthInitializer() {
   // Show loading while initializing auth
   if (!isInitialized) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[var(--app-h)]">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     )

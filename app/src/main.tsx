@@ -7,6 +7,11 @@ import App from './App'
 import AuthInitializer from '@components/AuthInitializer'
 import { ThemeProvider } from '@contexts/ThemeContext'
 import './styles.css'
+import { registerServiceWorker } from './pwa'
+import { trackVisualViewport } from './viewport'
+
+registerServiceWorker()
+trackVisualViewport()
 
 const queryClient = new QueryClient({
   defaultOptions: {

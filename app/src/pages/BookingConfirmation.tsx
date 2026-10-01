@@ -202,7 +202,7 @@ export default function BookingConfirmation() {
   if (loadingBooking || !booking) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: 'var(--bw-bg)',
         display: 'flex',
         alignItems: 'center',
@@ -224,7 +224,7 @@ export default function BookingConfirmation() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
       display: 'flex',
@@ -326,7 +326,7 @@ export default function BookingConfirmation() {
             marginRight: 'clamp(-16px, -3vw, -24px)',
             marginBottom: 'clamp(10px, 2vw, 12px)',
             width: 'calc(100% + clamp(32px, 6vw, 48px))',
-            maxWidth: '100vw',
+            maxWidth: '100%',
             boxSizing: 'border-box',
             boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
             transition: 'box-shadow 0.2s ease'
@@ -403,7 +403,7 @@ export default function BookingConfirmation() {
           marginRight: 'clamp(-16px, -3vw, -24px)',
           marginBottom: 'clamp(10px, 2vw, 12px)',
           width: 'calc(100% + clamp(32px, 6vw, 48px))',
-          maxWidth: '100vw',
+          maxWidth: '100%',
           boxSizing: 'border-box',
           boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
           transition: 'box-shadow 0.2s ease'
@@ -593,7 +593,7 @@ export default function BookingConfirmation() {
           marginRight: 'clamp(-16px, -3vw, -24px)',
           marginBottom: 'clamp(20px, 4vw, 24px)',
           width: 'calc(100% + clamp(32px, 6vw, 48px))',
-          maxWidth: '100vw',
+          maxWidth: '100%',
           boxSizing: 'border-box',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
         }}>
@@ -693,6 +693,7 @@ export default function BookingConfirmation() {
         left: 0,
         right: 0,
         padding: 'clamp(16px, 3vw, 24px)',
+        paddingBottom: 'calc(clamp(16px, 3vw, 24px) + env(safe-area-inset-bottom, 0px))',
         backgroundColor: 'var(--bw-bg)',
         borderTop: '1px solid var(--bw-border)',
         boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)',
@@ -771,7 +772,7 @@ export default function BookingConfirmation() {
               paddingBottom: 'clamp(32px, 6vw, 48px)',
               boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.15)',
               zIndex: 1001,
-              maxHeight: '80vh',
+              maxHeight: 'calc(var(--vis-h) * 0.8)',
               overflowY: 'auto',
               animation: 'slideUp 0.3s ease-out',
               borderTop: '1px solid var(--bw-border)'

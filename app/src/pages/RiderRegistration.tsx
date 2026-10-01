@@ -197,6 +197,11 @@ function BrandMark({ companyName, logoUrl, variant, palette }: BrandMarkProps) {
         textTransform: 'uppercase',
         color: palette.text,
         fontFamily: FONT_STACK,
+        // Long tenant names wrap centered inside the screen instead of hugging the left edge.
+        maxWidth: '100%',
+        padding: '0 16px',
+        textAlign: 'center',
+        overflowWrap: 'anywhere',
       }}
     >
       {companyName}
@@ -625,7 +630,7 @@ export default function RiderRegistration() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           background: loadingPalette.bg,
           color: loadingPalette.muted,
           fontFamily: FONT_STACK,
@@ -653,7 +658,7 @@ export default function RiderRegistration() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           background: palette.bg,
           padding: 24,
           fontFamily: FONT_STACK,
@@ -806,7 +811,7 @@ function DesktopLayout({
       aria-label="Rider Registration"
       style={{
         margin: 0,
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         background: palette.bg,
         display: 'flex',
         alignItems: 'center',
@@ -1185,7 +1190,7 @@ function MobileLayout({
       aria-label="Rider Registration"
       style={{
         margin: 0,
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         background: palette.bg,
         color: palette.text,
         fontFamily: FONT_STACK,
@@ -1208,7 +1213,6 @@ function MobileLayout({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
         <BrandMark companyName={companyName} logoUrl={logoUrl} variant="mobile" palette={palette} />

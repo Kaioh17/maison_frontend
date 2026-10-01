@@ -272,7 +272,7 @@ export default function PricingSettings() {
         transition: 'filter 0.3s ease',
         flex: 1,
         display: 'flex',
-        minHeight: '100vh'
+        minHeight: 'var(--app-h)'
       }}>
         <div style={{
           maxWidth: '100%',
@@ -668,7 +668,7 @@ export default function PricingSettings() {
             position: 'fixed', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
             maxWidth: isMobile ? 'calc(100% - 40px)' : '600px',
-            width: '100%', maxHeight: '80vh', overflowY: 'auto',
+            width: '100%', maxHeight: 'calc(var(--vis-h) * 0.8)', overflowY: 'auto',
             backgroundColor: 'var(--bw-bg-secondary)',
             border: '1px solid var(--bw-border)', borderRadius: 12,
             padding: '24px 28px', zIndex: 1001,

@@ -18,8 +18,8 @@ export default function UpgradePlanButton({ currentPlan, onUpgradeClick, isMobil
   return (
     <div style={{
       position: 'fixed',
-      bottom: 'clamp(24px, 4vw, 32px)',
-      right: 'clamp(24px, 4vw, 32px)',
+      bottom: 'calc(clamp(24px, 4vw, 32px) + env(safe-area-inset-bottom, 0px))',
+      right: 'calc(clamp(24px, 4vw, 32px) + env(safe-area-inset-right, 0px))',
       zIndex: 1000
     }}>
       <button

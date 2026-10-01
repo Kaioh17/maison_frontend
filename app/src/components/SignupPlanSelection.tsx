@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo } from 'react'
-import { CheckCircle, XCircle } from '@phosphor-icons/react'
+import { Check, X, ArrowUpRight } from '@phosphor-icons/react'
 import { getPlanLimits, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
 import {
   LANDING_PRICING_PLANS,
@@ -125,94 +125,77 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
   return (
     <div className="landing-pricing w-full box-border">
       {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-        <p
-          className="text-center text-sm mb-6"
-          style={{ color: '#7c5cfc', fontFamily: "'Work Sans', sans-serif" }}
-        >
-          🎉 Only a few founding operator spots left — free
-          subscription, card required. We'll email your code after signup.
-        </p>
-      ) : null}
-      {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-        <p className="text-center text-xs text-gray-500 mb-6 -mt-4">
-          Applies to the plan you choose today — upgrading later bills full price for the new plan.
-        </p>
+        <div className="mb-6 text-center">
+          <p className="m-0 text-sm landing-accent-text">
+            Only a few founding operator spots left - free subscription, card required. We'll email your code after signup.
+          </p>
+          <p className="m-0 mt-1 text-xs text-[color:var(--landing-fg-faint)]">
+            Applies to the plan you choose today - upgrading later bills full price for the new plan.
+          </p>
+        </div>
       ) : null}
       <div
         ref={carouselRef}
         className="pricing-carousel -mx-1 md:mx-0 max-w-full"
         style={{ marginLeft: 0, marginRight: 0 }}
       >
-        {plans.map((plan, index) => (
-          <div
-            key={plan.name}
-            data-index={index}
-            className={`pricing-card bg-gray-900 border ${
-              isPopularPlan(plan) ? 'featured border-[#7c5cfc]' : 'border-gray-800'
-            }`}
-          >
-            {isPopularPlan(plan) ? (
-              <div className="pricing-badge" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                Most Popular
-              </div>
-            ) : null}
-            <div className="text-center mb-8">
-              <h3
-                className="text-2xl font-semibold text-white mb-0"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
-                {plan.name}
-              </h3>
-              <div className="price-wrapper">
-                <span className="price-amount text-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                  {plan.price}
-                </span>
-                <span className="price-period" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                  {plan.period}
-                </span>
-              </div>
-              <p className="text-gray-400 mb-6 text-sm" style={{ fontFamily: "'Work Sans', sans-serif" }}>
-                {plan.description}
-              </p>
-              <button
-                type="button"
-                disabled={disabled || loadingProductType !== null}
-                onClick={() => onSelectPlan(plan)}
-                className={`inline-flex items-center justify-center w-full py-[13px] px-5 text-[15px] font-semibold rounded-[10px] transition-colors box-border ${
-                  isPopularPlan(plan)
-                    ? 'border-2 border-transparent bg-[#7c5cfc] text-white hover:bg-[#7c3aed] disabled:opacity-60'
-                    : 'border-2 border-gray-700 text-white hover:border-[#7c5cfc] disabled:opacity-60'
-                }`}
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-              >
-                {loadingProductType === plan.product_type
-                  ? 'Processing…'
-                  : plan.product_type === 'free'
-                    ? 'Start free'
-                    : 'Select plan'}
-              </button>
-            </div>
-            <div className="border-t border-gray-800 pt-6">
-              <ul className="space-y-3">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-3">
-                    {feature.included ? (
-                      <CheckCircle className="w-5 h-5 text-[#7c5cfc] flex-shrink-0" weight="fill" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-600 flex-shrink-0" weight="fill" />
-                    )}
-                    <span
-                      className={`text-sm ${feature.included ? 'text-gray-300' : 'text-gray-600'}`}
-                      style={{ fontFamily: "'Work Sans', sans-serif" }}
-                    >
-                      {feature.text}
+        {plans.map((plan, index) => {
+          const popular = isPopularPlan(plan)
+          const busy = loadingProductType === plan.product_type
+          return (
+            <div
+              key={plan.name}
+              data-index={index}
+              className={`pricing-card landing-bezel${popular ? ' featured landing-bezel--accent' : ''}`}
+            >
+              <div className="landing-bezel__core relative flex h-full flex-col !p-6 md:!p-7">
+                {popular ? <div className="pricing-badge absolute right-5 top-5 !mb-0">Most popular</div> : null}
+                <h3 className="m-0 text-xl font-medium tracking-[-0.02em] text-[color:var(--landing-fg)]">{plan.name}</h3>
+                <div className="price-wrapper">
+                  <span className="price-amount text-[color:var(--landing-fg)]">{plan.price}</span>
+                  <span className="price-period">{plan.period}</span>
+                </div>
+                <p className="m-0 mb-6 min-h-[3.75rem] text-sm leading-relaxed text-[color:var(--landing-fg-muted)]">
+                  {plan.description}
+                </p>
+                <ul className="m-0 flex-1 list-none space-y-3 border-t border-[color:var(--landing-hairline)] p-0 pt-6">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      {feature.included ? (
+                        <Check size={16} weight="bold" className="landing-accent-text mt-0.5 shrink-0" aria-hidden />
+                      ) : (
+                        <X size={16} className="mt-0.5 shrink-0 text-[color:var(--landing-fg-faint)]" aria-hidden />
+                      )}
+                      <span
+                        className={`text-sm leading-snug ${
+                          feature.included ? 'text-[color:var(--landing-fg)]' : 'text-[color:var(--landing-fg-faint)]'
+                        }`}
+                      >
+                        {feature.included ? null : <span className="sr-only">Not included: </span>}
+                        {feature.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  disabled={disabled || loadingProductType !== null}
+                  onClick={() => onSelectPlan(plan)}
+                  className={`landing-btn landing-btn--block mt-8 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    popular ? 'landing-btn--primary landing-btn--icon !justify-between' : 'landing-btn--ghost'
+                  }`}
+                >
+                  {busy ? 'Processing…' : plan.product_type === 'free' ? 'Start free' : 'Select plan'}
+                  {popular ? (
+                    <span className="landing-btn__icon">
+                      <ArrowUpRight size={16} weight="bold" aria-hidden />
                     </span>
-                  </li>
-                ))}
-              </ul>
+                  ) : null}
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="dots" role="tablist" aria-label="Pricing plans">

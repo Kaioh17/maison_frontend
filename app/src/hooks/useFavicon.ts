@@ -3,25 +3,14 @@ import { useTenantSlug } from './useTenantSlug'
 import { getCachedSlugVerification, isCacheExpired } from '@utils/slugCache'
 import { verifySlug, type SlugVerificationResponse } from '@api/tenant'
 import { parseHex, pickColor } from '@utils/colorTokens'
+import { cleanName, shortAppName } from '@utils/tenantName'
 
 const DEFAULT_FAVICON = '/favicon-48x48.png'
-const DEFAULT_APPLE_TOUCH_ICON = '/apple-touch-icon.png'
-const DEFAULT_MANIFEST_HREF = '/manifest.webmanifest'
-const DEFAULT_ACCENT = '#6c63e8'
-/** Matches `index.html` and `:root --bw-bg` so non-tenant / fallback chrome stays consistent. */
-const DEFAULT_THEME_COLOR = '#0f0d1a'
+const DEFAULT_ACCENT = '#6e5bd8'
 const DEFAULT_DOCUMENT_TITLE = 'Maison'
 
 function resolveTenantDocumentTitle(companyName: string | undefined, slug: string): string {
-  const trimmed = companyName?.trim()
-  if (trimmed && trimmed.length > 0) {
-    return trimmed
-  }
-  const s = slug?.trim()
-  if (s) {
-    return s
-  }
-  return DEFAULT_DOCUMENT_TITLE
+  return cleanName(companyName) || cleanName(slug) || DEFAULT_DOCUMENT_TITLE
 }
 
 function setOrCreateMeta(name: string, content: string) {
@@ -32,6 +21,17 @@ function setOrCreateMeta(name: string, content: string) {
     document.head.appendChild(meta)
   }
   meta.setAttribute('content', content)
+}
+
+/**
+ * `index.html` ships one `theme-color` per OS color scheme (media attribute). A tenant's brand
+ * color overrides all of them; `null` restores the shipped light/dark pair.
+ */
+function setThemeColor(color: string | null) {
+  document.querySelectorAll<HTMLMetaElement>("meta[name='theme-color']").forEach((meta) => {
+    meta.dataset.default ??= meta.content
+    meta.content = color ?? meta.dataset.default
+  })
 }
 
 /** Solid #rrggbb for `theme-color` and root backgrounds; null if the value is not a parseable hex. */
@@ -60,22 +60,16 @@ function applyRootChromeBackground(color: string | null) {
 }
 
 function applyTenantBrowserChrome(branding: SlugVerificationResponse['branding'] | null | undefined) {
-  if (!branding?.enable_branding) {
-    setOrCreateMeta('theme-color', DEFAULT_THEME_COLOR)
-    applyRootChromeBackground(null)
-    return
-  }
-  const hex =
-    formatSolidHexForMeta(pickColor(branding.background_color)) ?? DEFAULT_THEME_COLOR
-  setOrCreateMeta('theme-color', hex)
+  const hex = branding?.enable_branding ? formatSolidHexForMeta(pickColor(branding.background_color)) : null
+  setThemeColor(hex)
   applyRootChromeBackground(hex)
 }
 
 function applyDocumentTitleForTenant(companyName: string | undefined, slug: string) {
   const title = resolveTenantDocumentTitle(companyName, slug)
   document.title = title
-  // Both meta tags drive the home-screen label on iOS Safari and Android Chrome.
-  setOrCreateMeta('apple-mobile-web-app-title', title)
+  // iOS Safari uses the title tag for the home-screen label (it truncates long ones), so give it the short form.
+  setOrCreateMeta('apple-mobile-web-app-title', shortAppName(title))
   setOrCreateMeta('application-name', title)
 }
 
@@ -117,60 +111,10 @@ function applyFaviconToDocument(href: string, mime: string) {
   document.head.appendChild(link)
 }
 
-function setOrCreateLink(rel: string, href: string, opts: { type?: string; sizes?: string } = {}) {
-  let link = document.querySelector(`link[rel='${rel}']`) as HTMLLinkElement | null
-  if (!link) {
-    link = document.createElement('link')
-    link.rel = rel
-    document.head.appendChild(link)
-  }
-  link.href = href
-  if (opts.type) {
-    link.type = opts.type
-  } else {
-    link.removeAttribute('type')
-  }
-  if (opts.sizes) {
-    link.setAttribute('sizes', opts.sizes)
-  } else {
-    link.removeAttribute('sizes')
-  }
-}
-
-/**
- * Keep the apple-touch-icon link in sync so iOS uses tenant branding when
- * the user "Adds to Home Screen" from an already-rendered tab.
- * Note: iOS Safari often snapshots the icon from the *initial* HTML on first
- * paint, so the backend `/apple-touch-icon.png` endpoint (which is per-host)
- * is the install-time source of truth — this runtime update is a safety net
- * for in-session navigations.
- */
-function applyAppleTouchIcon(href: string) {
-  setOrCreateLink('apple-touch-icon', href, { sizes: '180x180' })
-}
-
-/**
- * Force the manifest link to refetch so browsers that re-read it on visibility
- * change pick up tenant-branded name/colors/icons. iOS does not currently
- * consult the manifest at install time, but Android Chrome may revalidate.
- */
-function refreshManifestLink() {
-  const link = document.querySelector("link[rel='manifest']") as HTMLLinkElement | null
-  if (!link) {
-    setOrCreateLink('manifest', DEFAULT_MANIFEST_HREF)
-    return
-  }
-  // Strip any existing cache buster, then append one so the browser refetches
-  // even if the URL was otherwise identical across renders.
-  const base = link.href.split('?')[0]
-  link.href = `${base}?ts=${Date.now()}`
-}
-
 function applyDefaultPwaBranding() {
   applyFaviconToDocument(DEFAULT_FAVICON, 'image/png')
-  applyAppleTouchIcon(DEFAULT_APPLE_TOUCH_ICON)
   applyDocumentTitleForTenant(undefined, '')
-  setOrCreateMeta('theme-color', DEFAULT_THEME_COLOR)
+  setThemeColor(null)
   applyRootChromeBackground(null)
 }
 
@@ -182,9 +126,8 @@ function applyDefaultPwaBranding() {
  * When `enable_branding` is true, the page canvas color (`background_color`) drives `theme-color` and root
  * backgrounds so overscroll / home-indicator safe areas match the tenant shell.
  *
- * Install-time PWA metadata (manifest icons + apple-touch-icon) is served by the
- * backend per-Host so home-screen installs land on the correct tenant branding
- * even before this hook runs.
+ * Install-time PWA metadata (manifest + apple-touch-icon) is served by the backend per Host
+ * and linked statically from `index.html`, so installs get the right branding before this hook runs.
  */
 export function useFavicon() {
   const slug = useTenantSlug()
@@ -220,18 +163,14 @@ export function useFavicon() {
         const faviconUrl = verification.branding?.favicon_url?.trim() || null
         if (faviconUrl) {
           applyFaviconToDocument(faviconUrl, 'image/png')
-          applyAppleTouchIcon(faviconUrl)
         } else {
           const letter = tenantFaviconLetter(verification.profile?.company_name, slug)
           const primary = verification.branding?.primary_color
           const dataUrl = buildLetterFaviconDataUrl(letter, primary)
           applyFaviconToDocument(dataUrl, 'image/svg+xml')
-          // The backend endpoint always returns a per-host PNG so iOS gets a
-          // tenant-branded raster even when no favicon_url is set.
-          applyAppleTouchIcon(DEFAULT_APPLE_TOUCH_ICON)
         }
-
-        refreshManifestLink()
+        // The manifest and apple-touch-icon links are static: the backend resolves
+        // them per Host (tenant icon, then initials, then Maison), so JS never touches them.
       } catch (error: unknown) {
         const status = (error as { response?: { status?: number } })?.response?.status
         if (status !== 403) {

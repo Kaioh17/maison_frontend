@@ -4,7 +4,7 @@ import { House, WarningCircle } from '@phosphor-icons/react'
 export default function NotFound() {
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

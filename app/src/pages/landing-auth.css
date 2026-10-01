@@ -1,0 +1,292 @@
+/*
+ * Auth pages (Login, Signup) in the landing design language.
+ *
+ * Applied with `className="bw landing-root landing-auth ..."`. `landing-theme.css` supplies the
+ * `--landing-*` tokens and `.landing-root` surface; this file only (a) re-points the `--bw-*`
+ * tokens the existing forms are written against at those landing values, and (b) styles the
+ * two-column shell, the bezel panel, inputs and buttons.
+ */
+
+main.landing-auth {
+  /* App dark palette (see [data-theme="dark"] in styles.css) */
+  --landing-bg: #0B0B0C;
+  --landing-surface: #141416;
+  --landing-hairline: #2A2A2E;
+  --landing-hairline-strong: #3A3A40;
+  --landing-fg: #F5F5F4;
+  --landing-fg-muted: #A1A1A6;
+  --landing-fg-faint: #8A8A91; /* lighter than the palette's #6B6B72 so placeholders stay legible */
+
+  --bw-bg: var(--landing-bg);
+  --bw-bg-secondary: #141416;
+  --bw-fg: var(--landing-fg);
+  --bw-text: var(--landing-fg);
+  --bw-muted: var(--landing-fg-muted);
+  --bw-border: var(--landing-hairline);
+  --bw-border-strong: var(--landing-hairline-strong);
+  --bw-accent: var(--landing-accent);
+  --bw-accent-hover: var(--landing-accent-hover);
+  --bw-focus: #C8A96A;
+  --bw-shadow: 0 30px 70px -32px rgba(4, 3, 14, 0.85);
+  --radius-field: 14px;
+  min-height: var(--app-h);
+}
+
+/* ---- Shell: photo card + form panel ------------------------------------- */
+
+/* Both columns stretch to one row, so the photo card and the panel share a top and a bottom line.
+   The row is vertically centred and never shorter than the panel's min-height. */
+.landing-auth-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(437px, 600px);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-content: center;
+  min-height: var(--app-h);
+  box-sizing: border-box;
+  padding: 1.5rem clamp(2rem, 6vw, 5rem);
+}
+.landing-auth-shell--single {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  align-content: start;
+  padding: 0;
+}
+
+/* Photo card: the images fill it; logo sits top-left, headline bottom-left. */
+.landing-auth-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  min-height: 28rem;
+  padding: 2.25rem;
+  border-radius: 28px;
+  border: 1px solid var(--landing-hairline);
+  background: var(--landing-surface);
+  overflow: hidden;
+  isolation: isolate;
+}
+.landing-auth-brand--compact {
+  min-height: 0;
+  padding: 2.25rem clamp(2rem, 6vw, 5rem) 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
+.landing-auth-brand__logo {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  width: fit-content;
+  color: var(--landing-fg);
+  text-decoration: none;
+}
+.landing-auth-brand__copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 32rem;
+}
+.landing-auth-brand .landing-h2 {
+  font-size: clamp(2rem, 3vw, 3.25rem);
+}
+
+/* ---- Hero photos: fill the card, cross-fading ---------------------------- */
+
+.landing-auth-hero {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+/* Top scrim keeps the logo legible; bottom scrim carries the headline. */
+.landing-auth-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(11, 11, 12, 0.55), transparent 28%),
+    linear-gradient(to top, rgba(11, 11, 12, 0.92), rgba(11, 11, 12, 0.4) 45%, transparent 75%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+.landing-auth-hero__img {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 1400ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-auth-hero__img {
+    transition: none;
+  }
+}
+
+/* ---- Panel: double bezel ------------------------------------------------ */
+
+.landing-auth-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: min(800px, calc(var(--app-h) - 3rem));
+  padding: 2.25rem;
+  border-radius: 28px;
+  border: 1px solid var(--landing-hairline);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)), #141416;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    var(--bw-shadow);
+  overflow-y: auto;
+}
+.landing-auth-panel--steps {
+  /* Tall enough for signup step 2, so the card doesn't resize when stepping 1 -> 2. */
+  min-height: min(840px, calc(var(--app-h) - 3rem));
+}
+.landing-auth-panel--plain {
+  min-height: 0;
+  padding: clamp(24px, 4vw, 48px) clamp(20px, 4vw, 40px);
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.landing-auth-title {
+  margin: 0;
+  font-family: var(--landing-font);
+  font-size: clamp(1.75rem, 1.2vw + 1.4rem, 2.25rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  color: var(--landing-fg);
+  text-wrap: balance;
+}
+
+/* ---- Fields ------------------------------------------------------------- */
+
+main.landing-auth,
+main.landing-auth input,
+main.landing-auth textarea,
+main.landing-auth select,
+main.landing-auth button {
+  font-family: var(--landing-font);
+}
+
+main.landing-auth .small-muted {
+  color: var(--landing-fg-muted);
+}
+
+main.landing-auth .bw-input {
+  background: #1C1C1F;
+  border-color: var(--landing-hairline-strong);
+  color: var(--landing-fg);
+  transition:
+    border-color 300ms var(--landing-ease),
+    background-color 300ms var(--landing-ease),
+    box-shadow 300ms var(--landing-ease);
+}
+main.landing-auth .bw-input::placeholder {
+  color: var(--landing-fg-faint);
+}
+main.landing-auth .bw-input:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+main.landing-auth .bw-input:focus,
+main.landing-auth .bw-input:focus-visible {
+  outline: none;
+  border-color: var(--bw-focus);
+  background: #1C1C1F;
+  box-shadow: 0 0 0 4px rgba(200, 169, 106, 0.2);
+}
+
+/* ---- Buttons: landing pill --------------------------------------------- */
+
+main.landing-auth .bw-btn,
+main.landing-auth .bw-btn-outline {
+  min-height: 48px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition:
+    transform 500ms var(--landing-ease),
+    background-color 300ms var(--landing-ease),
+    border-color 300ms var(--landing-ease),
+    opacity 300ms var(--landing-ease);
+}
+main.landing-auth .bw-btn:active:not(:disabled),
+main.landing-auth .bw-btn-outline:active:not(:disabled) {
+  transform: scale(0.98);
+}
+main.landing-auth .bw-btn {
+  background: var(--landing-accent);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 14px 34px -14px var(--landing-accent-glow);
+}
+main.landing-auth .bw-btn:hover:not(:disabled) {
+  background: var(--landing-accent-hover);
+}
+main.landing-auth .bw-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+main.landing-auth .bw-btn-outline {
+  background: var(--landing-surface);
+  color: var(--landing-fg);
+  border-color: var(--landing-hairline-strong);
+}
+main.landing-auth .bw-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Links inside the panel */
+main.landing-auth .landing-auth-panel a {
+  transition: color 300ms var(--landing-ease);
+}
+
+/* ---- Small screens ------------------------------------------------------ */
+
+@media (max-width: 1024px) {
+  .landing-auth-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    align-content: start;
+    padding: 0;
+  }
+  .landing-auth-brand {
+    min-height: 0;
+    padding: 1.25rem 1.5rem;
+    border: none;
+    border-radius: 0;
+    background: none;
+    overflow: visible;
+  }
+  .landing-auth-brand__copy,
+  .landing-auth-hero {
+    display: none;
+  }
+  .landing-auth-panel {
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  /* 16px inputs: anything smaller makes iOS Safari zoom on focus. */
+  main.landing-auth .bw-input {
+    font-size: 16px !important;
+  }
+}

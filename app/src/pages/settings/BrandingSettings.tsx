@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBrandingData } from '@api/tenantSettings'
 import { Palette, FloppyDisk, PencilSimple, X, CaretDown, CaretUp, Image } from '@phosphor-icons/react'
-import { useSettingsMenu } from '@components/SettingsMenuBar'
 import Toggle from '@components/Toggle'
 import Button from '@components/Button'
+import BrandingPhonePreview from '@components/BrandingPhonePreview'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
+
+// The page scrolls in SettingsMenuBar's main panel (so the scrollbar sits on the screen edge);
+// the phone preview is sticky inside it and drops under the form when there isn't room beside it.
+const BRANDING_LAYOUT_CSS = `
+.branding-page { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; box-sizing: border-box; padding: 16px 20px 24px; }
+.branding-preview { position: sticky; top: 16px; }
+@media (max-width: 1100px) {
+  .branding-page { grid-template-columns: minmax(0, 1fr); }
+  .branding-preview { position: static; }
+}
+`
+const FIELD_GRID_COLUMNS = 'repeat(auto-fill, minmax(260px, 1fr))'
 
 export default function BrandingSettings() {
   const [branding, setBranding] = useState<TenantBrandingData | null>(null)
@@ -15,7 +27,6 @@ export default function BrandingSettings() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  const { isOpen: menuIsOpen } = useSettingsMenu()
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [faviconFile, setFaviconFile] = useState<File | null>(null)
@@ -65,7 +76,7 @@ export default function BrandingSettings() {
     loadData()
   }, [])
 
-  const handleInputChange = (field: keyof TenantBrandingData, value: any) => {
+  const handleInputChange = (field: keyof TenantBrandingData, value: string | boolean) => {
     setEditedData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -141,7 +152,7 @@ export default function BrandingSettings() {
       setIsEditing(false)
       setSaveMsg({ ok: true, text: 'Branding settings updated.' })
       setTimeout(() => setSaveMsg(null), 4000)
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to update:', error)
       setSaveMsg({ ok: false, text: 'Failed to save. Please try again.' })
     } finally {
@@ -188,9 +199,9 @@ export default function BrandingSettings() {
   ]
 
   const renderField = (item: FieldItem) => {
-    const spanTwo = (item.field === 'favicon_url' || item.field === 'enable_branding') && !isMobile
+    const fullRow = item.field === 'favicon_url' || item.field === 'enable_branding'
     return (
-      <div key={item.field} style={{ gridColumn: spanTwo ? 'span 2' : 'span 1', minWidth: 0 }}>
+      <div key={item.field} style={{ gridColumn: fullRow ? '1 / -1' : 'auto', minWidth: 0 }}>
         <label style={{
           display: 'block', fontSize: 12, fontWeight: 500,
           fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)',
@@ -258,7 +269,7 @@ export default function BrandingSettings() {
               </div>
               <div style={{
                 width: '50%', height: 14, borderRadius: 4,
-                backgroundColor: (editedData[item.field] as string) || '#ffffff',
+                backgroundColor: (editedData[item.field] as string) || 'transparent',
                 border: '1px solid var(--bw-border)'
               }} />
             </div>
@@ -283,7 +294,7 @@ export default function BrandingSettings() {
             </div>
             <div style={{
               width: '50%', height: 14, borderRadius: 4,
-              backgroundColor: (editedData[item.field] as string) || '#ffffff',
+              backgroundColor: (editedData[item.field] as string) || 'transparent',
               border: '1px solid var(--bw-border)'
             }} />
           </div>
@@ -339,30 +350,16 @@ export default function BrandingSettings() {
   return (
     <>
       <style>{SETTINGS_BTN_CSS}</style>
-      <div style={{
-      maxWidth: '100%',
-      overflowX: 'hidden',
-      boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column',
-      flex: 1,
-      minHeight: 0
-        }}>
-
-          {/* Scrollable body */}
-          <div
-            className="bw-container"
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              padding: isMobile
-                ? `16px 16px ${MOBILE_SCROLL_BOTTOM_PAD}`
-                : '24px 28px 32px',
-              maxWidth: 720,
-              boxSizing: 'border-box'
-            }}
-          >
+      <style>{BRANDING_LAYOUT_CSS}</style>
+      <div
+        className="branding-page"
+        style={{
+          maxWidth: '100%',
+          flexShrink: 0, // the main panel is a flex column; don't let it squash the page and break the sticky preview
+          padding: isMobile ? `12px 12px ${MOBILE_SCROLL_BOTTOM_PAD}` : undefined
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
             {/* Page header — title and description are direct children, no title-only wrapper div.
                 The h1 is desktop-only: the mobile top bar (SettingsMenuBar) already shows the
                 section title there, so repeating it here would be a second heading. */}
@@ -416,7 +413,7 @@ export default function BrandingSettings() {
               </div>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gridTemplateColumns: isMobile ? '1fr' : FIELD_GRID_COLUMNS,
                 gap: isMobile ? 16 : '16px 24px'
               }}>
                 {otherFields.map(renderField)}
@@ -451,7 +448,7 @@ export default function BrandingSettings() {
                   id="branding-colors-panel"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                    gridTemplateColumns: isMobile ? '1fr' : FIELD_GRID_COLUMNS,
                     gap: isMobile ? 16 : '16px 24px'
                   }}
                 >
@@ -598,7 +595,15 @@ export default function BrandingSettings() {
                 {saveMsg.text}
               </div>
             )}
-          </div>
+        </div>
+
+        <aside className="branding-preview" aria-label="Live preview">
+          <BrandingPhonePreview
+            branding={editedData}
+            logoUrl={logoPreview || editedData.logo_url}
+            companyName={editedData.email_from_name || editedData.slug}
+          />
+        </aside>
 
           {/* Mobile bottom action bar */}
           {isMobile && (
@@ -629,7 +634,7 @@ export default function BrandingSettings() {
                   </button>
                   <button type="button" onClick={handleSave} disabled={saving}
                     style={{ ...mobileBarBtnBase, backgroundColor: 'var(--bw-accent)',
-                      color: '#ffffff', opacity: saving ? 0.7 : 1,
+                      color: 'white', opacity: saving ? 0.7 : 1,
                       cursor: saving ? 'not-allowed' : 'pointer' }}>
                     <FloppyDisk size={16} aria-hidden />
                     {saving ? 'Saving…' : 'Save Changes'}

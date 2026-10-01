@@ -48,7 +48,7 @@ function AdminLoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-[var(--app-h)] bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-[400px] rounded-2xl border border-white/[0.08] bg-[#11161d] shadow-xl shadow-black/40 p-8">
         <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500/90 font-semibold">
           Maison admin

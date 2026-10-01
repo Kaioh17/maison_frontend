@@ -133,7 +133,7 @@
 .landing-hero-fullscreen {
   position: relative;
   width: 100%;
-  min-height: 100vh;
+  min-height: var(--app-h);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,4 +1,4 @@
-import { FormEvent, useState, useEffect, useRef } from 'react'
+import { FormEvent, useState, useEffect } from 'react'
 import { Info, Eye, EyeSlash, UploadSimple } from '@phosphor-icons/react'
 import { createTenant } from '@api/tenant'
 import { loginTenant } from '@api/auth'
@@ -10,13 +10,16 @@ import { MAIN_DOMAIN, getTenantAppUrl } from '@config/host'
 import type { LandingPricingPlanDisplay } from '@data/landingPricingPlans'
 import { getApiErrorMessage } from '@utils/apiError'
 import SignupPlanSelection from '@components/SignupPlanSelection'
-import { EMAIL_FORMAT_HINT, getEmailFormatError, isValidEmail } from '@utils/emailValidation'
+import AuthBrandPanel from '@components/AuthBrandPanel'
+import { getEmailFormatError, isValidEmail } from '@utils/emailValidation'
 import {
   formatPasswordPolicySentence,
   getPasswordPolicyFailures,
   isPasswordPolicyValid,
   PASSWORD_POLICY_HINT,
 } from '@utils/passwordPolicy'
+import './landing-theme.css'
+import './landing-auth.css'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -34,9 +37,7 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null)
   const [showSlugInfo, setShowSlugInfo] = useState(false)
   const [slugError, setSlugError] = useState<string | null>(null)
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
-  const imageContainerRef = useRef<HTMLDivElement>(null)
   const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1)
   const [isMobileSignup, setIsMobileSignup] = useState(false)
   const [isCreatingAccount, setIsCreatingAccount] = useState(false)
@@ -165,32 +166,6 @@ export default function Signup() {
     }
   }
 
-  // Lazy load background image
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !backgroundImage) {
-            // Load image when container is visible
-            import('../images/photo-1526289034009-0240ddb68ce3.avif').then((module) => {
-              setBackgroundImage(module.default)
-            })
-            observer.disconnect()
-          }
-        })
-      },
-      { rootMargin: '50px' } // Start loading 50px before it's visible
-    )
-
-    if (imageContainerRef.current) {
-      observer.observe(imageContainerRef.current)
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [backgroundImage])
-
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setMessage(null); setError(null)
@@ -269,21 +244,14 @@ export default function Signup() {
   }
 
   return (
-    <main
-      className="bw"
-      aria-label="Create account"
-      style={{ margin: 0, padding: 0, height: '100vh', overflow: signupStep === 3 ? 'auto' : 'hidden' }}
-    >
+    <main className="bw landing-root landing-auth landing-ambient landing-ambient--tr" aria-label="Create account">
       <style>{`
         @media (max-width: 1024px) {
-          .signup-image-container {
-            display: none !important;
-          }
           .signup-form-container {
             width: 100% !important;
             padding: 16px 24px !important;
             height: auto !important;
-            min-height: 100vh !important;
+            min-height: calc(var(--app-h) - 4.5rem) !important;
             margin: 0 !important;
             border-radius: 0 !important;
             border: none !important;
@@ -295,9 +263,6 @@ export default function Signup() {
           .signup-form {
             width: 100% !important;
             box-sizing: border-box !important;
-          }
-          .signup-main-container {
-            flex-direction: column !important;
           }
           .signup-title {
             font-size: 28px !important;
@@ -380,117 +345,19 @@ export default function Signup() {
           }
         }
       `}</style>
-      <div
-        className={`signup-main-container${signupStep === 3 ? ' signup-main-container--plan-step' : ''}`}
-        style={{ display: 'flex', height: '100vh', width: '100%', minHeight: signupStep === 3 ? '100vh' : undefined, position: 'relative' }}
-      >
-        {/* Left side - Image (full-bleed; the form floats over it on the right) */}
-        <div
-          ref={imageContainerRef}
-          className="signup-image-container"
-          style={{
-            display: signupStep === 3 ? 'none' : 'flex',
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-            backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            transition: 'background-image 0.3s ease',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '48px'
-          }} 
-        >
-          {/* Tint: same as login — Maison page background at ~60% opacity */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'color-mix(in srgb, var(--bw-bg) 58%, transparent)',
-              zIndex: 1,
-            }}
-          />
-          {/* Bottom gradient so text reads cleanly over any photo */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: '100%',
-            height: '55%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)',
-            zIndex: 1,
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            color: 'white',
-            textAlign: 'center',
-            maxWidth: '560px',
-            zIndex: 2,
-            position: 'relative',
-            padding: '32px',
-          }}>
-            <h1 style={{
-              fontFamily: 'DM Sans, sans-serif',
-              fontSize: '40px',
-              fontWeight: 200,
-              margin: '0 0 16px 0',
-              textShadow: '0 2px 12px rgba(0,0,0,0.4)',
-            }}>
-              Welcome to Maison
-            </h1>
-            <p style={{
-              fontFamily: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
-              fontSize: '19px',
-              lineHeight: '1.65',
-              fontWeight: 300,
-              margin: 0,
-              textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            }}>
-              Run your operation, your way. Fleet management, bookings, and payments — built for premium transportation.
-            </p>
-          </div>
-        </div>
+      <div className={`landing-auth-shell${signupStep === 3 ? ' landing-auth-shell--single' : ''}`}>
+        <AuthBrandPanel
+          compact={signupStep === 3}
+          headline="Welcome to Maison."
+          accent="Run it your way."
+          lead="Fleet management, bookings, and payments - built for premium transportation."
+        />
 
-        {/* Right side — signup form (35%) or full viewport for plan step */}
-        <div 
+        {/* Right side - signup form, or full width for the plan step */}
+        <div
           role={signupStep === 3 ? 'region' : 'form'}
           aria-labelledby="signup-title"
-          className={`signup-form-container${isMobileSignup ? ' signup-mobile-form-container-inner' : ''}${signupStep === 3 ? ' signup-form-container--plan-step' : ''}`}
-          style={{
-            width: signupStep === 3 ? '100%' : '30%',
-            minHeight: signupStep === 3 ? '100vh' : undefined,
-            flex: signupStep === 3 ? '1 1 auto' : undefined,
-            margin: signupStep === 3 ? undefined : '24px 24px 24px auto',
-            position: 'relative',
-            zIndex: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            justifyContent: 'flex-start',
-            padding: signupStep === 3 ? 'clamp(24px, 4vw, 48px) clamp(20px, 4vw, 40px)' : '24px',
-            paddingTop: signupStep === 3 ? 'clamp(72px, 10vw, 88px)' : undefined,
-            backgroundColor: signupStep === 3 ? undefined : 'var(--bw-bg)',
-            // `background` is a shorthand — setting it to `undefined` here would still clear
-            // `backgroundColor` above (shorthand reset), so it's only added to the object at all
-            // on the plan step, via spread, rather than included with an undefined value.
-            ...(signupStep === 3
-              ? { background: 'linear-gradient(to bottom, #0a0a0f 0%, rgb(17 24 39) 50%, #0a0a0f 100%)' }
-              : {}),
-            borderRadius: signupStep === 3 ? undefined : 24,
-            border: signupStep === 3 ? undefined : '1px solid var(--bw-border-strong)',
-            boxShadow: signupStep === 3 ? undefined : 'var(--bw-shadow)',
-            // Steps 1/2 are now sized to fit the floating panel at normal viewport heights (see the
-            // per-step height:0 fix above), so this shouldn't show a scrollbar in practice. Left as
-            // 'auto' rather than 'hidden' so a genuinely short viewport still gets a scrollbar
-            // instead of an unreachable, silently clipped submit button.
-            overflowY: 'auto',
-            boxSizing: 'border-box',
-          }}
+          className={`landing-auth-panel signup-form-container${signupStep === 3 ? ' landing-auth-panel--plain signup-form-container--plan-step' : ' landing-auth-panel--steps'}`}
         >
           <div
             style={{
@@ -507,7 +374,7 @@ export default function Signup() {
           >
           {/* Top spacer: desktop steps 1/2 only — creates buffer below the absolute logo and pushes content down toward true center */}
           {!isMobileSignup && signupStep < 3 && (
-            <div style={{ flex: 1, minHeight: 0, maxHeight: 120 }} />
+            <div style={{ flex: 1, minHeight: 0 }} />
           )}
           {/* Step indicator — shown for steps 1 and 2 only */}
           {signupStep < 3 && (
@@ -543,16 +410,11 @@ export default function Signup() {
           )}
           <h1
             id="signup-title"
-            className="signup-title"
+            className="landing-auth-title signup-title"
             style={{
-              margin: 0,
-              fontSize: 40,
-              fontFamily: 'DM Sans, sans-serif',
-              fontWeight: 200,
               alignSelf: isMobileSignup ? 'flex-start' : 'center',
               width: '100%',
               textAlign: isMobileSignup ? 'left' : 'center',
-              color: signupStep === 3 ? '#ffffff' : undefined,
             }}
           >
             {signupStep === 3 ? 'Choose your plan' : 'Create account'}
@@ -563,12 +425,11 @@ export default function Signup() {
             style={{
               marginTop: 6,
               fontSize: 16,
-              fontFamily: 'Work Sans, sans-serif',
               fontWeight: 300,
               alignSelf: isMobileSignup ? 'flex-start' : 'center',
               width: '100%',
               textAlign: isMobileSignup ? 'left' : 'center',
-              color: signupStep === 3 ? '#94a3b8' : undefined,
+              color: signupStep === 3 ? 'var(--landing-fg-muted)' : undefined,
             }}
           >
             {signupStep === 3
@@ -583,13 +444,12 @@ export default function Signup() {
               style={{
                 marginTop: 8,
                 fontSize: 13,
-                fontFamily: 'Work Sans, sans-serif',
                 fontWeight: 400,
                 lineHeight: 1.45,
                 alignSelf: isMobileSignup ? 'flex-start' : 'center',
                 width: '100%',
                 textAlign: isMobileSignup ? 'left' : 'center',
-                color: '#64748b',
+                color: 'var(--landing-fg-faint)',
               }}
             >
               You can change your plan anytime from account settings.
@@ -613,7 +473,6 @@ export default function Signup() {
                   className="small-muted signup-error"
                   style={{
                     color: '#ffb3b3',
-                    fontFamily: 'Work Sans, sans-serif',
                     marginBottom: 12,
                   }}
                 >
@@ -634,8 +493,7 @@ export default function Signup() {
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#64748b',
-                      fontFamily: 'Work Sans, sans-serif',
+                      color: 'var(--landing-fg-faint)',
                       fontSize: 13,
                       cursor: 'pointer',
                       textDecoration: 'underline',
@@ -656,10 +514,10 @@ export default function Signup() {
                       textAlign: 'left',
                     }}
                   >
-                    <p style={{ color: '#cbd5e1', fontFamily: 'Work Sans, sans-serif', fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>
+                    <p style={{ color: 'var(--landing-fg-muted)', fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>
                       Continue with the Free tier?
                     </p>
-                    <p style={{ color: '#64748b', fontFamily: 'Work Sans, sans-serif', fontSize: 13, margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                    <p style={{ color: 'var(--landing-fg-faint)', fontSize: 13, margin: '0 0 14px 0', lineHeight: 1.5 }}>
                       The Free tier limits you to 1 vehicle and 1 driver. You can upgrade any time from your account settings.
                     </p>
                     <div style={{ display: 'flex', gap: 10 }}>
@@ -669,8 +527,7 @@ export default function Signup() {
                         style={{
                           background: 'transparent',
                           border: '1px solid rgba(255,255,255,0.2)',
-                          color: '#cbd5e1',
-                          fontFamily: 'Work Sans, sans-serif',
+                          color: 'var(--landing-fg-muted)',
                           fontSize: 13,
                           fontWeight: 500,
                           cursor: 'pointer',
@@ -686,8 +543,7 @@ export default function Signup() {
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          color: '#64748b',
-                          fontFamily: 'Work Sans, sans-serif',
+                          color: 'var(--landing-fg-faint)',
                           fontSize: 13,
                           cursor: 'pointer',
                           padding: '8px 12px',
@@ -730,16 +586,16 @@ export default function Signup() {
                 <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box', height: signupStep === 1 ? 'auto' : 0, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                      <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ marginBottom: 6 }}>First name</span>
-                        <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
+                        <input className="bw-input signup-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
                       </label>
-                      <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                      <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ marginBottom: 6 }}>Last name</span>
-                        <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
+                        <input className="bw-input signup-input" value={lastName} onChange={(e) => setLastName(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
                       </label>
                     </div>
-                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Email</span>
                       <input
                         className="bw-input signup-input"
@@ -748,26 +604,14 @@ export default function Signup() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         aria-invalid={email.length > 0 && !!emailFormatError}
-                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }}
                       />
-                      <span
-                        className="small-muted"
-                        style={{
-                          marginTop: 8,
-                          fontSize: 12,
-                          fontFamily: 'Work Sans, sans-serif',
-                          opacity: 0.85,
-                        }}
-                      >
-                        {EMAIL_FORMAT_HINT}
-                      </span>
                       {emailFormatError && (
                         <div
                           role="alert"
                           style={{
                             marginTop: 6,
                             fontSize: 13,
-                            fontFamily: 'Work Sans, sans-serif',
                             color: '#ffb3b3',
                           }}
                         >
@@ -775,7 +619,7 @@ export default function Signup() {
                         </div>
                       )}
                     </label>
-                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Password</span>
                       <div style={{ position: 'relative' }}>
                         <input 
@@ -783,7 +627,7 @@ export default function Signup() {
                           type={showPassword ? 'text' : 'password'} 
                           value={password} 
                           onChange={(e) => setPassword(e.target.value)} 
-                          style={{ padding: '16px 18px 16px 18px', paddingRight: '44px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} 
+                          style={{ padding: '16px 18px 16px 18px', paddingRight: '44px', borderRadius: 'var(--radius-field)' }} 
                         />
                         <button 
                           type="button" 
@@ -800,7 +644,6 @@ export default function Signup() {
                         style={{
                           marginTop: 8,
                           fontSize: 12,
-                          fontFamily: 'Work Sans, sans-serif',
                           opacity: 0.85,
                         }}
                       >
@@ -812,7 +655,6 @@ export default function Signup() {
                           style={{
                             marginTop: 6,
                             fontSize: 13,
-                            fontFamily: 'Work Sans, sans-serif',
                             color: '#ffb3b3',
                           }}
                         >
@@ -827,16 +669,16 @@ export default function Signup() {
                       onClick={() => {
                         if (canContinueStep1) setSignupStep(2)
                       }}
-                      style={{ borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
+                      style={{ borderRadius: 'var(--radius-field)', fontWeight: 500 }}
                     >
                       Continue
                     </button>
                     <div style={{ textAlign: 'center', marginTop: 4 }}>
-                      <span className="small-muted signup-link-text" style={{ fontFamily: 'Work Sans, sans-serif' }}>Already have an account? </span>
+                      <span className="small-muted signup-link-text">Already have an account? </span>
                       <a
                         href={getTenantAppUrl('app', '/tenant/login')}
                         className="signup-link-text"
-                        style={{ marginLeft: 4, color: 'var(--bw-accent)', textDecoration: 'underline', fontFamily: 'Work Sans, sans-serif' }}
+                        style={{ marginLeft: 4, color: 'var(--landing-accent-soft)', textDecoration: 'underline' }}
                       >
                         Sign in
                       </a>
@@ -845,11 +687,11 @@ export default function Signup() {
                 </div>
                 <div style={{ width: '50%', flexShrink: 0, boxSizing: 'border-box', height: signupStep === 2 ? 'auto' : 0, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
-                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Company</span>
-                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
+                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
                     </label>
-                    <div style={{ fontFamily: 'Work Sans, sans-serif' }}>
+                    <div>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 6 }} className="small-muted">
                         Your booking URL
                         <div 
@@ -936,14 +778,12 @@ export default function Signup() {
                             minWidth: 0,
                             padding: '16px 18px',
                             borderRadius: 'var(--radius-field)', 
-                            fontFamily: 'Work Sans, sans-serif',
                             borderColor: slugError ? '#ef4444' : undefined
                           }} 
                         />
                         <span
                           style={{
                             color: 'var(--bw-muted)',
-                            fontFamily: 'Work Sans, sans-serif',
                             fontSize: 14,
                             flexShrink: 0,
                           }}
@@ -951,21 +791,20 @@ export default function Signup() {
                           .{MAIN_DOMAIN}
                         </span>
                       </div>
-                      <p className="small-muted" style={{ marginTop: 6, marginBottom: 0, fontSize: 12, fontFamily: 'Work Sans, sans-serif', lineHeight: 1.5 }}>
+                      <p className="small-muted" style={{ marginTop: 6, marginBottom: 0, fontSize: 12, lineHeight: 1.5 }}>
                         This is the web address your customers will use to book rides with you.
                       </p>
                       {slugError && (
                         <div style={{
                           marginTop: '4px',
                           fontSize: '12px',
-                          color: 'var(--bw-error)',
-                          fontFamily: 'Work Sans, sans-serif'
+                          color: 'var(--bw-error)'
                         }}>
                           {slugError}
                         </div>
                       )}
                     </div>
-                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column', fontFamily: 'Work Sans, sans-serif' }}>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Phone</span>
                       <input 
                         className="bw-input signup-input" 
@@ -974,15 +813,15 @@ export default function Signup() {
                         value={phone} 
                         onChange={handlePhoneChange}
                         maxLength={14}
-                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }}
+                        style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }}
                       />
                     </label>
-                    <label className="small-muted signup-label" style={{ fontFamily: 'Work Sans, sans-serif', display: 'flex', flexDirection: 'column' }}>
+                    <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>City</span>
-                      <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif' }} />
+                      <input className="bw-input signup-input" value={city} onChange={(e) => setCity(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
                     </label>
                     <div className="bw-form-group" style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span className="small-muted signup-label" style={{ marginBottom: 6, fontFamily: 'Work Sans, sans-serif', display: 'block' }}>Company Logo (optional)</span>
+                      <span className="small-muted signup-label" style={{ marginBottom: 6, display: 'block' }}>Company Logo (optional)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1040,11 +879,11 @@ export default function Signup() {
                         ) : (
                           <UploadSimple size={22} style={{ color: 'var(--bw-muted)', opacity: 0.7 }} />
                         )}
-                        <span style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 13, color: 'var(--bw-muted)' }}>
+                        <span style={{ fontSize: 13, color: 'var(--bw-muted)' }}>
                           {logoFile ? logoFile.name : 'Drop logo here or tap to upload'}
                         </span>
                         {!logoFile && (
-                          <span style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 11, color: 'var(--bw-disabled)' }}>
+                          <span style={{ fontSize: 11, color: 'var(--bw-disabled)' }}>
                             PNG, JPG or SVG, max 2MB
                           </span>
                         )}
@@ -1059,7 +898,6 @@ export default function Signup() {
                             background: 'transparent',
                             border: 'none',
                             color: 'var(--bw-error)',
-                            fontFamily: 'Work Sans, sans-serif',
                             fontSize: 12,
                             cursor: 'pointer',
                             padding: 0,
@@ -1071,7 +909,7 @@ export default function Signup() {
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <p style={{ fontSize: 11, fontFamily: 'Work Sans, sans-serif', color: 'var(--bw-muted)', textAlign: 'center', margin: 0, lineHeight: 1.6, opacity: 0.8 }}>
+                      <p style={{ fontSize: 11, color: 'var(--bw-muted)', textAlign: 'center', margin: 0, lineHeight: 1.6, opacity: 0.8 }}>
                         By creating an account, you agree to Maison's{' '}
                         <Link to="/terms" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Terms of Service</Link>
                         {' '}and{' '}
@@ -1081,7 +919,7 @@ export default function Signup() {
                         className="bw-btn signup-button"
                         type="submit"
                         disabled={isCreatingAccount}
-                        style={{ width: '100%', borderRadius: 'var(--radius-field)', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)', padding: '14px 24px' }}
+                        style={{ width: '100%', borderRadius: 'var(--radius-field)', fontWeight: 500 }}
                       >
                         {isCreatingAccount ? 'Creating account…' : 'Create account'}
                       </button>
@@ -1089,7 +927,7 @@ export default function Signup() {
                         <button
                           type="button"
                           onClick={() => setSignupStep(1)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--bw-muted)', fontFamily: 'Work Sans, sans-serif', fontWeight: 400, fontSize: 13, cursor: 'pointer', padding: '8px 12px' }}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--bw-muted)', fontWeight: 400, fontSize: 13, cursor: 'pointer', padding: '8px 12px' }}
                         >
                           ← Back
                         </button>
@@ -1100,8 +938,8 @@ export default function Signup() {
               </div>
             </div>
 
-            {error && <div className="small-muted signup-error" style={{ color: '#ffb3b3', fontFamily: 'Work Sans, sans-serif' }}>{error}</div>}
-            {message && <div className="small-muted signup-message" style={{ color: '#b3ffcb', fontFamily: 'Work Sans, sans-serif' }}>{message}</div>}
+            {error && <div className="small-muted signup-error" style={{ color: '#ffb3b3' }}>{error}</div>}
+            {message && <div className="small-muted signup-message" style={{ color: '#b3ffcb' }}>{message}</div>}
           </form>
           ) : null}
           {/* Bottom spacer: desktop steps 1/2 only — balances the top spacer for true vertical centering */}
@@ -1139,7 +977,7 @@ export default function Signup() {
               padding: '32px',
               maxWidth: '600px',
               width: '100%',
-              maxHeight: '90vh',
+              maxHeight: 'calc(var(--vis-h) * 0.9)',
               overflowY: 'auto',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
               position: 'relative'
@@ -1170,7 +1008,6 @@ export default function Signup() {
               margin: '0 0 20px 0',
               fontSize: '24px',
               fontWeight: 500,
-              fontFamily: 'DM Sans, sans-serif',
               color: 'var(--bw-text)'
             }}>
               About Slugs
@@ -1180,7 +1017,6 @@ export default function Signup() {
               display: 'flex',
               flexDirection: 'column',
               gap: '20px',
-              fontFamily: 'Work Sans, sans-serif',
               color: 'var(--bw-text)'
             }}>
               <div>

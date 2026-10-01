@@ -5,6 +5,7 @@ import { useAuthStore } from '@store/auth'
 import { getStripeSubscriptionPriceId } from '@config'
 import { LANDING_PRICING_PLANS } from '@data/landingPricingPlans'
 import SignupPlanSelection from '@components/SignupPlanSelection'
+import './landing-theme.css'
 import './landing-pricing.css'
 
 export default function SubscriptionSelection() {
@@ -50,20 +51,20 @@ export default function SubscriptionSelection() {
 
   return (
     <main
-      className="bw"
+      className="bw landing-root landing-ambient landing-ambient--tl"
       style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(to bottom, #0a0a0f 0%, rgb(17 24 39) 50%, #0a0a0f 100%)',
+        minHeight: 'var(--app-h)',
         padding: 'clamp(48px, 6vw, 64px) clamp(16px, 3vw, 24px)',
       }}
     >
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 'clamp(32px, 5vw, 48px)' }}>
           <h1 style={{
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: 'var(--landing-font)',
             fontSize: 'clamp(32px, 5vw, 48px)',
-            fontWeight: 200,
-            color: '#ffffff',
+            fontWeight: 500,
+            letterSpacing: '-0.035em',
+            color: 'var(--landing-fg)',
             marginBottom: 'clamp(12px, 2vw, 16px)'
           }}>
             Choose your plan
@@ -71,7 +72,7 @@ export default function SubscriptionSelection() {
           <p style={{
             fontFamily: "'Work Sans', sans-serif",
             fontSize: 'clamp(16px, 2.5vw, 20px)',
-            color: '#94a3b8',
+            color: 'var(--landing-fg-muted)',
             maxWidth: '600px',
             margin: '0 auto clamp(8px, 1.5vw, 12px)',
           }}>
@@ -80,7 +81,7 @@ export default function SubscriptionSelection() {
           <p style={{
             fontFamily: "'Work Sans', sans-serif",
             fontSize: 'clamp(13px, 1.8vw, 15px)',
-            color: '#64748b',
+            color: 'var(--landing-fg-faint)',
             maxWidth: '500px',
             margin: '0 auto',
           }}>
@@ -118,7 +119,7 @@ export default function SubscriptionSelection() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#64748b',
+              color: 'var(--landing-fg-faint)',
               fontFamily: "'Work Sans', sans-serif",
               fontSize: '14px',
               cursor: 'pointer',

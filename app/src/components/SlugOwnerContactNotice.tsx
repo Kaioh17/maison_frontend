@@ -11,7 +11,7 @@ export default function SlugOwnerContactNotice() {
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         fontFamily: 'Work Sans, sans-serif',
         backgroundColor: 'var(--bw-bg)',
         padding: 'clamp(20px, 4vw, 40px)',

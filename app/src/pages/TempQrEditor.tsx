@@ -187,7 +187,7 @@ export default function TempQrEditor() {
 
   const containerClass = 'mx-auto w-full max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm'
 
-  const mainClass = 'min-h-screen bg-gray-50 px-4 py-10 text-gray-900'
+  const mainClass = 'min-h-[var(--app-h)] bg-gray-50 px-4 py-10 text-gray-900'
 
   const formClass = 'mt-6 space-y-4'
 

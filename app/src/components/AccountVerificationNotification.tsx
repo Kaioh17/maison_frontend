@@ -84,7 +84,7 @@ export default function AccountVerificationNotification() {
         zIndex: 10000,
         backgroundColor: orangeColor,
         color: '#ffffff',
-        padding: '16px 24px',
+        padding: 'calc(16px + env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) 16px max(24px, env(safe-area-inset-left, 0px))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

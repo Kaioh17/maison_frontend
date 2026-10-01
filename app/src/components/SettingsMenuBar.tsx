@@ -82,7 +82,7 @@ export const useSettingsMenu = () => useContext(SettingsMenuContext)
 // match the rest of the codebase's convention (see TENANT_DASHBOARD_LAYOUT_CSS for precedent).
 const SETTINGS_LAYOUT_CSS = `
 .bw.settings-shell {
-  height: 100vh;
+  height: var(--app-h);
   box-sizing: border-box;
   display: flex;
   background: var(--bw-bg);
@@ -224,6 +224,8 @@ const SETTINGS_LAYOUT_CSS = `
     left: 0;
     width: 280px;
     max-width: 86vw;
+    padding: var(--safe-top) 0 var(--safe-bottom) var(--safe-left);
+    box-sizing: border-box;
     z-index: 41;
     background: var(--bw-bg-secondary);
     border-right: 1px solid var(--bw-border);

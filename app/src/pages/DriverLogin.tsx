@@ -152,7 +152,7 @@ export default function DriverLogin() {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh',
+        height: 'var(--app-h)',
         backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
@@ -169,8 +169,8 @@ export default function DriverLogin() {
   const companyName = tenantInfo?.company_name || 'Our Service'
 
   return (
-    <main className="bw" aria-label="Driver Login" style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', height: '100vh', width: '100%', position: 'relative' }}>
+    <main className="bw" aria-label="Driver Login" style={{ margin: 0, padding: 0, height: 'var(--app-h)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', height: 'var(--app-h)', width: '100%', position: 'relative' }}>
         {/* Left side - Image (full-bleed; the form floats over it on the right) */}
         <div
           ref={imageContainerRef}
@@ -235,7 +235,6 @@ export default function DriverLogin() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
             padding: '24px',
             backgroundColor: 'var(--bw-bg)',
             borderRadius: 24,
@@ -244,7 +243,8 @@ export default function DriverLogin() {
             overflowY: 'auto'
           }}
         >
-          <div style={{ width: '100%', maxWidth: '100%' }}>
+          {/* `margin: auto 0` centers when it fits and top-aligns when it does not (justify-content: center would clip the top unreachably). */}
+          <div style={{ width: '100%', maxWidth: '100%', margin: 'auto 0' }}>
             {/* Company Logo/Name */}
             {tenantInfo && (
               <div style={{ 

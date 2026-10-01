@@ -1,11 +1,12 @@
 import Button from '@components/Button'
 import Modal from '@components/Modal'
+import DeleteDriverModal from './DeleteDriverModal'
 import Card from '@components/Card'
 import StatusPill from '@components/StatusPill'
 import Tabs from '@components/Tabs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
+import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, setDriverActive, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
 import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
 import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
 import { useAuthStore } from '@store/auth'
@@ -34,6 +35,8 @@ import {
 } from '@utils/zelleContact'
 import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
 import { useOutletContext } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { getApiErrorMessage } from '@utils/apiError'
 import type { TenantShellCtx } from './TenantShell'
 import {
   TENANT_DASHBOARD_LAYOUT_CSS,
@@ -272,6 +275,26 @@ export default function DriversTab() {
     clearSearch,
     hasActiveSearch,
   } = useOutletContext<TenantShellCtx>()
+
+  const queryClient = useQueryClient()
+  const [togglingActive, setTogglingActive] = useState(false)
+  const [toggleActiveError, setToggleActiveError] = useState<string | null>(null)
+  const toggleDriverActive = async () => {
+    if (!selectedDriver) return
+    const next = !selectedDriver.is_active
+    setTogglingActive(true)
+    setToggleActiveError(null)
+    try {
+      await setDriverActive(selectedDriver.id, next)
+      setSelectedDriver({ ...selectedDriver, is_active: next })
+      await queryClient.invalidateQueries({ queryKey: ['tenant', 'drivers'] })
+    } catch (e) {
+      setToggleActiveError(getApiErrorMessage(e, 'Failed to update driver status. Please try again.'))
+    } finally {
+      setTogglingActive(false)
+    }
+  }
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; first_name: string; last_name: string; email: string } | null>(null)
 
   const searchBarHidden = useHideOnScroll(isMobile)
 
@@ -717,6 +740,22 @@ export default function DriversTab() {
                 </div>
               )}
 
+              {selectedDriver.is_registered === 'registered' && (
+                <div style={{ paddingBottom: 'clamp(12px, 2vw, 16px)', borderBottom: '1px solid var(--bw-border)' }}>
+                  <Button fullWidth variant="secondary" disabled={togglingActive} onClick={toggleDriverActive}>
+                    {togglingActive ? 'Updating…' : selectedDriver.is_active ? 'Deactivate driver' : 'Reactivate driver'}
+                  </Button>
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--bw-muted)' }}>
+                    {selectedDriver.is_active
+                      ? 'Deactivated drivers cannot be assigned new rides. You can reactivate them at any time.'
+                      : 'This driver is deactivated and cannot be assigned new rides.'}
+                  </div>
+                  {toggleActiveError && (
+                    <div role="alert" style={{ marginTop: 8, fontSize: 13, color: 'var(--bw-error)' }}>{toggleActiveError}</div>
+                  )}
+                </div>
+              )}
+
               {/* Personal Information */}
               <div>
                 <h4 style={{
@@ -1052,6 +1091,24 @@ export default function DriversTab() {
                   </div>
                 )}
               </div>
+
+              {/* Danger zone: permanent deletion (two-step, server-validated) */}
+              <div style={{ paddingTop: 'clamp(12px, 2vw, 16px)', borderTop: '1px solid var(--bw-border)' }}>
+                <Button
+                  variant="destructive"
+                  fullWidth
+                  onClick={() => {
+                    setDeleteTarget({ id: selectedDriver.id, first_name: selectedDriver.first_name, last_name: selectedDriver.last_name, email: selectedDriver.email })
+                    setShowDriverDetails(false)
+                    setSelectedDriver(null)
+                  }}>
+                  <Trash size={18} aria-hidden />
+                  Delete driver permanently
+                </Button>
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--bw-muted)' }}>
+                  Permanent. This cannot be undone.
+                </div>
+              </div>
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -1060,6 +1117,8 @@ export default function DriversTab() {
           )}
         </Modal>
       )}
+
+      {deleteTarget && <DeleteDriverModal driver={deleteTarget} onClose={() => setDeleteTarget(null)} />}
     </>
   )
 }

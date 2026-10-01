@@ -317,7 +317,7 @@ export default function TenantBookRideModal({
       <div
         className="bw-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: isMobile ? '100%' : 640, maxHeight: 'min(92vh, 900px)' }}
+        style={{ maxWidth: isMobile ? '100%' : 640, maxHeight: 'min(var(--modal-max-h), 900px)' }}
       >
         <div className="bw-modal-header">
           <h3>Schedule ride for customer</h3>
@@ -329,7 +329,7 @@ export default function TenantBookRideModal({
         <form onSubmit={handleSubmit}>
           <div
             className="bw-modal-body"
-            style={{ overflowY: 'auto', maxHeight: 'calc(92vh - 160px)' }}
+            style={{ overflowY: 'auto', maxHeight: 'calc(var(--modal-max-h) - 160px)' }}
           >
             <p
               className="small-muted"

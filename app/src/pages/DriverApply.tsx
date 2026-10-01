@@ -83,14 +83,14 @@ export default function DriverApply() {
 
   if (tenantLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: loadingPalette.bg }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'var(--app-h)', backgroundColor: loadingPalette.bg }}>
         <div style={{ color: loadingPalette.text, fontFamily: 'Work Sans, sans-serif', fontSize: '16px' }}>Loading...</div>
       </div>
     )
   }
 
   return (
-    <main className="bw" style={{ display: 'flex', justifyContent: 'center', minHeight: '100vh', padding: '24px', backgroundColor: 'var(--bw-bg)' }}>
+    <main className="bw" style={{ display: 'flex', justifyContent: 'center', minHeight: 'var(--app-h)', padding: '24px', backgroundColor: 'var(--bw-bg)' }}>
       <div style={{ maxWidth: 520, width: '100%', paddingTop: 'clamp(24px, 6vw, 64px)' }}>
         {tenantInfo && (
           <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center' }}>

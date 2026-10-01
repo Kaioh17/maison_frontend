@@ -207,7 +207,7 @@ export default function VehicleEditModal({
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" style={{
+    <div className="modal-overlay vv-fit" style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -223,7 +223,7 @@ export default function VehicleEditModal({
       <div className="bw-card" style={{
         maxWidth: isMobile ? '100%' : '900px',
         width: '100%',
-        maxHeight: isMobile ? '95vh' : '90vh',
+        maxHeight: 'var(--modal-max-h)',
         overflow: 'auto',
         position: 'relative',
         borderRadius: 'clamp(8px, 1.5vw, 12px)'

@@ -10,7 +10,7 @@ export default function NotFound404() {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       fontFamily: 'Work Sans, sans-serif',
       backgroundColor: 'var(--bw-bg)',
       padding: 'clamp(20px, 4vw, 40px)',
@@ -149,6 +149,25 @@ export default function NotFound404() {
             support@example.com
           </a>
         </div>
+        {/* Installed (standalone) apps have no browser back button, so a dead end needs its own way out. */}
+        <a
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 44,
+            marginTop: 'clamp(16px, 3vw, 24px)',
+            padding: '0 24px',
+            border: '1px solid var(--bw-border)',
+            borderRadius: '8px',
+            color: 'var(--bw-fg)',
+            textDecoration: 'none',
+            fontSize: 'clamp(14px, 2vw, 16px)',
+          }}
+        >
+          Back to home
+        </a>
       </div>
     </div>
   )

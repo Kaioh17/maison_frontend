@@ -87,7 +87,7 @@ export default function SlugVerification({ children }: SlugVerificationProps) {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           backgroundColor: loadingPalette.bg,
           color: loadingPalette.muted,
           fontFamily: 'Work Sans, sans-serif',

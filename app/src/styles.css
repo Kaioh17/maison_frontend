@@ -7,7 +7,28 @@
 @tailwind utilities;
 
 /* Global base */
-html, body { height: 100%; }
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* Full dynamic viewport. 100vh is the fallback for browsers without dvh (it is too tall when mobile toolbars show). */
+  --dvh: 100vh;
+  /* Height of the app root's content box: the dynamic viewport minus the top inset `.app-root` pads for. Use for full-page min-heights. */
+  --app-h: calc(var(--dvh) - var(--safe-top));
+  /* What the user can actually see: shrinks to the area above the on-screen keyboard (see src/viewport.ts). */
+  --vis-h: var(--vvh, var(--dvh));
+  /* Tallest a centered dialog can be: visible height minus notch/home-indicator insets and 16px breathing room each side. */
+  --modal-max-h: calc(var(--vis-h) - var(--safe-top) - var(--safe-bottom) - 32px);
+}
+@supports (height: 100dvh) { :root { --dvh: 100dvh; } }
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { height: 100%; overscroll-behavior-y: none; }
+/* Inline-styled full-screen scrims that host forms: follow the visual viewport so the keyboard never covers the dialog. */
+.vv-fit { inset: var(--vv-top, 0px) 0 auto 0 !important; height: var(--vvh, 100%) !important; }
+/* Single app root: fills the dynamic viewport and keeps clear of the notch and rounded corners. */
+.app-root { min-height: var(--app-h); padding: var(--safe-top) var(--safe-right) 0 var(--safe-left); }
 body { 
   margin: 0; 
   background: var(--bw-bg); 
@@ -45,40 +66,6 @@ body {
 
 /* Theme System - CSS Variables */
 :root {
-  /* Dark Theme (Default) — command center palette */
-  --bw-bg: #0f0d1a; /* Near black page */
-  --bw-fg: #E0E0E0; /* Soft light gray primary text */
-  --bw-text: #E0E0E0; /* Primary text */
-  --bw-muted: #9b97ae; /* Secondary text */
-  --bw-disabled: #5c586f; /* Disabled text / subtle icons */
-  --bw-border: #2a2640; /* Subtle borders/dividers */
-  --bw-border-strong: #3d3854; /* Stronger borders */
-  --bw-focus: #E0E0E0; /* Focus ring color */
-  --bw-shadow: 0 6px 24px rgba(0,0,0,0.4);
-  --bw-bg-hover: rgba(255,255,255,0.05);
-  --bw-bg-hover-strong: rgba(255,255,255,0.1);
-  --bw-bg-secondary: #1a1727; /* Card / elevated surfaces */
-  --bw-accent: #6c63e8; /* Muted indigo accent */
-  --bw-accent-hover: #7068cc; /* Accent hover */
-  --bw-success: #1E7F4A; /* Muted success color */
-  --bw-warning: #B8871B; /* Muted warning color */
-  --bw-error: #C5483D; /* Muted error color */
-  /* Status pill tokens */
-  --bw-status-active-bg: rgba(34, 197, 94, 0.14);
-  --bw-status-active-text: #4ade80;
-  --bw-status-pending-bg: rgba(245, 158, 11, 0.14);
-  --bw-status-pending-text: #fbbf24;
-  --bw-status-done-bg: rgba(148, 163, 184, 0.10);
-  --bw-status-done-text: #94a3b8;
-  --bw-status-cancelled-bg: rgba(248, 113, 113, 0.14);
-  --bw-status-cancelled-text: #f87171;
-  --bw-status-assigned-bg: rgba(108, 99, 232, 0.16);
-  --bw-status-assigned-text: #a78bfa;
-  --bw-status-confirmed-bg: rgba(59, 130, 246, 0.14);
-  --bw-status-confirmed-text: #60a5fa;
-  --bw-status-default-bg: rgba(148, 163, 184, 0.10);
-  --bw-status-default-text: #94a3b8;
-
   /* Typography */
   --fs-h1: 56px; /* sm:42 */
   --fs-h2: 28px;
@@ -91,23 +78,58 @@ body {
 
   /* Standard component radius — matches .btn (styles.css:1138); use for inputs/fields too */
   --radius-field: 10px;
+}
 
-  /* Rider app — depth surfaces (pair with global --bw-* for page chrome) */
-  --rider-surface-elevated: #13131f;
-  --rider-surface-inset: #0d0d12;
-  --rider-shell-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+/* Dark Theme (default) - near-black neutrals, landing-purple buttons, champagne for focus */
+:root,
+[data-theme="dark"] {
+  --bw-bg: #0B0B0C; /* app background */
+  --bw-fg: #F5F5F4;
+  --bw-text: #F5F5F4;
+  --bw-muted: #A1A1A6;
+  --bw-disabled: #6B6B72;
+  --bw-border: #2A2A2E;
+  --bw-border-strong: #3A3A40;
+  --bw-focus: #C8A96A; /* champagne */
+  --bw-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  --bw-bg-hover: #1C1C1F;
+  --bw-bg-hover-strong: #26262A;
+  --bw-bg-secondary: #141416; /* sidebar, cards, tables */
+  --bw-accent: #6e5bd8; /* landing purple, drives primary buttons */
+  --bw-accent-hover: #7d6be6;
+  --bw-success: #3DD68C;
+  --bw-warning: #F5B84B;
+  --bw-error: #F0605D;
+  /* Status pill tokens */
+  --bw-status-active-bg: rgba(61, 214, 140, 0.14);
+  --bw-status-active-text: #3DD68C;
+  --bw-status-pending-bg: rgba(245, 184, 75, 0.14);
+  --bw-status-pending-text: #F5B84B;
+  --bw-status-done-bg: rgba(161, 161, 166, 0.12);
+  --bw-status-done-text: #A1A1A6;
+  --bw-status-cancelled-bg: rgba(240, 96, 93, 0.14);
+  --bw-status-cancelled-text: #F0605D;
+  --bw-status-assigned-bg: rgba(200, 169, 106, 0.12);
+  --bw-status-assigned-text: #C8A96A;
+  --bw-status-confirmed-bg: rgba(91, 164, 245, 0.14);
+  --bw-status-confirmed-text: #5BA4F5;
+  --bw-status-default-bg: rgba(161, 161, 166, 0.12);
+  --bw-status-default-text: #A1A1A6;
+
+  --rider-surface-elevated: #141416;
+  --rider-surface-inset: #1C1C1F;
+  --rider-shell-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   --rider-field-inset-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --rider-hairline: rgba(255, 255, 255, 0.06);
-  --rider-primary: #7c5cfc;
+  --rider-hairline: #2A2A2E;
+  --rider-primary: #6e5bd8;
   --rider-on-primary: #ffffff;
-  --rider-row-hover: rgba(255, 255, 255, 0.04);
-  --rider-notes-bg: rgba(0, 0, 0, 0.2);
-  --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --rider-row-hover: #1C1C1F;
+  --rider-notes-bg: rgba(0, 0, 0, 0.3);
+  --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
-  /* Settings — floating panel backdrop (dark by design; light theme falls back to --bw-*) */
-  --settings-backdrop: #07070b;
-  --settings-panel-top: #121219;
-  --settings-panel-bottom: #15151e;
+  --settings-backdrop: #0B0B0C;
+  --settings-panel-top: #141416;
+  --settings-panel-bottom: #141416;
 }
 
 /* Light Theme */
@@ -123,8 +145,8 @@ body {
   --bw-bg-hover: rgba(0,0,0,0.02);
   --bw-bg-hover-strong: rgba(0,0,0,0.05);
   --bw-bg-secondary: #ffffff; /* white */
-  --bw-accent: #6c63e8; /* Muted indigo accent */
-  --bw-accent-hover: #7068cc; /* Accent hover */
+  --bw-accent: #6e5bd8; /* Landing purple */
+  --bw-accent-hover: #7d6be6;
   /* Status pill tokens */
   --bw-status-active-bg: rgba(22, 163, 74, 0.10);
   --bw-status-active-text: #15803d;
@@ -134,8 +156,8 @@ body {
   --bw-status-done-text: #475569;
   --bw-status-cancelled-bg: rgba(220, 38, 38, 0.10);
   --bw-status-cancelled-text: #dc2626;
-  --bw-status-assigned-bg: rgba(108, 99, 232, 0.10);
-  --bw-status-assigned-text: #6c63e8;
+  --bw-status-assigned-bg: rgba(110, 91, 216, 0.10);
+  --bw-status-assigned-text: #6e5bd8;
   --bw-status-confirmed-bg: rgba(37, 99, 235, 0.10);
   --bw-status-confirmed-text: #2563eb;
   --bw-status-default-bg: rgba(100, 116, 139, 0.10);
@@ -146,7 +168,7 @@ body {
   --rider-shell-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
   --rider-field-inset-glow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
   --rider-hairline: rgba(15, 23, 42, 0.08);
-  --rider-primary: #7c5cfc;
+  --rider-primary: #6e5bd8;
   --rider-on-primary: #ffffff;
   --rider-row-hover: rgba(15, 23, 42, 0.05);
   --rider-notes-bg: rgba(15, 23, 42, 0.04);
@@ -171,8 +193,8 @@ body {
     --bw-bg-hover: rgba(0,0,0,0.02);
     --bw-bg-hover-strong: rgba(0,0,0,0.05);
     --bw-bg-secondary: #ffffff; /* white */
-    --bw-accent: #6c63e8; /* Muted indigo accent */
-    --bw-accent-hover: #7068cc; /* Accent hover */
+    --bw-accent: #6e5bd8; /* Landing purple */
+    --bw-accent-hover: #7d6be6;
     /* Status pill tokens */
     --bw-status-active-bg: rgba(22, 163, 74, 0.10);
     --bw-status-active-text: #15803d;
@@ -182,8 +204,8 @@ body {
     --bw-status-done-text: #475569;
     --bw-status-cancelled-bg: rgba(220, 38, 38, 0.10);
     --bw-status-cancelled-text: #dc2626;
-    --bw-status-assigned-bg: rgba(108, 99, 232, 0.10);
-    --bw-status-assigned-text: #6c63e8;
+    --bw-status-assigned-bg: rgba(110, 91, 216, 0.10);
+    --bw-status-assigned-text: #6e5bd8;
     --bw-status-confirmed-bg: rgba(37, 99, 235, 0.10);
     --bw-status-confirmed-text: #2563eb;
     --bw-status-default-bg: rgba(100, 116, 139, 0.10);
@@ -194,7 +216,7 @@ body {
     --rider-shell-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
     --rider-field-inset-glow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
     --rider-hairline: rgba(15, 23, 42, 0.08);
-    --rider-primary: #7c5cfc;
+    --rider-primary: #6e5bd8;
     --rider-on-primary: #ffffff;
     --rider-row-hover: rgba(15, 23, 42, 0.05);
     --rider-notes-bg: rgba(15, 23, 42, 0.04);
@@ -208,77 +230,77 @@ body {
 
 @media (prefers-color-scheme: dark) {
   [data-theme="auto"] {
-    --bw-bg: #0f0d1a; /* Near black page */
-    --bw-fg: #E0E0E0; /* Soft light gray primary text */
-    --bw-text: #E0E0E0; /* Primary text */
-    --bw-muted: #9b97ae; /* Secondary text */
-    --bw-disabled: #5c586f; /* Disabled text / subtle icons */
-    --bw-border: #2a2640; /* Subtle borders */
-    --bw-border-strong: #3d3854; /* Stronger borders */
-    --bw-focus: #E0E0E0; /* Focus ring color */
-    --bw-shadow: 0 6px 24px rgba(0,0,0,0.4);
-    --bw-bg-hover: rgba(255,255,255,0.05);
-    --bw-bg-hover-strong: rgba(255,255,255,0.1);
-    --bw-bg-secondary: #1a1727; /* Card / elevated surfaces */
-    --bw-accent: #6c63e8; /* Muted indigo accent */
-    --bw-accent-hover: #7068cc; /* Accent hover */
-    --bw-success: #1E7F4A; /* Muted success color */
-    --bw-warning: #B8871B; /* Muted warning color */
-    --bw-error: #C5483D; /* Muted error color */
+    --bw-bg: #0B0B0C; /* app background */
+    --bw-fg: #F5F5F4;
+    --bw-text: #F5F5F4;
+    --bw-muted: #A1A1A6;
+    --bw-disabled: #6B6B72;
+    --bw-border: #2A2A2E;
+    --bw-border-strong: #3A3A40;
+    --bw-focus: #C8A96A; /* champagne */
+    --bw-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    --bw-bg-hover: #1C1C1F;
+    --bw-bg-hover-strong: #26262A;
+    --bw-bg-secondary: #141416; /* sidebar, cards, tables */
+    --bw-accent: #6e5bd8; /* landing purple, drives primary buttons */
+    --bw-accent-hover: #7d6be6;
+    --bw-success: #3DD68C;
+    --bw-warning: #F5B84B;
+    --bw-error: #F0605D;
     /* Status pill tokens */
-    --bw-status-active-bg: rgba(34, 197, 94, 0.14);
-    --bw-status-active-text: #4ade80;
-    --bw-status-pending-bg: rgba(245, 158, 11, 0.14);
-    --bw-status-pending-text: #fbbf24;
-    --bw-status-done-bg: rgba(148, 163, 184, 0.10);
-    --bw-status-done-text: #94a3b8;
-    --bw-status-cancelled-bg: rgba(248, 113, 113, 0.14);
-    --bw-status-cancelled-text: #f87171;
-    --bw-status-assigned-bg: rgba(108, 99, 232, 0.16);
-    --bw-status-assigned-text: #a78bfa;
-    --bw-status-confirmed-bg: rgba(59, 130, 246, 0.14);
-    --bw-status-confirmed-text: #60a5fa;
-    --bw-status-default-bg: rgba(148, 163, 184, 0.10);
-    --bw-status-default-text: #94a3b8;
+    --bw-status-active-bg: rgba(61, 214, 140, 0.14);
+    --bw-status-active-text: #3DD68C;
+    --bw-status-pending-bg: rgba(245, 184, 75, 0.14);
+    --bw-status-pending-text: #F5B84B;
+    --bw-status-done-bg: rgba(161, 161, 166, 0.12);
+    --bw-status-done-text: #A1A1A6;
+    --bw-status-cancelled-bg: rgba(240, 96, 93, 0.14);
+    --bw-status-cancelled-text: #F0605D;
+    --bw-status-assigned-bg: rgba(200, 169, 106, 0.12);
+    --bw-status-assigned-text: #C8A96A;
+    --bw-status-confirmed-bg: rgba(91, 164, 245, 0.14);
+    --bw-status-confirmed-text: #5BA4F5;
+    --bw-status-default-bg: rgba(161, 161, 166, 0.12);
+    --bw-status-default-text: #A1A1A6;
 
-    --rider-surface-elevated: #13131f;
-    --rider-surface-inset: #0d0d12;
-    --rider-shell-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    --rider-surface-elevated: #141416;
+    --rider-surface-inset: #1C1C1F;
+    --rider-shell-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     --rider-field-inset-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    --rider-hairline: rgba(255, 255, 255, 0.06);
-    --rider-primary: #7c5cfc;
+    --rider-hairline: #2A2A2E;
+    --rider-primary: #6e5bd8;
     --rider-on-primary: #ffffff;
-    --rider-row-hover: rgba(255, 255, 255, 0.04);
-    --rider-notes-bg: rgba(0, 0, 0, 0.2);
-    --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --rider-row-hover: #1C1C1F;
+    --rider-notes-bg: rgba(0, 0, 0, 0.3);
+    --rider-image-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
-    --settings-backdrop: #07070b;
-    --settings-panel-top: #121219;
-    --settings-panel-bottom: #15151e;
+    --settings-backdrop: #0B0B0C;
+    --settings-panel-top: #141416;
+    --settings-panel-bottom: #141416;
   }
   
   /* Dark scrollbar for auto theme in dark mode */
   [data-theme="auto"] ::-webkit-scrollbar-track {
-    background: #0f0d1a;
-    border-left: 1px solid #2a2640;
+    background: #0B0B0C;
+    border-left: 1px solid #2A2A2E;
   }
   
   [data-theme="auto"] ::-webkit-scrollbar-thumb {
-    background: #2a2640;
-    border: 2px solid #0f0d1a;
+    background: #2A2A2E;
+    border: 2px solid #0B0B0C;
   }
   
   [data-theme="auto"] ::-webkit-scrollbar-thumb:hover {
-    background: #2a2a2a;
+    background: #3A3A40;
   }
   
   [data-theme="auto"] * {
-    scrollbar-color: #242424 #121212;
+    scrollbar-color: #2A2A2E #0B0B0C;
   }
 }
 
 /* Page wrapper */
-.bw { background: var(--bw-bg); color: var(--bw-fg); min-height: 100dvh; }
+.bw { background: var(--bw-bg); color: var(--bw-fg); min-height: var(--app-h); }
 .bw a { color: var(--bw-fg); text-decoration: none; }
 .bw a:hover { text-decoration: underline; }
 
@@ -289,7 +311,7 @@ body {
 @media (min-width: 768px) { .bw-grid-3 { grid-template-columns: repeat(3, 1fr); } }
 
 /* Top nav */
-.bw-topnav { position: sticky; top: 0; z-index: 30; background: var(--bw-bg); border-bottom: 1px solid var(--bw-border); }
+.bw-topnav { position: sticky; top: var(--safe-top); z-index: 30; background: var(--bw-bg); border-bottom: 1px solid var(--bw-border); }
 .bw-topnav-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) 0; }
 .bw-brand { font-weight: 900; letter-spacing: .5px; font-size: 28px; }
 @media (min-width: 768px) { .bw-brand { font-size: 32px; } }
@@ -369,7 +391,7 @@ button.bw-btn-action.custom-hover-border:hover {
 .bw-modal label.small-muted { font-size: 12px; }
 
 /* Auth layout */
-.bw-auth { display: grid; place-items: center; min-height: calc(100dvh - 70px); }
+.bw-auth { display: grid; place-items: center; min-height: calc(var(--app-h) - 70px); }
 .bw-auth-card { width: 100%; max-width: 460px; }
 
 /* Footer */
@@ -811,7 +833,9 @@ button.bw-btn-action.custom-hover-border:hover {
   display: grid;
   place-items: center;
   z-index: 1300;
-  padding: 16px;
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+  /* Track the visual viewport so the on-screen keyboard never covers the dialog (see src/viewport.ts). */
+  inset: var(--vv-top, 0px) 0 auto 0; height: var(--vvh, 100%);
 }
 
 .bw-modal {
@@ -820,7 +844,7 @@ button.bw-btn-action.custom-hover-border:hover {
   border-radius: 12px;
   width: 100%;
   max-width: 500px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(var(--vvh, var(--dvh)) - 32px - var(--safe-top) - var(--safe-bottom));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -959,21 +983,21 @@ body[data-theme="dark"] {
 
 /* Dark theme scrollbar styling */
 [data-theme="dark"] ::-webkit-scrollbar-track {
-  background: #121212;
-  border-left: 1px solid #242424;
+  background: #0B0B0C;
+  border-left: 1px solid #2A2A2E;
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: #242424;
-  border: 2px solid #121212;
+  background: #2A2A2E;
+  border: 2px solid #0B0B0C;
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: #2a2a2a;
+  background: #3A3A40;
 }
 
 [data-theme="dark"] * {
-  scrollbar-color: #242424 #121212;
+  scrollbar-color: #2A2A2E #0B0B0C;
 }
 
 
@@ -1180,7 +1204,7 @@ body[data-theme="dark"] {
   gap: 8px;
   padding: 12px 20px;
   min-height: 44px;
-  border-radius: 10px;
+  border-radius: 999px;
   border: 1px solid transparent;
   font-family: "Work Sans", sans-serif;
   font-size: 14px;
@@ -1200,6 +1224,7 @@ body[data-theme="dark"] {
   outline: 2px solid var(--bw-accent);
   outline-offset: 2px;
 }
+[data-theme="dark"] .btn:focus-visible { outline-color: #C8A96A; }
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1211,6 +1236,8 @@ body[data-theme="dark"] {
 .btn-primary {
   background-color: var(--bw-accent);
   color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 14px 34px -14px color-mix(in srgb, var(--bw-accent) 38%, transparent);
 }
 .btn-primary:hover:not(:disabled) {
   background-color: var(--bw-accent-hover);
@@ -1400,7 +1427,7 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
   .dt thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .dt tbody tr { padding: 10px 0; border-bottom: 1px solid var(--bw-border); }
   .dt tbody tr:last-child { border-bottom: none; }
-  .dt td { padding: 5px 18px !important; border-bottom: none; text-align: left !important; }
+  .dt td { padding: 5px 18px !important; border-bottom: none; text-align: left !important; overflow-wrap: anywhere; }
   .dt td[data-label] { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-align: right !important; }
   .dt td[data-label]::before { content: attr(data-label); flex-shrink: 0; font-size: 12px; color: var(--bw-muted); }
   .dt td .sub { white-space: normal !important; }
@@ -1444,12 +1471,13 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
 .bw-empty { padding: 32px 18px; text-align: center; color: var(--bw-muted); font-size: 13px; }
 
 .bw-dialog-scrim {
-  position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 16px;
+  position: fixed; inset: var(--vv-top, 0px) 0 auto 0; height: var(--vvh, 100%); z-index: 1200; display: grid; place-items: center;
+  padding: max(16px, var(--safe-top)) max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
   overscroll-behavior: contain;
   background: color-mix(in srgb, var(--bw-bg) 70%, transparent);
 }
 .bw-dialog {
-  width: min(620px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+  width: min(620px, 100%); max-height: calc(var(--vvh, var(--dvh)) - 32px - var(--safe-top) - var(--safe-bottom)); display: flex; flex-direction: column;
   background: var(--bw-bg-secondary); border: 1px solid var(--bw-border-strong); border-radius: 12px; overflow: hidden;
 }
 .bw-dialog-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--bw-border); }
@@ -1487,4 +1515,287 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
 .bw.settings-shell .bw-card:hover {
   transform: none;
   box-shadow: none;
+}
+
+/* ============================================================
+   Rider app: map placeholder, mobile bottom nav, segmented control, sticky CTA
+   ============================================================ */
+
+.rider-map {
+  position: relative;
+  height: clamp(260px, 42vw, 300px);
+  border-radius: 20px;
+  border: 1px solid var(--bw-border);
+  background-color: var(--rider-surface-inset);
+  background-image:
+    linear-gradient(var(--bw-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bw-border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  overflow: hidden;
+  user-select: none;
+}
+.rider-map__canvas,
+.rider-map__canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rider-map__roads path {
+  fill: none;
+  stroke: var(--bw-border-strong);
+  stroke-width: 7;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.rider-map__route {
+  fill: none;
+  stroke: var(--bw-accent);
+  stroke-width: 3;
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+}
+.rider-map__pin {
+  stroke-width: 3;
+}
+.rider-map__pin--from {
+  fill: var(--bw-accent);
+  stroke: var(--rider-surface-inset);
+}
+.rider-map__pin--to {
+  fill: var(--bw-text);
+  stroke: var(--rider-surface-inset);
+}
+.rider-map__top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.rider-map__title {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bw-bg) 80%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--bw-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.rider-map__controls {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rider-map__controls button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--bw-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bw-bg) 80%, transparent);
+  color: var(--bw-muted);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.rider-map__route-card {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--bw-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bw-bg-secondary) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+.rider-map__route-card > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.rider-map__route-card dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--bw-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.rider-map__route-card dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--bw-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rider-map__route-card dd.is-empty {
+  color: var(--bw-muted);
+}
+.rider-map__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rider-map__dot--from { background: var(--bw-accent); }
+.rider-map__dot--to { background: var(--bw-text); }
+
+/* Segmented control (service type etc.) */
+.rider-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--bw-border);
+  border-radius: 999px;
+  background: var(--rider-surface-inset);
+}
+.rider-seg button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--bw-muted);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.rider-seg button[aria-checked="true"] {
+  background: var(--bw-accent);
+  color: #ffffff;
+}
+.rider-seg button:focus-visible {
+  outline: 2px solid var(--bw-focus);
+  outline-offset: 2px;
+}
+
+/* Primary action stays reachable while the form scrolls */
+.rider-sticky-cta {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 4px -4px 0;
+  padding: 12px 4px 4px;
+  background: linear-gradient(to top, var(--rider-surface-elevated) 72%, transparent);
+}
+
+/* Mobile bottom navigation */
+.rider-bottomnav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 900;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 6px max(8px, var(--safe-right)) calc(6px + var(--safe-bottom)) max(8px, var(--safe-left));
+  border-top: 1px solid var(--bw-border);
+  background: color-mix(in srgb, var(--bw-bg) 90%, transparent);
+  backdrop-filter: blur(14px);
+}
+.rider-bottomnav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--bw-muted);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rider-bottomnav__item[aria-current="page"] {
+  color: var(--bw-text);
+  background: var(--bw-bg-hover);
+}
+.rider-bottomnav__item:focus-visible {
+  outline: 2px solid var(--bw-focus);
+  outline-offset: -2px;
+}
+.rider-bottomnav__item--primary .rider-bottomnav__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-top: -16px;
+  border-radius: 50%;
+  background: var(--bw-accent);
+  color: #ffffff;
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--bw-accent) 60%, transparent);
+}
+.rider-bottomnav__item--primary {
+  color: var(--bw-text);
+  background: transparent !important;
+}
+
+@media (max-width: 768px) {
+  /* 16px + 48px targets: anything smaller makes iOS Safari zoom on focus and is hard to tap */
+  .rider-main-content .bw-input,
+  .rider-main-content select,
+  .rider-main-content textarea {
+    font-size: 16px !important;
+    min-height: 48px;
+  }
+  .rider-main-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+  .rider-sticky-cta {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+  .rider-map__route-card > div {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rider-seg button { transition: none; }
+}
+
+/* Touch devices: 16px+ text in fields stops iOS zooming on focus; 44px minimum hit areas. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea { font-size: 16px !important; }
+  button:not([role="switch"]):not([role="checkbox"]),
+  .btn,
+  select,
+  .bw-input { min-height: 44px; }
+  button:not([role="switch"]):not([role="checkbox"]) { min-width: 44px; }
+  /* Compact call-site buttons set an inline minHeight (32/28px); touch must win. */
+  .btn { min-height: 44px !important; }
+}
+
+/* Update prompt (see components/UpdateBanner.tsx) */
+.pwa-update {
+  position: fixed; z-index: 10002; left: 50%; transform: translateX(-50%);
+  top: calc(var(--safe-top) + 8px); width: max-content; max-width: calc(100% - 24px);
+  display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px;
+  background: var(--bw-bg-secondary); color: var(--bw-text); font-size: 14px;
+  border: 1px solid var(--bw-border-strong); border-radius: 12px; box-shadow: var(--bw-shadow);
 }

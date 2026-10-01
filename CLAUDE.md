@@ -94,7 +94,13 @@ Auth state is in Zustand (`src/store/auth.ts`) with `localStorage` persistence v
 
 ### PWA
 
-Uses `vite-plugin-pwa` with `injectManifest` strategy and a custom `src/sw.ts` service worker. The manifest and app icons are intentionally **not** precached — they are proxied to the backend so each tenant subdomain gets its own white-labeled branding.
+Uses `vite-plugin-pwa` with `injectManifest` strategy and a custom `src/sw.ts` service worker.
+
+- **Install metadata is per tenant and server-side.** `index.html` links a static `/manifest.webmanifest` and `/apple-touch-icon.png`; the backend (`backend/backend/app/api/routers/pwa.py`) resolves the tenant from the Host header and answers with that tenant's manifest and generated PNG icons (tenant icon, then logo, then initials on the brand colour, then the Maison icon). They are never precached and always `NetworkOnly` in the worker. `useFavicon` only fills in the title, `apple-mobile-web-app-title` (short name), and `theme-color` at runtime; it must not rewrite the manifest or apple-touch-icon links.
+- **The worker caches only the precached app shell.** No API, auth, or image responses ever go into Cache Storage (they carry personal data). Navigations are network-first with the precached offline page as fallback. `clearRuntimeCaches()` runs on logout.
+- **Updates are never automatic.** `registerType: 'prompt'`; a waiting worker sets `usePwaUpdate().needRefresh` and `UpdateBanner` lets the user choose when to reload.
+- **Screen containment.** `.app-root` (in `App.tsx`) pads for the notch; page heights use `var(--app-h)` (dynamic viewport minus the top inset, with a `100vh` fallback), never `100vh`/`100vw`. Fixed bars and drawers add `env(safe-area-inset-*)` themselves. Dialog heights use `--modal-max-h`, which follows the visual viewport (`src/viewport.ts`) so the on-screen keyboard cannot cover them. Touch devices get 16px field text and 44px hit areas from the `@media (pointer: coarse)` block at the end of `styles.css`.
+- Keep `shortAppName` (`src/utils/tenantName.ts`) in sync with `make_short_name` in `pwa_service.py`.
 
 ### Path Aliases
 

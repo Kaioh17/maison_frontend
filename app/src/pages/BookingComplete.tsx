@@ -25,7 +25,7 @@ export default function BookingComplete() {
   if (isLoading) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: 'var(--bw-bg)',
         display: 'flex',
         alignItems: 'center',
@@ -39,7 +39,7 @@ export default function BookingComplete() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
       padding: 'clamp(16px, 3vw, 24px)',

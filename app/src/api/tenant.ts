@@ -291,6 +291,30 @@ export async function approveDriver(driverId: number) {
   return data
 }
 
+export async function setDriverActive(driverId: number, isActive: boolean) {
+  const { data } = await http.patch<StandardResponse<{ id: number; is_active: boolean }>>(`/v1/tenant/drivers/${driverId}/status`, null, { params: { is_active: isActive } })
+  return data
+}
+
+export type DriverDeletionRequest = {
+  driver_id: number
+  driver_name: string
+  warnings: string[]
+  confirmation_token: string
+  expires_in_seconds: number
+}
+
+// Permanent deletion is two steps; the server issues the token, warnings and does all validation.
+export async function requestDriverDeletion(driverId: number) {
+  const { data } = await http.post<StandardResponse<DriverDeletionRequest>>(`/v1/tenant/drivers/${driverId}/deletion-request`)
+  return data
+}
+
+export async function deleteDriver(driverId: number, payload: { confirmation_token: string; confirm_email: string; acknowledge_permanent: boolean }) {
+  const { data } = await http.delete<StandardResponse<{ id: number }>>(`/v1/tenant/drivers/${driverId}`, { data: payload })
+  return data
+}
+
 export async function assignDriverToRide(riderId: number, payload: AssignDriver) {
   const { data } = await http.patch(`/v1/tenant/riders/${riderId}/assign-driver`, payload)
   return data

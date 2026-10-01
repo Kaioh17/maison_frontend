@@ -3,7 +3,9 @@ import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, MotionConfig } from 'framer-motion'
 import MaisonWordmark from '@components/MaisonWordmark'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
+import maisonWordmark from '../images/maison_wordmark.png'
+import maisonPin from '../images/maison_pin.png'
+import maisonIcon from '../images/maison_icon.png'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan, buildPlanDisplays } from '@data/landingPricingPlans'
 import { getPublicPlans, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
@@ -258,7 +260,7 @@ function HeroParticleField() {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none absolute left-0 top-0 z-0 hidden h-screen w-[55vw] md:block"
+      className="pointer-events-none absolute left-0 top-0 z-0 hidden h-[var(--app-h)] w-[55vw] md:block"
       style={{
         maskImage:
           'linear-gradient(to right, black 40%, transparent 75%), radial-gradient(90% 100% at 30% 50%, black 45%, transparent 100%)',
@@ -815,7 +817,7 @@ function RiderBookingSlide() {
           {brandedLinkPills.map((pill) => (
             <motion.div
               key={pill.path}
-              className="landing-chip absolute max-w-[calc(100vw-2.5rem)] !text-[12px] md:max-w-[19rem] md:!text-[13px]"
+              className="landing-chip absolute max-w-full !text-[12px] md:max-w-[19rem] md:!text-[13px]"
               style={{
                 top: pill.top,
                 left: pill.left,
@@ -1259,13 +1261,11 @@ function ConclusionSlide() {
         <div className="box-border w-full px-5 pb-6 pt-8 md:px-[60px] md:pb-8 md:pt-12">
           <div className="mb-6 md:mb-8 md:grid md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] md:items-start md:gap-x-12">
             <div className="mb-6 hidden md:mb-0 md:block">
-              <MaisonDarkModeLogo
-                forceDark
+              <img
+                src={maisonPin}
+                alt="Maison"
                 className="block"
-                style={{
-                  height: 'clamp(1.5rem, 4vw, 2rem)',
-                  width: 'auto',
-                }}
+                style={{ height: 'clamp(2rem, 4vw, 2.5rem)', width: 'auto' }}
               />
               <p className="mt-3.5 max-w-xs text-[14px] leading-[1.55] tracking-[-0.01em] text-[color:var(--landing-fg-muted)]">
                 Built for operators who run their business like a brand.
@@ -1364,19 +1364,20 @@ function ConclusionSlide() {
             </div>
           </div>
 
-          <div className="border-t border-[color:var(--landing-hairline)] pt-4">
+          <div className="flex items-center justify-between gap-4 border-t border-[color:var(--landing-hairline)] pt-4">
             <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-[color:var(--landing-fg-faint)] md:hidden">
               <span>© 2026</span>
               <MaisonWordmark
                 color="var(--landing-fg-faint)"
                 className="shrink-0"
-                style={{ fontSize: 12, display: 'inline-block', verticalAlign: 'baseline' }}
+                style={{ fontSize: 12 }}
               />
               <span>. All rights reserved.</span>
             </p>
             <p className="m-0 hidden text-xs text-[color:var(--landing-fg-faint)] md:block">
               © 2026 Maison. All rights reserved.
             </p>
+            <img src={maisonIcon} alt="" aria-hidden width={28} height={28} className="ml-auto block h-7 w-7 shrink-0" />
           </div>
         </div>
       </motion.footer>
@@ -1518,20 +1519,11 @@ export default function Landing() {
               pointerEvents: hideFloatingChromeOnPricing ? 'none' : 'auto',
             }}
           >
-            <MaisonDarkModeLogo
-              forceDark
-              style={{
-                height: 'clamp(1.625rem, 4vw, 2.125rem)',
-                width: 'auto',
-              }}
-            />
-            <MaisonWordmark
-              color={null}
-              style={{
-                fontSize: 'clamp(1.2rem, 2.8vw, 1.5rem)',
-                display: 'inline-block',
-                verticalAlign: 'middle',
-              }}
+            <img
+              src={maisonWordmark}
+              alt="Maison"
+              // translateY centers the letters (not the i-dot ascender) on the menu icon
+              style={{ height: 'clamp(1.65rem, 3.5vw, 2.05rem)', width: 'auto', display: 'block', transform: 'translateY(-16.9%)' }}
             />
           </button>
         </div>

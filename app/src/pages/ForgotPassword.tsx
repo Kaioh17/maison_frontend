@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { Envelope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
-import MaisonDarkModeLogo from '@components/MaisonDarkModeLogo'
 import MaisonWordmark from '@components/MaisonWordmark'
 
 export default function ForgotPassword() {
@@ -17,12 +16,11 @@ export default function ForgotPassword() {
     <main
       className="bw"
       aria-label="Reset password"
-      style={{ margin: 0, padding: 0, height: '100vh', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bw-bg)' }}
+      style={{ margin: 0, padding: 0, height: 'var(--app-h)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bw-bg)' }}
     >
       <div style={{ width: '100%', maxWidth: 400, padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', marginBottom: 40 }}>
-          <MaisonDarkModeLogo height={48} />
-          <MaisonWordmark color={null} style={{ fontSize: '1.4rem', display: 'inline-block', verticalAlign: 'middle' }} />
+          <MaisonWordmark color={null} style={{ fontSize: '1.85rem' }} />
         </div>
 
         {submitted ? (

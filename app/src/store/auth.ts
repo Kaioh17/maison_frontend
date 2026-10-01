@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { UserRole } from '@config'
 import { jwtDecode } from 'jwt-decode'
 import { logout as logoutApi } from '@api/auth'
+import { clearRuntimeCaches } from '@utils/pwaCaches'
 
 type TokenPayload = { id: string; role: UserRole; tenant_id?: string; exp?: number }
 
@@ -70,6 +71,7 @@ export const useAuthStore = create<AuthState>()(
           // Log error but continue with logout even if API call fails
           console.error('Logout API call failed:', error)
         })
+        void clearRuntimeCaches()
         // Clear local state immediately
         set({ 
           accessToken: null, 

@@ -73,7 +73,7 @@ export default function TenantLanding() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           backgroundColor: loadingPalette.bg,
         }}
       >
@@ -110,7 +110,7 @@ export default function TenantLanding() {
 
   if (!storefront && error) {
     return (
-      <main className="bw" style={{ margin: 0, padding: '48px 24px', minHeight: '100vh', backgroundColor: 'var(--bw-bg)' }}>
+      <main className="bw" style={{ margin: 0, padding: '48px 24px', minHeight: 'var(--app-h)', backgroundColor: 'var(--bw-bg)' }}>
         <div
           style={{
             maxWidth: 480,
@@ -142,7 +142,7 @@ export default function TenantLanding() {
         aria-label={`${companyName} home`}
         style={{
           margin: 0,
-          minHeight: '100vh',
+          minHeight: 'var(--app-h)',
           backgroundColor: premium.palette.background,
           color: premium.palette.text,
           fontFamily: 'Work Sans, sans-serif',
@@ -378,278 +378,59 @@ export default function TenantLanding() {
   }
 
   const defaultStorefront = storefront as DefaultStorefrontData
+  const { rider_card: riderCard, driver_card: driverCard } = defaultStorefront
 
   return (
-    <main
-      className="bw"
-      aria-label={`${companyName} home`}
-      style={{
-        margin: 0,
-        padding: 0,
-        minHeight: '100vh',
-        backgroundColor: 'var(--bw-bg)',
-      }}
-    >
-      <div
-        className="tl-default-shell"
-        style={{
-          maxWidth: 960,
-          margin: '0 auto',
-        }}
-      >
-        <header
-          style={{
-            textAlign: 'center',
-            marginBottom: 'clamp(36px, 7vw, 64px)',
-          }}
-        >
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 'clamp(30px, 5.5vw, 44px)',
-              fontWeight: 600,
-              color: 'var(--bw-text)',
-              fontFamily: 'DM Sans, sans-serif',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {defaultStorefront.wordmark}
-          </h1>
-        </header>
+    <main className="tl-default-main" aria-label={`${companyName} home`}>
+      <header className="tl-default-brand">{defaultStorefront.wordmark}</header>
 
-        <section
-          style={{
-            textAlign: 'center',
-            marginBottom: 'clamp(40px, 8vw, 72px)',
-          }}
-        >
-          <p
-            className="small-muted"
-            style={{
-              margin: '0 0 12px 0',
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              fontFamily: 'Work Sans, sans-serif',
-              color: 'var(--bw-text)',
-              opacity: 0.55,
-            }}
-          >
+      <div className="tl-default-shell">
+        <section className="tl-default-hero">
+          <p className="tl-default-eyebrow">
+            <span className="tl-default-eyebrow-dot" aria-hidden />
             {defaultStorefront.welcome_label}
           </p>
-          <h2
-            style={{
-              margin: '0 0 16px 0',
-              fontFamily: 'DM Sans, sans-serif',
-              fontWeight: 200,
-              fontSize: 'clamp(30px, 6vw, 46px)',
-              lineHeight: 1.12,
-              color: 'var(--bw-text)',
-            }}
-          >
-            {defaultStorefront.hero_title}
-          </h2>
-          <p
-            style={{
-              margin: 0,
-              fontFamily: 'Work Sans, sans-serif',
-              fontSize: 'clamp(15px, 2.4vw, 18px)',
-              fontWeight: 300,
-              lineHeight: 1.65,
-              color: 'var(--bw-text)',
-              opacity: 0.88,
-              maxWidth: 540,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-            }}
-          >
-            {defaultStorefront.hero_description}
-          </p>
+          <h1 className="tl-default-title">{defaultStorefront.hero_title}</h1>
+          <p className="tl-default-lede">{defaultStorefront.hero_description}</p>
         </section>
 
-        <div
-          className="tl-default-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-            gap: 'clamp(18px, 3vw, 26px)',
-          }}
-        >
-          <article
-            className="bw-card tl-default-card"
-            style={{
-              padding: 'clamp(24px, 4vw, 34px)',
-              border: '1px solid var(--bw-border)',
-              borderRadius: 12,
-              backgroundColor: 'var(--bw-card-bg, var(--bw-bg-secondary))',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 12,
-                backgroundColor: 'rgba(108, 99, 232, 0.18)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <UserCircle size={30} weight="duotone" style={{ color: 'var(--bw-accent)' }} aria-hidden />
+        <div className="tl-default-grid">
+          <article className="tl-default-card tl-default-card--rider">
+            <div className="tl-default-icon">
+              <UserCircle size={26} weight="duotone" aria-hidden />
             </div>
-            <h3
-              style={{
-                margin: '0 0 12px 0',
-                fontSize: 'clamp(18px, 2.5vw, 21px)',
-                fontWeight: 600,
-                fontFamily: 'Work Sans, sans-serif',
-                color: 'var(--bw-text)',
-              }}
-            >
-              {defaultStorefront.rider_card.title}
-            </h3>
-            <p
-              style={{
-                margin: '0 0 26px 0',
-                flex: 1,
-                fontSize: 14,
-                lineHeight: 1.55,
-                fontFamily: 'Work Sans, sans-serif',
-                color: 'var(--bw-text)',
-                opacity: 0.82,
-              }}
-            >
-              {defaultStorefront.rider_card.description}
-            </p>
-            <div className="tl-default-actions" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Link
-                to={resolveRoute(defaultStorefront.rider_card.primary_cta)}
-                className="bw-btn"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  textDecoration: 'none',
-                  borderRadius: 0,
-                  padding: '14px 22px',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 500,
-                  background: '#ffffff',
-                  color: '#111827',
-                  border: '1px solid #111827',
-                }}
-              >
-                {defaultStorefront.rider_card.primary_cta.label}
-                <ArrowRight size={18} aria-hidden color="#111827" />
+            <h2 className="tl-default-card-title">{riderCard.title}</h2>
+            <p className="tl-default-card-text">{riderCard.description}</p>
+            <div className="tl-default-actions">
+              <Link to={resolveRoute(riderCard.primary_cta)} className="btn btn-primary">
+                {riderCard.primary_cta.label}
+                <ArrowRight size={18} aria-hidden />
               </Link>
-              {defaultStorefront.rider_card.secondary_cta ? (
-                <Link
-                  to={resolveRoute(defaultStorefront.rider_card.secondary_cta)}
-                  className="bw-btn-outline"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    textDecoration: 'none',
-                    borderRadius: 0,
-                    padding: '14px 22px',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 500,
-                  }}
-                >
-                  {defaultStorefront.rider_card.secondary_cta.label}
+              {riderCard.secondary_cta ? (
+                <Link to={resolveRoute(riderCard.secondary_cta)} className="btn btn-secondary">
+                  {riderCard.secondary_cta.label}
                 </Link>
               ) : null}
             </div>
           </article>
 
-          <article
-            className="bw-card tl-default-card"
-            style={{
-              padding: 'clamp(24px, 4vw, 34px)',
-              border: '1px solid var(--bw-border)',
-              borderRadius: 12,
-              backgroundColor: 'var(--bw-card-bg, var(--bw-bg-secondary))',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 12,
-                backgroundColor: 'rgba(34, 197, 94, 0.14)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <Car size={30} weight="duotone" style={{ color: '#22c55e' }} aria-hidden />
+          <article className="tl-default-card tl-default-card--driver">
+            <div className="tl-default-icon">
+              <Car size={26} weight="duotone" aria-hidden />
             </div>
-            <h3
-              style={{
-                margin: '0 0 12px 0',
-                fontSize: 'clamp(18px, 2.5vw, 21px)',
-                fontWeight: 600,
-                fontFamily: 'Work Sans, sans-serif',
-                color: 'var(--bw-text)',
-              }}
-            >
-              {defaultStorefront.driver_card.title}
-            </h3>
-            <p
-              style={{
-                margin: '0 0 26px 0',
-                flex: 1,
-                fontSize: 14,
-                lineHeight: 1.55,
-                fontFamily: 'Work Sans, sans-serif',
-                color: 'var(--bw-text)',
-                opacity: 0.82,
-              }}
-            >
-              {defaultStorefront.driver_card.description}
-            </p>
-            <div className="tl-default-actions" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Link
-                to={resolveRoute(defaultStorefront.driver_card.primary_cta)}
-                className="bw-btn"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  textDecoration: 'none',
-                  borderRadius: 0,
-                  padding: '14px 22px',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 500,
-                  background: '#ffffff',
-                  color: '#111827',
-                  border: '1px solid #111827',
-                }}
-              >
-                {defaultStorefront.driver_card.primary_cta.label}
-                <ArrowRight size={18} aria-hidden color="#111827" />
+            <h2 className="tl-default-card-title">{driverCard.title}</h2>
+            <p className="tl-default-card-text">{driverCard.description}</p>
+            <div className="tl-default-actions">
+              <Link to={resolveRoute(driverCard.primary_cta)} className="btn btn-secondary">
+                {driverCard.primary_cta.label}
+                <ArrowRight size={18} aria-hidden />
               </Link>
             </div>
           </article>
         </div>
-
-        <footer className="tl-default-footer" style={{ marginTop: 28, textAlign: 'center' }}>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--bw-text)', opacity: 0.55 }}>
-            {defaultStorefront.footer.copyright}
-          </p>
-        </footer>
       </div>
+
+      <footer className="tl-default-footer">{defaultStorefront.footer.copyright}</footer>
     </main>
   )
 }

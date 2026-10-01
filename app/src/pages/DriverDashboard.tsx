@@ -565,7 +565,7 @@ export default function DriverDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
       position: 'relative'
@@ -595,7 +595,7 @@ export default function DriverDashboard() {
           top: 0,
           left: isMobile ? (isMenuOpen ? '0' : '-100%') : '0',
           width: isMobile ? '100%' : 'clamp(280px, 25vw, 320px)',
-          height: '100vh',
+          height: 'var(--dvh)',
           backgroundColor: 'var(--bw-bg)',
           borderRight: '1px solid var(--bw-border)',
           zIndex: 999,

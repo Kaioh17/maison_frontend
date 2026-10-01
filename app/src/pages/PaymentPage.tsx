@@ -274,7 +274,7 @@ export default function PaymentPage() {
   if (!stripePromise) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: 'var(--bw-bg)',
         display: 'flex',
         alignItems: 'center',
@@ -298,7 +298,7 @@ export default function PaymentPage() {
   if (!booking || !clientSecret) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: 'var(--app-h)',
         backgroundColor: 'var(--bw-bg)',
         display: 'flex',
         alignItems: 'center',
@@ -344,7 +344,7 @@ export default function PaymentPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       backgroundColor: 'var(--bw-bg)',
       fontFamily: 'Work Sans, sans-serif',
       padding: 'clamp(16px, 3vw, 24px)',
@@ -456,7 +456,7 @@ export default function PaymentPage() {
             Powered by{' '}
             <MaisonWordmark
               color="var(--bw-text)"
-              style={{ fontSize: 'inherit', display: 'inline', verticalAlign: 'baseline' }}
+              style={{ fontSize: 'inherit' }}
             />
           </p>
         </div>

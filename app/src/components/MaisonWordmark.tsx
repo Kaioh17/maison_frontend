@@ -1,14 +1,16 @@
 import type { CSSProperties, HTMLAttributes } from 'react'
+import wordmarkUrl from '../images/maison_wordmark.png'
 
 export type MaisonWordmarkProps = {
   className?: string
   style?: CSSProperties
-  /** Text color. Defaults to `var(--bw-fg)` for tenant shell. Pass `null` to omit (parent/CSS sets color, e.g. landing nav). */
+  /** Logo color. Defaults to `var(--bw-fg)` for tenant shell. Pass `null` to inherit `currentColor` from the parent. */
   color?: string | null
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'color' | 'children'>
 
 /**
- * Poppins wordmark — same treatment as tenant login/signup (weight 500, tight tracking).
+ * Maison wordmark (with the pin "i"). The PNG is used as an alpha mask so one asset takes any color.
+ * Sized by `font-size` (height 1.3em) so it drops in wherever the text wordmark used to be.
  */
 export default function MaisonWordmark({
   className,
@@ -16,21 +18,23 @@ export default function MaisonWordmark({
   color = 'var(--bw-fg)',
   ...rest
 }: MaisonWordmarkProps) {
+  const mask = `url(${wordmarkUrl}) center / contain no-repeat`
   return (
     <span
+      role="img"
+      aria-label="Maison"
       className={className}
       style={{
-        fontFamily: "'Poppins', sans-serif",
-        fontWeight: 500,
-        letterSpacing: '-0.03em',
-        lineHeight: 1,
-        ...(color === null ? {} : { color: color ?? 'var(--bw-fg)' }),
+        display: 'inline-block',
+        height: '1.3em',
+        aspectRatio: '388 / 127',
+        verticalAlign: '-0.05em', // letter baseline sits slightly above the image bottom
+        backgroundColor: color ?? 'currentColor',
+        WebkitMask: mask,
+        mask,
         ...style,
       }}
-      aria-label="Maison"
       {...rest}
-    >
-      Maison
-    </span>
+    />
   )
 }
