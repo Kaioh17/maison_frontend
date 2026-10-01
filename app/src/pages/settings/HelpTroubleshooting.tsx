@@ -137,7 +137,7 @@ export default function HelpTroubleshooting() {
     },
     {
       q: 'Prices look wrong on the booking page',
-      a: 'Open Vehicle rates and Pricing settings. FloppyDisk each screen after edits, then open a fresh booking in a private browser window to confirm.'
+      a: 'Open Vehicle rates and Pricing settings. Save each screen after edits, then open a fresh booking in a private browser window to confirm.'
     },
     {
       q: 'A driver never got access or the wrong company shows',

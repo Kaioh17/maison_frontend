@@ -1,8 +1,6 @@
-import { useState, useEffect, type ReactNode } from 'react'
-import { getTenantInfo } from '@api/tenant'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpen } from '@phosphor-icons/react'
-import { useSettingsMenu } from '@components/SettingsMenuBar'
 
 function Section({
   title,
@@ -49,57 +47,7 @@ function Section({
 }
 
 export default function HelpAdminGuide() {
-  const [info, setInfo] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  const { isOpen: menuIsOpen } = useSettingsMenu()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const tenantInfo = await getTenantInfo()
-        setInfo(tenantInfo.data)
-      } catch (error) {
-        console.error('Failed to load data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [])
-
-  if (loading) {
-    return (
-      <div
-        className="bw bw-container"
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '60vh',
-          padding: 'clamp(16px, 3vw, 24px) 0'
-        }}
-      >
-        <div
-          className="bw-loading"
-          style={{
-            fontSize: 'clamp(14px, 2vw, 16px)',
-            fontFamily: '"Work Sans", sans-serif',
-            color: 'var(--bw-muted)'
-          }}
-        >
-          Loading...
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div style={{ maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box', flex: 1 }}>
@@ -185,7 +133,7 @@ export default function HelpAdminGuide() {
                 <strong>Rates / Vehicle rates</strong> control what riders see and pay. After you change prices, double-check a test booking so amounts look right.
               </p>
               <p style={{ margin: 0 }}>
-                <strong>Pricing settings</strong> (under Settings) cover deposits, fees, and related rules. FloppyDisk after each change.
+                <strong>Pricing settings</strong> (under Settings) cover deposits, fees, and related rules. Save after each change.
               </p>
             </Section>
 
@@ -217,6 +165,28 @@ export default function HelpAdminGuide() {
                   Stripe integration
                 </button>{' '}
                 for setup steps, then use <strong>Common issues</strong> if something still errors.
+              </p>
+            </Section>
+
+            <Section title="Paying your drivers (Payouts)">
+              <p style={{ margin: '0 0 10px 0' }}>
+                Set each driver&apos;s share once under <strong>Payouts, then Earnings</strong>. Every ride a driver completes after that is
+                recorded with the driver&apos;s share fixed at that moment, so changing the rule later never changes what drivers already earned.
+              </p>
+              <p style={{ margin: '0 0 10px 0' }}>
+                Maison works out and records what each driver is owed, but the money itself is not split for you. Rider card payments arrive in
+                your own Stripe account, so you pay your drivers yourself:
+              </p>
+              <ol style={{ margin: '0 0 10px 0', paddingLeft: 20, listStyle: 'decimal' }}>
+                <li>Open <strong>Payouts, then Balances</strong> to see what you owe each driver, and what drivers owe you for cash they collected.</li>
+                <li>Use <strong>Open Stripe dashboard</strong> there to check your balance and move your card payments to your bank account.</li>
+                <li>Pay each driver the net amount from your bank by transfer, Zelle or check. The Stripe dashboard cannot pay another person.</li>
+                <li>Press <strong>Mark settled</strong>. The driver can confirm in their app, and <strong>Verification</strong> shows who confirmed and when.</li>
+              </ol>
+              <p style={{ margin: 0 }}>
+                To make this easier, take payments into your business accounts (Stripe on your booking page, a business card reader for card at pickup,
+                Zelle through your business bank account) and turn off payment types you do not want under Settings. Maison is not responsible for
+                mistakes, disputes or incorrect reports between you and your drivers, so check the figures before you pay.
               </p>
             </Section>
 
