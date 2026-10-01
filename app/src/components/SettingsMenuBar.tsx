@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Question, Palette, CurrencyDollar, CaretRight, ChatCircle, BookOpen, WarningCircle, List, X } from '@phosphor-icons/react'
+import { ArrowLeft, Gear, User, Building, Wrench, Car, CreditCard, Receipt, Question, Palette, CurrencyDollar, CaretRight, ChatCircle, BookOpen, WarningCircle, List, X } from '@phosphor-icons/react'
 import { getStripeLoginLink } from '@api/tenantSettings'
 import Button from '@components/Button'
 import Notice from '@components/Notice'
@@ -40,6 +40,7 @@ const menuGroups: MenuGroup[] = [
     label: 'Admin',
     items: [
       { path: '/tenant/settings/plans', label: 'Subscription', icon: CreditCard },
+      { path: '/tenant/settings/billing', label: 'Billing', icon: Receipt },
       {
         path: '/tenant/settings/help',
         label: 'Help',

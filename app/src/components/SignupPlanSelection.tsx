@@ -7,6 +7,7 @@ import {
   buildPlanDisplays,
   type LandingPricingPlanDisplay,
 } from '@data/landingPricingPlans'
+import { scrollPricingCarouselToCard } from '@utils/pricingCarousel'
 import '../pages/landing-pricing.css'
 
 type Props = {
@@ -59,11 +60,8 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         if (!window.matchMedia('(max-width: 767px)').matches) return
-        root.querySelector<HTMLElement>('.pricing-card.featured')?.scrollIntoView({
-          inline: 'center',
-          block: 'nearest',
-          behavior: 'auto',
-        })
+        const featured = root.querySelector<HTMLElement>('.pricing-card.featured')
+        if (featured) scrollPricingCarouselToCard(root, featured, 'auto')
       })
     })
 
@@ -119,21 +117,20 @@ export default function SignupPlanSelection({ onSelectPlan, loadingProductType, 
   const scrollToPlan = (index: number) => {
     const root = carouselRef.current
     const el = root?.querySelector<HTMLElement>(`.pricing-card[data-index="${index}"]`)
-    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    if (root && el) scrollPricingCarouselToCard(root, el, 'smooth')
   }
 
   return (
     <div className="landing-pricing w-full box-border">
-      {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-        <div className="mb-6 text-center">
-          <p className="m-0 text-sm landing-accent-text">
-            Only a few founding operator spots left - free subscription, card required. We'll email your code after signup.
-          </p>
-          <p className="m-0 mt-1 text-xs text-[color:var(--landing-fg-faint)]">
-            Applies to the plan you choose today - upgrading later bills full price for the new plan.
-          </p>
-        </div>
-      ) : null}
+      <div className="mb-6 text-center">
+        <p className="m-0 text-sm landing-accent-text">
+          {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? 'Only a few founding operator spots left. ' : ''}
+          Founding operators receive a promo code by email after signup for a free subscription (card required).
+        </p>
+        <p className="m-0 mt-1 text-xs text-[color:var(--landing-fg-faint)]">
+          Applies to the plan you choose today - upgrading later bills full price for the new plan.
+        </p>
+      </div>
       <div
         ref={carouselRef}
         className="pricing-carousel -mx-1 md:mx-0 max-w-full"

@@ -79,7 +79,9 @@ export function foundingOperatorSlotsRemaining(res: StandardResponse<unknown>): 
 
 /** `data` payload for `GET /v1/subscription/limits`. */
 export type PlanLimitsResponse = {
-  plan: string
+  /** `null` when unsubscribed: free is a real subscription, so no subscription means no plan. */
+  plan: string | null
+  /** `'unsubscribed'` means no Stripe subscription on file; the dashboard is gated until one exists. */
   status: string
   is_entitled: boolean
   maison_fee: number
@@ -118,3 +120,70 @@ export async function upgradeSubscription(payload: CreateCheckoutSessionRequest)
   return data
 }
 
+
+export type BillingInvoice = {
+  id: string
+  number: string | null
+  /** Unix seconds. */
+  created: number
+  status: string | null
+  /** Cents. */
+  amount_due: number
+  amount_paid: number
+  currency: string
+  hosted_invoice_url: string | null
+  invoice_pdf: string | null
+}
+
+export type BillingStripe = {
+  status: string
+  currency: string
+  interval: string | null
+  interval_count: number
+  /** Cents per interval at list price. */
+  recurring_amount: number
+  /** Cents the next invoice will actually charge, after discounts. `null` when nothing is coming. */
+  next_invoice_amount: number | null
+  /** Unix seconds. `current_period_end` is the next renewal, or the end date if cancelling. */
+  current_period_start: number | null
+  current_period_end: number | null
+  cancel_at_period_end: boolean
+  started_on: number | null
+  discount: {
+    name: string | null
+    percent_off: number | null
+    amount_off: number | null
+    duration: string | null
+    duration_in_months: number | null
+  } | null
+  payment_method: { brand: string | null; last4: string | null; exp_month: number | null; exp_year: number | null } | null
+  invoices: BillingInvoice[]
+}
+
+/** `data` payload for `GET /v1/subscription/billing`. */
+export type BillingOverview = {
+  subscription_id: string | null
+  customer_id: string | null
+  /** `null` when there is no subscription, or when Stripe could not be reached (see `stripe_error`). */
+  stripe: BillingStripe | null
+  stripe_error: string | null
+}
+
+/** What Stripe is actually charging this tenant, plus their subscription ids. Tenant JWT, not subscription-gated. */
+export async function getBillingOverview() {
+  const { data } = await http.get<StandardResponse<BillingOverview>>('/v1/subscription/billing')
+  return data
+}
+
+/**
+ * Starts a Stripe Checkout for a brand-new subscription and sends the browser there.
+ * Resolves only if no redirect URL came back; the caller shows the error.
+ */
+export async function redirectToCheckout(payload: CreateCheckoutSessionRequest): Promise<string | null> {
+  const res = await createCheckoutSession(payload)
+  if (res.success && res.data.Checkout_session_url) {
+    window.location.href = res.data.Checkout_session_url
+    return null
+  }
+  return res.error || 'Failed to create checkout session'
+}

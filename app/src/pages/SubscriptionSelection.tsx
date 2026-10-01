@@ -85,7 +85,7 @@ export default function SubscriptionSelection() {
             maxWidth: '500px',
             margin: '0 auto',
           }}>
-            You can upgrade or downgrade at any time from your account settings.
+            A subscription is required to verify your account. You can upgrade or downgrade at any time from your account settings.
           </p>
         </div>
 
@@ -111,24 +111,6 @@ export default function SubscriptionSelection() {
             loadingProductType={loading}
             disabled={loading !== null}
           />
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: 'clamp(24px, 4vw, 32px)' }}>
-          <button
-            onClick={() => navigate('/tenant/overview')}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--landing-fg-faint)',
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: '14px',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              padding: '8px 16px',
-            }}
-          >
-            Skip for now — continue with Free tier
-          </button>
         </div>
       </div>
     </main>

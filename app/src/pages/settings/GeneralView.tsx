@@ -53,8 +53,8 @@ export default function GeneralView() {
     )
   }
 
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
-  const subscriptionStatus = info?.profile?.subscription_status || 'free'
+  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'none'
+  const subscriptionStatus = info?.profile?.subscription_status || 'unsubscribed'
   const isVerified = !!info?.is_verified
 
   const sectionCard: React.CSSProperties = {
@@ -241,7 +241,7 @@ export default function GeneralView() {
                   <div style={sectionHeading}>
                     <CreditCard size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                     <h2 style={sectionTitle}>Billing</h2>
-                    <Button variant="ghost" style={{ marginLeft: 'auto', minHeight: 28, padding: '4px 8px', fontSize: 12 }} onClick={() => navigate('/tenant/settings/plans')}>Edit</Button>
+                    <Button variant="ghost" style={{ marginLeft: 'auto', minHeight: 28, padding: '4px 8px', fontSize: 12 }} onClick={() => navigate('/tenant/settings/billing')}>Details</Button>
                   </div>
                   <div style={rowsWrap}>
                     <div style={rowStyle}>
@@ -256,7 +256,7 @@ export default function GeneralView() {
                       <span style={rowLabel}>Status</span>
                       <StatusBadge
                         ok={subscriptionStatus === 'active'}
-                        label={subscriptionStatus === 'active' ? 'Active' : (subscriptionStatus || 'Free')}
+                        label={subscriptionStatus === 'active' ? 'Active' : subscriptionStatus}
                       />
                     </div>
                     <div style={rowStyle}>

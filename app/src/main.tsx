@@ -9,8 +9,10 @@ import { ThemeProvider } from '@contexts/ThemeContext'
 import './styles.css'
 import { registerServiceWorker } from './pwa'
 import { trackVisualViewport } from './viewport'
+import { captureInstallPrompt } from '@hooks/useInstallApp'
 
 registerServiceWorker()
+captureInstallPrompt()
 trackVisualViewport()
 
 const queryClient = new QueryClient({

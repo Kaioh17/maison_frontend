@@ -43,7 +43,6 @@ export default function Signup() {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false)
   const [planCheckoutLoading, setPlanCheckoutLoading] = useState<string | null>(null)
   const [planCheckoutError, setPlanCheckoutError] = useState<string | null>(null)
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1024px)')
@@ -438,6 +437,20 @@ export default function Signup() {
               ? 'Start with your personal details.'
               : 'Add your company details.'}
           </p>
+          <p
+            className="small-muted signup-test-run-note"
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              lineHeight: 1.45,
+              alignSelf: isMobileSignup ? 'flex-start' : 'center',
+              width: '100%',
+              textAlign: isMobileSignup ? 'left' : 'center',
+              color: 'var(--landing-fg-faint)',
+            }}
+          >
+            Maison is a test run: we&apos;re onboarding early operators and want your feedback.
+          </p>
           {signupStep === 3 && (
             <p
               className="small-muted signup-current-step-hint"
@@ -452,7 +465,7 @@ export default function Signup() {
                 color: 'var(--landing-fg-faint)',
               }}
             >
-              You can change your plan anytime from account settings.
+              A subscription is required to verify your account. You can change your plan anytime from account settings.
             </p>
           )}
 
@@ -484,77 +497,6 @@ export default function Signup() {
                 loadingProductType={planCheckoutLoading}
                 disabled={planCheckoutLoading !== null}
               />
-
-              <div style={{ textAlign: 'center', marginTop: 24, paddingBottom: 16 }}>
-                {!showSkipConfirm ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowSkipConfirm(true)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--landing-fg-faint)',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      padding: '6px 12px',
-                    }}
-                  >
-                    Skip for now
-                  </button>
-                ) : (
-                  <div
-                    style={{
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      borderRadius: 8,
-                      padding: '16px 20px',
-                      backgroundColor: 'rgba(255,255,255,0.05)',
-                      maxWidth: 420,
-                      margin: '0 auto',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <p style={{ color: 'var(--landing-fg-muted)', fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>
-                      Continue with the Free tier?
-                    </p>
-                    <p style={{ color: 'var(--landing-fg-faint)', fontSize: 13, margin: '0 0 14px 0', lineHeight: 1.5 }}>
-                      The Free tier limits you to 1 vehicle and 1 driver. You can upgrade any time from your account settings.
-                    </p>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <button
-                        type="button"
-                        onClick={() => { window.location.href = getTenantAppUrl('app', '/tenant/login') }}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          color: 'var(--landing-fg-muted)',
-                          fontSize: 13,
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                          padding: '8px 16px',
-                          borderRadius: 6,
-                        }}
-                      >
-                        Yes, continue with Free
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowSkipConfirm(false)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--landing-fg-faint)',
-                          fontSize: 13,
-                          cursor: 'pointer',
-                          padding: '8px 12px',
-                        }}
-                      >
-                        Back to plans
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           ) : null}
 

@@ -4,6 +4,7 @@ import { CurrencyDollar, FloppyDisk, PencilSimple, X, Calendar, CaretDown } from
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 import Toggle from '@components/Toggle'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
+import PricingScenarios from './PricingScenarios'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
 
@@ -399,6 +400,8 @@ export default function PricingSettings() {
                   {saveMsg.text}
                 </div>
               )}
+
+              <PricingScenarios rates={editedData} isMobile={isMobile} />
 
               {/* ── Booking Deposit Configuration card ───────── */}
               <div style={sectionCard}>

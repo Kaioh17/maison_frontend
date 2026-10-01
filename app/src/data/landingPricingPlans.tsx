@@ -29,7 +29,7 @@ const PLAN_COPY: Record<
   free: {
     name: 'Free',
     description:
-      'For solo operators getting started. No subscription — Maison earns only when you get paid.',
+      'For solo operators getting started. Always $0, and Maison earns only when you get paid.',
     supportLine: 'Email support',
   },
   growth: {

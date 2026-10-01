@@ -45,7 +45,7 @@ export default function Plans() {
     // the card and the prorated amount is Stripe's own Billing Portal screen
     // below -- this is just "did you mean to click that" for a real charge.
     // See directives.md billing-confirm-2026-08.
-    const currentPlanName = pricingPlans.find((p) => p.product_type === currentPlan)?.name ?? currentPlan
+    const currentPlanName = pricingPlans.find((p) => p.product_type === currentPlan)?.name ?? (currentPlan || 'no plan')
     const confirmed = window.confirm(
       `Move from ${currentPlanName} to ${plan.name}?\n\nYou'll confirm the card on file and the exact prorated amount on Stripe's page before anything is charged.`
     )
@@ -109,7 +109,7 @@ export default function Plans() {
     price_id: getStripeSubscriptionPriceId(plan.product_type),
   }))
 
-  const currentPlan = limits?.plan?.toLowerCase() || 'free'
+  const currentPlan = limits?.plan?.toLowerCase() || ''
   const planOrder = catalog.map((c) => c.name.toLowerCase())
 
   const CheckIcon = () => (

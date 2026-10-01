@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { getTenantInfo } from '@api/tenant'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Question, Envelope, Book, WarningCircle, CreditCard, FileText, CaretRight, DeviceMobile } from '@phosphor-icons/react'
+import { Question, Envelope, Book, WarningCircle, CreditCard, FileText, CaretRight, DeviceMobile, Export, PlusSquare } from '@phosphor-icons/react'
+import { useInstallApp, promptInstall } from '@hooks/useInstallApp'
+import Button from '@components/Button'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { TENANT_SUPPORT_EMAIL } from '@config'
 
@@ -10,6 +12,8 @@ export default function Help() {
   const [loading, setLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [installGuideOpen, setInstallGuideOpen] = useState(false)
+  const canPromptInstall = useInstallApp((s) => !!s.deferred)
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
   const { isOpen: menuIsOpen } = useSettingsMenu()
   const navigate = useNavigate()
   const location = useLocation()
@@ -314,26 +318,30 @@ export default function Help() {
                 Save the Maison web app to your home screen for one-tap access like a native app.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'clamp(12px, 2vw, 16px)' }}>
-                <div>
+                <div style={{ order: isIos ? 0 : 1 }}>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: 'clamp(14px, 2vw, 16px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
                     iPhone (Safari)
                   </h4>
-                  <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
-                    <li>Open Maison in Safari.</li>
-                    <li>Tap the Share icon (square with arrow).</li>
-                    <li>Choose Add to Home Screen.</li>
-                    <li>Tap Add.</li>
+                  <ol style={{ margin: 0, paddingLeft: '22px', listStyle: 'decimal', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.8 }}>
+                    <li>Open this page in <strong>Safari</strong>. It will not work from inside another app.</li>
+                    <li>Tap the Share button <Export size={16} style={{ display: 'inline', verticalAlign: '-3px' }} aria-label="Share" /> at the bottom of the screen.</li>
+                    <li>Scroll down and tap <strong>Add to Home Screen</strong> <PlusSquare size={16} style={{ display: 'inline', verticalAlign: '-3px' }} aria-hidden />.</li>
+                    <li>Tap <strong>Add</strong> in the top right corner.</li>
+                    <li>Open Maison from the new icon on your home screen.</li>
                   </ol>
                 </div>
-                <div>
+                <div style={{ order: isIos ? 1 : 0 }}>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: 'clamp(14px, 2vw, 16px)', fontFamily: '"Work Sans", sans-serif', fontWeight: 500, color: 'var(--bw-text)' }}>
                     Android (Chrome)
                   </h4>
-                  <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.6 }}>
+                  {canPromptInstall && (
+                    <Button onClick={() => void promptInstall()} style={{ marginBottom: 12 }}>Install app</Button>
+                  )}
+                  <ol style={{ margin: 0, paddingLeft: '22px', listStyle: 'decimal', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.8 }}>
                     <li>Open Maison in Chrome.</li>
-                    <li>Tap the three-dot menu.</li>
-                    <li>Tap Install app or Add to House screen.</li>
-                    <li>Confirm Install/Add.</li>
+                    <li>Tap the three-dot menu in the top right.</li>
+                    <li>Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</li>
+                    <li>Tap <strong>Install</strong> to confirm.</li>
                   </ol>
                 </div>
               </div>

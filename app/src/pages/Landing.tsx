@@ -9,6 +9,7 @@ import maisonIcon from '../images/maison_icon.png'
 import heroOverviewPhone from '../images/app_view/overview_phone view.png'
 import { LANDING_PRICING_PLANS, isPopularPlan, buildPlanDisplays } from '@data/landingPricingPlans'
 import { getPublicPlans, foundingOperatorSlotsRemaining, type PlanCatalogEntry } from '@api/subscription'
+import { scrollPricingCarouselToCard } from '@utils/pricingCarousel'
 import { getTenantAppUrl } from '@config/host'
 import './landing-theme.css'
 import './landing-pricing.css'
@@ -338,7 +339,8 @@ function HeroIPhoneMockup({ className }: { className?: string }) {
             width={786}
             height={1704}
             decoding="async"
-            fetchPriority="high"
+            // React 18 warns on camelCase fetchPriority; the lowercase attribute is what the DOM wants.
+            {...{ fetchpriority: 'high' }}
           />
         </div>
       </div>
@@ -417,6 +419,12 @@ function HeroSlide() {
               </li>
             ))}
           </motion.ul>
+          <motion.p
+            variants={fadeInUp}
+            className="m-0 mt-3 max-w-[28rem] text-[12px] text-[color:var(--landing-fg-faint)] md:text-[13px]"
+          >
+            This site is a test run. We&apos;re onboarding early operators and want your feedback.
+          </motion.p>
           <motion.div
             variants={fadeInUp}
             className="mt-6 flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-center md:mt-9"
@@ -875,19 +883,6 @@ function RiderBookingSlide() {
   )
 }
 
-/** Scroll horizontal carousel only — never use scrollIntoView on cards or the page snap container will jump. */
-function scrollPricingCarouselToCard(
-  carousel: HTMLElement,
-  card: HTMLElement,
-  behavior: ScrollBehavior
-) {
-  const cr = carousel.getBoundingClientRect()
-  const rr = card.getBoundingClientRect()
-  const next =
-    carousel.scrollLeft + (rr.left - cr.left) - (cr.width / 2 - rr.width / 2)
-  carousel.scrollTo({ left: Math.max(0, next), behavior })
-}
-
 // Slide 7: Pricing
 function PricingSlide() {
   const carouselRef = useRef<HTMLDivElement>(null)
@@ -1015,16 +1010,13 @@ function PricingSlide() {
               Priced for operators at every stage. Start free, upgrade when your bookings need the headroom. No
               long-term contracts.
             </motion.p>
-            {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? (
-              <>
-                <motion.p variants={fadeInUp} className="landing-accent-text mb-1 mt-4 text-sm font-medium">
-                  Only a few founding operator spots left. Sign up now and your subscription is free.
-                </motion.p>
-                <motion.p variants={fadeInUp} className="m-0 text-xs text-[color:var(--landing-fg-faint)]">
-                  Applies to the plan you choose today. Upgrading later bills full price for the new plan.
-                </motion.p>
-              </>
-            ) : null}
+            <motion.p variants={fadeInUp} className="landing-accent-text mb-1 mt-4 text-sm font-medium">
+              {foundingSlotsLeft !== null && foundingSlotsLeft > 0 ? 'Only a few founding operator spots left. ' : ''}
+              Founding operators receive a promo code by email after signup for a free subscription.
+            </motion.p>
+            <motion.p variants={fadeInUp} className="m-0 text-xs text-[color:var(--landing-fg-faint)]">
+              Applies to the plan you choose today. Upgrading later bills full price for the new plan.
+            </motion.p>
           </div>
         </motion.div>
 

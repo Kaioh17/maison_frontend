@@ -202,9 +202,9 @@ main.landing-auth .bw-input:hover {
 main.landing-auth .bw-input:focus,
 main.landing-auth .bw-input:focus-visible {
   outline: none;
-  border-color: var(--bw-focus);
+  border-color: rgba(255, 255, 255, 0.5);
   background: #1C1C1F;
-  box-shadow: 0 0 0 4px rgba(200, 169, 106, 0.2);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
 }
 
 /* ---- Buttons: landing pill --------------------------------------------- */

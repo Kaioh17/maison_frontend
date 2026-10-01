@@ -209,7 +209,7 @@ export default function AccountInformation() {
   }
 
   const isVerified = !!info?.is_verified
-  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'free'
+  const currentPlan = info?.profile?.subscription_plan?.toLowerCase() || 'none'
 
   const mobileBarBtnBase: React.CSSProperties = {
     flex: '1 1 0',
