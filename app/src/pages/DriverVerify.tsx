@@ -43,12 +43,18 @@ export default function DriverVerify() {
           setIsLoading(false)
           return
         }
-        // Token is valid, redirect to registration with token, tenant_id, and whatever
-        // was already collected at application/invite time so the form can pre-fill it
+        const onboardingToken = response.data?.onboarding_token
+        if (!onboardingToken) {
+          setError('Could not start your onboarding session. Please try again.')
+          setIsLoading(false)
+          return
+        }
+        // Token is valid: hand the onboarding session, tenant_id, and whatever
+        // was already collected at application/invite time to the registration form
         navigate('/driver/register', {
           replace: true,
           state: {
-            token: token.trim(),
+            onboardingToken,
             tenantId: tenantId,
             firstName: response.data?.first_name,
             lastName: response.data?.last_name,
@@ -76,7 +82,7 @@ export default function DriverVerify() {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh',
+        height: 'var(--app-h)',
         backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
@@ -95,7 +101,7 @@ export default function DriverVerify() {
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      minHeight: '100vh',
+      minHeight: 'var(--app-h)',
       padding: '24px',
       backgroundColor: 'var(--bw-bg)'
     }}>

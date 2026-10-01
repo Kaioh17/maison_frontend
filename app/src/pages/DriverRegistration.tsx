@@ -4,7 +4,7 @@ import { registerDriver } from '@api/driver'
 import { getVehicleCategoriesByTenant } from '@api/vehicles'
 import type { VehicleCategoryResponse } from '@api/vehicles'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useFavicon } from '@hooks/useFavicon'
 import StateAutocomplete from '@components/StateAutocomplete'
@@ -19,12 +19,16 @@ import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
 type DriverVerifyState = {
   token?: string
+  onboardingToken?: string
   tenantId?: number
   firstName?: string
   lastName?: string
   email?: string
   driverType?: 'outsourced' | 'in_house'
 }
+
+const SESSION_MISSING =
+  'Your verification session is missing or has expired. Please enter your verification token again.'
 
 export default function DriverRegistration() {
   useFavicon()
@@ -63,11 +67,11 @@ export default function DriverRegistration() {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null)
   const [currentTheme, setCurrentTheme] = useState<string>('dark')
   const imageContainerRef = useRef<HTMLDivElement>(null)
-  const [searchParams] = useSearchParams()
   const { tenantInfo, isLoading: tenantLoading, slug } = useTenantInfo()
   const loadingPalette = resolveSubdomainLoadingPalette(slug)
-  // Get token and tenant_id from navigation state first, fallback to URL params for backward compatibility
-  const token = navState.token || searchParams.get('token') || ''
+  // The onboarding session issued by /driver/{slug}/verify authenticates registration;
+  // the emailed code alone no longer does. It only exists in navigation state.
+  const onboardingToken = navState.onboardingToken || ''
   const tenantId = navState.tenantId || null
 
   const navigate = useNavigate()
@@ -141,14 +145,14 @@ export default function DriverRegistration() {
     }
   }, [isAuthenticated, role, navigate])
 
-  // Check if token and tenant_id are present
+  // Check if the onboarding session and tenant_id are present
   useEffect(() => {
-    if (!token) {
-      setError('Verification token is required. Please use the verification link provided.')
+    if (!onboardingToken) {
+      setError(SESSION_MISSING)
     } else if (!tenantId) {
       setError('Tenant ID is missing. Please verify your token again.')
     }
-  }, [token, tenantId])
+  }, [onboardingToken, tenantId])
 
   // Fetch vehicle categories when tenantId is available
   useEffect(() => {
@@ -246,8 +250,8 @@ export default function DriverRegistration() {
       return
     }
 
-    if (!token) {
-      setError('Verification token is required. Please use the verification link provided.')
+    if (!onboardingToken) {
+      setError(SESSION_MISSING)
       return
     }
 
@@ -328,7 +332,7 @@ export default function DriverRegistration() {
       }
 
       console.log('Sending registration payload:', JSON.stringify(payload, null, 2))
-      await registerDriver(payload, tenantId)
+      await registerDriver(payload, onboardingToken)
 
       // Redirect to login page after successful registration
       navigate('/driver/login', { replace: true })
@@ -352,7 +356,7 @@ export default function DriverRegistration() {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh',
+        height: 'var(--app-h)',
         backgroundColor: loadingPalette.bg
       }}>
         <div style={{ 
@@ -371,15 +375,15 @@ export default function DriverRegistration() {
   const driverEmailFormatError = getEmailFormatError(formData.email)
 
   return (
-    <main className="bw" aria-label="Driver Registration" style={{ margin: 0, padding: 0, minHeight: '100vh', overflow: 'auto' }}>
-      <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
+    <main className="bw" aria-label="Driver Registration" style={{ margin: 0, padding: 0, minHeight: 'var(--app-h)', overflow: 'auto' }}>
+      <div style={{ display: 'flex', minHeight: 'var(--app-h)', width: '100%' }}>
         {/* Left side - Image (60%) */}
         <div 
           ref={imageContainerRef}
           className="driver-registration-image-container"
           style={{ 
             width: '60%', 
-            height: '100%', 
+            minHeight: 'var(--app-h)', 
             position: 'relative',
             backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
             backgroundColor: backgroundImage ? 'transparent' : '#f3f4f6',
@@ -432,7 +436,7 @@ export default function DriverRegistration() {
           className="driver-registration-form-container"
           style={{ 
             width: '40%', 
-            minHeight: '100vh',
+            minHeight: 'var(--app-h)',
             position: 'relative',
             display: 'flex', 
             flexDirection: 'column',
@@ -848,7 +852,7 @@ export default function DriverRegistration() {
                 <button 
                   className="bw-btn" 
                   style={{ flex: 2, borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500 }} 
-                  disabled={isLoading || !token}
+                  disabled={isLoading || !onboardingToken}
                   type="submit"
                 >
                   <span>{isLoading ? 'Creating account...' : 'Create account'}</span>

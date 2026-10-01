@@ -65,7 +65,7 @@ function AdminCreateAccountForm() {
 
   if (created) {
     return (
-      <div className="min-h-screen bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
+      <div className="min-h-[var(--app-h)] bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
         <div className="w-full max-w-[400px] rounded-2xl border border-emerald-500/25 bg-[#11161d] shadow-xl shadow-black/40 p-8 text-center">
           <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-500/90 font-semibold">
             Account created
@@ -89,14 +89,14 @@ function AdminCreateAccountForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-[var(--app-h)] bg-[#0c0f14] flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-[400px] rounded-2xl border border-white/[0.08] bg-[#11161d] shadow-xl shadow-black/40 p-8">
         <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500/90 font-semibold">
           Bootstrap
         </p>
         <h1 className="mt-2 text-xl font-semibold tracking-tight text-white">Create admin account</h1>
         <p className="text-sm text-slate-500 mt-1">
-          This URL is not linked in the app. Use only with your API key configured.
+          This URL is not linked in the app. You must be signed in as an admin.
         </p>
 
         {!hasApiKey && (

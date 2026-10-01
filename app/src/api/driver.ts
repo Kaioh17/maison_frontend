@@ -1,10 +1,11 @@
 import { http } from './http'
 import type { StandardResponse, BookingResponse } from './tenant'
 
-export async function registerDriver(payload: DriverCreate, tenantId: number) {
+/** Final onboarding task. Authenticated by the `onboarding_token` returned from `verifyDriverToken`. */
+export async function registerDriver(payload: DriverCreate, onboardingToken: string) {
   const { data } = await http.patch<StandardResponse<DriverResponse>>('/v1/driver/register', payload, {
-    params: { tenant_id: tenantId },
-  } as any)
+    headers: { Authorization: `Bearer ${onboardingToken}` },
+  })
   return data
 }
 

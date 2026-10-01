@@ -64,7 +64,7 @@ export type CreateAdminAccountData = {
   last_name: string
 }
 
-/** POST `/v1/admin/` — requires `X-API-Key` (bootstrap; not JWT). */
+/** POST `/v1/admin/` — requires an admin JWT (plus `X-API-Key`). The first admin is seeded out of band. */
 export async function createAdminAccount(body: CreateAdminAccountBody) {
   const { data } = await http.post<StandardResponse<CreateAdminAccountData>>(
     '/v1/admin/',
