@@ -11,6 +11,11 @@ export type StandardResponse<T> = {
 
 export type ConfigType = 'branding' | 'pricing' | 'setting' | 'all'
 
+/** Driver share of a ride: a percent of the fare, or flat dollars per ride. */
+export type PayRule = { type: 'percent' | 'flat'; value: number }
+/** Applies to rides completed after it is saved; earnings already recorded never change. */
+export type DriverPay = { default: PayRule; in_house?: PayRule | null; outsourced?: PayRule | null }
+
 // Settings Config nested structure
 export type SettingsConfig = {
   booking: {
@@ -28,6 +33,7 @@ export type SettingsConfig = {
     vip_profiles: boolean
     show_loyalty_banner: boolean
   }
+  driver_pay?: DriverPay | null
 }
 
 // Settings data structure
@@ -87,7 +93,8 @@ export type UpdateTenantSettingsPayload = {
   zelle_email?: string | null
   rider_feedback_form?: string | null
   driver_feedback_form?: string | null
-  config?: SettingsConfig
+  /** Sections left out keep their stored value (the server merges), so one section can be saved alone. */
+  config?: Partial<SettingsConfig>
 }
 
 /** Normalize feedback form URL for PATCH: trim; blank → null */
@@ -145,6 +152,22 @@ export async function updateTenantSettings(payload: UpdateTenantSettingsPayload)
 // Update tenant pricing
 export async function updateTenantPricing(payload: UpdateTenantPricingPayload) {
   const { data } = await http.patch<StandardResponse<TenantPricingData>>('/v1/tenant/config/pricing', payload)
+  return data.data
+}
+
+export type PricingScenario = {
+  service_type: 'dropoff' | 'airport' | 'hourly'
+  vehicle_category: string
+  label: string
+  distance_miles: number | null
+  hours: number | null
+  total: number
+  deposit: number
+}
+
+// Quotes every service type x vehicle class x sample trip; body fields override saved rates (unsaved preview)
+export async function getPricingScenarios(overrides: Partial<Pick<TenantPricingData, 'base_fare' | 'per_mile_rate' | 'per_minute_rate' | 'per_hour_rate'>>) {
+  const { data } = await http.post<StandardResponse<{ avg_speed_mph: number; scenarios: PricingScenario[] }>>('/v1/tenant/config/pricing/scenarios', overrides)
   return data.data
 }
 

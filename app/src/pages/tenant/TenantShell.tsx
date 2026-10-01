@@ -16,6 +16,7 @@ import TenantBookRideModal from '@components/TenantBookRideModal'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { TenantDashboardSkeleton } from '@components/Skeleton'
 import { useBookingSearch } from '@hooks/useBookingSearch'
+import { useInstallApp, markInstallHandled, promptInstall } from '@hooks/useInstallApp'
 import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
 import { API_BASE } from '@config'
 import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
@@ -51,7 +52,7 @@ import {
 import type { TabType, OverviewLinkKey, TenantPageThemeMode, OverviewLinkQrState, OverviewDriverRow, OverviewDriverPresence } from './shared'
 
 /** Tabs kept out of the 5-slot mobile bar; they stay reachable from the Menu drawer. */
-const BOTTOM_BAR_HIDDEN: string[] = ['settings', 'assistant', 'riders', 'feedback']
+const BOTTOM_BAR_HIDDEN: string[] = ['settings', 'assistant', 'riders', 'feedback', 'payouts']
 
 const NAV_GROUPS: Array<{ label: string; group: 'main' | 'tools' | 'account' }> = [
   { label: 'Manage', group: 'main' },
@@ -343,7 +344,7 @@ function useShellState() {
     if (typeof window === 'undefined') return
     const shouldShowInstallNotice = sessionStorage.getItem('tenant-install-app-tip') === '1'
     if (shouldShowInstallNotice) {
-      setShowInstallAppNotice(true)
+      if (!useInstallApp.getState().installed) setShowInstallAppNotice(true)
       sessionStorage.removeItem('tenant-install-app-tip')
     }
   }, [])
@@ -1015,6 +1016,7 @@ function useShellState() {
     { id: 'drivers', label: 'Drivers', group: 'main', icon: Users },
     { id: 'riders', label: 'Riders', group: 'main', icon: User },
     { id: 'vehicles', label: 'Vehicles', group: 'main', icon: Car },
+    { id: 'payouts', label: 'Payouts', group: 'main', icon: Wallet },
     { id: 'assistant', label: 'Assistant', group: 'tools', icon: Sparkle },
     { id: 'settings', label: 'Settings', group: 'account', icon: Gear },
     { id: 'feedback', label: 'Feedback', group: 'account', icon: ChatCircleDots },
@@ -1028,6 +1030,7 @@ function useShellState() {
     if (path === '/tenant/riders') return 'riders'
     if (path === '/tenant/bookings') return 'bookings'
     if (path === '/tenant/vehicles') return 'vehicles'
+    if (path === '/tenant/payouts') return 'payouts'
     if (path === '/tenant/overview' || path === '/tenant') return 'overview'
     if (path.startsWith('/tenant/settings')) return 'settings'
     if (path === '/tenant/feedback') return 'feedback'
@@ -1374,6 +1377,8 @@ export type TenantShellCtx = ReturnType<typeof useShellState>
 
 export default function TenantShell() {
   const ctx = useShellState()
+  const appInstalled = useInstallApp((s) => s.installed)
+  const canPromptInstall = useInstallApp((s) => !!s.deferred)
 
   // §4.4 — Prefetch sibling tab chunks on idle so tab switches feel native
   useEffect(() => {
@@ -1919,7 +1924,7 @@ export default function TenantShell() {
       </div>
 
       {/* Mobile bottom tab bar (replaces the hamburger; "Menu" opens the drawer for settings/account actions) */}
-      <nav className="tenant-dashboard-bottombar" aria-label="Primary">
+      <nav className={`tenant-dashboard-bottombar${isMenuOpen ? ' is-hidden' : ''}`} aria-label="Primary" aria-hidden={isMenuOpen}>
         {tabs.filter((tab) => !BOTTOM_BAR_HIDDEN.includes(tab.id)).map((tab) => {
           const IconComponent = tab.icon
           const isActive = activeTab === tab.id && !isMenuOpen
@@ -1974,6 +1979,7 @@ export default function TenantShell() {
                 {activeTab === 'bookings' && `${bookings.length} ${bookings.length === 1 ? 'booking' : 'bookings'}`}
                 {activeTab === 'riders' && `${riders.length} ${riders.length === 1 ? 'rider' : 'riders'}`}
                 {activeTab === 'vehicles' && `${vehicles.length} ${vehicles.length === 1 ? 'vehicle' : 'vehicles'}`}
+                {activeTab === 'payouts' && 'What your drivers earned, who owes what, and who has confirmed'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -2009,7 +2015,7 @@ export default function TenantShell() {
             minWidth: 0,
             boxSizing: 'border-box'
           }}>
-        {showInstallAppNotice && (
+        {showInstallAppNotice && !appInstalled && (
           <div
             role="status"
             aria-live="polite"
@@ -2036,16 +2042,19 @@ export default function TenantShell() {
                   Add Maison to your iPhone or Android home screen for faster access.
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  {canPromptInstall && (
+                    <Button onClick={() => void promptInstall()} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>Install app</Button>
+                  )}
                   <Button variant="secondary" onClick={() => {
                       setShowInstallAppNotice(false)
                       navigate('/tenant/settings/help#install-web-app')
                     }} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>View instructions</Button>
-                  <Button variant="secondary" onClick={() => setShowInstallAppNotice(false)} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>Not now</Button>
+                  <Button variant="secondary" onClick={markInstallHandled} style={{ minHeight: 36, padding: '8px 12px', fontSize: 13 }}>Not now</Button>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setShowInstallAppNotice(false)}
+                onClick={markInstallHandled}
                 aria-label="Dismiss install app notice"
                 style={{
                   border: 'none',

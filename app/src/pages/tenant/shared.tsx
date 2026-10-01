@@ -165,8 +165,9 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     position: fixed;
     top: 0;
     left: 0;
-    height: calc(var(--dvh) - 64px - var(--safe-bottom));
+    height: var(--dvh);
     padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
     padding-left: var(--safe-left);
     box-sizing: border-box;
     width: min(300px, 86vw);
@@ -185,6 +186,9 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
   display: none;
 }
 @media (max-width: 768px) {
+  .bw.tenant-dashboard-layout .tenant-dashboard-bottombar.is-hidden {
+    transform: translateY(100%);
+  }
   .bw.tenant-dashboard-layout .tenant-dashboard-bottombar {
     display: flex;
     position: fixed;
@@ -192,6 +196,7 @@ export const TENANT_DASHBOARD_LAYOUT_CSS = `
     right: 0;
     bottom: 0;
     z-index: 1000;
+    transition: transform 0.25s ease;
     height: calc(64px + var(--safe-bottom));
     padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
     background-color: var(--bw-bg);
@@ -500,7 +505,7 @@ export function RatingStar({
   )
 }
 
-export type TabType = 'overview' | 'drivers' | 'riders' | 'bookings' | 'vehicles' | 'settings' | 'feedback' | 'assistant'
+export type TabType = 'overview' | 'drivers' | 'riders' | 'bookings' | 'vehicles' | 'payouts' | 'settings' | 'feedback' | 'assistant'
 export type OverviewLinkKey = 'rider' | 'driver' | 'landing'
 export type TenantPageThemeMode = 'dark' | 'light'
 export type OverviewLinkQrState = {

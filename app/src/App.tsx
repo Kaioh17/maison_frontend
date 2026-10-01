@@ -11,6 +11,7 @@ import AdminOpsGate from '@components/AdminOpsGate'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 import UpdateBanner from '@components/UpdateBanner'
 import AssistantLauncher from '@components/AssistantLauncher'
+import SubscriptionGate from '@components/SubscriptionGate'
 import { useFavicon } from '@hooks/useFavicon'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
@@ -36,20 +37,28 @@ function RiderRoute({ children }: { children: ReactNode }) {
 }
 
 /**
- * Driver-facing subdomain routes: same tenant CSS variable overrides as
- * {@link RiderRoute} (`RiderBrandedShell` sets `--bw-*` from slug verification).
+ * Driver-facing routes: same tenant CSS variable overrides as {@link RiderRoute}
+ * (`RiderBrandedShell` sets `--bw-*` from slug verification).
  *
- * `/driver` and `/driver/vehicles` (no `/driver/dashboard` prefix) intentionally
- * omit `SlugVerification` so drivers can still use those paths on the apex host
- * where no tenant slug exists.
+ * On the apex host there is no tenant slug, so `SlugVerification` (which 404s without one) is
+ * skipped; drivers who sign in at the apex still get the app, with Maison's default palette.
  */
 function DriverRoute({ children }: { children: ReactNode }) {
+  const slug = useTenantSlug()
+  const app = (
+    <RiderBrandedShell>
+      <ProtectedRoute allowRoles={["driver"]}>{children}</ProtectedRoute>
+    </RiderBrandedShell>
+  )
+  return slug ? <SlugVerification>{app}</SlugVerification> : app
+}
+
+/** Layout route: one guarded driver shell (header, tab bar, data) around every driver tab. */
+function DriverLayout() {
   return (
-    <SlugVerification>
-      <RiderBrandedShell>
-        <ProtectedRoute allowRoles={["driver"]}>{children}</ProtectedRoute>
-      </RiderBrandedShell>
-    </SlugVerification>
+    <DriverRoute>
+      <DriverShell />
+    </DriverRoute>
   )
 }
 
@@ -65,9 +74,14 @@ const DriversTab = lazy(() => import('@pages/tenant/DriversTab'))
 const RidersTab = lazy(() => import('@pages/tenant/RidersTab'))
 const BookingsTab = lazy(() => import('@pages/tenant/BookingsTab'))
 const VehiclesTab = lazy(() => import('@pages/tenant/VehiclesTab'))
+const PayoutsTab = lazy(() => import('@pages/tenant/PayoutsTab'))
 const FeedbackTab = lazy(() => import('@pages/tenant/FeedbackTab'))
 const AssistantTab = lazy(() => import('@pages/tenant/AssistantTab'))
-const DriverDashboard = lazy(() => import('@pages/DriverDashboard'))
+const DriverShell = lazy(() => import('@pages/driver/DriverShell'))
+const DriverHomeTab = lazy(() => import('@pages/driver/HomeTab'))
+const DriverRidesTab = lazy(() => import('@pages/driver/RidesTab'))
+const DriverEarningsTab = lazy(() => import('@pages/driver/EarningsTab'))
+const DriverAccountTab = lazy(() => import('@pages/driver/AccountTab'))
 const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
 const DriverVerify = lazy(() => import('@pages/DriverVerify'))
@@ -91,6 +105,7 @@ const VehicleConfiguration = lazy(() => import('@pages/settings/VehicleConfigura
 const BrandingSettings = lazy(() => import('@pages/settings/BrandingSettings'))
 const PricingSettings = lazy(() => import('@pages/settings/PricingSettings'))
 const Plans = lazy(() => import('@pages/settings/Plans'))
+const Billing = lazy(() => import('@pages/settings/Billing'))
 const FeedbackFormsSettings = lazy(() => import('@pages/settings/FeedbackFormsSettings'))
 const Help = lazy(() => import('@pages/settings/Help'))
 const HelpAdminGuide = lazy(() => import('@pages/settings/HelpAdminGuide'))
@@ -209,7 +224,9 @@ export default function App() {
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantShell />
+              <SubscriptionGate>
+                <TenantShell />
+              </SubscriptionGate>
             </ProtectedRoute>
           </TenantRouteBlock>
         }
@@ -219,6 +236,7 @@ export default function App() {
         <Route path="/tenant/riders" element={<RidersTab />} />
         <Route path="/tenant/bookings" element={<BookingsTab />} />
         <Route path="/tenant/vehicles" element={<VehiclesTab />} />
+        <Route path="/tenant/payouts" element={<PayoutsTab />} />
         <Route path="/tenant/assistant" element={<AssistantTab />} />
         <Route path="/tenant/feedback" element={<FeedbackTab />} />
       </Route>
@@ -241,7 +259,9 @@ export default function App() {
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <SettingsLayout />
+              <SubscriptionGate>
+                <SettingsLayout />
+              </SubscriptionGate>
             </ProtectedRoute>
           </TenantRouteBlock>
         }
@@ -255,6 +275,7 @@ export default function App() {
         <Route path="/tenant/settings/pricing" element={<PricingSettings />} />
         <Route path="/tenant/settings/vehicle-config" element={<VehicleConfiguration />} />
         <Route path="/tenant/settings/plans" element={<Plans />} />
+        <Route path="/tenant/settings/billing" element={<Billing />} />
         <Route path="/tenant/settings/help" element={<Help />} />
         <Route path="/tenant/settings/help/stripe" element={<StripeDocs />} />
         <Route path="/tenant/settings/help/admin" element={<HelpAdminGuide />} />
@@ -301,27 +322,12 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/driver"
-        element={
-          <ProtectedRoute allowRoles={["driver"]}>
-            <RiderBrandedShell>
-              <DriverDashboard />
-            </RiderBrandedShell>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/driver/vehicles"
-        element={
-          <ProtectedRoute allowRoles={["driver"]}>
-            <RiderBrandedShell>
-              <DriverDashboard />
-            </RiderBrandedShell>
-          </ProtectedRoute>
-        }
-      />
+      {/* Pre-redesign driver URLs (bookmarks, emailed links) */}
+      <Route path="/driver" element={<Navigate to="/driver/dashboard" replace />} />
+      <Route path="/driver/vehicles" element={<Navigate to="/driver/account" replace />} />
+      <Route path="/driver/bookings/new-requests" element={<Navigate to="/driver/rides?tab=requests" replace />} />
+      <Route path="/driver/bookings/all" element={<Navigate to="/driver/rides?tab=history" replace />} />
+      <Route path="/driver/bookings/*" element={<Navigate to="/driver/rides" replace />} />
 
       {/* White-label rider routes with subdomain.
           Every protected rider route is wrapped in RiderRoute which adds
@@ -524,47 +530,12 @@ export default function App() {
         }
       />
 
-      <Route
-        path="/driver/dashboard"
-        element={
-          <DriverRoute>
-            <DriverDashboard />
-          </DriverRoute>
-        }
-      />
-
-      <Route
-        path="/driver/bookings"
-        element={
-          <DriverRoute>
-            <DriverDashboard />
-          </DriverRoute>
-        }
-      />
-      <Route
-        path="/driver/bookings/upcoming"
-        element={
-          <DriverRoute>
-            <DriverDashboard />
-          </DriverRoute>
-        }
-      />
-      <Route
-        path="/driver/bookings/new-requests"
-        element={
-          <DriverRoute>
-            <DriverDashboard />
-          </DriverRoute>
-        }
-      />
-      <Route
-        path="/driver/bookings/all"
-        element={
-          <DriverRoute>
-            <DriverDashboard />
-          </DriverRoute>
-        }
-      />
+      <Route element={<DriverLayout />}>
+        <Route path="/driver/dashboard" element={<DriverHomeTab />} />
+        <Route path="/driver/rides" element={<DriverRidesTab />} />
+        <Route path="/driver/earnings" element={<DriverEarningsTab />} />
+        <Route path="/driver/account" element={<DriverAccountTab />} />
+      </Route>
 
       <Route
         path="/driver/help"
