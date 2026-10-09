@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import tsconfigPaths from 'vite-tsconfig-paths'
@@ -44,8 +44,28 @@ function apiProxyConfig(mode: string) {
   } as const
 }
 
+/** Preload the self-hosted fonts so text paints once, in its final face (no swap, no layout shift). */
+function preloadFonts(): Plugin {
+  return {
+    name: 'preload-fonts',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        return Object.keys(ctx.bundle ?? {})
+          .filter((f) => /\/(dm-sans|work-sans|geist)-latin-wght-normal-.*\.woff2$/.test(`/${f}`))
+          .map((f) => ({
+            tag: 'link',
+            attrs: { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `/${f}` },
+            injectTo: 'head' as const,
+          }))
+      },
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => ({
   plugins: [
+    preloadFonts(),
     react(),
     tsconfigPaths(),
     VitePWA({

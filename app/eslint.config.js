@@ -12,6 +12,7 @@ import globals from 'globals'
 export default tseslint.config(
   {
     ignores: [
+      'scripts/audit.mjs',
       'dist/**',
       'dev-dist/**',
       'node_modules/**',
