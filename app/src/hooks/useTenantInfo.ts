@@ -24,11 +24,45 @@ export type TenantInfo = {
   [key: string]: any // Allow other fields for backward compatibility
 }
 
+function toTenantInfo(data: SlugVerificationResponse, slug: string, tenantId?: number): TenantInfo {
+  return {
+    company_name: data.profile.company_name,
+    slug: data.branding.slug || slug,
+    logo_url: data.branding.logo_url || null,
+    favicon_url: data.branding.favicon_url || null,
+    contact_email: data.branding.email_from_address?.trim() || null,
+    contact_phone: data.branding.phone?.trim() || data.profile.phone_no?.trim() || null,
+    tenant_id: tenantId, // not cached: only present right after a network fetch
+    settings: data.settings,
+    branding: data.branding,
+  }
+}
+
+/** Slugs already re-checked against the server in this page load (the cache serves instantly, once). */
+const revalidated = new Set<string>()
+/** Every mounted hook re-reads the cache when a background re-check changes it. */
+const listeners = new Set<() => void>()
+
+/**
+ * Tenant info for the current subdomain. The 10-minute cache answers immediately, then the first
+ * hook per page load re-checks the server and tells all hooks, so a tenant's branding change
+ * reaches riders on their next open instead of after the cache expires.
+ */
 export function useTenantInfo() {
   const slug = useTenantSlug()
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!slug) return
+    const sync = () => {
+      const cached = getCachedSlugVerification(slug)
+      if (cached?.data) setTenantInfo(prev => toTenantInfo(cached.data!, slug, prev?.tenant_id))
+    }
+    listeners.add(sync)
+    return () => { listeners.delete(sync) }
+  }, [slug])
 
   useEffect(() => {
     if (!slug) {
@@ -38,77 +72,32 @@ export function useTenantInfo() {
     }
 
     const fetchTenantInfo = async () => {
+      const cached = getCachedSlugVerification(slug)
+      const hasCache = !!(cached && !isCacheExpired(cached) && cached.data)
+      if (hasCache) {
+        setTenantInfo(toTenantInfo(cached!.data!, slug))
+        if (revalidated.has(slug)) return
+      }
+      revalidated.add(slug)
       try {
-        setIsLoading(true)
+        if (!hasCache) setIsLoading(true)
         setError(null)
-        
-        // Check cache first - getTenantBySlug uses the same endpoint as verifySlug
-        const cached = getCachedSlugVerification(slug)
-        if (cached && !isCacheExpired(cached) && cached.data) {
-          // Use cached data if available
-          // Note: tenant_id is not cached, so we'll need to fetch it if needed
-          const transformedInfo: TenantInfo = {
-            company_name: cached.data.profile.company_name,
-            slug: cached.data.branding.slug || slug,
-            logo_url: cached.data.branding.logo_url || null,
-            favicon_url: cached.data.branding.favicon_url || null,
-            contact_email: cached.data.branding.email_from_address?.trim() || null,
-            contact_phone: cached.data.branding.phone?.trim() || cached.data.profile.phone_no?.trim() || null,
-            settings: cached.data.settings,
-            branding: cached.data.branding,
-            // tenant_id not available from cache, will need to fetch if required
-          }
-          setTenantInfo(transformedInfo)
-          setIsLoading(false)
-          // If tenant_id is needed, we might need to make an API call anyway
-          // For now, return and let the component handle the missing tenant_id
-          return
-        }
-
-        // Only make API call if cache miss or expired
         const response = await getTenantBySlug(slug)
         if (response.success && response.data) {
-          // Extract tenant_id from meta if available, or try to get it from response data
-          let tenantId: number | undefined = undefined
-          
-          // Check meta first
-          if (response.meta?.tenant_id) {
-            tenantId = typeof response.meta.tenant_id === 'number' 
-              ? response.meta.tenant_id 
-              : parseInt(String(response.meta.tenant_id))
-          }
-          
-          // If not in meta, check if it's in the data structure itself
-          // (some API responses might include it directly)
-          if (!tenantId && (response.data as any).tenant_id) {
-            tenantId = typeof (response.data as any).tenant_id === 'number'
-              ? (response.data as any).tenant_id
-              : parseInt(String((response.data as any).tenant_id))
-          }
-          
-          // Transform the new API response structure to match expected format
-          // Extract company_name from profile, logo_url and favicon_url from branding
-          const transformedInfo: TenantInfo = {
-            company_name: response.data.profile.company_name,
-            slug: response.data.branding.slug || slug,
-            logo_url: response.data.branding.logo_url || null,
-            favicon_url: response.data.branding.favicon_url || null,
-            contact_email: response.data.branding.email_from_address?.trim() || null,
-            contact_phone: response.data.branding.phone?.trim() || response.data.profile.phone_no?.trim() || null,
-            tenant_id: tenantId,
-            settings: response.data.settings,
-            branding: response.data.branding,
-          }
-          setTenantInfo(transformedInfo)
-          
-          // Update cache with the response data
+          const meta = response.meta?.tenant_id ?? (response.data as { tenant_id?: unknown }).tenant_id
+          const parsed = meta == null ? NaN : typeof meta === 'number' ? meta : parseInt(String(meta))
+          setTenantInfo(toTenantInfo(response.data, slug, Number.isNaN(parsed) ? undefined : parsed))
           setCachedSlugVerification(slug, response.data, true)
-        } else {
+          if (hasCache) listeners.forEach(l => l())
+        } else if (!hasCache) {
           setError('Tenant not found')
         }
       } catch (err: any) {
-        setError(err.response?.data?.detail || err.message || 'Failed to load tenant information')
-        setTenantInfo(null)
+        // A failed re-check keeps showing the cached tenant.
+        if (!hasCache) {
+          setError(err.response?.data?.detail || err.message || 'Failed to load tenant information')
+          setTenantInfo(null)
+        }
       } finally {
         setIsLoading(false)
       }

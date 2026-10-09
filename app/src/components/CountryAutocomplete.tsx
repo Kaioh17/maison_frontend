@@ -15,6 +15,8 @@ interface CountryAutocompleteProps {
   required?: boolean
   className?: string
   style?: React.CSSProperties
+  /** Accessible name when the caller renders its own visible label instead of `label`. */
+  ariaLabel?: string
 }
 
 type CountryEntry = {
@@ -33,6 +35,7 @@ export default function CountryAutocomplete({
   required = false,
   className = 'bw-input',
   style,
+  ariaLabel,
 }: CountryAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<CountryEntry[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -242,6 +245,7 @@ export default function CountryAutocomplete({
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           placeholder={placeholder}
+          aria-label={ariaLabel}
           disabled={disabled}
           required={required}
           style={{

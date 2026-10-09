@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { jwtDecode } from 'jwt-decode'
 import { useAuthStore } from '@store/auth'
 import { refreshTenantToken, refreshDriverToken, refreshRiderToken } from '@api/auth'
@@ -60,13 +60,6 @@ export const useAuth = () => {
       return true
     }
   }, [accessToken])
-
-  useEffect(() => {
-    // Check token validity on mount and when token changes
-    if (accessToken && isTokenExpired()) {
-      logout()
-    }
-  }, [accessToken, isTokenExpired, logout])
 
   return {
     accessToken,

@@ -12,7 +12,7 @@ const write = () => {
 }
 
 /** True when running as an installed app (iOS reports it via navigator.standalone). */
-const isStandalone = () =>
+export const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
 /**

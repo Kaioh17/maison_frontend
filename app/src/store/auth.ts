@@ -83,22 +83,14 @@ export const useAuthStore = create<AuthState>()(
       },
       getUserId: () => get().userId,
       getTenantId: () => get().tenantId,
+      // Pure check: never logs out, so callers can try a cookie refresh before giving up.
       checkAuthStatus: () => {
-        const state = get()
-        if (!state.accessToken) return false
-        
+        const { accessToken } = get()
+        if (!accessToken) return false
         try {
-          const decoded = jwtDecode<TokenPayload>(state.accessToken)
-          const currentTime = Date.now() / 1000
-          
-          if (decoded.exp && decoded.exp < currentTime) {
-            get().logout()
-            return false
-          }
-          
-          return true
+          const { exp } = jwtDecode<TokenPayload>(accessToken)
+          return !(exp && exp < Date.now() / 1000)
         } catch {
-          get().logout()
           return false
         }
       }

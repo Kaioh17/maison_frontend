@@ -128,7 +128,7 @@ export default function NotFound404() {
             Contact Support
           </p>
           <a 
-            href="mailto:support@example.com" 
+            href="mailto:mubaraqodumeso@gmail.com" 
             style={{
               fontSize: 'clamp(14px, 2vw, 16px)',
               color: 'var(--bw-fg)',
@@ -146,7 +146,7 @@ export default function NotFound404() {
               e.currentTarget.style.opacity = '0.8'
             }}
           >
-            support@example.com
+            mubaraqodumeso@gmail.com
           </a>
         </div>
         {/* Installed (standalone) apps have no browser back button, so a dead end needs its own way out. */}

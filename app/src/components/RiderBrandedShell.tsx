@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { brandingCssVars } from '@utils/colorTokens'
 
@@ -42,12 +43,14 @@ interface RiderBrandedShellProps {
 export default function RiderBrandedShell({ children }: RiderBrandedShellProps) {
   const { tenantInfo } = useTenantInfo()
   const branding = tenantInfo?.branding
+  // This shell wraps both the rider and driver routes; the tenant's font scope decides which gets its fonts.
+  const surface = useLocation().pathname.startsWith('/driver') ? 'driver' : 'rider'
 
   const styleVars = useMemo<CSSProperties | undefined>(() => {
     if (!branding || !branding.enable_branding) return undefined
 
-    return brandingCssVars(branding) as CSSProperties
-  }, [branding])
+    return brandingCssVars(branding, surface) as CSSProperties
+  }, [branding, surface])
 
   // Branding off: passthrough fragment, no DOM diff vs. pre-shell layout.
   if (!styleVars) {

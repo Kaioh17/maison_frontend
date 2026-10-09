@@ -9,10 +9,12 @@ export interface ModalProps {
   /** Footer actions (usually Buttons) */
   footer?: ReactNode
   width?: number
+  /** `sheet` anchors to the bottom edge (phone bottom sheet); styles are in the rider CSS. */
+  variant?: 'dialog' | 'sheet'
 }
 
 /** Dialog shell (`.bw-dialog`): Esc and scrim click close, focus moves in, stays trapped, and returns on close. */
-export default function Modal({ title, onClose, children, footer, width }: ModalProps) {
+export default function Modal({ title, onClose, children, footer, width, variant = 'dialog' }: ModalProps) {
   const titleId = useId()
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -36,11 +38,11 @@ export default function Modal({ title, onClose, children, footer, width }: Modal
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div className="bw-dialog-scrim" onClick={onClose}>
+    <div className={variant === 'sheet' ? 'bw-dialog-scrim bw-dialog-scrim--sheet' : 'bw-dialog-scrim'} onClick={onClose}>
       <div
         ref={ref}
         tabIndex={-1}
-        className="bw-dialog"
+        className={variant === 'sheet' ? 'bw-dialog bw-dialog--sheet' : 'bw-dialog'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -49,7 +51,7 @@ export default function Modal({ title, onClose, children, footer, width }: Modal
       >
         <div className="bw-dialog-head">
           <h2 id={titleId} className="bw-dialog-title">{title}</h2>
-          <button type="button" className="tnav-icon-btn" onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, border: 'none', background: 'transparent', color: 'var(--bw-muted)', cursor: 'pointer', borderRadius: 6 }}>
+          <button type="button" className="tnav-icon-btn" onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, display: 'grid', placeItems: 'center', border: 'none', background: 'transparent', color: 'var(--bw-muted)', cursor: 'pointer', borderRadius: 6 }}>
             <X size={18} aria-hidden />
           </button>
         </div>

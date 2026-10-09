@@ -30,3 +30,19 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message) return err.message
   return fallback
 }
+
+/** Like getApiErrorMessage, but also distinguishes "server answered with an error" from "no response at all". */
+export function getRequestErrorMessage(err: unknown, fallback: string): string {
+  const e = err as {
+    response?: { status: number; statusText?: string; data?: { message?: string; detail?: string; error?: string | { message?: string } } }
+    request?: unknown
+    message?: string
+  } | null
+  if (e?.response) {
+    const { status, statusText, data } = e.response
+    const nested = typeof data?.error === 'object' ? data.error?.message : undefined
+    return data?.message || data?.detail || nested || (typeof data?.error === 'string' ? data.error : '') || `HTTP Error ${status}: ${statusText || 'Unknown error'}`
+  }
+  if (e?.request) return 'No response from server. Please check your connection and try again.'
+  return e?.message || fallback
+}

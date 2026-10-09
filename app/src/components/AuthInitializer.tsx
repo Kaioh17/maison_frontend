@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuthStore } from '@store/auth'
 
 export default function AuthInitializer() {
-  const [isInitialized, setIsInitialized] = useState(false)
   const { accessToken, role, checkAuthStatus, logout } = useAuthStore()
 
   useEffect(() => {
@@ -20,22 +19,11 @@ export default function AuthInitializer() {
       } catch (error) {
         console.error('Auth initialization error:', error)
         logout()
-      } finally {
-        setIsInitialized(true)
       }
     }
 
     initializeAuth()
   }, [accessToken, role, checkAuthStatus, logout])
-
-  // Show loading while initializing auth
-  if (!isInitialized) {
-    return (
-      <div className="flex items-center justify-center min-h-[var(--app-h)]">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    )
-  }
 
   return null
 } 

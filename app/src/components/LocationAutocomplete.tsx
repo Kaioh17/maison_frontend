@@ -21,6 +21,8 @@ interface LocationAutocompleteProps {
   country?: string // Country code (e.g., 'us', 'gb') to filter search results
   /** Merged into the text input style (e.g. borderless “depth” fields on rider booking). */
   inputStyle?: CSSProperties
+  /** Accessible name when the caller renders its own visible label instead of `label`. */
+  ariaLabel?: string
 }
 
 export default function LocationAutocomplete({
@@ -33,6 +35,7 @@ export default function LocationAutocomplete({
   disabled = false,
   country,
   inputStyle,
+  ariaLabel,
 }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -239,6 +242,7 @@ export default function LocationAutocomplete({
             }
           }}
           placeholder={placeholder}
+          aria-label={ariaLabel}
           disabled={disabled}
           style={{
             paddingRight: isLoading ? '40px' : undefined,

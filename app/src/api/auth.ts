@@ -1,10 +1,12 @@
 import { http } from './http'
 
-export async function loginTenant(email: string, password: string) {
+/** `legalVersion` is the clickwrap version the user ticked; the backend rejects an unaccepted operator without it. */
+export async function loginTenant(email: string, password: string, legalVersion?: string) {
   const form = new URLSearchParams()
   form.append('username', email)
   form.append('password', password)
   const { data } = await http.post('/v1/auth/login/tenant', form, {
+    params: legalVersion ? { legal_version: legalVersion } : undefined,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
   })
   return data as { access_token: string }
@@ -94,3 +96,13 @@ export async function checkAuthStatus() {
     throw error
   }
 } 
+export type ResetRole = 'tenant' | 'rider' | 'driver'
+
+/** Always resolves the same way for any email: the server never says whether the address is registered. Riders and drivers pass the operator's `slug`. */
+export async function requestPasswordReset(role: ResetRole, email: string, slug?: string) {
+  await http.post(`/v1/auth/forgot-password/${role}`, { email, slug })
+}
+
+export async function resetPassword(role: ResetRole, token: string, password: string) {
+  await http.post(`/v1/auth/reset-password/${role}`, { token, password })
+}

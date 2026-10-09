@@ -28,6 +28,7 @@ html, body { height: 100%; overscroll-behavior-y: none; }
 /* Inline-styled full-screen scrims that host forms: follow the visual viewport so the keyboard never covers the dialog. */
 .vv-fit { inset: var(--vv-top, 0px) 0 auto 0 !important; height: var(--vvh, 100%) !important; }
 /* Single app root: fills the dynamic viewport and keeps clear of the notch and rounded corners. */
+#root { min-height: var(--app-h); }
 .app-root { min-height: var(--app-h); padding: var(--safe-top) var(--safe-right) 0 var(--safe-left); }
 body { 
   margin: 0; 
@@ -1235,7 +1236,7 @@ body[data-theme="dark"] {
 
 .btn-primary {
   background-color: var(--bw-accent);
-  color: #ffffff;
+  color: var(--rider-on-primary, #ffffff);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 14px 34px -14px color-mix(in srgb, var(--bw-accent) 38%, transparent);
 }
@@ -1485,6 +1486,22 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
 .bw-dialog:focus { outline: none; }
 .bw-dialog-body { padding: 20px; overflow-y: auto; overscroll-behavior: contain; }
 .bw-dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--bw-border); }
+/* Bottom-sheet variant (Modal variant="sheet"): phones, anchored to the bottom edge */
+.bw-dialog-scrim--sheet { place-items: end center; padding: 0; }
+.bw-dialog--sheet {
+  width: min(560px, 100%); border-width: 1px 0 0; border-radius: 22px 22px 0 0;
+  padding-bottom: var(--safe-bottom); background: var(--bw-bg); animation: bw-sheet-up 0.22s ease-out;
+}
+.bw-dialog--sheet::before { content: ""; align-self: center; flex: none; width: 36px; height: 4px; margin: 10px 0 0; border-radius: 2px; background: var(--bw-border-strong); }
+.bw-dialog--sheet .bw-dialog-head { border-bottom: 0; padding: 12px 20px 8px; }
+.bw-dialog--sheet .bw-dialog-body { padding: 8px 20px 24px; }
+@keyframes bw-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bw-dialog--sheet { animation: none; } }
+@media (min-width: 1024px) {
+  .bw-dialog-scrim--sheet { place-items: center; padding: 16px; }
+  .bw-dialog--sheet { width: min(480px, 100%); border-width: 1px; border-radius: 16px; padding-bottom: 0; }
+  .bw-dialog--sheet::before { display: none; }
+}
 .bw-section-label { font-size: 12px; color: var(--bw-muted); margin: 0 0 8px; letter-spacing: 0.02em; }
 
 /* Detail dialogs: summary strip, sections, key/value grid, route timeline */
@@ -1518,7 +1535,7 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
 }
 
 /* ============================================================
-   Rider app: map placeholder, mobile bottom nav, segmented control, sticky CTA
+   Rider map placeholder (the rider app itself is styled in pages/rider/riderCss.ts)
    ============================================================ */
 
 .rider-map {
@@ -1656,125 +1673,10 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
 .rider-map__dot--from { background: var(--bw-accent); }
 .rider-map__dot--to { background: var(--bw-text); }
 
-/* Segmented control (service type etc.) */
-.rider-seg {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--bw-border);
-  border-radius: 999px;
-  background: var(--rider-surface-inset);
-}
-.rider-seg button {
-  min-height: 44px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--bw-muted);
-  font-family: 'Work Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-.rider-seg button[aria-checked="true"] {
-  background: var(--bw-accent);
-  color: #ffffff;
-}
-.rider-seg button:focus-visible {
-  outline: 2px solid var(--bw-focus);
-  outline-offset: 2px;
-}
-
-/* Primary action stays reachable while the form scrolls */
-.rider-sticky-cta {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin: 4px -4px 0;
-  padding: 12px 4px 4px;
-  background: linear-gradient(to top, var(--rider-surface-elevated) 72%, transparent);
-}
-
-/* Mobile bottom navigation */
-.rider-bottomnav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 900;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 6px max(8px, var(--safe-right)) calc(6px + var(--safe-bottom)) max(8px, var(--safe-left));
-  border-top: 1px solid var(--bw-border);
-  background: color-mix(in srgb, var(--bw-bg) 90%, transparent);
-  backdrop-filter: blur(14px);
-}
-.rider-bottomnav__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-height: 52px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--bw-muted);
-  font-family: 'Work Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.rider-bottomnav__item[aria-current="page"] {
-  color: var(--bw-text);
-  background: var(--bw-bg-hover);
-}
-.rider-bottomnav__item:focus-visible {
-  outline: 2px solid var(--bw-focus);
-  outline-offset: -2px;
-}
-.rider-bottomnav__item--primary .rider-bottomnav__icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-top: -16px;
-  border-radius: 50%;
-  background: var(--bw-accent);
-  color: #ffffff;
-  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--bw-accent) 60%, transparent);
-}
-.rider-bottomnav__item--primary {
-  color: var(--bw-text);
-  background: transparent !important;
-}
-
 @media (max-width: 768px) {
-  /* 16px + 48px targets: anything smaller makes iOS Safari zoom on focus and is hard to tap */
-  .rider-main-content .bw-input,
-  .rider-main-content select,
-  .rider-main-content textarea {
-    font-size: 16px !important;
-    min-height: 48px;
-  }
-  .rider-main-content {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
-  }
-  .rider-sticky-cta {
-    bottom: calc(68px + env(safe-area-inset-bottom));
-  }
   .rider-map__route-card > div {
     grid-template-columns: 88px minmax(0, 1fr);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rider-seg button { transition: none; }
 }
 
 /* Touch devices: 16px+ text in fields stops iOS zooming on focus; 44px minimum hit areas. */
@@ -1799,3 +1701,7 @@ button.kpi:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 
   background: var(--bw-bg-secondary); color: var(--bw-text); font-size: 14px;
   border: 1px solid var(--bw-border-strong); border-radius: 12px; box-shadow: var(--bw-shadow);
 }
+
+/* Legal documents: the global reset strips list markers. */
+.legal-doc ul { list-style: disc; padding-left: 1.25em; margin: 0; }
+.legal-doc li + li { margin-top: 4px; }

@@ -65,6 +65,20 @@ export async function updateDriverStatus(isActive: boolean) {
   return data
 }
 
+export type NavAppId = 'google' | 'apple' | 'waze'
+
+export async function setNavApp(navApp: NavAppId) {
+  const { data } = await http.patch<StandardResponse<{ nav_app: NavAppId }>>('/v1/driver/nav-app', null, { params: { nav_app: navApp } })
+  return data
+}
+
+/** Stamps the ride as en route; "arrived" also stamps arrival. Repeating a phase is harmless. */
+export async function setRidePhase(bookingId: number, phase: 'enroute' | 'arrived') {
+  const { data } = await http.patch<StandardResponse<{ driver_started_at: string | null; driver_arrived_at: string | null }>>(
+    `/v1/driver/ride/${bookingId}/phase`, null, { params: { phase } })
+  return data
+}
+
 export type BookingAnalytics = {
   confirmed: number
   completed: number
@@ -139,6 +153,7 @@ export type DriverResponse = {
   is_active: boolean
   is_registered?: string
   status?: string | null
+  nav_app?: NavAppId | null
   state?: string
   postal_code?: string
   license_number?: string

@@ -2,12 +2,22 @@ import SlugVerification from '@components/SlugVerification'
 import { isAdminAppSubdomain, isMainDomain, isTenantAppSubdomain } from '@utils/subdomain'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
-import type { LazyExoticComponent } from 'react'
+import { isStandalone } from '@hooks/useInstallApp'
+import { useTenantInfo } from '@hooks/useTenantInfo'
+import { brandingFontVars } from '@utils/colorTokens'
+import type { CSSProperties, LazyExoticComponent, ReactNode } from 'react'
 import type { ComponentType } from 'react'
 
 type RootLandingProps = {
   MainLanding: LazyExoticComponent<ComponentType>
   TenantLanding: LazyExoticComponent<ComponentType>
+}
+
+/** Carries the tenant's fonts to the landing page when their scope includes it. `display: contents` adds no box. */
+function LandingFonts({ children }: { children: ReactNode }) {
+  const branding = useTenantInfo().tenantInfo?.branding
+  const vars = branding?.enable_branding ? brandingFontVars(branding, 'landing') : {}
+  return <div style={{ display: 'contents', ...vars } as CSSProperties}>{children}</div>
 }
 
 /**
@@ -33,9 +43,17 @@ export default function RootLanding({ MainLanding, TenantLanding }: RootLandingP
     }
     return <Navigate to="/tenant/login" replace />
   }
+  // Fallback for installs whose manifest start_url was ignored or predates per-role manifests:
+  // an installed app opened at "/" while signed in goes straight to that role's home.
+  if (isStandalone() && isAuthenticated) {
+    if (role === 'rider') return <Navigate to="/rider/dashboard" replace />
+    if (role === 'driver') return <Navigate to="/driver/dashboard" replace />
+  }
   return (
     <SlugVerification>
-      <TenantLanding />
+      <LandingFonts>
+        <TenantLanding />
+      </LandingFonts>
     </SlugVerification>
   )
 }

@@ -69,6 +69,12 @@ export type TenantBrandingData = {
   text_color: string | null
   text_muted_color: string | null
   button_text_color: string | null
+  /** Rider-app fonts by catalog name (utils/brandFonts.ts); blank = platform default. */
+  font_heading?: string | null
+  font_body?: string | null
+  font_accent?: string | null
+  /** 'rider' (default) | 'rider_driver' | 'all' - see utils/brandFonts.ts */
+  font_scope?: string | null
   favicon_url: string | null
   slug: string
   email_from_name: string | null
@@ -123,6 +129,11 @@ export type UpdateTenantBrandingPayload = {
   text_color?: string | null
   text_muted_color?: string | null
   button_text_color?: string | null
+  font_heading?: string | null
+  font_body?: string | null
+  font_accent?: string | null
+  /** 'rider' (default) | 'rider_driver' | 'all' - see utils/brandFonts.ts */
+  font_scope?: string | null
   favicon_url?: string | null
   slug?: string
   email_from_name?: string | null

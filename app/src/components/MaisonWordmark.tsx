@@ -1,5 +1,5 @@
 import type { CSSProperties, HTMLAttributes } from 'react'
-import wordmarkUrl from '../images/maison_wordmark.png'
+import wordmarkUrl from '../images/maison_wordmark.webp'
 
 export type MaisonWordmarkProps = {
   className?: string
@@ -27,7 +27,7 @@ export default function MaisonWordmark({
       style={{
         display: 'inline-block',
         height: '1.3em',
-        aspectRatio: '388 / 127',
+        aspectRatio: '220 / 72',
         verticalAlign: '-0.05em', // letter baseline sits slightly above the image bottom
         backgroundColor: color ?? 'currentColor',
         WebkitMask: mask,

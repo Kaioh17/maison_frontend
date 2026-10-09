@@ -70,6 +70,11 @@ export type TenantBranding = {
   text_color: string | null
   text_muted_color: string | null
   button_text_color: string | null
+  font_heading?: string | null
+  font_body?: string | null
+  font_accent?: string | null
+  /** 'rider' (default) | 'rider_driver' | 'all' - see utils/brandFonts.ts */
+  font_scope?: string | null
   favicon_url: string | null
   slug: string
   email_from_name: string | null
@@ -513,7 +518,8 @@ export type BookingResponse = {
   id?: number
   updated_on?: string | null
   created_on?: string | null
-  estimated_duration?: number | null
+  driver_started_at?: string | null
+  driver_arrived_at?: string | null
   zelle_number?: string | null
   zelle_email?: string | null
   deposit?: number | null

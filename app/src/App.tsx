@@ -12,7 +12,9 @@ import AccountVerificationNotification from '@components/AccountVerificationNoti
 import UpdateBanner from '@components/UpdateBanner'
 import AssistantLauncher from '@components/AssistantLauncher'
 import SubscriptionGate from '@components/SubscriptionGate'
+import PilotGate from '@components/PilotGate'
 import { useFavicon } from '@hooks/useFavicon'
+import { useRoleManifest } from '@hooks/useRoleManifest'
 import { useTenantSlug } from '@hooks/useTenantSlug'
 import { resolveSubdomainLoadingPalette } from '@utils/subdomainLoadingPalette'
 
@@ -33,6 +35,15 @@ function RiderRoute({ children }: { children: ReactNode }) {
         <ProtectedRoute allowRoles={["rider"]}>{children}</ProtectedRoute>
       </RiderBrandedShell>
     </SlugVerification>
+  )
+}
+
+/** Layout route: one guarded rider shell (header, tab bar, data) around every rider tab. */
+function RiderLayout() {
+  return (
+    <RiderRoute>
+      <RiderShell />
+    </RiderRoute>
   )
 }
 
@@ -66,6 +77,7 @@ function DriverLayout() {
 const Landing = lazy(() => import('@pages/Landing'))
 const TenantLanding = lazy(() => import('@pages/TenantLanding'))
 const About = lazy(() => import('@pages/About'))
+const Pricing = lazy(() => import('@pages/Pricing'))
 const Login = lazy(() => import('@pages/Login'))
 const Signup = lazy(() => import('@pages/Signup'))
 const TenantShell = lazy(() => import('@pages/tenant/TenantShell'))
@@ -86,10 +98,18 @@ const DriverLogin = lazy(() => import('@pages/DriverLogin'))
 const DriverRegistration = lazy(() => import('@pages/DriverRegistration'))
 const DriverVerify = lazy(() => import('@pages/DriverVerify'))
 const DriverApply = lazy(() => import('@pages/DriverApply'))
-const RiderDashboard = lazy(() => import('@pages/RiderDashboard'))
-const RiderRegistration = lazy(() => import('@pages/RiderRegistration'))
-const RiderProfile = lazy(() => import('@pages/RiderProfile'))
-const RiderLogin = lazy(() => import('@pages/RiderLogin'))
+const RiderRegistration = lazy(() => import('@pages/rider/RegisterPage'))
+const RiderShell = lazy(() => import('@pages/rider/RiderShell'))
+const RiderHomeTab = lazy(() => import('@pages/rider/HomeTab'))
+const RiderBookTab = lazy(() => import('@pages/rider/BookTab'))
+const RiderTripsTab = lazy(() => import('@pages/rider/TripsTab'))
+const RiderFleetTab = lazy(() => import('@pages/rider/FleetTab'))
+const RiderProfileTab = lazy(() => import('@pages/rider/ProfileTab'))
+const RiderLogin = lazy(() => import('@pages/rider/LoginPage'))
+const RiderForgotPassword = lazy(() => import('@pages/rider/PasswordReset').then(m => ({ default: () => <m.ForgotPasswordPage role="rider" /> })))
+const RiderResetPassword = lazy(() => import('@pages/rider/PasswordReset').then(m => ({ default: () => <m.ResetPasswordPage role="rider" /> })))
+const DriverForgotPassword = lazy(() => import('@pages/rider/PasswordReset').then(m => ({ default: () => <m.ForgotPasswordPage role="driver" /> })))
+const DriverResetPassword = lazy(() => import('@pages/rider/PasswordReset').then(m => ({ default: () => <m.ResetPasswordPage role="driver" /> })))
 const BookingConfirmation = lazy(() => import('@pages/BookingConfirmation'))
 const BookingSuccess = lazy(() => import('@pages/BookingSuccess'))
 const PaymentPage = lazy(() => import('@pages/PaymentPage'))
@@ -108,6 +128,7 @@ const Plans = lazy(() => import('@pages/settings/Plans'))
 const Billing = lazy(() => import('@pages/settings/Billing'))
 const FeedbackFormsSettings = lazy(() => import('@pages/settings/FeedbackFormsSettings'))
 const Help = lazy(() => import('@pages/settings/Help'))
+const LegalPilot = lazy(() => import('@pages/settings/LegalPilot'))
 const HelpAdminGuide = lazy(() => import('@pages/settings/HelpAdminGuide'))
 const HelpTroubleshooting = lazy(() => import('@pages/settings/HelpTroubleshooting'))
 const StripeDocs = lazy(() => import('@pages/settings/StripeDocs'))
@@ -124,6 +145,7 @@ const AdminLogin = lazy(() => import('@pages/AdminLogin'))
 const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
 const TempQrEditor = lazy(() => import('@pages/TempQrEditor'))
 const ForgotPassword = lazy(() => import('@pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('@pages/ResetPassword'))
 const Terms = lazy(() => import('@pages/Terms'))
 const Privacy = lazy(() => import('@pages/Privacy'))
 const Subprocessors = lazy(() => import('@pages/Subprocessors'))
@@ -155,6 +177,7 @@ function PageFallback() {
 export default function App() {
   // Keep tab/app icon + title tenant-branded on subdomains across all routes.
   useFavicon()
+  useRoleManifest()
 
   return (
     <div className="app-root">
@@ -185,9 +208,11 @@ export default function App() {
           </AdminOpsGate>
         }
       />
+      <Route path="/pricing" element={<SubdomainBlock><Pricing /></SubdomainBlock>} />
       <Route path="/about" element={<SubdomainBlock><About /></SubdomainBlock>} />
       <Route path="/signup" element={<SubdomainBlock><Signup /></SubdomainBlock>} />
       <Route path="/forgot-password" element={<SubdomainBlock><ForgotPassword /></SubdomainBlock>} />
+      <Route path="/reset-password" element={<SubdomainBlock><ResetPassword /></SubdomainBlock>} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       {/* Not wrapped in SubdomainBlock, matching /terms and /privacy: the legal
@@ -224,9 +249,11 @@ export default function App() {
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <SubscriptionGate>
-                <TenantShell />
-              </SubscriptionGate>
+              <PilotGate>
+                <SubscriptionGate>
+                  <TenantShell />
+                </SubscriptionGate>
+              </PilotGate>
             </ProtectedRoute>
           </TenantRouteBlock>
         }
@@ -259,9 +286,11 @@ export default function App() {
         element={
           <TenantRouteBlock>
             <ProtectedRoute allowRoles={["tenant"]}>
-              <SubscriptionGate>
-                <SettingsLayout />
-              </SubscriptionGate>
+              <PilotGate>
+                <SubscriptionGate>
+                  <SettingsLayout />
+                </SubscriptionGate>
+              </PilotGate>
             </ProtectedRoute>
           </TenantRouteBlock>
         }
@@ -276,6 +305,7 @@ export default function App() {
         <Route path="/tenant/settings/vehicle-config" element={<VehicleConfiguration />} />
         <Route path="/tenant/settings/plans" element={<Plans />} />
         <Route path="/tenant/settings/billing" element={<Billing />} />
+        <Route path="/tenant/settings/legal" element={<LegalPilot />} />
         <Route path="/tenant/settings/help" element={<Help />} />
         <Route path="/tenant/settings/help/stripe" element={<StripeDocs />} />
         <Route path="/tenant/settings/help/admin" element={<HelpAdminGuide />} />
@@ -301,16 +331,7 @@ export default function App() {
           </TenantRouteBlock>
         }
       />
-      <Route
-        path="/tenant_settings"
-        element={
-          <TenantRouteBlock>
-            <ProtectedRoute allowRoles={["tenant"]}>
-              <TenantSettings />
-            </ProtectedRoute>
-          </TenantRouteBlock>
-        }
-      />
+      <Route path="/tenant_settings" element={<Navigate to="/tenant/settings/tenant-settings" replace />} />
       <Route
         path="/vehicles/add"
         element={
@@ -333,48 +354,17 @@ export default function App() {
           Every protected rider route is wrapped in RiderRoute which adds
           RiderBrandedShell — driving CSS custom property overrides from the
           tenant's branding row across the entire subtree.
-          /riders/login + /riders/register intentionally opt out: they resolve
-          their own palette inline via resolveRiderAuthPalette. */}
-      <Route
-        path="/rider/dashboard"
-        element={
-          <RiderRoute>
-            <RiderDashboard />
-          </RiderRoute>
-        }
-      />
-      <Route
-        path="/rider/book"
-        element={
-          <RiderRoute>
-            <RiderDashboard />
-          </RiderRoute>
-        }
-      />
-      <Route
-        path="/rider/see-bookings"
-        element={
-          <RiderRoute>
-            <RiderDashboard />
-          </RiderRoute>
-        }
-      />
-      <Route
-        path="/rider/drivers"
-        element={
-          <RiderRoute>
-            <RiderDashboard />
-          </RiderRoute>
-        }
-      />
-      <Route
-        path="/rider/vehicles"
-        element={
-          <RiderRoute>
-            <RiderDashboard />
-          </RiderRoute>
-        }
-      />
+          /riders/login + /riders/register are public, so they skip ProtectedRoute
+          but still get the tenant palette from RiderBrandedShell. */}
+      <Route element={<RiderLayout />}>
+        <Route path="/rider/dashboard" element={<RiderHomeTab />} />
+        <Route path="/rider/book" element={<RiderBookTab />} />
+        <Route path="/rider/see-bookings" element={<RiderTripsTab />} />
+        <Route path="/rider/vehicles" element={<RiderFleetTab />} />
+        <Route path="/riders/profile" element={<RiderProfileTab />} />
+      </Route>
+      <Route path="/rider/drivers" element={<Navigate to="/rider/dashboard" replace />} />
+
       <Route
         path="/rider/confirm-booking"
         element={
@@ -420,7 +410,9 @@ export default function App() {
         path="/riders/login"
         element={
           <SlugVerification>
-            <RiderLogin />
+            <RiderBrandedShell>
+              <RiderLogin />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />
@@ -462,19 +454,13 @@ export default function App() {
         path="/riders/register"
         element={
           <SlugVerification>
-            <RiderRegistration />
+            <RiderBrandedShell>
+              <RiderRegistration />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />
 
-      <Route
-        path="/riders/profile"
-        element={
-          <RiderRoute>
-            <RiderProfile />
-          </RiderRoute>
-        }
-      />
 
       {/* White-label driver routes with subdomain — tenant palette via RiderBrandedShell */}
       <Route
@@ -482,6 +468,50 @@ export default function App() {
         element={
           <SlugVerification>
             <PremiumDriverStart />
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/riders/forgot-password"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <RiderForgotPassword />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/riders/reset-password"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <RiderResetPassword />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/driver/forgot-password"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <DriverForgotPassword />
+            </RiderBrandedShell>
+          </SlugVerification>
+        }
+      />
+
+      <Route
+        path="/driver/reset-password"
+        element={
+          <SlugVerification>
+            <RiderBrandedShell>
+              <DriverResetPassword />
+            </RiderBrandedShell>
           </SlugVerification>
         }
       />

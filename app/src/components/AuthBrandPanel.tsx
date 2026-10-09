@@ -16,7 +16,7 @@ export default function AuthBrandPanel({ headline, accent, lead, compact = false
     <div className={`landing-auth-brand${compact ? ' landing-auth-brand--compact' : ''}`}>
       {!compact && <AuthHeroImages />}
       <Link to="/" className="landing-auth-brand__logo" aria-label="Maison home">
-        <MaisonWordmark color="var(--landing-fg)" style={{ fontSize: '2.25rem' }} />
+        <MaisonWordmark color="var(--landing-fg)" />
       </Link>
       {!compact && (
         <div className="landing-auth-brand__copy">

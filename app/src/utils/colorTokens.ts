@@ -6,6 +6,8 @@
  * components and pure utility modules, and we want it tree-shakeable.
  */
 
+import { FONT_ROLES, fontStack, fontsApply, BRAND_FONTS, type FontSurface } from './brandFonts'
+
 /** Parse a hex color (#abc, #aabbcc, with or without leading #) into [r,g,b]. */
 export function parseHex(hex: string | null | undefined): [number, number, number] | null {
   if (!hex || typeof hex !== 'string') return null
@@ -43,6 +45,10 @@ export function pickColor(...candidates: Array<string | null | undefined>): stri
 }
 
 export interface BrandingColorInput {
+  font_heading?: string | null
+  font_body?: string | null
+  font_accent?: string | null
+  font_scope?: string | null
   primary_color?: string | null
   accent_color?: string | null
   background_color?: string | null
@@ -50,6 +56,20 @@ export interface BrandingColorInput {
   text_color?: string | null
   text_muted_color?: string | null
   button_text_color?: string | null
+}
+
+/**
+ * Font tokens for one surface (rider app, driver app, landing page); empty when the tenant's scope
+ * does not cover it. Only catalog names are emitted, so a stale or hand-edited value can't inject CSS.
+ */
+export function brandingFontVars(b: BrandingColorInput, surface: FontSurface): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!fontsApply(b.font_scope, surface)) return out
+  for (const r of FONT_ROLES) {
+    const name = b[r.field]
+    if (BRAND_FONTS.some(f => f.name === name)) out[r.cssVar] = fontStack(name!)
+  }
+  return out
 }
 
 /**
@@ -61,7 +81,7 @@ export interface BrandingColorInput {
  * Shared by `RiderBrandedShell` (live rider pages) and the branding-settings
  * phone preview, so the preview can't drift from what riders actually see.
  */
-export function brandingCssVars(b: BrandingColorInput): Record<string, string> {
+export function brandingCssVars(b: BrandingColorInput, app: FontSurface = 'rider'): Record<string, string> {
   const text = pickColor(b.text_color)
   const muted = pickColor(b.text_muted_color)
   const bg = pickColor(b.background_color)
@@ -111,10 +131,29 @@ export function brandingCssVars(b: BrandingColorInput): Record<string, string> {
   set('--rider-notes-bg', notesBg)
   set('--rider-field-inset-glow', fieldInsetGlow)
 
+  Object.assign(out, brandingFontVars(b, app))
+
   // Page-level color/bg so `color: inherit` chains and any element that
   // doesn't read a CSS var directly still land on the brand palette.
   set('color', text)
   set('background', bg)
 
   return out
+}
+
+const hex2 = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+
+/** `#rrggbb` (lowercase) from a typed hex (#abc, abc, #AABBCC), or `null` while it is not a complete hex yet. */
+export function normalizeHex(input: string | null | undefined): string | null {
+  const rgb = parseHex(input)
+  return rgb ? `#${rgb.map(hex2).join('')}` : null
+}
+
+/** `#rrggbb` from a computed CSS color (`rgb(…)`, `rgba(…)`, or hex). `null` when transparent or unparseable. */
+export function cssColorToHex(css: string | null | undefined): string | null {
+  const value = (css ?? '').trim()
+  const m = /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+%?))?\s*\)$/.exec(value)
+  if (!m) return normalizeHex(value)
+  if (m[4] !== undefined && parseFloat(m[4]) === 0) return null
+  return `#${[m[1], m[2], m[3]].map(n => hex2(Number(n))).join('')}`
 }
