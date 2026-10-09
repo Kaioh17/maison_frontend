@@ -2,17 +2,19 @@ import { useNavigate, useOutletContext } from 'react-router-dom'
 import { Car, EnvelopeSimple, Lifebuoy, Phone, SignOut } from '@phosphor-icons/react'
 import Button from '@components/Button'
 import Card from '@components/Card'
+import PoweredByMaison from '@components/PoweredByMaison'
+import RiderInstallCard, { DRIVER_BULLETS } from '@components/RiderInstallCard'
 import ThemeToggle from '@components/ThemeToggle'
 import { Skeleton } from '@components/Skeleton'
 import { useAuthStore } from '@store/auth'
-import { telHref } from './rideHelpers'
+import { NAV_APPS, telHref } from './rideHelpers'
 import type { DriverShellCtx } from './useDriverData'
 
 const row = (label: string, value?: string | number | null) =>
   value ? <div className="drv-row"><dt>{label}</dt><dd>{value}</dd></div> : null
 
 export default function AccountTab() {
-  const { info, infoLoading, tenantInfo } = useOutletContext<DriverShellCtx>()
+  const { info, infoLoading, tenantInfo, navApp, setNavApp } = useOutletContext<DriverShellCtx>()
   const navigate = useNavigate()
   const vehicle = info?.vehicle
   const photo = vehicle?.vehicle_images ? Object.values(vehicle.vehicle_images)[0] : null
@@ -35,6 +37,17 @@ export default function AccountTab() {
           </dl>
         </Card>
       )}
+
+      <Card title="Navigation app">
+        <p className="drv-sub" style={{ marginTop: 0 }}>Start ride and Navigate open this with the pickup loaded.</p>
+        <div className="drv-picks" role="radiogroup" aria-label="Navigation app">
+          {NAV_APPS.map(a => (
+            <button key={a.id} type="button" role="radio" aria-checked={navApp === a.id} className="drv-pick" onClick={() => setNavApp(a.id)}>
+              {a.label}<span className="drv-radio" aria-hidden />
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <Card title="Vehicle">
         {vehicle ? (
@@ -62,6 +75,8 @@ export default function AccountTab() {
         </div>
       </Card>
 
+      <RiderInstallCard appName={tenantInfo?.company_name?.trim() || 'Maison'} className="bw-panel" bullets={DRIVER_BULLETS} />
+
       <Card title="Appearance"><ThemeToggle mode="segmented" /></Card>
 
       <div className="drv-actions">
@@ -77,6 +92,8 @@ export default function AccountTab() {
           <SignOut size={20} aria-hidden />Log out
         </Button>
       </div>
+
+      <PoweredByMaison />
     </div>
   )
 }

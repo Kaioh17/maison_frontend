@@ -1,15 +1,17 @@
-import { Link, useOutletContext } from 'react-router-dom'
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 import { Car } from '@phosphor-icons/react'
 import Button from '@components/Button'
 import Card from '@components/Card'
 import { Skeleton } from '@components/Skeleton'
+import ActiveRide from './ActiveRide'
 import RideCard from './RideCard'
 import type { DriverShellCtx } from './useDriverData'
 
 /** "Now" screen: what to do next, nothing else. Current ride first, then incoming requests. */
 export default function HomeTab() {
-  const { info, active, requests, ridesLoading, actingId, act, setOnline, togglingOnline } = useOutletContext<DriverShellCtx>()
-  const [next] = active
+  const { info, active, requests, ridesLoading, actingId, act, setOnline, togglingOnline, setPhase, navApp } = useOutletContext<DriverShellCtx>()
+  const [params] = useSearchParams()
+  const next = active.find(r => String(r.id) === params.get('ride')) ?? active[0]
   const [firstRequest] = requests
 
   if (ridesLoading && !info) {
@@ -29,8 +31,7 @@ export default function HomeTab() {
 
       {next && (
         <>
-          <h2 className="drv-section">{active.length > 1 ? `Next ride (${active.length} booked)` : 'Next ride'}</h2>
-          <RideCard ride={next} mode="active" hero busy={actingId === next.id} onAct={act} />
+          <ActiveRide key={next.id} ride={next} navApp={navApp} busy={actingId === next.id} onPhase={setPhase} onAct={act} />
           {active.length > 1 && <Link className="btn btn-secondary btn-block" to="/driver/rides">All {active.length} booked rides</Link>}
         </>
       )}
@@ -38,7 +39,7 @@ export default function HomeTab() {
       {firstRequest && (
         <>
           <h2 className="drv-section">New request <span className="drv-count">{requests.length}</span></h2>
-          <RideCard ride={firstRequest} mode="request" busy={actingId === firstRequest.id} onAct={act} />
+          <RideCard ride={firstRequest} mode="request" navApp={navApp} busy={actingId === firstRequest.id} onAct={act} />
           {requests.length > 1 && (
             <Link className="btn btn-secondary btn-block" to="/driver/rides?tab=requests">
               {requests.length - 1} more {requests.length === 2 ? 'request' : 'requests'}

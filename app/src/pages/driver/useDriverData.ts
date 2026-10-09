@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getAvailableRides, getBookingAnalytics, getDriverInfo, respondToRide, updateDriverStatus, type DriverResponse } from '@api/driver'
+import { getAvailableRides, getBookingAnalytics, getDriverInfo, respondToRide, setNavApp as saveNavApp, setRidePhase, updateDriverStatus, type DriverResponse, type NavAppId } from '@api/driver'
+import type { BookingResponse } from '@api/tenant'
 import { useAuthStore } from '@store/auth'
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { useNotice } from '@hooks/useNotice'
 import { getApiErrorMessage } from '@utils/apiError'
-import { byPickup } from './rideHelpers'
+import { byPickup, defaultNavApp, NAV_APPS } from './rideHelpers'
 
 export type RideAction = 'confirmed' | 'cancelled' | 'completed'
 
@@ -65,6 +66,24 @@ export function useDriverState() {
     onError: err => notify({ ok: false, text: getApiErrorMessage(err, 'Could not update the ride') }),
   })
 
+  const phaseMutation = useMutation({
+    mutationFn: ({ id, phase }: { id: number; phase: 'enroute' | 'arrived' }) => setRidePhase(id, phase),
+    onSuccess: (res, { id }) => {
+      if (!res.success || !res.data) return notify({ ok: false, text: res.message || 'Could not update the ride' })
+      qc.setQueryData<BookingResponse[]>(key('active'), prev => prev?.map(r => (r.id === id ? { ...r, ...res.data } : r)))
+    },
+    onError: err => notify({ ok: false, text: getApiErrorMessage(err, 'Could not update the ride') }),
+  })
+
+  const navMutation = useMutation({
+    mutationFn: (next: NavAppId) => saveNavApp(next),
+    onMutate: next => qc.setQueryData<DriverResponse | null>(key('info'), prev => (prev ? { ...prev, nav_app: next } : prev)),
+    onError: err => {
+      void qc.invalidateQueries({ queryKey: key('info') })
+      notify({ ok: false, text: getApiErrorMessage(err, 'Could not save your navigation app') })
+    },
+  })
+
   const onlineMutation = useMutation({
     mutationFn: (next: boolean) => updateDriverStatus(next),
     onSuccess: (res, next) => {
@@ -90,6 +109,9 @@ export function useDriverState() {
     setOnline: (next: boolean) => onlineMutation.mutate(next),
     togglingOnline: onlineMutation.isPending,
     refreshRides,
+    setPhase: (id: number, phase: 'enroute' | 'arrived') => phaseMutation.mutate({ id, phase }),
+    navApp: NAV_APPS.find(a => a.id === infoQuery.data?.nav_app)?.id ?? defaultNavApp(),
+    setNavApp: (next: NavAppId) => navMutation.mutate(next),
   }
 }
 

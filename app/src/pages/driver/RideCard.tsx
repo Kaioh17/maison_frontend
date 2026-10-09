@@ -3,7 +3,7 @@ import type { BookingResponse } from '@api/tenant'
 import Button from '@components/Button'
 import StatusPill from '@components/StatusPill'
 import ConfirmButton from './ConfirmButton'
-import { appleMapsUrl, collectionNote, formatMoney, formatWhen, googleMapsUrl, prefersAppleMaps, telHref, untilLabel } from './rideHelpers'
+import { NAV_APPS, collectionNote, formatMoney, formatWhen, telHref, untilLabel, type NavApp } from './rideHelpers'
 import type { RideAction } from './useDriverData'
 
 interface RideCardProps {
@@ -12,18 +12,14 @@ interface RideCardProps {
   mode: 'request' | 'active' | 'past'
   hero?: boolean
   busy?: boolean
+  navApp: NavApp
   onAct?: (id: number, action: RideAction) => void
 }
 
 const SERVICE_LABEL: Record<string, string> = { airport: 'Airport', hourly: 'Hourly', dropoff: 'Drop-off' }
 
-const MAP_APPS = [
-  { name: 'Google Maps', url: googleMapsUrl },
-  { name: 'Apple Maps', url: appleMapsUrl },
-]
-
-function Stop({ label, address, navigable }: { label: string; address: string; navigable: boolean }) {
-  const apps = prefersAppleMaps() ? [...MAP_APPS].reverse() : MAP_APPS
+function Stop({ label, address, navigable, navApp }: { label: string; address: string; navigable: boolean; navApp: NavApp }) {
+  const app = NAV_APPS.find(a => a.id === navApp) ?? NAV_APPS[0]
   return (
     <div className="drv-stop">
       <span className="drv-stop-text">
@@ -31,20 +27,16 @@ function Stop({ label, address, navigable }: { label: string; address: string; n
         <span className="drv-stop-addr">{address}</span>
       </span>
       {navigable && (
-        <div className="drv-maps">
-          {apps.map(app => (
-            <a key={app.name} className="btn btn-secondary" href={app.url(address)} target="_blank" rel="noopener noreferrer"
-              aria-label={`Navigate to ${label.toLowerCase()} in ${app.name}`}>
-              <NavigationArrow size={18} weight="fill" aria-hidden />{app.name}
-            </a>
-          ))}
-        </div>
+        <a className="btn btn-secondary btn-block drv-maps" href={app.url(address)} target="_blank" rel="noopener noreferrer"
+          aria-label={`Navigate to ${label.toLowerCase()} in ${app.label}`}>
+          <NavigationArrow size={18} weight="fill" aria-hidden />{app.label}
+        </a>
       )}
     </div>
   )
 }
 
-export default function RideCard({ ride, mode, hero = false, busy = false, onAct }: RideCardProps) {
+export default function RideCard({ ride, mode, hero = false, busy = false, navApp, onAct }: RideCardProps) {
   const { day, time } = formatWhen(ride.pickup_time)
   const until = mode === 'active' ? untilLabel(ride.pickup_time) : null
   const collect = mode === 'past' ? null : collectionNote(ride)
@@ -70,9 +62,9 @@ export default function RideCard({ ride, mode, hero = false, busy = false, onAct
       <div className="drv-customer">{ride.customer_name || 'Rider'}</div>
 
       <div className="drv-route">
-        <Stop label="Pickup" address={ride.pickup_location} navigable={navigable} />
+        <Stop label="Pickup" address={ride.pickup_location} navigable={navigable} navApp={navApp} />
         {ride.dropoff_location
-          ? <Stop label="Drop-off" address={ride.dropoff_location} navigable={navigable} />
+          ? <Stop label="Drop-off" address={ride.dropoff_location} navigable={navigable} navApp={navApp} />
           : ride.hours ? <div className="drv-meta">Hourly - {ride.hours} h booked</div> : null}
       </div>
 

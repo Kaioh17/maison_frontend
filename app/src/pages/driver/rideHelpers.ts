@@ -1,3 +1,4 @@
+import type { NavAppId } from '@api/driver'
 import type { BookingResponse } from '@api/tenant'
 
 const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
@@ -9,6 +10,16 @@ export const googleMapsUrl = (address: string) =>
 
 export const appleMapsUrl = (address: string) =>
   `https://maps.apple.com/?${new URLSearchParams({ daddr: address, dirflg: 'd' })}`
+
+export const wazeUrl = (address: string) =>
+  `https://waze.com/ul?${new URLSearchParams({ q: address, navigate: 'yes' })}`
+
+export type NavApp = NavAppId
+export const NAV_APPS: { id: NavApp; label: string; url: (address: string) => string }[] = [
+  { id: 'google', label: 'Google Maps', url: googleMapsUrl },
+  { id: 'apple', label: 'Apple Maps', url: appleMapsUrl },
+  { id: 'waze', label: 'Waze', url: wazeUrl },
+]
 
 /** iPhone/iPad (iPadOS reports as a touch-capable Mac): lead with Apple Maps there, Google elsewhere. */
 export const prefersAppleMaps = () =>
@@ -65,4 +76,20 @@ export function collectionNote(ride: Pick<BookingResponse, 'payment_method' | 'e
     case 'zelle': return { tone: 'none', label: 'Zelle to the company - nothing to collect' }
     default: return null
   }
+}
+
+export const formatDuration = (mins: number) => (mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}`)
+
+export const defaultNavApp = (): NavApp => (prefersAppleMaps() ? 'apple' : 'google')
+
+/** Local wall-clock "3:30 PM". */
+export const clockLabel = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
+export type RidePhase = { phase: 'enroute' | 'arrived'; at: number }
+
+/** Where a confirmed ride is in the driver's trip, from the timestamps the server stamped. */
+export function ridePhase(ride: Pick<BookingResponse, 'driver_started_at' | 'driver_arrived_at'>): RidePhase | undefined {
+  if (ride.driver_arrived_at) return { phase: 'arrived', at: new Date(ride.driver_arrived_at).getTime() }
+  if (ride.driver_started_at) return { phase: 'enroute', at: new Date(ride.driver_started_at).getTime() }
+  return undefined
 }

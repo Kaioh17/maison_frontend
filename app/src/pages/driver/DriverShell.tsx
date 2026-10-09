@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { CalendarCheck, House, UserCircle, Wallet } from '@phosphor-icons/react'
 import Notice from '@components/Notice'
@@ -17,6 +17,19 @@ export default function DriverShell() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
+  // Phones: the header slides away while scrolling down and returns on any scroll up.
+  const [headHidden, setHeadHidden] = useState(false)
+  useEffect(() => {
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (Math.abs(y - last) < 8) return
+      setHeadHidden(y > last && y > 80)
+      last = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const state = useDriverState()
   const { tenantInfo, info, requests, notice, togglingOnline, setOnline } = state
 
@@ -31,7 +44,7 @@ export default function DriverShell() {
   const tenantIcon = tenantInfo?.favicon_url || tenantInfo?.logo_url
 
   return (
-    <div className="bw drv">
+    <div className={`bw drv${headHidden ? ' is-head-hidden' : ''}`}>
       <style>{DRIVER_CSS}</style>
       <header className="drv-head">
         <div className="drv-brand">
@@ -39,6 +52,7 @@ export default function DriverShell() {
             {tenantIcon ? <img src={tenantIcon} alt="" /> : companyName.charAt(0).toUpperCase()}
           </span>
           <span className="drv-brand-name">{companyName}</span>
+          <span className="drv-brand-role">Chauffeur</span>
         </div>
         <nav className="drv-nav" aria-label="Driver">
           {tabs.map(({ to, label, Icon, badge }) => (

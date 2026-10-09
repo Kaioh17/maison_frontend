@@ -51,6 +51,9 @@ export default function EarningsTab() {
   return (
     <div className="drv-stack">
       <h1 className="drv-title">Earnings</h1>
+      {configured && (
+        <div className="drv-today"><span>Today</span><strong>{formatMoney(today.earned)}</strong></div>
+      )}
       <div className="drv-tiles">
         <StatTile label="Completed rides" value={completedCount} />
         <StatTile label="Booked ahead" value={active.length} />
