@@ -2,14 +2,27 @@ import React, { useState } from 'react'
 import { Envelope, ArrowLeft } from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import MaisonWordmark from '@components/MaisonWordmark'
+import { requestPasswordReset } from '@api/auth'
+import { getApiErrorMessage } from '@utils/apiError'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
+    setSending(true)
+    setError('')
+    try {
+      await requestPasswordReset('tenant', email.trim())
+      setSubmitted(true)
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not send the reset link. Please try again.'))
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -25,7 +38,7 @@ export default function ForgotPassword() {
 
         {submitted ? (
           <div style={{ textAlign: 'center', width: '100%' }}>
-            <h2 style={{ margin: '0 0 12px 0', fontSize: 28, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Check your email</h2>
+            <h1 style={{ margin: '0 0 12px 0', fontSize: 28, fontFamily: 'DM Sans, sans-serif', fontWeight: 200 }}>Check your email</h1>
             <p className="small-muted" style={{ fontSize: 15, fontFamily: 'Work Sans, sans-serif', fontWeight: 300, lineHeight: 1.6, marginBottom: 32 }}>
               If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
             </p>
@@ -36,7 +49,7 @@ export default function ForgotPassword() {
           </div>
         ) : (
           <>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: 32, fontFamily: 'DM Sans, sans-serif', fontWeight: 200, textAlign: 'center' }}>Reset password</h2>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: 32, fontFamily: 'DM Sans, sans-serif', fontWeight: 200, textAlign: 'center' }}>Reset password</h1>
             <p className="small-muted" style={{ marginTop: 0, marginBottom: 28, fontSize: 15, fontFamily: 'Work Sans, sans-serif', fontWeight: 300, textAlign: 'center', lineHeight: 1.5 }}>
               Enter your email and we'll send you a reset link.
             </p>
@@ -60,12 +73,14 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
+              {error && <div className="bw-notice bw-notice-err" role="alert" style={{ margin: 0 }}>{error}</div>}
               <button
                 type="submit"
+                disabled={sending}
                 className="bw-btn"
                 style={{ width: '100%', borderRadius: 'var(--radius-field)', padding: '14px 24px', fontFamily: 'Work Sans, sans-serif', fontWeight: 500, backgroundColor: 'var(--bw-accent)', color: '#ffffff', border: '1px solid var(--bw-accent)' }}
               >
-                Send reset link
+                {sending ? 'Sending…' : 'Send reset link'}
               </button>
             </form>
 

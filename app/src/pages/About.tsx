@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import maisonWordmark from '../images/maison_wordmark.png'
+import maisonWordmark from '../images/maison_wordmark.webp'
 
 export default function About() {
   return (
@@ -14,13 +14,15 @@ export default function About() {
           >
             <img
               src={maisonWordmark}
+              width={220}
+              height={72}
               alt="Maison"
               style={{ height: '2.25rem', width: 'auto', display: 'block', transform: 'translateY(-16.9%)' }}
             />
           </Link>
           <Link
             to="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-[#7c5cfc] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#7c3aed]"
+            className="inline-flex items-center justify-center rounded-full bg-[#6d48f0] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#7c3aed]"
             style={{ fontFamily: "'Work Sans', sans-serif" }}
           >
             Get Started

@@ -80,7 +80,7 @@ export default function TenantLanding() {
         <div
           style={{
             color: loadingPalette.text,
-            fontFamily: 'Work Sans, sans-serif',
+            fontFamily: 'var(--bw-font-body, Work Sans, sans-serif)',
             fontSize: '16px',
           }}
         >
@@ -117,7 +117,7 @@ export default function TenantLanding() {
             margin: '0 auto',
             textAlign: 'center',
             color: 'var(--bw-error)',
-            fontFamily: 'Work Sans, sans-serif',
+            fontFamily: 'var(--bw-font-body, Work Sans, sans-serif)',
             fontSize: '16px',
           }}
         >
@@ -145,7 +145,7 @@ export default function TenantLanding() {
           minHeight: 'var(--app-h)',
           backgroundColor: premium.palette.background,
           color: premium.palette.text,
-          fontFamily: 'Work Sans, sans-serif',
+          fontFamily: 'var(--bw-font-body, Work Sans, sans-serif)',
         }}
       >
         <div className="tl-premium-shell" style={{ maxWidth: 1120, margin: '0 auto' }}>
@@ -199,7 +199,7 @@ export default function TenantLanding() {
             <h1
               style={{
                 margin: '12px 0 0 0',
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--bw-font-heading, DM Sans, sans-serif)',
                 fontSize: 'clamp(32px, 5vw, 52px)',
                 fontWeight: 600,
                 lineHeight: 1.18,
@@ -214,7 +214,7 @@ export default function TenantLanding() {
             <h2
               style={{
                 margin: 0,
-                fontFamily: 'DM Sans, sans-serif',
+                fontFamily: 'var(--bw-font-heading, DM Sans, sans-serif)',
                 fontWeight: 500,
                 fontSize: 'clamp(22px, 3.2vw, 34px)',
                 lineHeight: 1.35,
@@ -303,7 +303,7 @@ export default function TenantLanding() {
                   <h3
                     style={{
                       margin: '0 0 6px 0',
-                      fontFamily: 'DM Sans, sans-serif',
+                      fontFamily: 'var(--bw-font-heading, DM Sans, sans-serif)',
                       fontSize: 14,
                       fontWeight: 500,
                       lineHeight: 1.4,

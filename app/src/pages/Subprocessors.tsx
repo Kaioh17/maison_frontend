@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import MaisonWordmark from '@components/MaisonWordmark'
+import PilotNotice from '@components/PilotNotice'
+import { LEGAL_EFFECTIVE_DATE } from '../constants/legal'
 
-const EFFECTIVE_DATE = 'July 18, 2026'
+const EFFECTIVE_DATE = LEGAL_EFFECTIVE_DATE
 
 type Subprocessor = {
   name: string
@@ -140,6 +142,7 @@ export default function Subprocessors() {
         <p style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 13, color: 'var(--bw-muted)', marginBottom: 8 }}>
           Last updated: {EFFECTIVE_DATE}
         </p>
+        <PilotNotice />
         <div
           style={{
             fontFamily: 'Work Sans, sans-serif',
@@ -204,7 +207,7 @@ export default function Subprocessors() {
             ← Back to Privacy Policy
           </Link>
           <span style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 12, color: 'var(--bw-muted)' }}>
-            © {new Date().getFullYear()} Maison Technologies, Inc. All rights reserved.
+            © {new Date().getFullYear()} Maison
           </span>
         </div>
       </div>

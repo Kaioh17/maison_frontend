@@ -1,10 +1,29 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import MaisonWordmark from '@components/MaisonWordmark'
+import PilotNotice from '@components/PilotNotice'
+import { LEGAL_EFFECTIVE_DATE, CONTACT_EMAIL, PILOT_DAYS } from '../constants/legal'
 
-const EFFECTIVE_DATE = 'July 18, 2026'
+const EFFECTIVE_DATE = LEGAL_EFFECTIVE_DATE
 
 const sections: { title: string; content: ReactNode }[] = [
+  {
+    title: 'Pilot Program Data',
+    content: (
+      <>
+        <p>
+          Maison is currently a {PILOT_DAYS}-day pilot (the Founding Operators Program) for operators to try the workflow, test it with
+          drivers and riders, and give feedback. During the Pilot:
+        </p>
+        <ul>
+          <li>We record when an Operator accepts our legal documents: the document version, the time, the IP address, and the browser (user agent). We keep this as proof of consent.</li>
+          <li>Feedback you send us may be stored and used to improve the Service.</li>
+          <li>Pilot data may be reset or deleted, and is not guaranteed to be retained after the Pilot ends. To request a copy of your data, email {CONTACT_EMAIL} before the Pilot ends.</li>
+          <li>Pilot users should avoid entering information they would not want to be lost or exposed during testing.</li>
+        </ul>
+      </>
+    ),
+  },
   {
     title: 'Our Role: Controller and Processor',
     content: (
@@ -225,7 +244,7 @@ const sections: { title: string; content: ReactNode }[] = [
           share personal information for cross-context behavioural advertising.
         </p>
         <p>
-          To exercise a right, contact your Operator if you are a driver or a rider, or email us at privacy@usemaison.io. We may
+          To exercise a right, contact your Operator if you are a driver or a rider, or email us at {CONTACT_EMAIL}. We may
           need to verify your identity before acting, and we aim to respond within 30 days. If you are in the EEA or UK, you also
           have the right to lodge a complaint with your local supervisory authority.
         </p>
@@ -270,7 +289,7 @@ const sections: { title: string; content: ReactNode }[] = [
           Maison is not directed to children. The Service is intended for users aged 18 and over, and we do not knowingly collect
           personal information from children under 13 (or the equivalent minimum age in your jurisdiction). If we learn we have
           collected such information, we will delete it. If you believe a child has provided us with personal information, contact us
-          at privacy@usemaison.io.
+          at {CONTACT_EMAIL}.
         </p>
       </>
     ),
@@ -294,10 +313,7 @@ const sections: { title: string; content: ReactNode }[] = [
       <>
         <p>If you have questions about this Policy or how your information is handled, please contact us:</p>
         <ul>
-          <li><strong>Privacy:</strong> privacy@usemaison.io</li>
-          <li><strong>Legal:</strong> legal@usemaison.io</li>
-          <li><strong>Support:</strong> support@usemaison.io</li>
-          <li><strong>Mailing address:</strong> Maison Technologies, Inc., Legal Department, [Address on file]</li>
+          <li><strong>Email:</strong> {CONTACT_EMAIL}</li>
         </ul>
         <p>
           If you are a driver or a rider, you may also contact the Operator whose branded site you used, since that Operator controls
@@ -320,8 +336,9 @@ export default function Privacy() {
         <p style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 13, color: 'var(--bw-muted)', marginBottom: 8 }}>
           Last updated: {EFFECTIVE_DATE}
         </p>
+        <PilotNotice />
         <p style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 14, color: 'var(--bw-muted)', marginBottom: 40, lineHeight: 1.6 }}>
-          This Privacy Policy explains how Maison Technologies, Inc. ("Maison," "we," "our," or "us") collects, uses, shares, and
+          This Privacy Policy explains how Maison ("Maison," "we," "our," or "us") collects, uses, shares, and
           protects personal information when you use Maison as an operator, a driver, or a rider. It should be read alongside our{' '}
           <Link to="/terms" style={{ color: 'var(--bw-text)', textDecoration: 'underline' }}>Terms of Service</Link>.
         </p>
@@ -333,7 +350,7 @@ export default function Privacy() {
                 <span style={{ color: 'var(--bw-muted)', fontWeight: 300, fontSize: 15, marginRight: 10 }}>{i + 1}.</span>
                 {section.title}
               </h2>
-              <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--bw-text)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="legal-doc" style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--bw-text)', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {section.content}
               </div>
             </div>
@@ -345,7 +362,7 @@ export default function Privacy() {
             ← Back to sign in
           </Link>
           <span style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 12, color: 'var(--bw-muted)' }}>
-            © {new Date().getFullYear()} Maison Technologies, Inc. All rights reserved.
+            © {new Date().getFullYear()} Maison
           </span>
         </div>
       </div>

@@ -9,20 +9,10 @@ import {
 import { useTenantInfo } from '@hooks/useTenantInfo'
 import { listAllowedRiderPaymentMethods, RIDER_PAYMENT_METHOD_LABELS, type RiderPaymentMethodId } from '@utils/allowedPaymentMethods'
 import { useFavicon } from '@hooks/useFavicon'
-import { MapPin, Calendar, Clock, CurrencyDollar, CaretDown, X, Check, Info } from '@phosphor-icons/react'
-// Stripe Logo SVG Component
-const StripeLogo = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.397 2.8 5.747 6.976 7.076 2.172.806 3.356 1.426 3.356 2.409 0 .98-.84 1.545-2.354 1.545-1.905 0-4.515-.927-6.29-1.87L3.55 24.05c1.713.927 4.59 1.87 8.617 1.87 2.5 0 4.58-.654 6.063-1.87 1.545-1.305 2.227-3.15 2.227-5.376 0-4.397-2.8-5.747-6.976-7.076z" fill="#635BFF"/>
-  </svg>
-)
-
-// Zelle Logo SVG Component
-const ZelleLogo = ({ size = 20 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1.5-3.5h-3L4 12l3.5-3.5h3L7.5 12l3 4.5zm9 0h-3L13 12l3-3.5h3L16.5 12l3 4.5z" fill="#6D1ED4"/>
-  </svg>
-)
+import { CaretDown, Info, X } from '@phosphor-icons/react'
+import Button from '@components/Button'
+import Modal from '@components/Modal'
+import { RIDER_CSS } from './rider/riderCss'
 
 export default function BookingConfirmation() {
   useFavicon()
@@ -199,980 +189,170 @@ export default function BookingConfirmation() {
     return RIDER_PAYMENT_METHOD_LABELS[method]
   }
 
+  const frame = (children: React.ReactNode) => (
+    <div className="bw rdr-canvas">
+      <style>{RIDER_CSS}</style>
+      <div className="rdr">{children}</div>
+    </div>
+  )
+
   if (loadingBooking || !booking) {
-    return (
-      <div style={{
-        minHeight: 'var(--app-h)',
-        backgroundColor: 'var(--bw-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Work Sans, sans-serif',
-        flexDirection: 'column',
-        gap: 12,
-        padding: 24,
-      }}>
-        <div style={{ color: 'var(--bw-text)', fontSize: '16px' }}>
-          {loadingBooking ? 'Loading your ride details…' : 'Unable to load booking'}
-        </div>
-        {!loadingBooking && error ? (
-          <div style={{ color: '#ef4444', fontSize: '14px', textAlign: 'center', maxWidth: 420 }}>{error}</div>
-        ) : null}
-      </div>
+    return frame(
+      <main className="rdr-main" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+        <p className="rdr-sub" role="status">{loadingBooking ? 'Loading your ride details…' : 'Unable to load booking'}</p>
+        {!loadingBooking && error && <div className="bw-notice bw-notice-err" role="alert" style={{ margin: 0 }}>{error}</div>}
+      </main>
     )
   }
 
+  const canConfirm = !isLoading && !!selectedPaymentMethod && permittedPaymentMethods.length > 0
+  const balance = booking.deposit != null ? booking.estimated_price - booking.deposit : null
+  const paymentNote: Record<RiderPaymentMethodId, string> = {
+    card: 'Card payments are powered by Stripe. Your payment information is secure and encrypted.',
+    zelle: "You'll see Zelle payment details on the next screen after you confirm your ride.",
+    cash: 'Cash is collected in person at the time of service. Please have exact change ready.',
+    card_pickup: 'The driver will run your card in person at the time of service, using a card/tap reader (e.g. Square), not a prepaid Stripe charge.',
+  }
+
   return (
-    <div style={{
-      minHeight: 'var(--app-h)',
-      backgroundColor: 'var(--bw-bg)',
-      fontFamily: 'Work Sans, sans-serif',
-      display: 'flex',
-      flexDirection: 'column',
-      overflowX: 'hidden',
-      width: '100%'
-    }}>
-      <div style={{
-        maxWidth: '600px',
-        margin: '0 auto',
-        width: '100%',
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '0 clamp(16px, 3vw, 24px)',
-        paddingTop: 'clamp(16px, 3vw, 24px)'
-      }}>
-        {/* Header with X button and title */}
-        <div style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: 'clamp(24px, 4vw, 32px)'
-        }}>
-          {/* X button for decline - positioned at top left */}
-          <button
-            onClick={() => setShowDeclineWarning(true)}
-            disabled={isLoading}
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              padding: 'clamp(8px, 1.5vw, 12px)',
-              borderRadius: '8px',
-              backgroundColor: 'transparent',
-              color: 'var(--bw-text)',
-              border: 'none',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: isLoading ? 0.6 : 0.8,
-              transition: 'all 0.2s ease',
-              zIndex: 1
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                e.currentTarget.style.opacity = '1'
-                e.currentTarget.style.color = '#ef4444'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.opacity = '0.8'
-                e.currentTarget.style.color = 'var(--bw-text)'
-              }
-            }}
-          >
-            <X size={24} />
-          </button>
-          <h1 style={{
-            margin: '0 auto',
-            fontSize: 'clamp(24px, 4vw, 32px)',
-            fontWeight: 200,
-            fontFamily: 'DM Sans, sans-serif',
-            color: 'var(--bw-text)',
-            textAlign: 'center',
-            flex: 1
-          }}>
-            Confirm Your Ride
-          </h1>
-        </div>
+    <>
+      {frame(
+        <>
+          <main className="rdr-main">
+            <div className="rdr-head-row" style={{ alignItems: 'center' }}>
+              <h1 className="rdr-title">Confirm your ride</h1>
+              <button type="button" className="rdr-iconbtn" aria-label="Cancel this booking" disabled={isLoading} onClick={() => setShowDeclineWarning(true)}>
+                <X size={22} aria-hidden />
+              </button>
+            </div>
 
-        {error && (
-          <div style={{
-            padding: 'clamp(10px, 2vw, 12px)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            color: '#ef4444',
-            marginBottom: 'clamp(16px, 3vw, 24px)',
-            fontSize: 'clamp(13px, 2vw, 14px)'
-          }}>
-            {error}
-          </div>
-        )}
+            {error && <div className="bw-notice bw-notice-err" role="alert" style={{ margin: 0 }}>{error}</div>}
 
-        {/* Price Section */}
-        {booking.estimated_price > 0 && (
-          <div style={{
-            backgroundColor: 'var(--bw-bg-secondary)',
-            borderTop: '1px solid var(--bw-border)',
-            borderBottom: '1px solid var(--bw-border)',
-            borderRadius: '10px',
-            padding: 'clamp(20px, 4vw, 28px)',
-            marginLeft: 'clamp(-16px, -3vw, -24px)',
-            marginRight: 'clamp(-16px, -3vw, -24px)',
-            marginBottom: 'clamp(10px, 2vw, 12px)',
-            width: 'calc(100% + clamp(32px, 6vw, 48px))',
-            maxWidth: '100%',
-            boxSizing: 'border-box',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-            transition: 'box-shadow 0.2s ease'
-          }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: booking.deposit != null && booking.deposit !== undefined ? 'clamp(12px, 2.5vw, 16px)' : '0'
-            }}>
-              <div>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  marginBottom: '4px',
-                  fontFamily: 'Work Sans, sans-serif'
-                }}>
-                  Estimated Price
-                </div>
-                <div style={{
-                  fontSize: 'clamp(24px, 4vw, 32px)',
-                  fontWeight: 600,
-                  color: 'var(--bw-text)',
-                  fontFamily: 'DM Sans, sans-serif',
-                  letterSpacing: '-0.02em'
-                }}>
-                  ${booking.estimated_price.toFixed(2)}
+            {booking.estimated_price > 0 && (
+              <section className="rdr-trip" aria-label="Price">
+                <div className="rdr-label" style={{ margin: 0 }}>Estimated price</div>
+                <div className="rdr-amount">${booking.estimated_price.toFixed(2)}</div>
+                {booking.deposit != null && (
+                  <div className="rdr-trip-foot" style={{ flexDirection: 'column', gap: 4 }}>
+                    <span style={{ display: 'flex', justifyContent: 'space-between', gap: 12, textAlign: 'left' }}>
+                      <span>Deposit, charged now</span>
+                      <strong style={{ color: 'var(--bw-text)' }}>${booking.deposit.toFixed(2)}</strong>
+                    </span>
+                    <span style={{ textAlign: 'left', lineHeight: 1.45 }}>
+                      The remaining ${balance!.toFixed(2)} plus tax is charged when the trip is completed.
+                    </span>
+                  </div>
+                )}
+              </section>
+            )}
+
+            <section className="rdr-route" aria-label="Trip details">
+              <div className="rdr-route-body">
+                <div className="rdr-stops">
+                  <div className="rdr-stop">
+                    <span className="rdr-stop-label">Pickup</span>
+                    <span style={{ fontSize: 16, padding: '4px 0', overflowWrap: 'anywhere' }}>{booking.pickup_location}</span>
+                  </div>
+                  {booking.dropoff_location && (
+                    <div className="rdr-stop">
+                      <span className="rdr-stop-label">Dropoff</span>
+                      <span style={{ fontSize: 16, padding: '4px 0', overflowWrap: 'anywhere' }}>{booking.dropoff_location}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              {booking.deposit != null && booking.deposit !== undefined && (
-                <div>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    marginBottom: '4px',
-                    fontFamily: 'Work Sans, sans-serif'
-                  }}>
-                    Deposit
+              <div className="rdr-route-body" style={{ borderTop: '1px solid var(--bw-border)' }}>
+                <dl className="rdr-rows">
+                  <div className="rdr-row"><dt>Service</dt><dd style={{ textTransform: 'capitalize' }}>{booking.service_type}</dd></div>
+                  {booking.vehicle && <div className="rdr-row"><dt>Vehicle</dt><dd>{booking.vehicle}</dd></div>}
+                  <div className="rdr-row"><dt>Pickup time</dt><dd>{formatDate(booking.pickup_time)}</dd></div>
+                  {booking.dropoff_time && <div className="rdr-row"><dt>ETA</dt><dd>{formatDate(booking.dropoff_time)}</dd></div>}
+                </dl>
+                {booking.notes?.trim() && (
+                  <div className="rdr-note" style={{ margin: '4px 0 10px' }}>
+                    <strong>Your notes</strong>
+                    {booking.notes}
                   </div>
-                  <div style={{
-                    fontSize: 'clamp(24px, 4vw, 32px)',
-                    fontWeight: 600,
-                    color: 'var(--bw-text)',
-                    fontFamily: 'DM Sans, sans-serif',
-                    letterSpacing: '-0.02em',
-                    marginBottom: 'clamp(8px, 1.5vw, 12px)'
-                  }}>
-                    ${booking.deposit.toFixed(2)}
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(11px, 1.8vw, 12px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.6,
-                    fontFamily: 'Work Sans, sans-serif',
-                    lineHeight: 1.4
-                  }}>
-                    This deposit will be charged now. The remaining balance of ${(booking.estimated_price - booking.deposit).toFixed(2)} plus tax will be charged upon trip completion.
-                  </div>
+                )}
+              </div>
+            </section>
+
+            <div className="rdr-field">
+              <span>Payment method</span>
+              <button
+                type="button"
+                className="rdr-pick"
+                aria-haspopup="dialog"
+                disabled={permittedPaymentMethods.length === 0}
+                onClick={() => setShowPaymentSheet(true)}
+              >
+                <span className="rdr-pick-main">
+                  <strong>{selectedPaymentMethod ? RIDER_PAYMENT_METHOD_LABELS[selectedPaymentMethod] : 'Select a payment method'}</strong>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{selectedPaymentMethod ? 'Change' : 'Choose'}<CaretDown size={14} aria-hidden /></span>
+              </button>
+              {permittedPaymentMethods.length === 0 && (
+                <div className="bw-notice bw-notice-err" role="alert" style={{ margin: 0 }}>
+                  No payment methods are enabled for this company. Please contact support to complete your booking.
                 </div>
               )}
+              {selectedPaymentMethod && <p className="rdr-note" style={{ margin: 0 }}>{paymentNote[selectedPaymentMethod]}</p>}
             </div>
+          </main>
+
+          <div className="rdr-bar">
+            <Button fullWidth disabled={!canConfirm} onClick={handleConfirm} style={{ minHeight: 54, fontSize: 16 }}>
+              {isLoading ? 'Processing…' : 'Confirm ride'}
+            </Button>
           </div>
-        )}
+        </>
+      )}
 
-        {/* Booking Details Card */}
-        <div style={{
-          backgroundColor: 'var(--bw-bg-secondary)',
-          borderTop: '1px solid var(--bw-border)',
-          borderBottom: '1px solid var(--bw-border)',
-          borderRadius: '10px',
-          padding: 'clamp(20px, 4vw, 28px)',
-          marginLeft: 'clamp(-16px, -3vw, -24px)',
-          marginRight: 'clamp(-16px, -3vw, -24px)',
-          marginBottom: 'clamp(10px, 2vw, 12px)',
-          width: 'calc(100% + clamp(32px, 6vw, 48px))',
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-          transition: 'box-shadow 0.2s ease'
-        }}>
-          {/* Service Type */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            marginBottom: 'clamp(16px, 3vw, 20px)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-              <div style={{
-                fontSize: 'clamp(12px, 2vw, 14px)',
-                color: 'var(--bw-text)',
-                opacity: 0.7,
-                fontFamily: 'Work Sans, sans-serif'
-              }}>
-                Service Type
-              </div>
-            </div>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: 'clamp(6px, 1.2vw, 8px) clamp(12px, 2.5vw, 16px)',
-              borderRadius: '20px',
-              backgroundColor: 'var(--bw-bg-secondary)',
-              border: '1px solid var(--bw-border)',
-              fontSize: 'clamp(12px, 2vw, 14px)',
-              fontWeight: 500,
-              color: 'var(--bw-text)',
-              fontFamily: 'Work Sans, sans-serif',
-              textTransform: 'capitalize',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-            }}>
-              {booking.service_type}
-            </div>
-          </div>
-
-          {/* Route Information - Merged Container */}
-          <div style={{
-            padding: 'clamp(16px, 3vw, 20px)',
-            borderRadius: '12px',
-            backgroundColor: 'var(--bw-bg-secondary)',
-            border: '1px solid var(--bw-border)',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'clamp(16px, 3vw, 20px)'
-          }}>
-            {/* Pickup Location */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 'clamp(12px, 2.5vw, 16px)'
-            }}>
-              <MapPin size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  marginBottom: '6px',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 500
-                }}>
-                  Pickup Location
-                </div>
-                <div style={{
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  color: 'var(--bw-text)',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, sans-serif',
-                  lineHeight: 1.5
-                }}>
-                  {booking.pickup_location}
-                </div>
-              </div>
-            </div>
-
-            {/* Dropoff Location */}
-            {booking.dropoff_location && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'clamp(12px, 2.5vw, 16px)'
-              }}>
-                <MapPin size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    marginBottom: '6px',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 500
-                  }}>
-                    Dropoff Location
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(14px, 2.5vw, 16px)',
-                    color: 'var(--bw-text)',
-                    fontWeight: 400,
-                    fontFamily: 'Work Sans, sans-serif',
-                    lineHeight: 1.5
-                  }}>
-                    {booking.dropoff_location}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Pickup Time */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 'clamp(12px, 2.5vw, 16px)'
-            }}>
-              <Calendar size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  fontSize: 'clamp(12px, 2vw, 14px)',
-                  color: 'var(--bw-text)',
-                  opacity: 0.7,
-                  marginBottom: '6px',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 500
-                }}>
-                  Pickup Time
-                </div>
-                <div style={{
-                  fontSize: 'clamp(14px, 2.5vw, 16px)',
-                  color: 'var(--bw-text)',
-                  fontWeight: 400,
-                  fontFamily: 'Work Sans, sans-serif',
-                  lineHeight: 1.5
-                }}>
-                  {formatDate(booking.pickup_time)}
-                </div>
-              </div>
-            </div>
-
-            {/* Dropoff Time (ETA) */}
-            {booking.dropoff_time && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 'clamp(12px, 2.5vw, 16px)'
-              }}>
-                <Clock size={20} style={{ marginTop: '2px', color: 'var(--bw-text)', opacity: 0.7, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: 'clamp(12px, 2vw, 14px)',
-                    color: 'var(--bw-text)',
-                    opacity: 0.7,
-                    marginBottom: '6px',
-                    fontFamily: 'Work Sans, sans-serif',
-                    fontWeight: 500
-                  }}>
-                    ETA
-                  </div>
-                  <div style={{
-                    fontSize: 'clamp(14px, 2.5vw, 16px)',
-                    color: 'var(--bw-text)',
-                    fontWeight: 400,
-                    fontFamily: 'Work Sans, sans-serif',
-                    lineHeight: 1.5
-                  }}>
-                    {formatDate(booking.dropoff_time)}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Payment Method Selection */}
-        <div style={{
-          backgroundColor: 'var(--bw-bg-secondary)',
-          borderTop: '1px solid var(--bw-border)',
-          borderBottom: '1px solid var(--bw-border)',
-          borderRadius: '10px',
-          padding: 'clamp(20px, 4vw, 24px)',
-          marginLeft: 'clamp(-16px, -3vw, -24px)',
-          marginRight: 'clamp(-16px, -3vw, -24px)',
-          marginBottom: 'clamp(20px, 4vw, 24px)',
-          width: 'calc(100% + clamp(32px, 6vw, 48px))',
-          maxWidth: '100%',
-          boxSizing: 'border-box',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
-        }}>
-          <h2 style={{
-            margin: '0 0 clamp(16px, 3vw, 20px) 0',
-            fontSize: 'clamp(18px, 3vw, 22px)',
-            fontWeight: 400,
-            fontFamily: 'Work Sans, sans-serif',
-            color: 'var(--bw-text)'
-          }}>
-            Payment Method
-          </h2>
-          {permittedPaymentMethods.length === 0 && (
-            <div style={{
-              marginBottom: 'clamp(12px, 2vw, 16px)',
-              padding: 'clamp(12px, 2vw, 14px)',
-              borderRadius: '8px',
-              border: '1px solid var(--bw-border)',
-              backgroundColor: 'rgba(239, 68, 68, 0.08)',
-              color: '#b91c1c',
-              fontSize: 'clamp(13px, 2vw, 14px)',
-              fontFamily: 'Work Sans, sans-serif',
-              lineHeight: 1.45
-            }}>
-              No payment methods are enabled for this company. Please contact support to complete your booking.
-            </div>
-          )}
-          <button
-            onClick={() => permittedPaymentMethods.length > 0 && setShowPaymentSheet(true)}
-            disabled={permittedPaymentMethods.length === 0}
-            style={{
-              width: '100%',
-              padding: 'clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 20px)',
-              borderRadius: '8px',
-              border: '1px solid var(--bw-border)',
-              backgroundColor: selectedPaymentMethod ? 'var(--bw-bg-secondary)' : 'var(--bw-bg)',
-              color: 'var(--bw-text)',
-              cursor: permittedPaymentMethods.length === 0 ? 'not-allowed' : 'pointer',
-              fontFamily: 'Work Sans, sans-serif',
-              fontSize: 'clamp(14px, 2.5vw, 16px)',
-              fontWeight: 400,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              boxShadow: selectedPaymentMethod ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none',
-              position: 'relative'
-            }}
-            onMouseEnter={(e) => {
-              if (permittedPaymentMethods.length > 0 && !selectedPaymentMethod) {
-                e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (permittedPaymentMethods.length > 0 && !selectedPaymentMethod) {
-                e.currentTarget.style.backgroundColor = 'var(--bw-bg)'
-              }
-            }}
-          >
-            <span>{getPaymentMethodDisplayName(selectedPaymentMethod)}</span>
-            <CaretDown size={20} style={{ color: 'var(--bw-text)', opacity: 0.6, position: 'absolute', right: 'clamp(16px, 3vw, 20px)' }} />
-          </button>
-          {/* Payment Method Information */}
-          {selectedPaymentMethod && (
-            <div style={{
-              marginTop: 'clamp(16px, 3vw, 20px)',
-              paddingTop: 'clamp(16px, 3vw, 20px)',
-              borderTop: '1px solid var(--bw-border)'
-            }}>
-              <p style={{
-                fontSize: 'clamp(11px, 1.8vw, 12px)',
-                color: 'var(--bw-text)',
-                opacity: 0.6,
-                margin: 0,
-                fontFamily: 'Work Sans, sans-serif',
-                lineHeight: 1.5
-              }}>
-                {selectedPaymentMethod === 'card' && 'Card payments are powered by Stripe. Your payment information is secure and encrypted.'}
-                {selectedPaymentMethod === 'zelle' && "You'll see Zelle payment details on the next screen after you confirm your ride."}
-                {selectedPaymentMethod === 'cash' && 'Cash is collected in person at the time of service. Please have exact change ready.'}
-                {selectedPaymentMethod === 'card_pickup' && "The driver will run your card in person at the time of service, using a card/tap reader (e.g. Square) — not a prepaid Stripe charge."}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer - Extra padding for fixed button */}
-        <div style={{
-          paddingBottom: 'clamp(100px, 15vw, 120px)'
-        }} />
-      </div>
-
-      {/* Fixed Confirm Ride Button */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 'clamp(16px, 3vw, 24px)',
-        paddingBottom: 'calc(clamp(16px, 3vw, 24px) + env(safe-area-inset-bottom, 0px))',
-        backgroundColor: 'var(--bw-bg)',
-        borderTop: '1px solid var(--bw-border)',
-        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)',
-        zIndex: 100
-      }}>
-        <div style={{
-          maxWidth: '600px',
-          margin: '0 auto',
-          width: '100%'
-        }}>
-          <button
-            onClick={handleConfirm}
-            disabled={isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0}
-            style={{
-              width: '100%',
-              padding: 'clamp(16px, 2.5vw, 20px) clamp(20px, 4vw, 24px)',
-              borderRadius: '12px',
-              backgroundColor: '#10b981',
-              color: '#ffffff',
-              border: 'none',
-              cursor: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 'not-allowed' : 'pointer',
-              fontFamily: 'Work Sans, sans-serif',
-              fontWeight: 600,
-              fontSize: 'clamp(16px, 3vw, 18px)',
-              opacity: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 0.6 : 1,
-              transition: 'all 0.2s ease',
-              boxShadow: isLoading || !selectedPaymentMethod || permittedPaymentMethods.length === 0 ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading && selectedPaymentMethod && permittedPaymentMethods.length > 0) {
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading && selectedPaymentMethod && permittedPaymentMethods.length > 0) {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)'
-              }
-            }}
-          >
-            {isLoading ? 'Processing...' : 'Confirm Ride'}
-          </button>
-        </div>
-      </div>
-
-      {/* Payment Method Bottom Sheet */}
       {showPaymentSheet && (
-        <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setShowPaymentSheet(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 1000,
-              animation: 'fadeIn 0.2s ease',
-              backdropFilter: 'blur(2px)'
-            }}
-          />
-          {/* Bottom Sheet */}
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-              borderTopLeftRadius: '24px',
-              borderTopRightRadius: '24px',
-              padding: 'clamp(20px, 4vw, 24px)',
-              paddingBottom: 'clamp(32px, 6vw, 48px)',
-              boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.15)',
-              zIndex: 1001,
-              maxHeight: 'calc(var(--vis-h) * 0.8)',
-              overflowY: 'auto',
-              animation: 'slideUp 0.3s ease-out',
-              borderTop: '1px solid var(--bw-border)'
-            }}
-          >
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 'clamp(20px, 4vw, 24px)'
-            }}>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3.5vw, 24px)',
-                fontWeight: 500,
-                fontFamily: 'DM Sans, sans-serif',
-                color: 'var(--bw-text)'
-              }}>
-                Select Payment Method
-              </h2>
+        <Modal variant="sheet" title="Payment method" onClose={() => setShowPaymentSheet(false)}>
+          <div className="rdr-options" role="radiogroup" aria-label="Payment method">
+            {permittedPaymentMethods.map((method) => (
               <button
-                onClick={() => setShowPaymentSheet(false)}
-                style={{
-                  padding: '8px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  color: 'var(--bw-text)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'background-color 0.2s ease',
-                  opacity: 0.7
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                  e.currentTarget.style.opacity = '1'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.opacity = '0.7'
-                }}
+                key={method}
+                type="button"
+                role="radio"
+                className="rdr-option"
+                aria-checked={selectedPaymentMethod === method}
+                onClick={() => handlePaymentMethodSelect(method)}
               >
-                <X size={24} />
+                <span className="rdr-option-main"><strong>{RIDER_PAYMENT_METHOD_LABELS[method]}</strong></span>
+                <span className="rdr-radio" aria-hidden />
               </button>
-            </div>
-
-            {/* Payment Options */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'clamp(12px, 2.5vw, 16px)'
-            }}>
-              {permittedPaymentMethods.map((method) => {
-                const isSelected = selectedPaymentMethod === method
-                return (
-                  <button
-                    key={method}
-                    onClick={() => handlePaymentMethodSelect(method)}
-                    style={{
-                      padding: 'clamp(16px, 3vw, 20px)',
-                      borderRadius: '12px',
-                      border: isSelected ? '2px solid var(--bw-accent)' : '1px solid var(--bw-border)',
-                      backgroundColor: isSelected ? 'var(--bw-bg-secondary)' : 'var(--bw-bg)',
-                      color: 'var(--bw-text)',
-                      cursor: 'pointer',
-                      fontFamily: 'Work Sans, sans-serif',
-                      fontSize: 'clamp(15px, 2.5vw, 17px)',
-                      fontWeight: isSelected ? 500 : 400,
-                      textAlign: 'center',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      boxShadow: isSelected ? '0 2px 8px rgba(0, 0, 0, 0.1)' : 'none',
-                      position: 'relative'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = 'var(--bw-bg)'
-                        e.currentTarget.style.boxShadow = 'none'
-                      }
-                    }}
-                  >
-                    <span>{RIDER_PAYMENT_METHOD_LABELS[method]}</span>
-                    {isSelected && (
-                      <Check size={20} style={{ color: 'var(--bw-accent)', position: 'absolute', right: 'clamp(16px, 3vw, 20px)' }} />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Payment Method Information */}
-            <div style={{
-              marginTop: 'clamp(20px, 4vw, 24px)',
-              paddingTop: 'clamp(16px, 3vw, 20px)',
-              borderTop: '1px solid var(--bw-border)'
-            }}>
-              <p style={{
-                fontSize: 'clamp(12px, 2vw, 13px)',
-                color: 'var(--bw-text)',
-                opacity: 0.6,
-                margin: 0,
-                fontFamily: 'Work Sans, sans-serif',
-                lineHeight: 1.6
-              }}>
-                Your payment information is secure and encrypted. Select a payment method to continue.
-              </p>
-            </div>
+            ))}
           </div>
-        </>
+        </Modal>
       )}
 
-      {/* Zelle instructions (when Zelle is offered and selected) */}
       {showZelleInfoModal && zelleOffered && (
-        <>
-          <div
-            onClick={() => setShowZelleInfoModal(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(4px)',
-              WebkitBackdropFilter: 'blur(4px)',
-              zIndex: 2000,
-              animation: 'fadeIn 0.2s ease'
-            }}
-          />
-          <div
-            role="dialog"
-            aria-labelledby="zelle-info-title"
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-              border: '1px solid var(--bw-border)',
-              borderRadius: '16px',
-              padding: 'clamp(24px, 4vw, 32px)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-              zIndex: 2001,
-              maxWidth: 'clamp(300px, 92vw, 420px)',
-              width: '100%',
-              animation: 'fadeIn 0.2s ease'
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 'clamp(12px, 2vw, 16px)',
-              marginBottom: 'clamp(16px, 3vw, 20px)'
-            }}>
-              <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(109, 30, 212, 0.12)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid rgba(109, 30, 212, 0.35)'
-              }}>
-                <Info size={28} style={{ color: '#6D1ED4' }} weight="fill" />
-              </div>
-              <h2 id="zelle-info-title" style={{
-                margin: 0,
-                fontSize: 'clamp(18px, 3.5vw, 22px)',
-                fontWeight: 600,
-                fontFamily: 'DM Sans, sans-serif',
-                color: 'var(--bw-text)',
-                textAlign: 'center'
-              }}>
-                Zelle
-              </h2>
-              <p style={{
-                margin: 0,
-                fontSize: 'clamp(13px, 2.5vw, 15px)',
-                color: 'var(--bw-text)',
-                opacity: 0.85,
-                fontFamily: 'Work Sans, sans-serif',
-                textAlign: 'center',
-                lineHeight: 1.55
-              }}>
-                You&apos;ll see Zelle payment information after you confirm your ride. Complete payment from your banking app using the details shown on the next screen.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowZelleInfoModal(false)}
-              style={{
-                width: '100%',
-                padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                borderRadius: '12px',
-                backgroundColor: 'var(--bw-accent, #6D1ED4)',
-                color: '#ffffff',
-                border: 'none',
-                cursor: 'pointer',
-                fontFamily: 'Work Sans, sans-serif',
-                fontWeight: 600,
-                fontSize: 'clamp(15px, 2.5vw, 17px)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Got it
-            </button>
+        <Modal variant="sheet" title="Pay with Zelle" onClose={() => setShowZelleInfoModal(false)}>
+          <div className="rdr-stack">
+            <p className="rdr-sub" style={{ margin: 0, display: 'flex', gap: 10 }}>
+              <Info size={20} weight="fill" aria-hidden style={{ flex: 'none', color: 'var(--bw-accent)' }} />
+              You&apos;ll see Zelle payment details after you confirm your ride. Complete payment from your banking app using the details on the next screen.
+            </p>
+            <Button fullWidth onClick={() => setShowZelleInfoModal(false)}>Got it</Button>
           </div>
-        </>
+        </Modal>
       )}
 
-      {/* Decline Warning Modal */}
       {showDeclineWarning && (
-        <>
-          {/* Blurred Backdrop */}
-          <div
-            onClick={() => setShowDeclineWarning(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(4px)',
-              WebkitBackdropFilter: 'blur(4px)',
-              zIndex: 2000,
-              animation: 'fadeIn 0.2s ease'
-            }}
-          />
-          {/* Warning Card */}
-          <div
-            style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'var(--bw-card-bg, var(--bw-bg))',
-              border: '1px solid var(--bw-border)',
-              borderRadius: '16px',
-              padding: 'clamp(24px, 4vw, 32px)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-              zIndex: 2001,
-              maxWidth: 'clamp(300px, 90vw, 400px)',
-              width: '100%',
-              animation: 'fadeIn 0.2s ease'
-            }}
-          >
-            {/* Warning Icon and Message */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 'clamp(16px, 3vw, 20px)',
-              marginBottom: 'clamp(24px, 4vw, 32px)'
-            }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid #ef4444'
-              }}>
-                <X size={32} style={{ color: '#ef4444' }} />
-              </div>
-              <h2 style={{
-                margin: 0,
-                fontSize: 'clamp(20px, 3.5vw, 24px)',
-                fontWeight: 600,
-                fontFamily: 'DM Sans, sans-serif',
-                color: 'var(--bw-text)',
-                textAlign: 'center'
-              }}>
-                Terminate Booking?
-              </h2>
-              <p style={{
-                margin: 0,
-                fontSize: 'clamp(14px, 2.5vw, 16px)',
-                color: 'var(--bw-text)',
-                opacity: 0.8,
-                fontFamily: 'Work Sans, sans-serif',
-                textAlign: 'center',
-                lineHeight: 1.5
-              }}>
-                By clicking this, you will be terminating the booking. This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{
-              display: 'flex',
-              gap: 'clamp(12px, 2.5vw, 16px)',
-              flexDirection: 'column'
-            }}>
-              <button
-                onClick={handleDecline}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                  borderRadius: '12px',
-                  backgroundColor: '#ef4444',
-                  color: '#ffffff',
-                  border: 'none',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 'clamp(15px, 2.5vw, 17px)',
-                  opacity: isLoading ? 0.6 : 1,
-                  transition: 'all 0.2s ease',
-                  boxShadow: isLoading ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
-                  }
-                }}
-              >
-                {isLoading ? 'Terminating...' : 'Yes, Terminate Booking'}
-              </button>
-              <button
-                onClick={() => setShowDeclineWarning(false)}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  padding: 'clamp(14px, 2.5vw, 18px) clamp(20px, 4vw, 24px)',
-                  borderRadius: '12px',
-                  backgroundColor: 'transparent',
-                  color: 'var(--bw-text)',
-                  border: '1px solid var(--bw-border)',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Work Sans, sans-serif',
-                  fontWeight: 600,
-                  fontSize: 'clamp(15px, 2.5vw, 17px)',
-                  opacity: isLoading ? 0.6 : 1,
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = 'var(--bw-bg-hover)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                Cancel
-              </button>
+        <Modal variant="sheet" title="Cancel this booking?" onClose={() => setShowDeclineWarning(false)}>
+          <div className="rdr-stack">
+            <p className="rdr-sub" style={{ margin: 0 }}>This ends the booking and cannot be undone.</p>
+            <div className="rdr-dialog-actions">
+              <Button variant="destructive" fullWidth disabled={isLoading} onClick={handleDecline}>
+                {isLoading ? 'Cancelling…' : 'Cancel booking'}
+              </Button>
+              <Button variant="secondary" fullWidth disabled={isLoading} onClick={() => setShowDeclineWarning(false)}>Keep booking</Button>
             </div>
           </div>
-        </>
+        </Modal>
       )}
-
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes slideUp {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-      `}</style>
-    </div>
+    </>
   )
 }
-

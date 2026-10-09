@@ -1,7 +1,10 @@
 import { FormEvent, useState, useEffect } from 'react'
+import { normalizeCompanyName } from '@utils/companyName'
 import { Info, Eye, EyeSlash, UploadSimple } from '@phosphor-icons/react'
 import { createTenant } from '@api/tenant'
 import { loginTenant } from '@api/auth'
+import LegalConsent from '@components/LegalConsent'
+import { LEGAL_VERSION } from '../constants/legal'
 import { createCheckoutSession } from '@api/subscription'
 import { useAuthStore } from '@store/auth'
 import { Link } from 'react-router-dom'
@@ -41,6 +44,7 @@ export default function Signup() {
   const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1)
   const [isMobileSignup, setIsMobileSignup] = useState(false)
   const [isCreatingAccount, setIsCreatingAccount] = useState(false)
+  const [legalAccepted, setLegalAccepted] = useState(false)
   const [planCheckoutLoading, setPlanCheckoutLoading] = useState<string | null>(null)
   const [planCheckoutError, setPlanCheckoutError] = useState<string | null>(null)
 
@@ -181,6 +185,11 @@ export default function Signup() {
       return
     }
 
+    if (!legalAccepted) {
+      setError('Please accept the Terms, Privacy Policy and pilot notice to create an account.')
+      return
+    }
+
     setIsCreatingAccount(true)
     try {
       // Strip formatting from phone number (remove all non-digits)
@@ -192,12 +201,12 @@ export default function Signup() {
         last_name: lastName,
         password,
         phone_no: phoneDigits,
-        company_name: company,
+        company_name: normalizeCompanyName(company),
         slug,
         city,
         logo_url: logoFile,
       })
-      const data = await loginTenant(email, password)
+      const data = await loginTenant(email, password, LEGAL_VERSION)
       useAuthStore.getState().login({ token: data.access_token })
       setSignupStep(3)
     } catch (err: unknown) {
@@ -287,7 +296,7 @@ export default function Signup() {
             font-size: 14px !important;
           }
           .signup-toggle-btn {
-            right: 10px !important;
+            right: 4px !important;
           }
           .signup-toggle-icon {
             width: 14px !important;
@@ -378,6 +387,7 @@ export default function Signup() {
           {/* Step indicator — shown for steps 1 and 2 only */}
           {signupStep < 3 && (
             <div
+              role="img"
               aria-label={`Step ${signupStep} of 2`}
               style={{
                 display: 'flex',
@@ -576,7 +586,7 @@ export default function Signup() {
                           aria-label="Toggle password" 
                           className="signup-toggle-btn"
                           onClick={() => setShowPassword(!showPassword)} 
-                          style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: '#4c4e4eff', cursor: 'pointer' }}
+                          style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', padding: 6, display: 'flex', background: 'transparent', border: 0, color: '#4c4e4eff', cursor: 'pointer' }}
                         >
                           {showPassword ? <EyeSlash className="signup-toggle-icon" size={16} /> : <Eye className="signup-toggle-icon" size={16} />}
                         </button>
@@ -631,7 +641,7 @@ export default function Signup() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
                     <label className="small-muted signup-label" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ marginBottom: 6 }}>Company</span>
-                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
+                      <input className="bw-input signup-input" value={company} onChange={(e) => setCompany(e.target.value)} onBlur={() => setCompany(c => normalizeCompanyName(c))} style={{ padding: '16px 18px 16px 18px', borderRadius: 'var(--radius-field)' }} />
                     </label>
                     <div>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: 6 }} className="small-muted">
@@ -851,12 +861,7 @@ export default function Signup() {
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <p style={{ fontSize: 11, color: 'var(--bw-muted)', textAlign: 'center', margin: 0, lineHeight: 1.6, opacity: 0.8 }}>
-                        By creating an account, you agree to Maison's{' '}
-                        <Link to="/terms" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Terms of Service</Link>
-                        {' '}and{' '}
-                        <Link to="/privacy" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Privacy Policy</Link>.
-                      </p>
+                      <LegalConsent checked={legalAccepted} onChange={setLegalAccepted} />
                       <button
                         className="bw-btn signup-button"
                         type="submit"

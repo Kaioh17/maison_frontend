@@ -4,6 +4,7 @@ import { loginDriver } from '@api/auth'
 import { useAuthStore } from '@store/auth'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTenantInfo } from '@hooks/useTenantInfo'
+import PoweredByMaison from '@components/PoweredByMaison'
 import { useDemoCredentials } from '@api/demo'
 import { useFavicon } from '@hooks/useFavicon'
 import { getApiErrorMessage } from '@utils/apiError'
@@ -338,7 +339,10 @@ export default function DriverLogin() {
                 )}
               </div>
 
-              <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <label className="small-muted" htmlFor="password" style={{ fontFamily: 'Work Sans, sans-serif' }}>Password</label>
+                <Link to="/driver/forgot-password" style={{ fontSize: 12, color: 'var(--bw-muted)', textDecoration: 'underline', flexShrink: 0 }}>Forgot password?</Link>
+              </div>
               <div style={{ position: 'relative', marginTop: 6 }}>
                 <Lock size={16} aria-hidden style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', opacity: .7, color: currentTheme === 'dark' ? '#ffffff' : undefined }} />
                 <input 
@@ -391,6 +395,7 @@ export default function DriverLogin() {
                 </p>
               </div>
             </form>
+            <PoweredByMaison />
           </div>
         </div>
       </div>

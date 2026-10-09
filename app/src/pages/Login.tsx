@@ -69,11 +69,11 @@ export default function AuthPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, legalVersion?: string) => {
     try {
       setIsLoading(true)
       // Tenant login only
-      const data = await loginTenant(email, password)
+      const data = await loginTenant(email, password, legalVersion)
       useAuthStore.getState().login({ token: data.access_token })
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('tenant-install-app-tip', '1')
@@ -266,13 +266,6 @@ export default function AuthPage() {
                 </div>
               </form>
 
-              {/* Legal - directly under the actions */}
-              <p style={{ fontSize: 11, color: 'var(--bw-muted)', textAlign: 'center', margin: '20px 0 0 0', lineHeight: 1.6, opacity: 0.75 }}>
-                By signing in, you agree to Maison's{' '}
-                <Link to="/terms" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Terms of Service</Link>
-                {' '}and{' '}
-                <Link to="/privacy" style={{ color: 'var(--bw-muted)', textDecoration: 'underline' }}>Privacy Policy</Link>.
-              </p>
             </div>
 
           </div>

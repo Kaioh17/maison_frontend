@@ -84,6 +84,7 @@ main.landing-auth {
   width: fit-content;
   color: var(--landing-fg);
   text-decoration: none;
+  font-size: 2.25rem; /* wordmark is 1.3em tall */
 }
 .landing-auth-brand__copy {
   position: relative;
@@ -274,6 +275,7 @@ main.landing-auth .landing-auth-panel a {
     background: none;
     overflow: visible;
   }
+  .landing-auth-brand__logo { font-size: 1.5rem; }
   .landing-auth-brand__copy,
   .landing-auth-hero {
     display: none;

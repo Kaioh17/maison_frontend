@@ -1,10 +1,37 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import MaisonWordmark from '@components/MaisonWordmark'
+import PilotNotice from '@components/PilotNotice'
+import { LEGAL_EFFECTIVE_DATE, CONTACT_EMAIL, PILOT_DAYS } from '../constants/legal'
 
-const EFFECTIVE_DATE = 'June 14, 2026'
+const EFFECTIVE_DATE = LEGAL_EFFECTIVE_DATE
 
 const sections: { title: string; content: ReactNode }[] = [
+  {
+    title: 'Pilot Program (Founding Operators)',
+    content: (
+      <>
+        <p>
+          Maison is currently offered as a pilot version (the "Pilot"). The Pilot lasts {PILOT_DAYS} days from the date you first accept
+          these Terms, unless Maison extends it in writing. It exists so that Operators can try the Maison workflow, test it with their
+          own drivers and riders, and give us feedback.
+        </p>
+        <p>By using the Pilot you acknowledge and agree that:</p>
+        <ul>
+          <li>The Service is provided "as is" and "as available". It may contain bugs, be unavailable, or change without notice.</li>
+          <li>Features, pricing, and plans may change, and data entered during the Pilot may be reset or removed.</li>
+          <li>You will not rely on the Pilot as your only system for live commercial operations, and you remain responsible for your own backups and contingency plans.</li>
+          <li>You are responsible for telling the drivers and riders you invite that the Service is a pilot.</li>
+          <li>Feedback you give may be used by Maison to improve the Service, without obligation or compensation to you.</li>
+          <li>When the Pilot ends, your access to the Service ends unless it is extended or you move to a paid arrangement. To request a copy of your data, email {CONTACT_EMAIL} before the end date. Maison may delete Pilot data after the Pilot ends.</li>
+        </ul>
+        <p>
+          We record your acceptance of these Terms (the document version, the time, your IP address, and your browser) so that we can show
+          which version you agreed to.
+        </p>
+      </>
+    ),
+  },
   {
     title: 'Acceptance of Terms',
     content: (
@@ -273,12 +300,10 @@ const sections: { title: string; content: ReactNode }[] = [
           If you have questions or concerns about these Terms or the Service, please contact us:
         </p>
         <ul>
-          <li><strong>Email:</strong> legal@usemaison.io</li>
-          <li><strong>Support:</strong> support@usemaison.io</li>
-          <li><strong>Mailing address:</strong> Maison Technologies, Inc., Legal Department, [Address on file]</li>
+          <li><strong>Email:</strong> {CONTACT_EMAIL}</li>
         </ul>
         <p>
-          For billing inquiries, log in to your account and visit the Plans &amp; Billing section, or email support@usemaison.io with your account information.
+          For billing inquiries, log in to your account and visit the Plans &amp; Billing section, or email {CONTACT_EMAIL} with your account information.
         </p>
       </>
     ),
@@ -297,10 +322,11 @@ export default function Terms() {
         <p style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 13, color: 'var(--bw-muted)', marginBottom: 8 }}>
           Last updated: {EFFECTIVE_DATE}
         </p>
+        <PilotNotice />
         <p style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 14, color: 'var(--bw-muted)', marginBottom: 40, lineHeight: 1.6 }}>
           These Terms of Service govern your access to and use of Maison, a software platform for ground transportation operators.
           Please read them carefully before using the Service. These Terms constitute a legally binding agreement between you and
-          Maison Technologies, Inc. ("Maison," "we," "our," or "us").
+          Maison ("Maison," "we," "our," or "us").
         </p>
 
         <div style={{ borderTop: '1px solid var(--bw-border)', paddingTop: 32, display: 'flex', flexDirection: 'column', gap: 32, fontFamily: 'Work Sans, sans-serif', color: 'var(--bw-text)' }}>
@@ -310,7 +336,7 @@ export default function Terms() {
                 <span style={{ color: 'var(--bw-muted)', fontWeight: 300, fontSize: 15, marginRight: 10 }}>{i + 1}.</span>
                 {section.title}
               </h2>
-              <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--bw-text)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="legal-doc" style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--bw-text)', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {section.content}
               </div>
             </div>
@@ -322,7 +348,7 @@ export default function Terms() {
             ← Back to sign in
           </Link>
           <span style={{ fontFamily: 'Work Sans, sans-serif', fontSize: 12, color: 'var(--bw-muted)' }}>
-            © {new Date().getFullYear()} Maison Technologies, Inc. All rights reserved.
+            © {new Date().getFullYear()} Maison
           </span>
         </div>
       </div>

@@ -219,3 +219,26 @@
     transform: translate3d(-20px, 14px, 0) rotate(0.6deg);
   }
 }
+/* Dedicated /pricing page: plans stacked vertically, full width on mobile. */
+.landing-pricing .pricing-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.landing-pricing .pricing-stack .pricing-card {
+  flex: none;
+  max-width: none;
+}
+
+@media (min-width: 768px) {
+  .landing-pricing .pricing-stack {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .landing-pricing .pricing-stack .pricing-card {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
