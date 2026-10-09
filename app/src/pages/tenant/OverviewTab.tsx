@@ -12,6 +12,8 @@ import Tabs from '@components/Tabs'
 import { extractSubdomain } from '@utils/subdomain'
 import { getTenantAppUrl } from '@config/host'
 import type { TenantShellCtx } from './TenantShell'
+import { NO_BOOKING_FILTERS, useOperatorInfo, useTenantAnalysis, useTenantBookings, useTenantConfigQuery, useTenantDrivers, useTenantRiders, useTenantVehicles, EMPTY_LIST } from './useTenantData'
+import { useOverviewLinks } from './useOverviewLinks'
 import {
   bookingPickupToday,
   buildOverviewDriverRows,
@@ -34,26 +36,24 @@ const hasDriver = (name?: string | null) => !!name && name !== 'None'
 type ChartMode = 'revenue' | 'rides'
 
 export default function OverviewTab() {
+  const { activeTab, isMobile, navigate, handleTabClick } = useOutletContext<TenantShellCtx>()
+  const info = useOperatorInfo().data ?? null
+  const drivers = useTenantDrivers().data ?? EMPTY_LIST
+  const riders = useTenantRiders().data ?? EMPTY_LIST
+  const vehicles = useTenantVehicles().data ?? EMPTY_LIST
+  const bookings = useTenantBookings(NO_BOOKING_FILTERS).data ?? EMPTY_LIST
+  const analysisQuery = useTenantAnalysis()
+  const analysis = analysisQuery.data ?? null
+  const analysisLoading = analysisQuery.isLoading
+  const analysisError = analysisQuery.isError
+  const tenantConfig = useTenantConfigQuery().data ?? null
   const {
-    activeTab,
-    info,
-    drivers,
-    riders,
-    vehicles,
-    bookings,
-    analysis,
-    analysisLoading,
-    analysisError,
-    tenantConfig,
-    isMobile,
-    navigate,
-    handleTabClick,
-    overviewCopiedLink,
-    overviewLinkQrState,
-    copyTenantOverviewLink,
-    generateTenantOverviewLinkQr,
-    downloadTenantOverviewLinkQr,
-  } = useOutletContext<TenantShellCtx>()
+    copiedLink: overviewCopiedLink,
+    qrState: overviewLinkQrState,
+    copyLink: copyTenantOverviewLink,
+    generateQr: generateTenantOverviewLinkQr,
+    downloadQr: downloadTenantOverviewLinkQr,
+  } = useOverviewLinks()
 
   const [chartMode, setChartMode] = useState<ChartMode>('revenue')
 

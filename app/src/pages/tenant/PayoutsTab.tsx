@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useOutletContext } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowSquareOut, DownloadSimple, PencilSimple, WarningCircle } from '@phosphor-icons/react'
 import Button from '@components/Button'
@@ -16,7 +16,7 @@ import { bulkUpdateTenantPayouts, getTenantPayouts, updateTenantPayout, type Pay
 import { getStripeLoginLink, updateTenantSettings, type DriverPay, type PayRule } from '@api/tenantSettings'
 import { getApiErrorMessage } from '@utils/apiError'
 import { formatUsd } from './shared'
-import type { TenantShellCtx } from './TenantShell'
+import { useTenantConfigQuery } from './useTenantData'
 import {
   PERIODS, STATUS_LABEL, STATUS_PILL, byDriver, inRange, isPending, periodRange, rowNet, statementCsv, totals,
   type DriverGroup, type PeriodId,
@@ -544,7 +544,7 @@ function VerificationView({ rows, onEdit }: { rows: PayoutRow[]; onEdit: (r: Pay
 // ---------------------------------------------------------------- page
 
 export default function PayoutsTab() {
-  const { tenantConfig } = useOutletContext<TenantShellCtx>()
+  const tenantConfig = useTenantConfigQuery().data ?? null
   const qc = useQueryClient()
   const [tab, setTab] = useState<TabId>('earnings')
   const [period, setPeriod] = useState<PeriodId>('this_month')

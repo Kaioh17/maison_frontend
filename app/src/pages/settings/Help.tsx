@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getTenantInfo } from '@api/tenant'
+import { useOperatorInfo } from '@pages/tenant/useTenantData'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Question, Envelope, Book, WarningCircle, CreditCard, FileText, CaretRight, DeviceMobile, Export, PlusSquare } from '@phosphor-icons/react'
 import { useInstallApp, promptInstall } from '@hooks/useInstallApp'
@@ -8,8 +8,7 @@ import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { TENANT_SUPPORT_EMAIL } from '@config'
 
 export default function Help() {
-  const [info, setInfo] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { isLoading: loading } = useOperatorInfo()
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const [installGuideOpen, setInstallGuideOpen] = useState(false)
   const canPromptInstall = useInstallApp((s) => !!s.deferred)
@@ -24,20 +23,6 @@ export default function Help() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const tenantInfo = await getTenantInfo()
-        setInfo(tenantInfo.data)
-      } catch (error) {
-        console.error('Failed to load data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
   }, [])
 
   useEffect(() => {
@@ -316,6 +301,8 @@ export default function Help() {
             <div id="install-web-app-content" style={{ marginTop: 12 }}>
               <p style={{ margin: '0 0 16px 0', color: 'var(--bw-muted)', fontFamily: '"Work Sans", sans-serif', fontSize: 'clamp(12px, 1.5vw, 14px)', lineHeight: 1.5 }}>
                 Save the Maison web app to your home screen for one-tap access like a native app.
+                Riders and drivers install it the same way: they open your link in Safari, then follow the iPhone steps below.
+                Drivers and riders also see these steps in their own app (Account and Profile tabs).
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 'clamp(12px, 2vw, 16px)' }}>
                 <div style={{ order: isIos ? 0 : 1 }}>

@@ -1,55 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
+import { useCallback, useEffect, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, getTenantRiderEmails, onboardDriver, approveDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData, type TenantRiderEmailOption } from '@api/tenant'
-import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
-import { getTenantConfig, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData } from '@api/tenantSettings'
+import { becomeDriver } from '@api/tenant'
+import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@store/auth'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
+import { useQueryClient } from '@tanstack/react-query'
 import ThemeToggle from '@components/ThemeToggle'
 import Button from '@components/Button'
 import Modal from '@components/Modal'
 import StatusPill from '@components/StatusPill'
-import VehicleEditModal from '@components/VehicleEditModal'
 import TenantBookRideModal from '@components/TenantBookRideModal'
+import { PilotBadge } from '@components/PilotGate'
 import TokenExpirationNotification from '@components/TokenExpirationNotification'
 import { TenantDashboardSkeleton } from '@components/Skeleton'
-import { useBookingSearch } from '@hooks/useBookingSearch'
 import { useInstallApp, markInstallHandled, promptInstall } from '@hooks/useInstallApp'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, SignOut, type IconWeight } from '@phosphor-icons/react'
-import { API_BASE } from '@config'
-import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
+import { Car, Users, Calendar, Gear, TrendUp, User, Plus, WarningCircle, SidebarSimple, X, Info, Wallet, Sparkle, ChatCircleDots, List, SignOut, type IconWeight } from '@phosphor-icons/react'
 import { extractSubdomain } from '@utils/subdomain'
 import { getTenantAppUrl } from '@config/host'
+import { TENANT_DASHBOARD_LAYOUT_CSS } from './shared'
+import type { TabType, TenantPageThemeMode } from './shared'
 import {
-  zelleNumberFromApi,
-  zelleEmailFromApi,
-  hasZelleRecipient,
-  isCompleteUsPhone
-} from '@utils/zelleContact'
-import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
-import { getApiErrorMessage } from '@utils/apiError'
-import { Outlet } from 'react-router-dom'
-import {
-  TENANT_DASHBOARD_LAYOUT_CSS,
-  TENANT_DASHBOARD_SHELL_GAP,
-  starFillPercent,
-  RatingStar,
-  VehicleImageCard,
-  overviewDriverInitials,
-  overviewFormatDriverName,
-  overviewBookingRefersToDriver,
-  overviewVehicleLineForDriver,
-  overviewDriverPresence,
-  buildOverviewDriverRows,
-  bookingPickupToday,
-  buildOverviewBookingRows,
-  overviewBookingStatusDisplay,
-  tenantDriverTypeLabel,
-  tenantTelHrefFromPhone,
-} from './shared'
-import type { TabType, OverviewLinkKey, TenantPageThemeMode, OverviewLinkQrState, OverviewDriverRow, OverviewDriverPresence } from './shared'
+  useOperatorInfo,
+  useTenantDrivers,
+  useTenantVehicles,
+  useTenantRiders,
+  useTenantBookings,
+  useTenantConfigQuery,
+  EMPTY_LIST,
+} from './useTenantData'
 
 /** Tabs kept out of the 5-slot mobile bar; they stay reachable from the Menu drawer. */
 const BOTTOM_BAR_HIDDEN: string[] = ['settings', 'assistant', 'riders', 'feedback', 'payouts']
@@ -60,277 +38,79 @@ const NAV_GROUPS: Array<{ label: string; group: 'main' | 'tools' | 'account' }> 
   { label: 'Account', group: 'account' },
 ]
 
+type NavTab = { id: TabType; label: string; group: 'main' | 'tools' | 'account'; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }
+const TABS: NavTab[] = [
+  { id: 'overview', label: 'Overview', group: 'main', icon: TrendUp },
+  { id: 'bookings', label: 'Bookings', group: 'main', icon: Calendar },
+  { id: 'drivers', label: 'Drivers', group: 'main', icon: Users },
+  { id: 'riders', label: 'Riders', group: 'main', icon: User },
+  { id: 'vehicles', label: 'Vehicles', group: 'main', icon: Car },
+  { id: 'payouts', label: 'Payouts', group: 'main', icon: Wallet },
+  { id: 'assistant', label: 'Assistant', group: 'tools', icon: Sparkle },
+  { id: 'settings', label: 'Settings', group: 'account', icon: Gear },
+  { id: 'feedback', label: 'Feedback', group: 'account', icon: ChatCircleDots },
+]
+
+function tabFromPath(path: string): TabType {
+  if (path.startsWith('/tenant/settings')) return 'settings'
+  const id = path.split('/')[2]
+  return TABS.some((t) => t.id === id) ? (id as TabType) : 'overview'
+}
+
+/**
+ * State the dashboard chrome and its tabs genuinely share: layout, the topbar buttons that
+ * open tab-owned dialogs, the bookings filters (they drive the topbar count) and the error screen.
+ * Everything else lives in the tab that uses it (see use*TabState.ts) or in useTenantData.
+ */
 function useShellState() {
-  const { accessToken, role, tenantId: storeTenantId } = useAuthStore()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Booking filters (drive the booking query key)
-  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('')
-  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('')
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('')
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('')
   const [vehicleIdFilter, setVehicleIdFilter] = useState<number | null>(null)
 
-  // --- TanStack Query: server data ---
-  const tenantIdNum = Number(storeTenantId)
+  const infoQuery = useOperatorInfo()
+  const driversQuery = useTenantDrivers()
+  const vehiclesQuery = useTenantVehicles()
+  const ridersQuery = useTenantRiders()
+  const bookingsQuery = useTenantBookings({ bookingStatusFilter, serviceTypeFilter, vehicleIdFilter })
+  const tenantConfig = useTenantConfigQuery().data ?? null
 
-  const infoQuery = useQuery({
-    queryKey: ['tenant', 'info'],
-    queryFn: () => getTenantInfo().then(r => r.data ?? null),
-  })
-  const driversQuery = useQuery({
-    queryKey: ['tenant', 'drivers'],
-    queryFn: () => getTenantDrivers().then(r => r.data ?? []),
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  })
-  const vehiclesQuery = useQuery({
-    queryKey: ['tenant', 'vehicles'],
-    queryFn: () => getTenantVehicles().then(r => r.data ?? []),
-  })
-  const ridersQuery = useQuery({
-    queryKey: ['tenant', 'riders'],
-    queryFn: () => getTenantRiderEmails().then(r => r.data ?? []),
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  })
-  const bookingsQuery = useQuery({
-    queryKey: ['tenant', 'bookings', { bookingStatusFilter, serviceTypeFilter, vehicleIdFilter }],
-    queryFn: () => {
-      const params: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
-      if (bookingStatusFilter) params.booking_status = bookingStatusFilter
-      if (serviceTypeFilter) params.service_type = serviceTypeFilter
-      if (vehicleIdFilter) params.vehicle_id = vehicleIdFilter
-      return getTenantBookings(Object.keys(params).length > 0 ? params : undefined).then(r => r.data ?? [])
-    },
-  })
-  const configQuery = useQuery({
-    queryKey: ['tenant', 'config'],
-    queryFn: () => getTenantConfig('all'),
-  })
-  const analysisQuery = useQuery({
-    queryKey: ['tenant', 'analysis'],
-    queryFn: () => getTenantAnalysis().then(r => r.success && r.data ? r.data : null),
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
-  })
-  const vehicleCategoriesQuery = useQuery({
-    queryKey: ['tenant', 'vehicleCategories', tenantIdNum],
-    queryFn: () => getVehicleCategoriesByTenant(tenantIdNum).then(r => r.data ?? []),
-    enabled: Number.isFinite(tenantIdNum) && tenantIdNum > 0,
-  })
-
-  // Derived data values (with fallbacks so the rest of the hook types stay the same)
-  const info: any = infoQuery.data ?? null
-  const drivers: DriverResponse[] = driversQuery.data ?? []
-  const vehicles: VehicleResponse[] = vehiclesQuery.data ?? []
-  const riders: TenantRiderEmailOption[] = ridersQuery.data ?? []
-  const bookings: BookingResponse[] = bookingsQuery.data ?? []
-  const vehicleCategories: any[] = vehicleCategoriesQuery.data ?? []
-  const analysis: TenantAnalysisData | null = analysisQuery.data ?? null
-  const tenantConfig: TenantConfigResponse | null = configQuery.data ?? null
-
-  // Combined first-load gate
+  const info = infoQuery.data ?? null
+  const drivers = driversQuery.data ?? EMPTY_LIST
+  const vehicles = vehiclesQuery.data ?? EMPTY_LIST
+  const riders = ridersQuery.data ?? EMPTY_LIST
+  const bookings = bookingsQuery.data ?? EMPTY_LIST
   const loading = infoQuery.isLoading || driversQuery.isLoading || vehiclesQuery.isLoading || bookingsQuery.isLoading || ridersQuery.isLoading
 
-  // No-op setters kept for context shape compatibility (data is managed by query cache)
-  const setInfo = useCallback((_v: any) => {}, [])
-  const setDrivers = useCallback((_v: DriverResponse[]) => {}, [])
-  const setRiders = useCallback((_v: TenantRiderEmailOption[]) => {}, [])
-  const setVehicles = useCallback((_v: VehicleResponse[]) => {}, [])
-  const setAnalysis = useCallback((_v: TenantAnalysisData | null) => {}, [])
-  const setLoading = useCallback((_v: boolean) => {}, [])
-  const setTenantConfig = useCallback((_v: TenantConfigResponse | null) => {}, [])
-
-  // setBookings updates the active booking query cache (called by BookingsTab filter handlers)
-  const bookingFiltersRef = useRef({ bookingStatusFilter, serviceTypeFilter, vehicleIdFilter })
-  bookingFiltersRef.current = { bookingStatusFilter, serviceTypeFilter, vehicleIdFilter }
-  const setBookings = useCallback((newBookings: BookingResponse[]) => {
-    queryClient.setQueryData(
-      ['tenant', 'bookings', bookingFiltersRef.current],
-      newBookings
-    )
-  }, [queryClient])
-
-  // setVehicleCategories updates the category cache (used in saveVehicleRate optimistic update)
-  const setVehicleCategories = useCallback((updater: any[] | ((prev: any[]) => any[])) => {
-    queryClient.setQueryData(
-      ['tenant', 'vehicleCategories', tenantIdNum],
-      (prev: any[] | undefined) => {
-        const prevData = prev ?? []
-        return typeof updater === 'function' ? updater(prevData) : updater
-      }
-    )
-  }, [queryClient, tenantIdNum])
-  
-  // Booking search hook
-  const {
-    searchQuery,
-    handleSearchChange,
-    filteredBookings,
-    searchError,
-    clearSearch,
-    hasActiveSearch,
-  } = useBookingSearch(bookings)
-
-  const [driverListSearch, setDriverListSearch] = useState('')
-  const [driverFilterStatus, setDriverFilterStatus] = useState<'all' | 'active' | 'inactive'>('all')
-  const [driverFilterType, setDriverFilterType] = useState<'all' | 'in_house' | 'outsourced'>('all')
-  const [expandedDriverCardIds, setExpandedDriverCardIds] = useState<Set<number>>(new Set())
-  const [driverCardMenuOpenId, setDriverCardMenuOpenId] = useState<number | null>(null)
-
   const [error, setError] = useState<string | null>(null)
-  const [addingCategory, setAddingCategory] = useState(false)
-  const [newDriver, setNewDriver] = useState<OnboardDriver>({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
-  const [showAddDriver, setShowAddDriver] = useState(false)
   const [showBookRideModal, setShowBookRideModal] = useState(false)
-  const [addDriverError, setAddDriverError] = useState<string | null>(null)
-  const [isCreatingDriver, setIsCreatingDriver] = useState(false)
-  const [approvingDriverId, setApprovingDriverId] = useState<number | null>(null)
-  const [approveDriverError, setApproveDriverError] = useState<string | null>(null)
-  const [editingSettings, setEditingSettings] = useState(false)
-  const [savingSettings, setSavingSettings] = useState(false)
-  // Separate edited state for each section
-  const [editedSettings, setEditedSettings] = useState<TenantSettingsData | null>(null)
-  const [editedPricing, setEditedPricing] = useState<TenantPricingData | null>(null)
-  const [editedBranding, setEditedBranding] = useState<TenantBrandingData | null>(null)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
-
-  // Vehicle edit modal state
-  const [editingVehicleId, setEditingVehicleId] = useState<number | null>(null)
-  const [showVehicleEditModal, setShowVehicleEditModal] = useState(false)
-  const [tooltipVehicleId, setTooltipVehicleId] = useState<number | null>(null)
+  const [showAddDriver, setShowAddDriver] = useState(false)
+  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false)
 
   // Sidebar state (mobile gets the bottom tab bar instead, so the drawer starts closed there)
   const [isMenuOpen, setIsMenuOpen] = useState(() => window.innerWidth > 768)
   const [logoFailed, setLogoFailed] = useState(false)
-  
-  // Mobile breakpoint state (behavioral: KPI carousel, stacked controls, etc. — still ≤768px)
+  // Behavioral mobile breakpoint (KPI carousel, stacked controls, etc.)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
-  // Booking details modal state
-  const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null)
-  const [showBookingDetails, setShowBookingDetails] = useState(false)
-  const [loadingBookingDetails, setLoadingBookingDetails] = useState(false)
-  const [selectedBookingRating, setSelectedBookingRating] = useState<BookingRatingResponse | null>(null)
-  const [loadingBookingRating, setLoadingBookingRating] = useState(false)
-
-  // Driver details modal state
-  const [selectedDriver, setSelectedDriver] = useState<DriverDetailResponse | null>(null)
-  const [showDriverDetails, setShowDriverDetails] = useState(false)
-  const [loadingDriverDetails, setLoadingDriverDetails] = useState(false)
-
-  // Assign driver to booking state
-  const [showAssignDriverToBooking, setShowAssignDriverToBooking] = useState(false)
-  const [selectedDriverForBooking, setSelectedDriverForBooking] = useState<string>('')
-  const [assigningDriver, setAssigningDriver] = useState(false)
-  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false)
-
-  // Delete vehicle state
-  const [deletingVehicleId, setDeletingVehicleId] = useState<number | null>(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  // Unassign driver state
-  const [unassigningVehicleId, setUnassigningVehicleId] = useState<number | null>(null)
-  const [showUnassignConfirm, setShowUnassignConfirm] = useState(false)
-  const [isUnassigning, setIsUnassigning] = useState(false)
-  const [unassignError, setUnassignError] = useState<string | null>(null)
-
-  // Assign driver state (for specific vehicle)
-  const [assigningVehicleId, setAssigningVehicleId] = useState<number | null>(null)
-  const [showAssignConfirm, setShowAssignConfirm] = useState(false)
-  const [selectedDriverId, setSelectedDriverId] = useState<string>('')
-  const [isAssigning, setIsAssigning] = useState(false)
-  const [assignError, setAssignError] = useState<string | null>(null)
-
-  // Assign vehicle to driver (in-house, from Drivers tab)
-  const [showAssignVehicleToDriver, setShowAssignVehicleToDriver] = useState(false)
-  const [assignVehicleToDriverId, setAssignVehicleToDriverId] = useState<number | null>(null)
-  const [selectedVehicleIdForDriverAssign, setSelectedVehicleIdForDriverAssign] = useState('')
-  const [assignVehicleToDriverError, setAssignVehicleToDriverError] = useState<string | null>(null)
-
-  // Vehicle Settings dropdown state
-  const [vehicleSettingsOpen, setVehicleSettingsOpen] = useState(false)
-
-  // Overview KPI carousel (mobile swipe)
-  const [kpiScrollIndex, setKpiScrollIndex] = useState(0)
-  const kpiCarouselScrollRef = useRef<HTMLDivElement>(null)
-  
-  // Add vehicle hover form state
-  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false)
-  
-  // Switch to driver mode state
   const [showDriverModeConfirm, setShowDriverModeConfirm] = useState(false)
   const [isSwitchingToDriver, setIsSwitchingToDriver] = useState(false)
   const [switchToDriverError, setSwitchToDriverError] = useState<string | null>(null)
   const [showInstallAppNotice, setShowInstallAppNotice] = useState(false)
-  
-  // Button hover states
-  const [overviewCopiedLink, setOverviewCopiedLink] = useState<OverviewLinkKey | null>(null)
-  const [overviewLinkQrState, setOverviewLinkQrState] = useState<Record<OverviewLinkKey, OverviewLinkQrState>>({
-    rider: { loading: false, imageDataUrl: null, error: null },
-    driver: { loading: false, imageDataUrl: null, error: null },
-    landing: { loading: false, imageDataUrl: null, error: null },
-  })
-  const [overviewLinksOpen, setOverviewLinksOpen] = useState(false)
-  
-  const [newVehicle, setNewVehicle] = useState({
-    make: '',
-    model: '',
-    year: '',
-    license_plate: '',
-    color: '',
-    status: 'available',
-    vehicle_category: '',
-    vehicle_flat_rate: '',
-    seating_capacity: ''
-  })
-  const [addingVehicle, setAddingVehicle] = useState(false)
-  const [addVehicleError, setAddVehicleError] = useState<string | null>(null)
-  const [addVehicleSuccess, setAddVehicleSuccess] = useState(false)
 
   // Sync theme with tenant settings
   useTenantTheme(tenantConfig?.branding?.theme)
-  const { theme, setTheme, isLight: lightMode } = useTheme()
-  const [tenantPageThemeMode, setTenantPageThemeMode] = useState<TenantPageThemeMode>('dark')
-  const isCustomThemeActive = false
-
-  useEffect(() => {
-    setTenantPageThemeMode(theme === 'light' ? 'light' : 'dark')
-  }, [theme])
-
-  const handleTenantThemeModeChange = useCallback((mode: TenantPageThemeMode) => {
-    setTheme(mode)
-    setTenantPageThemeMode(mode)
-  }, [setTheme])
+  const { theme, setTheme } = useTheme()
+  const tenantPageThemeMode: TenantPageThemeMode = theme === 'light' ? 'light' : 'dark'
 
   // Invalidate all tenant queries (used as retry / refresh; returns Promise so await load() works)
-  const load = useCallback(() => {
-    return queryClient.invalidateQueries({ queryKey: ['tenant'] })
-  }, [queryClient])
+  const load = useCallback(() => queryClient.invalidateQueries({ queryKey: ['tenant'] }), [queryClient])
 
-  // Initialize editable config state when config first loads
   useEffect(() => {
-    if (!tenantConfig) return
-    if (tenantConfig.settings && !editedSettings) {
-      setEditedSettings({
-        ...tenantConfig.settings,
-        zelle_number: zelleNumberFromApi(tenantConfig.settings.zelle_number),
-        zelle_email: zelleEmailFromApi(tenantConfig.settings.zelle_email),
-      })
-    }
-    if (tenantConfig.pricing && !editedPricing) setEditedPricing(tenantConfig.pricing)
-    if (tenantConfig.branding && !editedBranding) setEditedBranding(tenantConfig.branding)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantConfig])
-
-  // Mobile breakpoint handler (KPI carousel, stacked controls — not the nav drawer)
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
-    }
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -341,1035 +121,43 @@ function useShellState() {
   }, [isMobile])
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const shouldShowInstallNotice = sessionStorage.getItem('tenant-install-app-tip') === '1'
-    if (shouldShowInstallNotice) {
+    if (sessionStorage.getItem('tenant-install-app-tip') === '1') {
       if (!useInstallApp.getState().installed) setShowInstallAppNotice(true)
       sessionStorage.removeItem('tenant-install-app-tip')
     }
   }, [])
 
-  // § 4.3 Optimistic mutations ─────────────────────────────────────────────
+  const activeTab = tabFromPath(location.pathname)
 
-  // Add driver: optimistically append a placeholder row, rollback on error
-  const createDriverMut = useMutation({
-    mutationFn: (driver: OnboardDriver) => onboardDriver(driver),
-    onMutate: async (newD) => {
-      await queryClient.cancelQueries({ queryKey: ['tenant', 'drivers'] })
-      const prev = queryClient.getQueryData<DriverResponse[]>(['tenant', 'drivers'])
-      const tempId = -Date.now()
-      queryClient.setQueryData(['tenant', 'drivers'], (old: DriverResponse[] = []) => [
-        ...old,
-        { id: tempId, first_name: newD.first_name, last_name: newD.last_name, email: newD.email ?? '', is_active: true, driver_type: newD.driver_type, phone: null, vehicle: null } as unknown as DriverResponse,
-      ])
-      return { prev }
-    },
-    onError: (_e, _v, ctx) => { if (ctx?.prev) queryClient.setQueryData(['tenant', 'drivers'], ctx.prev) },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'drivers'] }),
-  })
-
-  // Approve a pending driver (self-serve application or unfinished invite): sends them their registration email
-  const approveDriverMut = useMutation({
-    mutationFn: (driverId: number) => approveDriver(driverId),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'drivers'] }),
-  })
-
-  // Delete vehicle: optimistically remove the row, rollback on error
-  const deleteVehicleMut = useMutation({
-    mutationFn: (vehicleId: number) => deleteVehicle(vehicleId),
-    onMutate: async (vehicleId) => {
-      await queryClient.cancelQueries({ queryKey: ['tenant', 'vehicles'] })
-      const prev = queryClient.getQueryData<VehicleResponse[]>(['tenant', 'vehicles'])
-      queryClient.setQueryData(['tenant', 'vehicles'], (old: VehicleResponse[] = []) => old.filter(v => v.id !== vehicleId))
-      return { prev }
-    },
-    onError: (_e, _v, ctx) => { if (ctx?.prev) queryClient.setQueryData(['tenant', 'vehicles'], ctx.prev) },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'vehicles'] }),
-  })
-
-  // Assign driver to booking: optimistically update driver_name on the booking row
-  const assignDriverToBookingMut = useMutation({
-    mutationFn: ({ bookingId, driverId, override }: { bookingId: number; driverId: number; override: boolean }) =>
-      assignDriverToBooking(bookingId, { driver_id: driverId, override }),
-    onMutate: async ({ bookingId, driverId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tenant', 'bookings'] })
-      const snapshots: Array<[unknown, BookingResponse[] | undefined]> = []
-      const driverInfo = queryClient.getQueryData<DriverResponse[]>(['tenant', 'drivers'])?.find(d => d.id === driverId)
-      const driverName = driverInfo ? `${driverInfo.first_name} ${driverInfo.last_name}` : undefined
-      // Update all booking query cache entries (different filter combinations)
-      queryClient.getQueriesData<BookingResponse[]>({ queryKey: ['tenant', 'bookings'] }).forEach(([key, data]) => {
-        snapshots.push([key, data])
-        if (data) {
-          queryClient.setQueryData(key, data.map(b => b.id === bookingId ? { ...b, driver_name: driverName ?? b.driver_name, driver_id: driverId } : b))
-        }
-      })
-      return { snapshots }
-    },
-    onError: (_e, _v, ctx) => {
-      ctx?.snapshots?.forEach(([key, data]) => { if (data) queryClient.setQueryData(key as readonly unknown[], data) })
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'bookings'] }),
-  })
-
-  // Assign driver to vehicle: optimistic update on vehicles list
-  const assignDriverToVehicleMut = useMutation({
-    mutationFn: ({ vehicleId, driverId }: { vehicleId: number; driverId: number }) =>
-      assignDriverToVehicleNew(vehicleId, driverId),
-    onMutate: async ({ vehicleId, driverId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tenant', 'vehicles'] })
-      const prev = queryClient.getQueryData<VehicleResponse[]>(['tenant', 'vehicles'])
-      const driverInfo = queryClient.getQueryData<DriverResponse[]>(['tenant', 'drivers'])?.find(d => d.id === driverId)
-      queryClient.setQueryData(['tenant', 'vehicles'], (old: VehicleResponse[] = []) =>
-        old.map(v => v.id === vehicleId ? { ...v, driver_id: driverId, driver: driverInfo ?? v.driver } : v)
-      )
-      return { prev }
-    },
-    onError: (_e, _v, ctx) => { if (ctx?.prev) queryClient.setQueryData(['tenant', 'vehicles'], ctx.prev) },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'vehicles'] }),
-  })
-
-  // Unassign driver from vehicle: optimistic clear
-  const unassignDriverMut = useMutation({
-    mutationFn: ({ vehicleId, override }: { vehicleId: number; override: boolean }) =>
-      unassignDriverFromVehicle(vehicleId, override),
-    onMutate: async ({ vehicleId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tenant', 'vehicles'] })
-      const prev = queryClient.getQueryData<VehicleResponse[]>(['tenant', 'vehicles'])
-      queryClient.setQueryData(['tenant', 'vehicles'], (old: VehicleResponse[] = []) =>
-        old.map(v => v.id === vehicleId ? { ...v, driver_id: null, driver: null } : v)
-      )
-      return { prev }
-    },
-    onError: (_e, _v, ctx) => { if (ctx?.prev) queryClient.setQueryData(['tenant', 'vehicles'], ctx.prev) },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['tenant', 'vehicles'] }),
-  })
-
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const createDriver = async () => {
-    if (!newDriver.email || !newDriver.first_name || !newDriver.last_name) {
-      setAddDriverError('Please fill in all required fields')
-      return
-    }
-
-    setAddDriverError(null)
-    setIsCreatingDriver(true)
-
-    try {
-      await createDriverMut.mutateAsync({ ...newDriver, driver_type: newDriver.driver_type as OnboardDriver['driver_type'] })
-      setNewDriver({ first_name: '', last_name: '', email: '', driver_type: 'outsourced' })
-      setAddDriverError(null)
-      setShowAddDriver(false)
-    } catch (error: any) {
-      console.error('Failed to create driver:', error)
-      
-      // Handle different error status codes
-      if (error.response) {
-        const status = error.response.status
-        const errorData = error.response.data
-        
-        switch (status) {
-          case 409:
-            setAddDriverError('This email is already registered. Please use a different email address.')
-            break
-          case 400:
-            setAddDriverError(errorData?.detail || errorData?.message || 'Invalid input. Please check your information and try again.')
-            break
-          case 401:
-            setAddDriverError('Authentication failed. Please log in again.')
-            break
-          case 403:
-            setAddDriverError('You do not have permission to add drivers.')
-            break
-          case 422:
-            setAddDriverError(errorData?.detail || errorData?.message || 'Validation error. Please check all fields are correct.')
-            break
-          case 500:
-            setAddDriverError('Server error. Please try again later.')
-            break
-          default:
-            setAddDriverError(errorData?.detail || errorData?.message || `Failed to add driver. Error code: ${status}`)
-        }
-      } else if (error.request) {
-        setAddDriverError('No response from server. Please check your connection and try again.')
-      } else {
-        setAddDriverError(error.message || 'Failed to add driver. Please try again.')
-      }
-    } finally {
-      setIsCreatingDriver(false)
-    }
-  }
-
-  const approveDriverAction = async (driverId: number) => {
-    setApproveDriverError(null)
-    setApprovingDriverId(driverId)
-    try {
-      await approveDriverMut.mutateAsync(driverId)
-    } catch (error: any) {
-      setApproveDriverError(getApiErrorMessage(error, 'Failed to approve driver. Please try again.'))
-    } finally {
-      setApprovingDriverId(null)
-    }
-  }
-
-  const confirmUnassignDriver = async (override: boolean) => {
-    if (!unassigningVehicleId) return
-
-    setIsUnassigning(true)
-    setUnassignError(null)
-
-    try {
-      await unassignDriverMut.mutateAsync({ vehicleId: unassigningVehicleId, override })
-      setShowUnassignConfirm(false)
-      setUnassigningVehicleId(null)
-    } catch (error: any) {
-      console.error('Failed to unassign driver:', error)
-
-      if (error?.response) {
-        const status = error.response.status
-        const errorData = error.response.data
-        const errorMessage = errorData?.message || errorData?.detail || errorData?.error?.message || errorData?.error || `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
-        setUnassignError(errorMessage)
-      } else if (error?.request) {
-        setUnassignError('No response from server. Please check your connection and try again.')
-      } else {
-        setUnassignError(error?.message || 'Failed to unassign driver. Please try again.')
-      }
-    } finally {
-      setIsUnassigning(false)
-    }
-  }
-
-  const confirmAssignDriver = async () => {
-    if (!assigningVehicleId || !selectedDriverId) return
-
-    setIsAssigning(true)
-    setAssignError(null)
-
-    try {
-      await assignDriverToVehicleMut.mutateAsync({ vehicleId: assigningVehicleId, driverId: Number(selectedDriverId) })
-      setShowAssignConfirm(false)
-      setAssigningVehicleId(null)
-      setSelectedDriverId('')
-    } catch (error: any) {
-      console.error('Failed to assign driver:', error)
-
-      if (error?.response) {
-        const status = error.response.status
-        const errorData = error.response.data
-        const errorMessage = errorData?.message || errorData?.detail || errorData?.error?.message || errorData?.error || `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
-        setAssignError(errorMessage)
-      } else if (error?.request) {
-        setAssignError('No response from server. Please check your connection and try again.')
-      } else {
-        setAssignError(error?.message || 'Failed to assign driver. Please try again.')
-      }
-    } finally {
-      setIsAssigning(false)
-    }
-  }
-
-  const confirmAssignVehicleToDriver = async () => {
-    if (!assignVehicleToDriverId || !selectedVehicleIdForDriverAssign) return
-
-    setIsAssigning(true)
-    setAssignVehicleToDriverError(null)
-
-    try {
-      await assignDriverToVehicleMut.mutateAsync({ vehicleId: Number(selectedVehicleIdForDriverAssign), driverId: assignVehicleToDriverId })
-      setShowAssignVehicleToDriver(false)
-      setAssignVehicleToDriverId(null)
-      setSelectedVehicleIdForDriverAssign('')
-    } catch (error: any) {
-      console.error('Failed to assign vehicle to driver:', error)
-
-      if (error?.response) {
-        const status = error.response.status
-        const errorData = error.response.data
-        const errorMessage = errorData?.message || errorData?.detail || errorData?.error?.message || errorData?.error || `HTTP Error ${status}: ${error.response.statusText || 'Unknown error'}`
-        setAssignVehicleToDriverError(errorMessage)
-      } else if (error?.request) {
-        setAssignVehicleToDriverError('No response from server. Please check your connection and try again.')
-      } else {
-        setAssignVehicleToDriverError(error?.message || 'Failed to assign vehicle. Please try again.')
-      }
-    } finally {
-      setIsAssigning(false)
-    }
-  }
-
-  const openAssignVehicleToDriver = (driverId: number) => {
-    setAssignVehicleToDriverId(driverId)
-    setSelectedVehicleIdForDriverAssign('')
-    setAssignVehicleToDriverError(null)
-    setShowAssignVehicleToDriver(true)
-  }
-
-  const driversTableGridColumns = 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(180px, 1.4fr)'
-  const ridersTableGridColumns = 'minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.7fr)'
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed': return 'text-green-500'
-      case 'active': return 'text-green-500'
-      case 'pending': return 'text-yellow-500'
-      case 'cancelled': return 'text-red-500'
-      default: return 'text-gray-500'
-    }
-  }
-
-  const getStatusColorHex = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-      case 'active':
-        return 'var(--bw-success)'
-      case 'pending':
-        return 'var(--bw-warning)'
-      case 'cancelled':
-        return 'var(--bw-error)'
-      default:
-        return 'var(--bw-muted)'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    const color = getStatusColorHex(status)
-    switch (status?.toLowerCase()) {
-      case 'completed': return <CheckCircle size={16} style={{ color }} />
-      case 'active': return <CheckCircle size={16} style={{ color }} />
-      case 'pending': return <WarningCircle size={16} style={{ color }} />
-      case 'cancelled': return <XCircle size={16} style={{ color }} />
-      default: return <WarningCircle size={16} style={{ color }} />
-    }
-  }
-
-  // Helper function to get initials from name
-  const getInitials = (name: string | null | undefined): string => {
-    if (!name || name === 'None' || name === 'Anonymous Customer') return '?'
-    const parts = name.trim().split(' ')
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-    }
-    return name[0].toUpperCase()
-  }
-
-  const getVehicleRate = (category: string) => {
-    // Check if category is defined and not null
-    if (!category || typeof category !== 'string') {
-      return 0
-    }
-    
-    // Check if vehicleCategories is an array and has items
-    if (!Array.isArray(vehicleCategories) || vehicleCategories.length === 0) {
-      // Return hardcoded default rates if no categories available
-      const defaultRates: { [key: string]: number } = {
-        'sedan': 25,
-        'suv': 35,
-        'luxury': 50,
-        'van': 40,
-        'truck': 45,
-        'motorcycle': 20
-      }
-      return defaultRates[category.toLowerCase()] || 0
-    }
-    
-    // Find the category and return its rate
-    const foundCategory = vehicleCategories.find(cat => 
-      cat.vehicle_category.toLowerCase() === category.toLowerCase()
-    )
-    
-    if (foundCategory && foundCategory.vehicle_flat_rate > 0) {
-      return foundCategory.vehicle_flat_rate
-    }
-    
-    // Return hardcoded default rates if no rate set
-    const defaultRates: { [key: string]: number } = {
-      'sedan': 25,
-      'suv': 35,
-      'luxury': 50,
-      'van': 40,
-      'truck': 45,
-      'motorcycle': 20
-    }
-    return defaultRates[category.toLowerCase()] || 0
-  }
-
-  const handleSettingChange = (field: keyof TenantSettingsData, value: any) => {
-    if (editedSettings) {
-      setEditedSettings({
-        ...editedSettings,
-        [field]: value
-      })
-    }
-  }
-
-  const handlePricingChange = (field: keyof TenantPricingData, value: any) => {
-    if (editedPricing) {
-      setEditedPricing({
-        ...editedPricing,
-        [field]: value
-      })
-    }
-  }
-
-  const handleBrandingChange = (field: keyof TenantBrandingData, value: any) => {
-    if (editedBranding) {
-      setEditedBranding({
-        ...editedBranding,
-        [field]: value
-      })
-    }
-  }
-
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setLogoFile(file)
-      // Create preview URL
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setLogoPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-      
-      // Update the edited branding with the file
-      if (editedBranding) {
-        setEditedBranding({
-          ...editedBranding,
-          logo_url: file
-        } as any)
-      }
-    }
-  }
-
-  const hasOtherChanges = () => {
-    if (!tenantConfig) return false
-    
-    const settingsChanged = editedSettings && tenantConfig.settings && (
-      editedSettings.rider_tiers_enabled !== tenantConfig.settings.rider_tiers_enabled ||
-      zelleNumberFromApi(editedSettings.zelle_number) !== zelleNumberFromApi(tenantConfig.settings.zelle_number) ||
-      zelleEmailFromApi(editedSettings.zelle_email) !== zelleEmailFromApi(tenantConfig.settings.zelle_email) ||
-      JSON.stringify(editedSettings.config) !== JSON.stringify(tenantConfig.settings.config)
-    )
-    
-    const pricingChanged = editedPricing && tenantConfig.pricing && (
-      editedPricing.base_fare !== tenantConfig.pricing.base_fare ||
-      editedPricing.per_mile_rate !== tenantConfig.pricing.per_mile_rate ||
-      editedPricing.per_minute_rate !== tenantConfig.pricing.per_minute_rate ||
-      editedPricing.per_hour_rate !== tenantConfig.pricing.per_hour_rate ||
-      editedPricing.cancellation_fee !== tenantConfig.pricing.cancellation_fee ||
-      editedPricing.discounts !== tenantConfig.pricing.discounts
-    )
-    
-    const brandingChanged = editedBranding && tenantConfig.branding && (
-      editedBranding.theme !== tenantConfig.branding.theme ||
-      editedBranding.slug !== tenantConfig.branding.slug ||
-      editedBranding.enable_branding !== tenantConfig.branding.enable_branding ||
-      editedBranding.primary_color !== tenantConfig.branding.primary_color ||
-      editedBranding.secondary_color !== tenantConfig.branding.secondary_color ||
-      editedBranding.accent_color !== tenantConfig.branding.accent_color
-    )
-    
-    return !!(settingsChanged || pricingChanged || brandingChanged)
-  }
-
-  const handleCancelEdit = () => {
-    if (tenantConfig) {
-      if (tenantConfig.settings) {
-        setEditedSettings({
-          ...tenantConfig.settings,
-          zelle_number: zelleNumberFromApi(tenantConfig.settings.zelle_number),
-          zelle_email: zelleEmailFromApi(tenantConfig.settings.zelle_email),
-        })
-      }
-      if (tenantConfig.pricing) setEditedPricing(tenantConfig.pricing)
-      if (tenantConfig.branding) setEditedBranding(tenantConfig.branding)
-    }
-    setEditingSettings(false)
-    setLogoFile(null)
-    setLogoPreview(null)
-  }
-
-  const handleBookingClick = async (bookingId: number) => {
-    setLoadingBookingDetails(true)
-    setLoadingBookingRating(true)
-    setSelectedBookingRating(null)
-    setShowBookingDetails(true)
-    try {
-      const [response, bookingRatingResponse] = await Promise.all([
-        getTenantBookingById(bookingId),
-        getBookingRating(bookingId).catch(() => null),
-      ])
-
-      if (response.data && response.data.length > 0) {
-        setSelectedBooking(response.data[0])
-        setSelectedBookingRating(bookingRatingResponse?.data || null)
-      } else {
-        setError('Booking not found')
-        setShowBookingDetails(false)
-      }
-    } catch (error: any) {
-      console.error('Failed to load booking details:', error)
-      setError('Failed to load booking details')
-      setShowBookingDetails(false)
-    } finally {
-      setLoadingBookingDetails(false)
-      setLoadingBookingRating(false)
-    }
-  }
-
-  const handleDriverClick = async (driverId: number) => {
-    setLoadingDriverDetails(true)
-    setShowDriverDetails(true)
-    try {
-      const response = await getTenantDrivers(driverId)
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        setSelectedDriver(response.data[0] as DriverDetailResponse)
-      } else {
-        setError('Driver not found')
-        setShowDriverDetails(false)
-      }
-    } catch (error: any) {
-      console.error('Failed to load driver details:', error)
-      setError('Failed to load driver details')
-      setShowDriverDetails(false)
-    } finally {
-      setLoadingDriverDetails(false)
-    }
-  }
-
-  useEffect(() => {
-    if (location.pathname !== '/tenant/bookings') return
-    const st = location.state as { driverRideSearch?: string } | null | undefined
-    const q = typeof st?.driverRideSearch === 'string' ? st.driverRideSearch.trim() : ''
-    if (!q) return
-    handleSearchChange(q)
-    navigate(`${location.pathname}${location.search}`, { replace: true, state: {} })
-  }, [location.pathname, location.search, location.state, handleSearchChange, navigate])
-
-  useEffect(() => {
-    if (driverCardMenuOpenId === null) return
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      const el = e.target as HTMLElement
-      if (el.closest?.('.tenant-driver-card-menu')) return
-      setDriverCardMenuOpenId(null)
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('touchstart', onDown)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('touchstart', onDown)
-    }
-  }, [driverCardMenuOpenId])
-
-  const handleAssignDriverToBooking = async () => {
-    if (!selectedBooking || !selectedDriverForBooking) return
-
-    const driverId = Number(selectedDriverForBooking)
-    if (!driverId) return
-
-    const hasDriver = !!(selectedBooking.driver_name && selectedBooking.driver_name !== 'None')
-    
-    // If driver exists and user hasn't confirmed override, show confirmation
-    if (hasDriver && !showOverrideConfirm) {
-      setShowOverrideConfirm(true)
-      return
-    }
-
-    if (!selectedBooking.id) return
-    
-    setAssigningDriver(true)
-    try {
-      await assignDriverToBookingMut.mutateAsync({ bookingId: selectedBooking.id, driverId, override: hasDriver })
-
-      // Refresh booking details modal
-      const response = await getTenantBookingById(selectedBooking.id)
-      if (response.data && response.data.length > 0) {
-        setSelectedBooking(response.data[0])
-      }
-
-      setShowAssignDriverToBooking(false)
-      setSelectedDriverForBooking('')
-      setShowOverrideConfirm(false)
-    } catch (error: any) {
-      console.error('Failed to assign driver to booking:', error)
-      setError('Failed to assign driver. Please try again.')
-    } finally {
-      setAssigningDriver(false)
-    }
-  }
-
-  const handleDeleteVehicle = (vehicleId: number) => {
-    setDeletingVehicleId(vehicleId)
-    setShowDeleteConfirm(true)
-  }
-
-  const handleAddVehicle = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!newVehicle.make || !newVehicle.model) {
-      setAddVehicleError('Make and Model are required fields')
-      return
-    }
-
-    const seatingTrim = String(newVehicle.seating_capacity).trim()
-    let seatingCapacityPayload: number | undefined
-    if (seatingTrim !== '') {
-      const n = parseInt(seatingTrim, 10)
-      if (Number.isNaN(n) || n < 1 || n > 50) {
-        setAddVehicleError('Enter a seating capacity between 1 and 50, or leave it blank.')
-        return
-      }
-      seatingCapacityPayload = n
-    }
-
-    setAddingVehicle(true)
-    setAddVehicleError(null)
-
-    try {
-      const vehiclePayload = {
-        make: newVehicle.make,
-        model: newVehicle.model,
-        year: newVehicle.year ? parseInt(newVehicle.year) : undefined,
-        license_plate: newVehicle.license_plate || undefined,
-        color: newVehicle.color || undefined,
-        status: newVehicle.status,
-        vehicle_category: newVehicle.vehicle_category,
-        vehicle_flat_rate: parseFloat(newVehicle.vehicle_flat_rate) || 0,
-        ...(seatingCapacityPayload !== undefined ? { seating_capacity: seatingCapacityPayload } : {})
-      }
-
-      const response = await addVehicle(vehiclePayload)
-      if (response.success && response.data) {
-        setAddVehicleSuccess(true)
-        // Reset form
-        setNewVehicle({
-          make: '',
-          model: '',
-          year: '',
-          license_plate: '',
-          color: '',
-          status: 'available',
-          vehicle_category: '',
-          vehicle_flat_rate: '',
-          seating_capacity: ''
-        })
-        // Refresh vehicles list
-        void queryClient.invalidateQueries({ queryKey: ['tenant', 'vehicles'] })
-        // Hide form after success
-        setTimeout(() => {
-          setShowAddVehicleForm(false)
-          setAddVehicleSuccess(false)
-        }, 2000)
-      } else {
-        throw new Error(response.message || 'Failed to create vehicle')
-      }
-    } catch (err: any) {
-      console.error('Failed to create vehicle:', err)
-      setAddVehicleError(err.response?.data?.detail || 'Failed to create vehicle. Please try again.')
-    } finally {
-      setAddingVehicle(false)
-    }
-  }
-
-  const handleNewVehicleChange = (field: string, value: any) => {
-    setNewVehicle(prev => {
-      const updated = {
-        ...prev,
-        [field]: value
-      }
-      
-      // Auto-fill flat rate when vehicle category is selected
-      if (field === 'vehicle_category' && value) {
-        const selectedCategory = vehicleCategories.find(
-          cat => cat.vehicle_category === value
-        )
-        if (selectedCategory && selectedCategory.vehicle_flat_rate) {
-          updated.vehicle_flat_rate = selectedCategory.vehicle_flat_rate.toString()
-        }
-      }
-      
-      return updated
-    })
-  }
-
-  const confirmDeleteVehicle = async () => {
-    if (!deletingVehicleId) return
-
-    setIsDeleting(true)
-    try {
-      await deleteVehicleMut.mutateAsync(deletingVehicleId)
-      setShowDeleteConfirm(false)
-      setDeletingVehicleId(null)
-    } catch (error: any) {
-      console.error('Failed to delete vehicle:', error)
-      setError('Failed to delete vehicle. Please try again.')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  type NavTab = { id: TabType; label: string; group: 'main' | 'tools' | 'account'; icon: React.ComponentType<{ size?: number | string; weight?: IconWeight; style?: React.CSSProperties }> }
-  const tabs: NavTab[] = [
-    { id: 'overview', label: 'Overview', group: 'main', icon: TrendUp },
-    { id: 'bookings', label: 'Bookings', group: 'main', icon: Calendar },
-    { id: 'drivers', label: 'Drivers', group: 'main', icon: Users },
-    { id: 'riders', label: 'Riders', group: 'main', icon: User },
-    { id: 'vehicles', label: 'Vehicles', group: 'main', icon: Car },
-    { id: 'payouts', label: 'Payouts', group: 'main', icon: Wallet },
-    { id: 'assistant', label: 'Assistant', group: 'tools', icon: Sparkle },
-    { id: 'settings', label: 'Settings', group: 'account', icon: Gear },
-    { id: 'feedback', label: 'Feedback', group: 'account', icon: ChatCircleDots },
-  ]
-
-  // Determine active tab from URL or internal state
-  const getActiveTab = (): TabType => {
-    // Determine from URL
-    const path = location.pathname
-    if (path === '/tenant/drivers') return 'drivers'
-    if (path === '/tenant/riders') return 'riders'
-    if (path === '/tenant/bookings') return 'bookings'
-    if (path === '/tenant/vehicles') return 'vehicles'
-    if (path === '/tenant/payouts') return 'payouts'
-    if (path === '/tenant/overview' || path === '/tenant') return 'overview'
-    if (path.startsWith('/tenant/settings')) return 'settings'
-    if (path === '/tenant/feedback') return 'feedback'
-    if (path === '/tenant/assistant') return 'assistant'
-    // Default to overview if path doesn't match
-    return 'overview'
-  }
-
-  const activeTab = getActiveTab()
-
-  const activeDriverCount = useMemo(
-    () => drivers.filter((d) => d.is_active).length,
-    [drivers]
-  )
-
-  const filteredDriversForList = useMemo(() => {
-    let list = [...drivers]
-    const q = driverListSearch.trim().toLowerCase()
-    if (q) {
-      list = list.filter(
-        (d) =>
-          `${d.first_name} ${d.last_name}`.toLowerCase().includes(q) ||
-          (d.email || '').toLowerCase().includes(q)
-      )
-    }
-    if (driverFilterStatus === 'active') list = list.filter((d) => d.is_active)
-    if (driverFilterStatus === 'inactive') list = list.filter((d) => !d.is_active)
-    if (driverFilterType === 'in_house') list = list.filter((d) => d.driver_type === 'in_house')
-    if (driverFilterType === 'outsourced') list = list.filter((d) => d.driver_type !== 'in_house')
-    return list
-  }, [drivers, driverListSearch, driverFilterStatus, driverFilterType])
-
-  /** Long tenant driver lists collapse on mobile until expanded */
-  const useCompressedDriverCards = drivers.length >= 20
-
-  const openDriverRideHistory = useCallback(
-    (d: DriverResponse) => {
-      const full = `${d.first_name} ${d.last_name}`.trim()
-      navigate('/tenant/bookings', { state: { driverRideSearch: full } })
-      setDriverCardMenuOpenId(null)
-      if (isMobile) setIsMenuOpen(false)
-    },
-    [navigate, isMobile]
-  )
-
-  const toggleDriverCardExpanded = useCallback((driverId: number) => {
-    setExpandedDriverCardIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(driverId)) next.delete(driverId)
-      else next.add(driverId)
-      return next
-    })
-  }, [])
-
-  // Get dynamic page title based on active tab
-  const getPageTitle = (): string => {
-    const activeTabData = tabs.find(tab => tab.id === activeTab)
-    return activeTabData?.label || 'Overview'
-  }
-
-  // Handle tab navigation
   const handleTabClick = (tabId: TabType) => {
     navigate(`/tenant/${tabId}`)
     if (isMobile) setIsMenuOpen(false)
   }
 
-  const copyTenantOverviewLink = async (kind: OverviewLinkKey, url: string) => {
-    if (!url) return
-    try {
-      await navigator.clipboard.writeText(url)
-      setOverviewCopiedLink(kind)
-      window.setTimeout(() => setOverviewCopiedLink(null), 2000)
-    } catch {
-      console.error('Clipboard copy failed')
-    }
-  }
-
-  const generateTenantOverviewLinkQr = async (kind: OverviewLinkKey, url: string) => {
-    if (!url) return
-    setOverviewLinkQrState(prev => ({
-      ...prev,
-      [kind]: { ...prev[kind], loading: true, error: null }
-    }))
-
-    try {
-      // qrcode is only needed when a QR is actually generated — keep it out of the dashboard chunk
-      const { default: QRCode } = await import('qrcode')
-      const imageDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 320 })
-      setOverviewLinkQrState(prev => ({
-        ...prev,
-        [kind]: { loading: false, imageDataUrl, error: null }
-      }))
-    } catch {
-      setOverviewLinkQrState(prev => ({
-        ...prev,
-        [kind]: {
-          ...prev[kind],
-          loading: false,
-          error: 'Could not generate QR code right now. Please try again.',
-        }
-      }))
-    }
-  }
-
-  const downloadTenantOverviewLinkQr = (kind: OverviewLinkKey, imageDataUrl: string) => {
-    const link = document.createElement('a')
-    link.href = imageDataUrl
-    link.download =
-      kind === 'landing'
-        ? 'maison-landing-page-qr.png'
-        : kind === 'rider'
-          ? 'maison-rider-login-qr.png'
-          : 'maison-driver-login-qr.png'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
   return {
-    info,
-    setInfo,
-    analysisLoading: analysisQuery.isLoading,
-    analysisError: analysisQuery.isError,
-    drivers,
-    setDrivers,
-    riders,
-    setRiders,
-    vehicles,
-    setVehicles,
-    bookings,
-    setBookings,
-    vehicleCategories,
-    setVehicleCategories,
-    analysis,
-    setAnalysis,
-    loading,
-    setLoading,
-    bookingStatusFilter,
-    setBookingStatusFilter,
-    serviceTypeFilter,
-    setServiceTypeFilter,
-    vehicleIdFilter,
-    setVehicleIdFilter,
-    driverListSearch,
-    setDriverListSearch,
-    driverFilterStatus,
-    setDriverFilterStatus,
-    driverFilterType,
-    setDriverFilterType,
-    expandedDriverCardIds,
-    setExpandedDriverCardIds,
-    driverCardMenuOpenId,
-    setDriverCardMenuOpenId,
-    error,
-    setError,
-    addingCategory,
-    setAddingCategory,
-    newDriver,
-    setNewDriver,
-    showAddDriver,
-    setShowAddDriver,
-    showBookRideModal,
-    setShowBookRideModal,
-    addDriverError,
-    setAddDriverError,
-    isCreatingDriver,
-    setIsCreatingDriver,
-    approvingDriverId,
-    approveDriverError,
-    tenantConfig,
-    setTenantConfig,
-    editingSettings,
-    setEditingSettings,
-    savingSettings,
-    setSavingSettings,
-    editedSettings,
-    setEditedSettings,
-    editedPricing,
-    setEditedPricing,
-    editedBranding,
-    setEditedBranding,
-    logoFile,
-    setLogoFile,
-    logoPreview,
-    setLogoPreview,
-    editingVehicleId,
-    setEditingVehicleId,
-    showVehicleEditModal,
-    setShowVehicleEditModal,
-    tooltipVehicleId,
-    setTooltipVehicleId,
-    isMenuOpen,
-    setIsMenuOpen,
-    logoFailed,
-    setLogoFailed,
+    info, drivers, vehicles, riders, bookings, tenantConfig, loading,
+    bookingStatusFilter, setBookingStatusFilter,
+    serviceTypeFilter, setServiceTypeFilter,
+    vehicleIdFilter, setVehicleIdFilter,
+    error, setError,
+    showBookRideModal, setShowBookRideModal,
+    showAddDriver, setShowAddDriver,
+    showAddVehicleForm, setShowAddVehicleForm,
+    isMenuOpen, setIsMenuOpen,
+    logoFailed, setLogoFailed,
     isMobile,
-    setIsMobile,
-    selectedBooking,
-    setSelectedBooking,
-    showBookingDetails,
-    setShowBookingDetails,
-    loadingBookingDetails,
-    setLoadingBookingDetails,
-    selectedBookingRating,
-    setSelectedBookingRating,
-    loadingBookingRating,
-    setLoadingBookingRating,
-    selectedDriver,
-    setSelectedDriver,
-    showDriverDetails,
-    setShowDriverDetails,
-    loadingDriverDetails,
-    setLoadingDriverDetails,
-    showAssignDriverToBooking,
-    setShowAssignDriverToBooking,
-    selectedDriverForBooking,
-    setSelectedDriverForBooking,
-    assigningDriver,
-    setAssigningDriver,
-    showOverrideConfirm,
-    setShowOverrideConfirm,
-    deletingVehicleId,
-    setDeletingVehicleId,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
-    isDeleting,
-    setIsDeleting,
-    unassigningVehicleId,
-    setUnassigningVehicleId,
-    showUnassignConfirm,
-    setShowUnassignConfirm,
-    isUnassigning,
-    setIsUnassigning,
-    unassignError,
-    setUnassignError,
-    assigningVehicleId,
-    setAssigningVehicleId,
-    showAssignConfirm,
-    setShowAssignConfirm,
-    selectedDriverId,
-    setSelectedDriverId,
-    isAssigning,
-    setIsAssigning,
-    assignError,
-    setAssignError,
-    showAssignVehicleToDriver,
-    setShowAssignVehicleToDriver,
-    assignVehicleToDriverId,
-    setAssignVehicleToDriverId,
-    selectedVehicleIdForDriverAssign,
-    setSelectedVehicleIdForDriverAssign,
-    assignVehicleToDriverError,
-    setAssignVehicleToDriverError,
-    vehicleSettingsOpen,
-    setVehicleSettingsOpen,
-    kpiScrollIndex,
-    setKpiScrollIndex,
-    showAddVehicleForm,
-    setShowAddVehicleForm,
-    showDriverModeConfirm,
-    setShowDriverModeConfirm,
-    isSwitchingToDriver,
-    setIsSwitchingToDriver,
-    switchToDriverError,
-    setSwitchToDriverError,
-    showInstallAppNotice,
-    setShowInstallAppNotice,
-    overviewCopiedLink,
-    setOverviewCopiedLink,
-    overviewLinkQrState,
-    setOverviewLinkQrState,
-    overviewLinksOpen,
-    setOverviewLinksOpen,
-    newVehicle,
-    setNewVehicle,
-    addingVehicle,
-    setAddingVehicle,
-    addVehicleError,
-    setAddVehicleError,
-    addVehicleSuccess,
-    setAddVehicleSuccess,
+    showDriverModeConfirm, setShowDriverModeConfirm,
+    isSwitchingToDriver, setIsSwitchingToDriver,
+    switchToDriverError, setSwitchToDriverError,
+    showInstallAppNotice, setShowInstallAppNotice,
     tenantPageThemeMode,
-    setTenantPageThemeMode,
-    navigate,
-    location,
-    kpiCarouselScrollRef,
-    isCustomThemeActive,
-    handleTenantThemeModeChange,
-    load,
-    createDriver,
-    approveDriverAction,
-    confirmUnassignDriver,
-    confirmAssignDriver,
-    confirmAssignVehicleToDriver,
-    openAssignVehicleToDriver,
-    driversTableGridColumns,
-    ridersTableGridColumns,
-    getStatusColor,
-    getStatusColorHex,
-    getStatusIcon,
-    getInitials,
-    getVehicleRate,
-    handleSettingChange,
-    handlePricingChange,
-    handleBrandingChange,
-    handleLogoChange,
-    hasOtherChanges,
-    handleCancelEdit,
-    handleBookingClick,
-    handleDriverClick,
-    handleAssignDriverToBooking,
-    handleDeleteVehicle,
-    handleAddVehicle,
-    handleNewVehicleChange,
-    confirmDeleteVehicle,
-    tabs,
-    getActiveTab,
+    handleTenantThemeModeChange: setTheme,
+    navigate, location, load,
+    tabs: TABS,
     activeTab,
-    activeDriverCount,
-    filteredDriversForList,
-    useCompressedDriverCards,
-    openDriverRideHistory,
-    toggleDriverCardExpanded,
-    getPageTitle,
+    activeDriverCount: drivers.filter((d) => d.is_active).length,
+    getPageTitle: () => TABS.find((tab) => tab.id === activeTab)?.label || 'Overview',
     handleTabClick,
-    copyTenantOverviewLink,
-    generateTenantOverviewLinkQr,
-    downloadTenantOverviewLinkQr,
-    accessToken,
-    role,
-    theme,
-    setTheme,
-    lightMode,
-    searchQuery,
-    handleSearchChange,
-    filteredBookings,
-    searchError,
-    clearSearch,
-    hasActiveSearch,
   }
 }
 
@@ -1380,160 +168,40 @@ export default function TenantShell() {
   const appInstalled = useInstallApp((s) => s.installed)
   const canPromptInstall = useInstallApp((s) => !!s.deferred)
 
-  // §4.4 — Prefetch sibling tab chunks on idle so tab switches feel native
+  // Prefetch sibling tab chunks on idle so tab switches feel native
   useEffect(() => {
-    const rIC = (window as any).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
+    const rIC = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200))
     const id = rIC(() => {
-      // These dynamic imports just kick off chunk preloading — no await needed
+      // These dynamic imports just kick off chunk preloading - no await needed
       void import('@pages/tenant/OverviewTab')
       void import('@pages/tenant/DriversTab')
       void import('@pages/tenant/BookingsTab')
       void import('@pages/tenant/VehiclesTab')
     })
     return () => {
-      const cIC = (window as any).cancelIdleCallback
-      if (cIC) cIC(id)
+      if (window.cancelIdleCallback) window.cancelIdleCallback(id as number)
     }
   }, [])
   const {
     info,
-    setInfo,
     drivers,
-    setDrivers,
     riders,
-    setRiders,
     vehicles,
-    setVehicles,
     bookings,
-    setBookings,
-    vehicleCategories,
-    setVehicleCategories,
-    analysis,
-    setAnalysis,
     loading,
-    setLoading,
-    bookingStatusFilter,
-    setBookingStatusFilter,
-    serviceTypeFilter,
-    setServiceTypeFilter,
-    vehicleIdFilter,
-    setVehicleIdFilter,
-    driverListSearch,
-    setDriverListSearch,
-    driverFilterStatus,
-    setDriverFilterStatus,
-    driverFilterType,
-    setDriverFilterType,
-    expandedDriverCardIds,
-    setExpandedDriverCardIds,
-    driverCardMenuOpenId,
-    setDriverCardMenuOpenId,
     error,
     setError,
-    addingCategory,
-    setAddingCategory,
-    newDriver,
-    setNewDriver,
-    showAddDriver,
-    setShowAddDriver,
+    tenantConfig,
     showBookRideModal,
     setShowBookRideModal,
-    addDriverError,
-    setAddDriverError,
-    isCreatingDriver,
-    setIsCreatingDriver,
-    approvingDriverId,
-    approveDriverError,
-    tenantConfig,
-    setTenantConfig,
-    editingSettings,
-    setEditingSettings,
-    savingSettings,
-    setSavingSettings,
-    editedSettings,
-    setEditedSettings,
-    editedPricing,
-    setEditedPricing,
-    editedBranding,
-    setEditedBranding,
-    logoFile,
-    setLogoFile,
-    logoPreview,
-    setLogoPreview,
-    editingVehicleId,
-    setEditingVehicleId,
-    showVehicleEditModal,
-    setShowVehicleEditModal,
-    tooltipVehicleId,
-    setTooltipVehicleId,
+    setShowAddDriver,
+    showAddVehicleForm,
+    setShowAddVehicleForm,
     isMenuOpen,
     setIsMenuOpen,
     logoFailed,
     setLogoFailed,
     isMobile,
-    setIsMobile,
-    selectedBooking,
-    setSelectedBooking,
-    showBookingDetails,
-    setShowBookingDetails,
-    loadingBookingDetails,
-    setLoadingBookingDetails,
-    selectedBookingRating,
-    setSelectedBookingRating,
-    loadingBookingRating,
-    setLoadingBookingRating,
-    selectedDriver,
-    setSelectedDriver,
-    showDriverDetails,
-    setShowDriverDetails,
-    loadingDriverDetails,
-    setLoadingDriverDetails,
-    showAssignDriverToBooking,
-    setShowAssignDriverToBooking,
-    selectedDriverForBooking,
-    setSelectedDriverForBooking,
-    assigningDriver,
-    setAssigningDriver,
-    showOverrideConfirm,
-    setShowOverrideConfirm,
-    deletingVehicleId,
-    setDeletingVehicleId,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
-    isDeleting,
-    setIsDeleting,
-    unassigningVehicleId,
-    setUnassigningVehicleId,
-    showUnassignConfirm,
-    setShowUnassignConfirm,
-    isUnassigning,
-    setIsUnassigning,
-    unassignError,
-    setUnassignError,
-    assigningVehicleId,
-    setAssigningVehicleId,
-    showAssignConfirm,
-    setShowAssignConfirm,
-    selectedDriverId,
-    setSelectedDriverId,
-    isAssigning,
-    setIsAssigning,
-    assignError,
-    setAssignError,
-    showAssignVehicleToDriver,
-    setShowAssignVehicleToDriver,
-    assignVehicleToDriverId,
-    setAssignVehicleToDriverId,
-    selectedVehicleIdForDriverAssign,
-    setSelectedVehicleIdForDriverAssign,
-    assignVehicleToDriverError,
-    setAssignVehicleToDriverError,
-    vehicleSettingsOpen,
-    setVehicleSettingsOpen,
-    kpiScrollIndex,
-    setKpiScrollIndex,
-    showAddVehicleForm,
-    setShowAddVehicleForm,
     showDriverModeConfirm,
     setShowDriverModeConfirm,
     isSwitchingToDriver,
@@ -1542,78 +210,15 @@ export default function TenantShell() {
     setSwitchToDriverError,
     showInstallAppNotice,
     setShowInstallAppNotice,
-    overviewCopiedLink,
-    setOverviewCopiedLink,
-    overviewLinkQrState,
-    setOverviewLinkQrState,
-    overviewLinksOpen,
-    setOverviewLinksOpen,
-    newVehicle,
-    setNewVehicle,
-    addingVehicle,
-    setAddingVehicle,
-    addVehicleError,
-    setAddVehicleError,
-    addVehicleSuccess,
-    setAddVehicleSuccess,
     tenantPageThemeMode,
-    setTenantPageThemeMode,
-    navigate,
-    location,
-    kpiCarouselScrollRef,
-    isCustomThemeActive,
     handleTenantThemeModeChange,
+    navigate,
     load,
-    createDriver,
-    approveDriverAction,
-    confirmUnassignDriver,
-    confirmAssignDriver,
-    confirmAssignVehicleToDriver,
-    openAssignVehicleToDriver,
-    driversTableGridColumns,
-    ridersTableGridColumns,
-    getStatusColor,
-    getStatusColorHex,
-    getStatusIcon,
-    getInitials,
-    getVehicleRate,
-    handleSettingChange,
-    handlePricingChange,
-    handleBrandingChange,
-    handleLogoChange,
-    hasOtherChanges,
-    handleCancelEdit,
-    handleBookingClick,
-    handleDriverClick,
-    handleAssignDriverToBooking,
-    handleDeleteVehicle,
-    handleAddVehicle,
-    handleNewVehicleChange,
-    confirmDeleteVehicle,
     tabs,
-    getActiveTab,
     activeTab,
     activeDriverCount,
-    filteredDriversForList,
-    useCompressedDriverCards,
-    openDriverRideHistory,
-    toggleDriverCardExpanded,
     getPageTitle,
     handleTabClick,
-    copyTenantOverviewLink,
-    generateTenantOverviewLinkQr,
-    downloadTenantOverviewLinkQr,
-    accessToken,
-    role,
-    theme,
-    setTheme,
-    lightMode,
-    searchQuery,
-    handleSearchChange,
-    filteredBookings,
-    searchError,
-    clearSearch,
-    hasActiveSearch,
   } = ctx
 
   if (loading) {
@@ -1855,6 +460,12 @@ export default function TenantShell() {
                 onChange={handleTenantThemeModeChange}
               />
             </div>
+            <PilotBadge
+              onClick={() => {
+                if (isMobile) setIsMenuOpen(false)
+                navigate('/tenant/settings/legal')
+              }}
+            />
             <Button
               variant="secondary"
               fullWidth

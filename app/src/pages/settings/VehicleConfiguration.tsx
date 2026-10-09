@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { getTenantInfo } from '@api/tenant'
+import { useOperatorInfo } from '@pages/tenant/useTenantData'
 import { getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, type VehicleCategoryResponse } from '@api/vehicles'
 import { Car, Plus, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
 import { useSettingsMenu } from '@components/SettingsMenuBar'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 export default function VehicleConfiguration() {
-  const [info, setInfo] = useState<any>(null)
+  const infoQuery = useOperatorInfo()
+  const info = infoQuery.data
   const [categories, setCategories] = useState<VehicleCategoryResponse[]>([])
-  const [loading, setLoading] = useState(true)
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false)
+  const loading = infoQuery.isLoading || (!!info?.id && !categoriesLoaded)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
   const { isOpen: menuIsOpen } = useSettingsMenu()
   const [isAdding, setIsAdding] = useState(false)
@@ -28,28 +30,12 @@ export default function VehicleConfiguration() {
   }, [])
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [tenantInfo, categoriesData] = await Promise.all([
-          getTenantInfo(),
-          getTenantInfo().then(async (info) => {
-            if (info.data?.id) {
-              const cats = await getVehicleCategoriesByTenant(info.data.id)
-              return cats.data || []
-            }
-            return []
-          })
-        ])
-        setInfo(tenantInfo.data)
-        setCategories(categoriesData)
-      } catch (error) {
-        console.error('Failed to load data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [])
+    if (!info?.id) return
+    getVehicleCategoriesByTenant(info.id)
+      .then((cats) => setCategories(cats.data || []))
+      .catch((error) => console.error('Failed to load data:', error))
+      .finally(() => setCategoriesLoaded(true))
+  }, [info?.id])
 
   const handleAdd = () => {
     setFormData({ vehicle_category: '', vehicle_flat_rate: 0 })

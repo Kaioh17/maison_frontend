@@ -1,7 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
-import { useOutletContext } from 'react-router-dom'
 import { MagnifyingGlass, MapPin, Car, Clock } from '@phosphor-icons/react'
-import type { TenantShellCtx } from './TenantShell'
+import { useTenantRiders, EMPTY_LIST } from './useTenantData'
 import { formatUsd, formatTenantPhone, overviewDriverInitials, tenantTelHrefFromPhone } from './shared'
 import { getTenantBookings, type TenantRiderEmailOption, type BookingResponse } from '@api/tenant'
 import StatusPill from '@components/StatusPill'
@@ -24,7 +23,7 @@ function rideDateTime(iso: string): string {
 }
 
 export default function RidersTab() {
-  const { riders } = useOutletContext<TenantShellCtx>()
+  const riders = useTenantRiders().data ?? EMPTY_LIST
   const [search, setSearch] = useState('')
 
   // Rider ride-receipts modal (past + future rides for one rider)

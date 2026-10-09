@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
 import { getTenantConfig, updateTenantBranding, updateTenantLogo, type TenantBrandingData } from '@api/tenantSettings'
-import { Palette, FloppyDisk, PencilSimple, X, CaretDown, CaretUp, Image } from '@phosphor-icons/react'
+import { Palette, FloppyDisk, PencilSimple, X, Image } from '@phosphor-icons/react'
 import Toggle from '@components/Toggle'
 import Button from '@components/Button'
 import BrandingPhonePreview from '@components/BrandingPhonePreview'
+import ColorEditor from '@components/ColorEditor'
+import { COLOR_PRESETS } from '@utils/brandingPresets'
+import { COLOR_ROLES, type ColorRole } from '@utils/brandingRoles'
+import { cssColorToHex } from '@utils/colorTokens'
+import { BRAND_FONTS, FONT_ROLES, FONT_SCOPES, fontStack, type FontField } from '@utils/brandFonts'
 import { SETTINGS_BTN_CSS } from './settingsButtonCss'
 
 const MOBILE_SCROLL_BOTTOM_PAD = 'calc(80px + env(safe-area-inset-bottom, 0px))'
@@ -17,6 +22,35 @@ const BRANDING_LAYOUT_CSS = `
   .branding-page { grid-template-columns: minmax(0, 1fr); }
   .branding-preview { position: static; }
 }
+`
+const SWATCH_CSS = `
+.bswatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.bswatch { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; text-align: left; border: 1px solid var(--bw-border); border-radius: 10px; background: var(--bw-bg); color: var(--bw-text); font-family: "Work Sans", sans-serif; cursor: pointer; }
+.bswatch:hover { border-color: var(--bw-border-strong); }
+.bswatch[aria-pressed="true"] { border-color: var(--bw-accent); box-shadow: 0 0 0 1px var(--bw-accent); }
+.bswatch:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 2px; }
+.bswatch-chip { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--bw-border-strong); }
+.bswatch-chip.is-unset { background: repeating-linear-gradient(135deg, transparent 0 4px, var(--bw-border) 4px 5px); }
+.bswatch-text { display: flex; flex-direction: column; min-width: 0; }
+.bswatch-label { font-size: 13px; font-weight: 500; }
+.bswatch-hex { font-size: 12px; color: var(--bw-muted); font-variant-numeric: tabular-nums; text-transform: lowercase; }
+.bpresets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.bpreset { display: flex; flex-direction: column; gap: 8px; padding: 8px; text-align: left; border: 1px solid var(--bw-border); border-radius: 10px; background: var(--bw-bg); color: var(--bw-text); font-family: "Work Sans", sans-serif; cursor: pointer; }
+.bpreset:hover { border-color: var(--bw-border-strong); }
+.bpreset:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 2px; }
+.bpreset-chips { display: flex; height: 28px; border-radius: 6px; overflow: hidden; border: 1px solid var(--bw-border-strong); }
+.bpreset-chips span { flex: 1; }
+.branding-preview { display: flex; flex-direction: column; gap: 16px; }
+`
+const FONT_CSS = `
+.bfonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.bfont { display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 8px 12px; text-align: left; border: 1px solid var(--bw-border); border-radius: 10px; background: var(--bw-bg); color: var(--bw-text); cursor: pointer; }
+.bfont:hover { border-color: var(--bw-border-strong); }
+.bfont[aria-checked="true"] { border-color: var(--bw-accent); box-shadow: 0 0 0 1px var(--bw-accent); }
+.bfont:focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 2px; }
+.bfont-aa { font-size: 22px; line-height: 1.1; }
+.bfont-name { font-family: "Work Sans", sans-serif; font-size: 12px; color: var(--bw-muted); }
+.bfont-sample { margin: 4px 0 0; font-size: 22px; line-height: 1.25; color: var(--bw-text); overflow-wrap: anywhere; }
 `
 const FIELD_GRID_COLUMNS = 'repeat(auto-fill, minmax(260px, 1fr))'
 
@@ -32,7 +66,8 @@ export default function BrandingSettings() {
   const [faviconFile, setFaviconFile] = useState<File | null>(null)
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null)
   const [savingLogo, setSavingLogo] = useState(false)
-  const [colorsOpen, setColorsOpen] = useState(true)
+  // The color being edited, with the app's current value for it (seeds the picker while unset).
+  const [active, setActive] = useState<{ role: ColorRole; fallback: string } | null>(null)
 
   const [editedData, setEditedData] = useState<TenantBrandingData>({
     theme: '',
@@ -44,6 +79,10 @@ export default function BrandingSettings() {
     text_color: '',
     text_muted_color: '',
     button_text_color: '',
+    font_heading: '',
+    font_body: '',
+    font_accent: '',
+    font_scope: 'rider',
     favicon_url: '',
     slug: '',
     email_from_name: '',
@@ -78,6 +117,28 @@ export default function BrandingSettings() {
 
   const handleInputChange = (field: keyof TenantBrandingData, value: string | boolean) => {
     setEditedData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const applyPreset = ({ name: _name, ...colors }: (typeof COLOR_PRESETS)[number]) => {
+    setEditedData(prev => ({ ...prev, ...colors }))
+    setIsEditing(true)
+  }
+
+  const selectColor = (role: ColorRole) => {
+    const info = COLOR_ROLES.find(r => r.role === role)!
+    const screen = document.querySelector('[data-preview-screen]')
+    const current = screen ? cssColorToHex(getComputedStyle(screen).getPropertyValue(info.cssVar)) : null
+    setActive({ role, fallback: current ?? '#000000' })
+    if (!isEditing) setIsEditing(true)
+    // Below 1100px the editor sits under the form, so bring it into view.
+    requestAnimationFrame(() => document.querySelector('.branding-preview')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+  }
+
+  const [openFont, setOpenFont] = useState<FontField | null>(null)
+  const pickFont = (field: FontField, name: string) => {
+    setIsEditing(true)
+    setOpenFont(null)
+    handleInputChange(field, name)
   }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,6 +201,10 @@ export default function BrandingSettings() {
         text_color: editedData.text_color,
         text_muted_color: editedData.text_muted_color,
         button_text_color: editedData.button_text_color,
+        font_heading: editedData.font_heading ?? '',
+        font_body: editedData.font_body ?? '',
+        font_accent: editedData.font_accent ?? '',
+        font_scope: editedData.font_scope || 'rider',
         favicon_url: editedData.favicon_url,
         slug: editedData.slug,
         email_from_name: editedData.email_from_name,
@@ -150,6 +215,7 @@ export default function BrandingSettings() {
       setBranding(updated)
       setEditedData(updated)
       setIsEditing(false)
+      setActive(null)
       setSaveMsg({ ok: true, text: 'Branding settings updated.' })
       setTimeout(() => setSaveMsg(null), 4000)
     } catch (error) {
@@ -163,6 +229,7 @@ export default function BrandingSettings() {
   const handleCancel = () => {
     if (branding) setEditedData(branding)
     setIsEditing(false)
+    setActive(null)
     setLogoFile(null)
     setLogoPreview(null)
     setFaviconFile(null)
@@ -172,21 +239,10 @@ export default function BrandingSettings() {
   type FieldItem = {
     label: string
     field: keyof TenantBrandingData
-    type: 'select' | 'color' | 'checkbox' | 'text' | 'email' | 'url'
+    type: 'select' | 'checkbox' | 'text' | 'email' | 'url'
     options?: string[]
     description: string
   }
-
-  const colorFields: FieldItem[] = [
-    { label: 'Primary', field: 'primary_color', type: 'color', description: 'Main brand color — primary buttons, links, focus rings, active states.' },
-    { label: 'Secondary', field: 'secondary_color', type: 'color', description: 'Lighter complementary brand color — subtle accents, hover tints, secondary highlights.' },
-    { label: 'Accent', field: 'accent_color', type: 'color', description: 'Darker variant of Primary used for hover/pressed states on brand buttons and emphasized borders.' },
-    { label: 'Background', field: 'background_color', type: 'color', description: 'Page background color rendered behind everything else.' },
-    { label: 'Surface', field: 'surface_color', type: 'color', description: 'Color of elevated surfaces — cards, modals, dropdown menus, form input fills.' },
-    { label: 'Text', field: 'text_color', type: 'color', description: 'Primary text color used for body copy, headings, and labels.' },
-    { label: 'Muted Text', field: 'text_muted_color', type: 'color', description: 'Secondary text color for captions, helper hints, and placeholder text.' },
-    { label: 'Button Text', field: 'button_text_color', type: 'color', description: 'Text and icon color rendered inside primary brand-filled buttons.' },
-  ]
 
   const otherFields: FieldItem[] = [
     { label: 'Theme', field: 'theme', type: 'select', options: ['light', 'dark', 'auto'], description: 'Default theme for your application interface.' },
@@ -240,39 +296,6 @@ export default function BrandingSettings() {
                 <option key={opt} value={opt}>{opt.charAt(0).toUpperCase() + opt.slice(1)}</option>
               ))}
             </select>
-          ) : item.type === 'color' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input
-                  type="color"
-                  value={editedData[item.field] as string || '#ffffff'}
-                  onChange={e => handleInputChange(item.field, e.target.value)}
-                  style={{
-                    width: 52, height: 40, padding: 0,
-                    border: '1px solid var(--bw-border)', borderRadius: 4,
-                    cursor: 'pointer', flexShrink: 0
-                  }}
-                />
-                <input
-                  type="text"
-                  value={editedData[item.field] as string || ''}
-                  onChange={e => handleInputChange(item.field, e.target.value)}
-                  placeholder="#000000"
-                  className="bw-input"
-                  style={{
-                    flex: 1, padding: '10px 12px', fontSize: 14,
-                    fontFamily: '"Work Sans", sans-serif', borderRadius: 6,
-                    color: 'var(--bw-text)', backgroundColor: 'var(--bw-bg)',
-                    border: '1px solid var(--bw-border)'
-                  }}
-                />
-              </div>
-              <div style={{
-                width: '50%', height: 14, borderRadius: 4,
-                backgroundColor: (editedData[item.field] as string) || 'transparent',
-                border: '1px solid var(--bw-border)'
-              }} />
-            </div>
           ) : (
             <input
               type={item.type}
@@ -287,17 +310,6 @@ export default function BrandingSettings() {
               }}
             />
           )
-        ) : item.type === 'color' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, color: 'var(--bw-text)', padding: '10px 0' }}>
-              {editedData[item.field] as string || '—'}
-            </div>
-            <div style={{
-              width: '50%', height: 14, borderRadius: 4,
-              backgroundColor: (editedData[item.field] as string) || 'transparent',
-              border: '1px solid var(--bw-border)'
-            }} />
-          </div>
         ) : (
           <div style={{ fontSize: 14, fontFamily: '"Work Sans", sans-serif', fontWeight: 400, color: 'var(--bw-text)', padding: '10px 0', overflowWrap: 'anywhere' }}>
             {(editedData[item.field] as string) || <span style={{ color: 'var(--bw-muted)' }}>—</span>}
@@ -351,6 +363,8 @@ export default function BrandingSettings() {
     <>
       <style>{SETTINGS_BTN_CSS}</style>
       <style>{BRANDING_LAYOUT_CSS}</style>
+      <style>{SWATCH_CSS}</style>
+      <style>{FONT_CSS}</style>
       <div
         className="branding-page"
         style={{
@@ -420,46 +434,52 @@ export default function BrandingSettings() {
               </div>
             </div>
 
-            {/* ── Colors card (collapsible) ────────────────── */}
+            {/* ── Colors card: pick a color here or click a part of the phone preview ── */}
             <div style={sectionCard}>
               <div style={sectionHeading}>
                 <Palette size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                 <h2 style={sectionTitle}>Colors</h2>
-                <button
-                  type="button"
-                  onClick={() => setColorsOpen(o => !o)}
-                  aria-expanded={colorsOpen}
-                  aria-controls="branding-colors-panel"
-                  style={{
-                    marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4,
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontFamily: '"Work Sans", sans-serif', fontWeight: 400,
-                    color: 'var(--bw-muted)', padding: 0
-                  }}
-                >
-                  {colorsOpen
-                    ? <CaretUp size={14} aria-hidden />
-                    : <CaretDown size={14} aria-hidden />}
-                  {colorsOpen ? 'Collapse' : 'Expand'}
-                </button>
+                <span style={{ marginLeft: 'auto', fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
+                  Select one, or click the phone
+                </span>
               </div>
-              {colorsOpen && (
-                <div
-                  id="branding-colors-panel"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : FIELD_GRID_COLUMNS,
-                    gap: isMobile ? 16 : '16px 24px'
-                  }}
-                >
-                  {colorFields.map(renderField)}
+              {!editedData.enable_branding && (
+                <div className="bw-notice bw-notice-err" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span>Branding is off, so riders still see the default colors.</span>
+                  <Button variant="secondary" onClick={() => { setIsEditing(true); handleInputChange('enable_branding', true) }}>Turn on branding</Button>
                 </div>
               )}
-              {!colorsOpen && (
-                <p style={{ margin: 0, fontSize: 13, fontFamily: '"Work Sans", sans-serif', fontWeight: 300, color: 'var(--bw-muted)' }}>
-                  Brand palette used across the application.
-                </p>
-              )}
+              <div className="bpresets" role="group" aria-label="Color combinations">
+                {COLOR_PRESETS.map(p => (
+                  <button key={p.name} type="button" className="bpreset" onClick={() => applyPreset(p)}>
+                    <span className="bpreset-chips" aria-hidden>
+                      {[p.background_color, p.surface_color, p.primary_color, p.secondary_color, p.text_color].map((c, i) => <span key={i} style={{ background: c ?? undefined }} />)}
+                    </span>
+                    <span className="bswatch-label">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="bswatches" role="list">
+                {COLOR_ROLES.map(r => {
+                  const value = (editedData[r.field] as string) || ''
+                  return (
+                    <button
+                      key={r.role}
+                      type="button"
+                      role="listitem"
+                      className="bswatch"
+                      aria-pressed={active?.role === r.role}
+                      onClick={() => selectColor(r.role)}
+                    >
+                      <span className={`bswatch-chip${value ? '' : ' is-unset'}`} style={value ? { background: value } : undefined} aria-hidden />
+                      <span className="bswatch-text">
+                        <span className="bswatch-label">{r.label}</span>
+                        <span className="bswatch-hex">{value || 'Default'}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* ── Assets card ──────────────────────────────── */}
@@ -558,27 +578,86 @@ export default function BrandingSettings() {
               )}
             </div>
 
-            {/* ── Appearance (not connected yet) ───────────── */}
+            {/* ── Appearance: fonts are live, corner style is not wired yet ── */}
             <div style={sectionCard}>
               <div style={sectionHeading}>
                 <Palette size={15} style={{ color: 'var(--bw-muted)' }} aria-hidden />
                 <h2 style={sectionTitle}>Appearance</h2>
-                <span className="bw-soon-tag" style={{ marginLeft: 'auto' }}>Not connected</span>
+                <span style={{ marginLeft: 'auto', fontSize: 12, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
+                  Up to three fonts, one per use
+                </span>
               </div>
-              <div className="bw-soon" aria-disabled="true" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 16 : '16px 24px' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Corner style</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {['Square', 'Rounded', 'Pill'].map(o => (
-                      <Button key={o} variant="secondary" disabled tabIndex={-1}>{o}</Button>
-                    ))}
-                  </div>
+              {!editedData.enable_branding && (
+                <div className="bw-notice bw-notice-err" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span>Branding is off, so riders still see the default fonts.</span>
+                  <Button variant="secondary" onClick={() => { setIsEditing(true); handleInputChange('enable_branding', true) }}>Turn on branding</Button>
                 </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Rider page font</div>
-                  <select disabled tabIndex={-1} style={{ width: '100%', minHeight: 40 }} defaultValue="DM Sans">
-                    {['DM Sans', 'Lexend', 'Manrope', 'Playfair Display'].map(f => <option key={f}>{f}</option>)}
-                  </select>
+              )}
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-text)' }}>Where fonts apply</p>
+                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 300, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)', lineHeight: 1.4 }}>
+                  Each step adds a place. The phone preview on the right shows the app you pick there.
+                </p>
+                <div className="bfonts" role="radiogroup" aria-label="Where fonts apply">
+                  {FONT_SCOPES.map(sc => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={(editedData.font_scope || 'rider') === sc.id}
+                      className="bfont"
+                      onClick={() => { setIsEditing(true); handleInputChange('font_scope', sc.id) }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>{sc.label}</span>
+                      <span className="bfont-name">{sc.surfaces.map(x => x === 'landing' ? 'landing page' : `${x} app`).join(', ').replace(/^./, c => c.toUpperCase())}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {FONT_ROLES.map((r, i) => {
+                const current = editedData[r.field] || r.fallback
+                const open = openFont === r.field
+                return (
+                  <div key={r.field} style={{ paddingTop: i ? 16 : 0, marginTop: i ? 16 : 0, borderTop: i ? '1px solid var(--bw-border)' : undefined }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 500, fontFamily: '"Work Sans", sans-serif', color: 'var(--bw-muted)' }}>
+                          {r.label} <span style={{ fontWeight: 300 }}>- {current}. {r.description}</span>
+                        </p>
+                        <p className="bfont-sample" style={{ fontFamily: fontStack(current) }}>{r.sample}</p>
+                      </div>
+                      <Button variant="secondary" style={{ minWidth: 84, flex: 'none' }} aria-expanded={open} onClick={() => setOpenFont(open ? null : r.field)}>
+                        {open ? 'Close' : 'Change'}
+                      </Button>
+                    </div>
+                    {open && (
+                      <div className="bfonts" role="radiogroup" aria-label={`${r.label} font`} style={{ marginTop: 12 }}>
+                        {BRAND_FONTS.map(f => (
+                          <button
+                            key={f.name}
+                            type="button"
+                            role="radio"
+                            aria-checked={current === f.name}
+                            className="bfont"
+                            onClick={() => pickFont(r.field, f.name === r.fallback ? '' : f.name)}
+                          >
+                            <span className="bfont-aa" style={{ fontFamily: fontStack(f.name) }}>Aa Gg 123</span>
+                            <span className="bfont-name">{f.name}{f.name === r.fallback ? ' (default)' : ''}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div className="bw-soon" aria-disabled="true" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--bw-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                  Corner style <span className="bw-soon-tag">Not connected</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['Square', 'Rounded', 'Pill'].map(o => (
+                    <Button key={o} variant="secondary" disabled tabIndex={-1}>{o}</Button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -602,7 +681,23 @@ export default function BrandingSettings() {
             branding={editedData}
             logoUrl={logoPreview || editedData.logo_url}
             companyName={editedData.email_from_name || editedData.slug}
+            selected={active?.role ?? null}
+            onSelect={selectColor}
           />
+          {active && (() => {
+            const info = COLOR_ROLES.find(r => r.role === active.role)!
+            return (
+              <ColorEditor
+                key={active.role}
+                label={info.label}
+                description={info.description}
+                value={(editedData[info.field] as string) || ''}
+                fallback={active.fallback}
+                onChange={hex => handleInputChange(info.field, hex)}
+                onClose={() => setActive(null)}
+              />
+            )
+          })()}
         </aside>
 
           {/* Mobile bottom action bar */}

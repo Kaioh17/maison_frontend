@@ -6,8 +6,10 @@ import Modal from '@components/Modal'
 import { requestDriverDeletion, deleteDriver, type DriverDeletionRequest } from '@api/tenant'
 import { getApiErrorMessage } from '@utils/apiError'
 
+export type DeleteTarget = { id: number; first_name: string; last_name: string; email: string }
+
 type Props = {
-  driver: { id: number; first_name: string; last_name: string; email: string }
+  driver: DeleteTarget
   onClose: () => void
 }
 

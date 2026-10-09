@@ -4,295 +4,71 @@ import Card from '@components/Card'
 import BookingDetailsModal from '@components/BookingDetailsModal'
 import StatusPill from '@components/StatusPill'
 import Tabs from '@components/Tabs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
-import { getTenantInfo, getTenantDrivers, getTenantVehicles, getTenantBookings, getTenantBookingById, onboardDriver, assignDriverToVehicle, assignDriverToBooking, unassignDriverFromVehicle, assignDriverToVehicleNew, getTenantAnalysis, becomeDriver, type TenantResponse, type DriverResponse, type DriverDetailResponse, type VehicleResponse, type BookingResponse, type OnboardDriver, type TenantAnalysisData } from '@api/tenant'
-import { getVehicleRates, getVehicleCategoriesByTenant, createVehicleCategory, setVehicleRates, deleteVehicle, addVehicle } from '@api/vehicles'
-import { getTenantConfig, updateTenantSettings, updateTenantPricing, updateTenantBranding, updateTenantLogo, type TenantConfigResponse, type TenantSettingsData, type TenantPricingData, type TenantBrandingData, feedbackFormUrlForPayload } from '@api/tenantSettings'
-import { useAuthStore } from '@store/auth'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useTenantTheme, useTheme } from '@contexts/ThemeContext'
-import ThemeToggle from '@components/ThemeToggle'
-import VehicleEditModal from '@components/VehicleEditModal'
-import TenantBookRideModal from '@components/TenantBookRideModal'
-import TokenExpirationNotification from '@components/TokenExpirationNotification'
-import { TenantDashboardSkeleton } from '@components/Skeleton'
-import { useBookingSearch } from '@hooks/useBookingSearch'
-import { useHideOnScroll } from '@hooks/useHideOnScroll'
-import { Car, Users, Calendar, Gear, TrendUp, CurrencyDollar, Clock, MapPin, User, Phone, Envelope, Plus, Pencil, Trash, CheckCircle, XCircle, WarningCircle, Palette, FloppyDisk, SidebarSimple, CaretDown, CaretUp, X, Info, MagnifyingGlass, Wallet, Circle, Lock, Sparkle, Copy, ArrowSquareOut, ChatCircleDots, ShieldCheck, DotsThreeVertical, CaretRight, List, type IconWeight } from '@phosphor-icons/react'
-import { API_BASE } from '@config'
-import { vehicleMakes, getVehicleModels } from '../../data/vehicleData'
-import { extractSubdomain } from '@utils/subdomain'
-import { getTenantAppUrl } from '@config/host'
-import {
-  zelleNumberFromApi,
-  zelleEmailFromApi,
-  tenantZellePayload,
-  hasZelleRecipient,
-  zelleEmailDisplay,
-  isCompleteUsPhone,
-  zellePhoneValidationError
-} from '@utils/zelleContact'
-import { getBookingRating, type BookingRatingResponse } from '@api/bookings'
+import { Plus, WarningCircle, X, MagnifyingGlass } from '@phosphor-icons/react'
 import { useOutletContext } from 'react-router-dom'
 import type { TenantShellCtx } from './TenantShell'
+import { useBookingsTabState } from './useBookingsTabState'
 import {
-  TENANT_DASHBOARD_LAYOUT_CSS,
-  TENANT_FEEDBACK_FORM_URL,
-  starFillPercent,
-  RatingStar,
-  VehicleImageCard,
-  overviewDriverInitials,
-  overviewFormatDriverName,
-  overviewBookingRefersToDriver,
-  overviewVehicleLineForDriver,
-  overviewDriverPresence,
-  buildOverviewDriverRows,
-  bookingPickupToday,
-  buildOverviewBookingRows,
   overviewBookingStatusDisplay,
-  tenantDriverTypeLabel,
   formatTenantPhone,
-  tenantTelHrefFromPhone,
   formatUsd,
 } from './shared'
-import type { TabType, OverviewLinkKey, TenantPageThemeMode, OverviewLinkQrState, OverviewDriverRow, OverviewDriverPresence } from './shared'
 
 export default function BookingsTab() {
   const {
-    info,
-    setInfo,
-    drivers,
-    setDrivers,
-    vehicles,
-    setVehicles,
-    bookings,
-    setBookings,
-    vehicleCategories,
-    setVehicleCategories,
-    analysis,
-    setAnalysis,
-    loading,
-    setLoading,
     bookingStatusFilter,
     setBookingStatusFilter,
     serviceTypeFilter,
     setServiceTypeFilter,
     vehicleIdFilter,
     setVehicleIdFilter,
-    driverListSearch,
-    setDriverListSearch,
-    driverFilterStatus,
-    setDriverFilterStatus,
-    driverFilterType,
-    setDriverFilterType,
-    expandedDriverCardIds,
-    setExpandedDriverCardIds,
-    driverCardMenuOpenId,
-    setDriverCardMenuOpenId,
-    error,
-    setError,
-    addingCategory,
-    setAddingCategory,
-    newDriver,
-    setNewDriver,
-    showAddDriver,
-    setShowAddDriver,
-    showBookRideModal,
     setShowBookRideModal,
-    addDriverError,
-    setAddDriverError,
-    isCreatingDriver,
-    setIsCreatingDriver,
-    tenantConfig,
-    setTenantConfig,
-    editingSettings,
-    setEditingSettings,
-    savingSettings,
-    setSavingSettings,
-    editedSettings,
-    setEditedSettings,
-    editedPricing,
-    setEditedPricing,
-    editedBranding,
-    setEditedBranding,
-    logoFile,
-    setLogoFile,
-    logoPreview,
-    setLogoPreview,
-    editingVehicleId,
-    setEditingVehicleId,
-    showVehicleEditModal,
-    setShowVehicleEditModal,
-    tooltipVehicleId,
-    setTooltipVehicleId,
-    isMenuOpen,
-    setIsMenuOpen,
     isMobile,
-    setIsMobile,
+    activeTab,
+    location,
+    navigate,
+    setError,
+  } = useOutletContext<TenantShellCtx>()
+  const {
+    drivers,
+    vehicles,
+    bookings,
     selectedBooking,
     setSelectedBooking,
     showBookingDetails,
     setShowBookingDetails,
     loadingBookingDetails,
-    setLoadingBookingDetails,
     selectedBookingRating,
     setSelectedBookingRating,
     loadingBookingRating,
-    setLoadingBookingRating,
-    selectedDriver,
-    setSelectedDriver,
-    showDriverDetails,
-    setShowDriverDetails,
-    loadingDriverDetails,
-    setLoadingDriverDetails,
     showAssignDriverToBooking,
     setShowAssignDriverToBooking,
     selectedDriverForBooking,
     setSelectedDriverForBooking,
     assigningDriver,
-    setAssigningDriver,
     showOverrideConfirm,
     setShowOverrideConfirm,
-    deletingVehicleId,
-    setDeletingVehicleId,
-    showDeleteConfirm,
-    setShowDeleteConfirm,
-    isDeleting,
-    setIsDeleting,
-    unassigningVehicleId,
-    setUnassigningVehicleId,
-    showUnassignConfirm,
-    setShowUnassignConfirm,
-    isUnassigning,
-    setIsUnassigning,
-    unassignError,
-    setUnassignError,
-    assigningVehicleId,
-    setAssigningVehicleId,
-    showAssignConfirm,
-    setShowAssignConfirm,
-    selectedDriverId,
-    setSelectedDriverId,
-    isAssigning,
-    setIsAssigning,
-    assignError,
-    setAssignError,
-    showAssignVehicleToDriver,
-    setShowAssignVehicleToDriver,
-    assignVehicleToDriverId,
-    setAssignVehicleToDriverId,
-    selectedVehicleIdForDriverAssign,
-    setSelectedVehicleIdForDriverAssign,
-    assignVehicleToDriverError,
-    setAssignVehicleToDriverError,
-    vehicleSettingsOpen,
-    setVehicleSettingsOpen,
-    kpiScrollIndex,
-    setKpiScrollIndex,
-    showAddVehicleForm,
-    setShowAddVehicleForm,
-    showDriverModeConfirm,
-    setShowDriverModeConfirm,
-    isSwitchingToDriver,
-    setIsSwitchingToDriver,
-    switchToDriverError,
-    setSwitchToDriverError,
-    showInstallAppNotice,
-    setShowInstallAppNotice,
-    overviewCopiedLink,
-    setOverviewCopiedLink,
-    overviewLinkQrState,
-    setOverviewLinkQrState,
-    overviewLinksOpen,
-    setOverviewLinksOpen,
-    newVehicle,
-    setNewVehicle,
-    addingVehicle,
-    setAddingVehicle,
-    addVehicleError,
-    setAddVehicleError,
-    addVehicleSuccess,
-    setAddVehicleSuccess,
-    tenantPageThemeMode,
-    setTenantPageThemeMode,
-    navigate,
-    location,
-    kpiCarouselScrollRef,
-    isCustomThemeActive,
-    handleTenantThemeModeChange,
-    load,
-    createDriver,
-    confirmUnassignDriver,
-    confirmAssignDriver,
-    confirmAssignVehicleToDriver,
-    openAssignVehicleToDriver,
-    driversTableGridColumns,
-    getStatusColor,
-    getStatusColorHex,
-    getStatusIcon,
-    getInitials,
-    getVehicleRate,
-    handleSettingChange,
-    handlePricingChange,
-    handleBrandingChange,
-    handleLogoChange,
-    hasOtherChanges,
-    handleCancelEdit,
     handleBookingClick,
-    handleDriverClick,
     handleAssignDriverToBooking,
-    handleDeleteVehicle,
-    handleAddVehicle,
-    handleNewVehicleChange,
-    confirmDeleteVehicle,
-    tabs,
-    getActiveTab,
-    activeTab,
-    activeDriverCount,
-    filteredDriversForList,
-    useCompressedDriverCards,
-    openDriverRideHistory,
-    toggleDriverCardExpanded,
-    getPageTitle,
-    handleTabClick,
-    copyTenantOverviewLink,
-    generateTenantOverviewLinkQr,
-    downloadTenantOverviewLinkQr,
-    accessToken,
-    role,
-    theme,
-    setTheme,
-    lightMode,
     searchQuery,
     handleSearchChange,
     filteredBookings,
     searchError,
     clearSearch,
     hasActiveSearch,
-  } = useOutletContext<TenantShellCtx>()
+  } = useBookingsTabState({
+    filters: { bookingStatusFilter, serviceTypeFilter, vehicleIdFilter },
+    location,
+    navigate,
+    setError,
+  })
 
-  const searchBarHidden = useHideOnScroll(isMobile)
 
   return (
     <>
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (() => {
-          const reload = async (next: { status?: string; service?: string; vehicle?: number | null }) => {
-            const status = next.status ?? bookingStatusFilter
-            const service = next.service ?? serviceTypeFilter
-            const vehicle = next.vehicle === undefined ? vehicleIdFilter : next.vehicle
-            const params: { booking_status?: string; service_type?: string; vehicle_id?: number } = {}
-            if (status) params.booking_status = status
-            if (service) params.service_type = service
-            if (vehicle) params.vehicle_id = vehicle
-            try {
-              const b = await getTenantBookings(Object.keys(params).length > 0 ? params : undefined)
-              if (b.data !== undefined) setBookings(b.data || [])
-            } catch (error) {
-              console.error('Failed to reload bookings:', error)
-            }
-          }
           const countBy = (st: string) => bookings.filter((b) => b.booking_status === st).length
           const statusTabs = [
             { id: '', label: 'All', count: bookings.length },
@@ -353,7 +129,7 @@ export default function BookingsTab() {
                   className="bw-input"
                   style={{ width: 'auto', maxWidth: 160 }}
                   value={serviceTypeFilter}
-                  onChange={(e) => { setServiceTypeFilter(e.target.value); void reload({ service: e.target.value }) }}
+                  onChange={(e) => { setServiceTypeFilter(e.target.value) }}
                 >
                   <option value="">All services</option>
                   <option value="dropoff">Dropoff</option>
@@ -368,7 +144,6 @@ export default function BookingsTab() {
                   onChange={(e) => {
                     const v = e.target.value ? parseInt(e.target.value) : null
                     setVehicleIdFilter(v)
-                    void reload({ vehicle: v })
                   }}
                 >
                   <option value="">All vehicles</option>
@@ -392,7 +167,7 @@ export default function BookingsTab() {
                   <Tabs
                     ariaLabel="Booking status"
                     value={bookingStatusFilter}
-                    onChange={(id) => { setBookingStatusFilter(id); void reload({ status: id }) }}
+                    onChange={(id) => { setBookingStatusFilter(id) }}
                     tabs={statusTabs}
                   />
                 </div>
