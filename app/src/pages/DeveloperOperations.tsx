@@ -27,6 +27,10 @@ import {
 import { AxiosError } from 'axios'
 import { Link, useNavigate } from 'react-router-dom'
 import AdminComposeEmail from '@components/AdminComposeEmail'
+import { loadClearance } from '@utils/clearance'
+
+const ghostBtn =
+  'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300'
 
 function formatWhen(iso: string) {
   try {
@@ -58,13 +62,13 @@ const comingSoon: SoonCard[] = [
   {
     title: 'Platform analytics',
     description:
-      'Signups, bookings, GMV, and cohort funnels across tenants — exportable and filterable.',
+      'Signups, bookings, GMV, and cohort funnels across tenants, exportable and filterable.',
     icon: <ChartBar className="h-5 w-5 text-cyan-400/90" />,
   },
   {
     title: 'Infrastructure cost & usage',
     description:
-      'Approximate API, storage, and egress per tenant — tie-ins to cloud billing when ready.',
+      'Approximate API, storage, and egress per tenant, with tie-ins to cloud billing when ready.',
     icon: <Cloud className="h-5 w-5 text-amber-400/90" />,
   },
   {
@@ -160,6 +164,19 @@ export default function DeveloperOperations() {
     [rows]
   )
 
+  const stats = useMemo(() => {
+    const verified = rows.filter((r) => r.is_verified).length
+    return [
+      { label: 'Tenants', value: rows.length },
+      { label: 'Verified', value: verified },
+      { label: 'Pending', value: rows.length - verified },
+      {
+        label: 'Newest signup',
+        value: sorted[0] ? new Date(sorted[0].created_on).toLocaleDateString(undefined, { dateStyle: 'medium' }) : '-',
+      },
+    ]
+  }, [rows, sorted])
+
   const openDelete = (row: AdminTenantRow) => {
     setDeleteTarget(row)
     setDeleteConfirm('')
@@ -226,61 +243,70 @@ export default function DeveloperOperations() {
 
   return (
     <div className="min-h-[var(--app-h)] bg-[#0c0f14] text-slate-200">
-      <div className="border-b border-white/[0.06] bg-[#0c0f14]/95 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+      <header className="border-b border-white/[0.06] bg-[#0c0f14]/95 backdrop-blur-md sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-500/90 font-semibold">
-              Local dev only
+            <p className="text-[11px] uppercase tracking-[0.18em] text-indigo-300/80 font-semibold">
+              Admin console
             </p>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-white mt-0.5">
-              Developer operations
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white mt-1">
+              Operations
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Tenant registry — destructive controls require confirmation
-            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setComposeOpen(true)}
-              disabled={rows.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            >
-              <Envelope className="h-4 w-4" />
-              Compose email
-            </button>
-            <Link
-              to="/tools/qr-studio"
-              className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 hover:bg-cyan-500/20 transition-colors"
-            >
+          <nav className="flex flex-wrap items-center gap-2" aria-label="Admin tools">
+            <Link to="/operations/emails" className={ghostBtn}>
+              Email templates
+            </Link>
+            {loadClearance && (
+              <Link to="/operations/clearance" className={ghostBtn}>
+                Clearance checks
+              </Link>
+            )}
+            <Link to="/tools/qr-studio" className={ghostBtn}>
               QR Code Studio
             </Link>
             <button
               type="button"
               onClick={() => load(true)}
               disabled={loading || refreshing}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/[0.08] disabled:opacity-50 transition-colors"
+              aria-label="Refresh tenants"
+              className={`${ghostBtn} disabled:opacity-50`}
             >
               <ArrowClockwise className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </button>
-          </div>
+            <button
+              type="button"
+              onClick={() => setComposeOpen(true)}
+              disabled={rows.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-indigo-400 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+            >
+              <Envelope className="h-4 w-4" />
+              Compose email
+            </button>
+          </nav>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 flex flex-wrap gap-3 items-start">
-          <Warning className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-100/90 space-y-1">
-            <p className="font-medium text-amber-100">
-              Admin console on <code className="text-amber-200/95">admin.{MAIN_DOMAIN}</code>. Sign in at{' '}
-              <code className="text-amber-200/95">/login</code>.
-            </p>
-            <p className="text-amber-200/70">
-              Delete and force-verify actions are high impact. Ensure you are pointed at a safe backend.
-            </p>
-          </div>
-        </div>
+        <p className="flex items-center gap-2 text-xs text-slate-500">
+          <Warning className="h-4 w-4 text-amber-400/80 shrink-0" />
+          <span>
+            Live admin on <code className="text-slate-300">admin.{MAIN_DOMAIN}</code>. Delete and force verify are
+            irreversible, so check which backend you are pointed at.
+          </span>
+        </p>
+
+        <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {stats.map((st) => (
+            <div key={st.label} className="rounded-xl border border-white/[0.06] bg-[#11161d] px-4 py-3">
+              <dt className="text-[11px] uppercase tracking-wider text-slate-500">{st.label}</dt>
+              <dd className="mt-1 text-xl sm:text-2xl font-semibold text-white tabular-nums">
+                {loading ? <span className="inline-block h-7 w-12 rounded bg-white/[0.06] animate-pulse" /> : st.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
 
         {!hasApiKey && (
           <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.07] px-4 py-3 flex gap-3 items-start">
@@ -303,11 +329,9 @@ export default function DeveloperOperations() {
           </div>
         )}
 
-        <section className="rounded-2xl border border-white/[0.08] bg-[#11161d] shadow-xl shadow-black/40 overflow-hidden">
+        <section className="rounded-2xl border border-white/[0.08] bg-[#11161d] overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-              Tenants
-            </h2>
+            <h2 className="text-base font-semibold text-white">Tenants</h2>
             <span className="text-xs font-mono text-slate-500 tabular-nums">
               {sorted.length} record{sorted.length === 1 ? '' : 's'}
             </span>
@@ -315,18 +339,21 @@ export default function DeveloperOperations() {
 
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
-                <CircleNotch className="h-5 w-5 animate-spin" />
-                Loading tenants…
+              <div className="divide-y divide-white/[0.04]" aria-busy="true" aria-label="Loading tenants">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="px-4 py-4">
+                    <div className="h-4 rounded bg-white/[0.06] animate-pulse" style={{ width: `${60 + ((i * 13) % 30)}%` }} />
+                  </div>
+                ))}
               </div>
             ) : sorted.length === 0 ? (
               <div className="py-20 text-center text-slate-500 text-sm">
                 No tenants returned. Check API key and backend logs.
               </div>
             ) : (
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[760px] text-left text-sm whitespace-nowrap">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-xs uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-white/[0.06] text-[11px] uppercase tracking-wider text-slate-500">
                     <th className="px-4 py-3 font-medium">ID</th>
                     <th className="px-4 py-3 font-medium">Name</th>
                     <th className="px-4 py-3 font-medium">Email</th>
@@ -342,28 +369,30 @@ export default function DeveloperOperations() {
                       key={r.id}
                       onClick={() => navigate(`/tenants/${r.id}`)}
                       className="hover:bg-white/[0.04] transition-colors cursor-pointer"
-                      title="View tenant detail"
                     >
                       <td className="px-4 py-3 font-mono text-slate-300 tabular-nums">
                         {r.id}
                       </td>
-                      <td className="px-4 py-3 text-white font-medium">
-                        {r.full_name ||
-                          `${r.first_name} ${r.last_name}`.trim() ||
-                          '—'}
+                      <td className="px-4 py-3 font-medium">
+                        <Link
+                          to={`/tenants/${r.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-white hover:text-indigo-300 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                        >
+                          {r.full_name || `${r.first_name} ${r.last_name}`.trim() || '-'}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 text-slate-400">{r.email}</td>
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                        {r.phone_no || '—'}
+                        {r.phone_no || '-'}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            r.is_verified
-                              ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
-                              : 'border border-amber-500/30 bg-amber-500/15 text-amber-200'
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                            r.is_verified ? 'text-emerald-300' : 'text-amber-300'
                           }`}
                         >
+                          <span className={`h-1.5 w-1.5 rounded-full ${r.is_verified ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                           {r.is_verified ? 'Verified' : 'Pending'}
                         </span>
                       </td>
@@ -379,18 +408,18 @@ export default function DeveloperOperations() {
                               openForceVerify(r)
                             }}
                             disabled={Boolean(r.is_verified)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/35 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/20 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-amber-200 hover:bg-amber-500/15 transition-colors disabled:opacity-30 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                           >
                             <Warning className="h-3.5 w-3.5" />
                             Force verify
                           </button>
-                        <button
+                          <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             openDelete(r)
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/35 bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/20 transition-colors"
+                          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-rose-300 hover:bg-rose-500/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
                         >
                           <Trash className="h-3.5 w-3.5" />
                           Delete
@@ -405,13 +434,11 @@ export default function DeveloperOperations() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/[0.08] bg-[#11161d] shadow-xl shadow-black/40 overflow-hidden">
+        <section className="rounded-2xl border border-white/[0.08] bg-[#11161d] overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-slate-400" />
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                Server logs
-              </h2>
+              <h2 className="text-base font-semibold text-white">Server logs</h2>
               {logs && (
                 <span className="text-xs font-mono text-slate-500">
                   {logs.log_file}
@@ -455,9 +482,7 @@ export default function DeveloperOperations() {
         </section>
 
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">
-            Roadmap / coming soon
-          </h2>
+          <h2 className="text-base font-semibold text-slate-300 mb-4">Coming soon</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {comingSoon.map((c) => (
               <div

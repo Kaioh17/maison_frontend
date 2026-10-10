@@ -8,6 +8,7 @@ import SubdomainBlock from '@components/SubdomainBlock'
 import RootLanding from '@components/RootLanding'
 import TenantRouteBlock from '@components/TenantRouteBlock'
 import AdminOpsGate from '@components/AdminOpsGate'
+import { loadClearance } from '@utils/clearance'
 import AccountVerificationNotification from '@components/AccountVerificationNotification'
 import UpdateBanner from '@components/UpdateBanner'
 import AssistantLauncher from '@components/AssistantLauncher'
@@ -140,6 +141,8 @@ const Success = lazy(() => import('@pages/Success'))
 const StripeReturn = lazy(() => import('@pages/StripeReturn'))
 const StripeReauth = lazy(() => import('@pages/StripeReauth'))
 const DeveloperOperations = lazy(() => import('@pages/DeveloperOperations'))
+const AdminEmails = lazy(() => import('@pages/AdminEmails'))
+const Clearance = loadClearance ? lazy(loadClearance) : null
 const AdminTenantDetail = lazy(() => import('@pages/AdminTenantDetail'))
 const AdminLogin = lazy(() => import('@pages/AdminLogin'))
 const AdminCreateAccount = lazy(() => import('@pages/AdminCreateAccount'))
@@ -200,6 +203,24 @@ export default function App() {
           </AdminOpsGate>
         }
       />
+      <Route
+        path="/operations/emails"
+        element={
+          <AdminOpsGate>
+            <AdminEmails />
+          </AdminOpsGate>
+        }
+      />
+      {Clearance && (
+        <Route
+          path="/operations/clearance"
+          element={
+            <AdminOpsGate>
+              <Clearance />
+            </AdminOpsGate>
+          }
+        />
+      )}
       <Route
         path="/tenants/:tenantId"
         element={
